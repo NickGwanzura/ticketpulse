@@ -6,13 +6,13 @@ export default function CookiesPage() {
       kicker="Legal"
       title="Cookie Policy"
       lastUpdated="May 2026"
-      intro="Cookies are small text files we (and our partners) place on your device. Here's exactly which ones we use and why — plus how to switch them off."
+      intro="Cookies are small text files we (and our partners) place on your device. Here's exactly which ones we use and why, plus how to switch them off."
       sections={[
         {
           id: "what", title: "What is a cookie?",
           body: <>
             <p>A cookie is a small piece of data stored by your browser. We use them to keep you signed in, remember preferences, and (with consent) understand how the site is used.</p>
-            <p>You can clear or block cookies in your browser at any time. Some cookies are essential — turning them off will stop sign-in working.</p>
+            <p>You can clear or block cookies in your browser at any time. Some cookies are essential, turning them off will stop sign-in working.</p>
           </>,
         },
         {
@@ -20,9 +20,9 @@ export default function CookiesPage() {
           body: <>
             <p>These cookies are required for the platform to function. They cannot be turned off via the consent banner.</p>
             <ul>
-              <li><strong>authjs.session-token</strong> — keeps you signed in. Expires after 30 days of inactivity.</li>
-              <li><strong>authjs.csrf-token</strong> — protects forms from cross-site request forgery.</li>
-              <li><strong>tp_session</strong> — short-lived session ID for fraud detection (24 hours).</li>
+              <li><strong>authjs.session-token</strong>, keeps you signed in. Expires after 30 days of inactivity.</li>
+              <li><strong>authjs.csrf-token</strong>, protects forms from cross-site request forgery.</li>
+              <li><strong>tp_session</strong>, short-lived session ID for fraud detection (24 hours).</li>
             </ul>
           </>,
         },
@@ -31,8 +31,8 @@ export default function CookiesPage() {
           body: <>
             <p>These cookies remember your choices to make repeat visits smoother.</p>
             <ul>
-              <li><strong>tp_currency</strong> — remembers your preferred currency for prices (USD / ZAR / GBP).</li>
-              <li><strong>tp_locale</strong> — remembers your language preference.</li>
+              <li><strong>tp_currency</strong>, remembers your preferred currency for prices (USD / ZAR / GBP).</li>
+              <li><strong>tp_locale</strong>, remembers your language preference.</li>
             </ul>
           </>,
         },
@@ -41,7 +41,7 @@ export default function CookiesPage() {
           body: <>
             <p>These help us understand which features get used so we can prioritize improvements. They are <strong>only set if you opt in</strong> via the consent banner.</p>
             <ul>
-              <li><strong>_ph_*</strong> (PostHog) — anonymized session and event data, retained 6 months.</li>
+              <li><strong>_ph_*</strong> (PostHog), anonymized session and event data, retained 6 months.</li>
             </ul>
             <p>We do not use third-party advertising cookies.</p>
           </>,

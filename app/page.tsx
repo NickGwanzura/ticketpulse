@@ -38,16 +38,16 @@ const TESTIMONIALS = [
 
 const FAQ = [
   { q: "How do I get my ticket after I buy?",       a: "Instantly via email and inside your TicketPulse account. The QR is bound to your account, so you can sign in on any device the day-of." },
-  { q: "Can I get a refund?",                       a: "Yes — full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24–72h for cards)." },
+  { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24–72h for cards)." },
   { q: "What payments do you accept?",              a: "EcoCash, Paynow, USD cash at venue, ZAR, GBP, and Visa / Mastercard / AmEx. We pick the best processor at checkout based on your method." },
   { q: "Is TicketPulse only for Harare?",           a: "We started here, but events are live in Bulawayo, Vic Falls, Mutare, Pretoria, Durban, and London. New cities open every month." },
   { q: "How do I sell tickets to my own event?",    a: "Sign up as an organizer, build your event in the dashboard, and share your link. We pay out within 24h of the event ending." },
-  { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event — no extra integrations." },
+  { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event, no extra integrations." },
 ]
 
 const FEATURED_EVENTS = [
   {
-    id: "1", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA 2026 — Pretoria",
+    id: "1", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA 2026, Pretoria",
     category: "concert", venue: "Propaganda", city: "Pretoria", startsAt: new Date("2026-05-17T12:00:00"),
     featured: true, lowestPrice: 350, currency: "ZAR", status: "published",
   },
@@ -79,7 +79,7 @@ const HERO_TICKETS = [
     z: "z-30",
   },
   {
-    title: "Rumble in SA — Pretoria",
+    title: "Rumble in SA, Pretoria",
     venue: "Propaganda · Pretoria",
     date: new Date("2026-05-17T12:00:00"),
     price: 350,
@@ -133,7 +133,7 @@ const STATS = [
 
 const STEPS = [
   { icon: MousePointerClick, title: "Browse",        body: "Find concerts, marathons, premieres, and more across Zimbabwe and the region." },
-  { icon: Wallet,            title: "Pay your way",  body: "EcoCash, Paynow, USD, ZAR, or card. Pick what works — checkout takes seconds." },
+  { icon: Wallet,            title: "Pay your way",  body: "EcoCash, Paynow, USD, ZAR, or card. Pick what works, checkout takes seconds." },
   { icon: QrCode,            title: "Show your QR",  body: "Mobile QR entry at the gate. Plus shuttle, merch, and photo packs in one app." },
 ]
 
@@ -184,7 +184,7 @@ export default function Home() {
     <main>
       {/* HERO */}
       <section className="relative overflow-hidden">
-        {/* Layer 1: base mesh — multiple radial gradients */}
+        {/* Layer 1: base mesh, multiple radial gradients */}
         <div
           className="absolute inset-0 -z-10"
           style={{
@@ -199,28 +199,28 @@ export default function Home() {
           aria-hidden
         />
 
-        {/* Layer 2: vivid accent orb — top right, animated pulse */}
+        {/* Layer 2: vivid accent orb, top right, animated pulse */}
         <div
           className="absolute -top-20 right-[10%] -z-10 w-72 h-72 rounded-full blur-3xl pointer-events-none animate-[pulse_6s_ease-in-out_infinite]"
           style={{ background: "radial-gradient(closest-side, rgba(5,112,222,0.25), transparent)" }}
           aria-hidden
         />
 
-        {/* Layer 3: secondary orb — left mid */}
+        {/* Layer 3: secondary orb, left mid */}
         <div
           className="absolute top-[40%] -left-16 -z-10 w-64 h-64 rounded-full blur-3xl pointer-events-none"
           style={{ background: "radial-gradient(closest-side, rgba(45,184,160,0.18), transparent)" }}
           aria-hidden
         />
 
-        {/* Layer 4: warm orb — bottom right */}
+        {/* Layer 4: warm orb, bottom right */}
         <div
           className="absolute bottom-0 right-[20%] -z-10 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-70"
           style={{ background: "radial-gradient(closest-side, rgba(251,191,36,0.16), transparent)" }}
           aria-hidden
         />
 
-        {/* Layer 5: dotted pattern — softly fading */}
+        {/* Layer 5: dotted pattern, softly fading */}
         <div
           className="absolute inset-x-0 top-0 -z-10 h-[560px] opacity-60"
           style={{
@@ -278,7 +278,7 @@ export default function Home() {
 
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-16 md:pb-24">
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
-            {/* LEFT — Text */}
+            {/* LEFT. Text */}
             <div>
               <div className="inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-7 shadow-sm shadow-ink/5">
                 <span className="relative flex w-2 h-2">
@@ -302,7 +302,7 @@ export default function Home() {
               </h1>
 
               <p className="mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
-                Concerts, marathons, premieres, and more — discover what&apos;s on, grab tickets, book the shuttle, and keep the photos. All in one place.
+                Concerts, marathons, premieres, and more, discover what&apos;s on, grab tickets, book the shuttle, and keep the photos. All in one place.
               </p>
 
               <form action="/events" className="mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl">
@@ -358,7 +358,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* RIGHT — Floating ticket cards */}
+            {/* RIGHT. Floating ticket cards */}
             <div className="relative h-[420px] lg:h-[480px] hidden sm:block">
               {/* Decorative glow */}
               <div className="absolute inset-0 -z-10 [background:radial-gradient(500px_circle_at_50%_45%,rgba(5,112,222,0.10),transparent_60%)] pointer-events-none" />
@@ -466,7 +466,7 @@ export default function Home() {
           <div className="mb-8 md:mb-10">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Browse</p>
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">By category</h2>
-            <p className="mt-3 text-[15px] text-ink-2 max-w-xl">Find the experience you&apos;re after — from sold-out concerts to local marathons and premieres.</p>
+            <p className="mt-3 text-[15px] text-ink-2 max-w-xl">Find the experience you&apos;re after, from sold-out concerts to local marathons and premieres.</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">

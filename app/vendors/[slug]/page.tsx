@@ -233,7 +233,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               <div className="border-t border-line pt-5 space-y-2.5">
                 <div className="flex items-center gap-2.5 text-[12.5px] text-ink-2">
                   <Phone size={13} className="text-ink-3" />
-                  <span className="text-ink font-medium">+263 77 hidden — sign in to view</span>
+                  <span className="text-ink font-medium">+263 77 hidden, sign in to view</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-[12.5px] text-ink-2">
                   <Mail size={13} className="text-ink-3" />

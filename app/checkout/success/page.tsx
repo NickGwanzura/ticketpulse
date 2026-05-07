@@ -58,7 +58,7 @@ export default function CheckoutSuccessPage() {
   const shareOrder = async () => {
     const data = {
       title: "I'm going to " + eventTitle,
-      text: "Just got my ticket on TicketPulse — see you there!",
+      text: "Just got my ticket on TicketPulse, see you there!",
       url: typeof window !== "undefined" ? window.location.origin + "/events" : "",
     }
     if (typeof navigator !== "undefined" && navigator.share) {

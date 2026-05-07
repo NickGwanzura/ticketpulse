@@ -4,7 +4,7 @@ import { Search, SlidersHorizontal } from "lucide-react"
 
 const MOCK_EVENTS = [
   {
-    id: "1", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA 2026 — Pretoria",
+    id: "1", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA 2026, Pretoria",
     category: "concert", venue: "Propaganda", city: "Pretoria", startsAt: new Date("2026-05-17T12:00:00"),
     featured: true, lowestPrice: 350, currency: "ZAR", status: "published",
   },
@@ -14,17 +14,17 @@ const MOCK_EVENTS = [
     featured: true, lowestPrice: 5, currency: "USD", status: "published",
   },
   {
-    id: "3", slug: "becoming-madam-boss-harare", title: "Becoming Madam Boss: Film Premiere — Harare",
+    id: "3", slug: "becoming-madam-boss-harare", title: "Becoming Madam Boss: Film Premiere, Harare",
     category: "film", venue: "Ster-Kinekor", city: "Harare", startsAt: new Date("2026-05-30T18:00:00"),
     featured: true, lowestPrice: 15, currency: "USD", status: "published",
   },
   {
-    id: "4", slug: "rumble-in-sa-durban-2026", title: "Rumble in SA 2026 — Durban",
+    id: "4", slug: "rumble-in-sa-durban-2026", title: "Rumble in SA 2026, Durban",
     category: "concert", venue: "The Station", city: "Durban", startsAt: new Date("2026-05-16T12:00:00"),
     featured: false, lowestPrice: 350, currency: "ZAR", status: "published",
   },
   {
-    id: "5", slug: "becoming-madam-boss-london", title: "Becoming Madam Boss: Film Premiere — London",
+    id: "5", slug: "becoming-madam-boss-london", title: "Becoming Madam Boss: Film Premiere, London",
     category: "film", venue: "Vue Cinema", city: "London", startsAt: new Date("2026-06-19T18:00:00"),
     featured: true, lowestPrice: 20, currency: "GBP", status: "published",
   },

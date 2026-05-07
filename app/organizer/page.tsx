@@ -8,7 +8,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const MOCK_EVENTS = [
   { id: "1", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures", category: "Marathon", venue: "National Sports Stadium, Harare", startsAt: new Date("2026-05-17T06:00:00"), status: "published", sold: 1280, capacity: 2000, revenue: 9430, currency: "USD" },
-  { id: "2", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA — Pretoria", category: "Concert", venue: "Propaganda, Pretoria", startsAt: new Date("2026-05-17T12:00:00"), status: "published", sold: 420, capacity: 800, revenue: 147000, currency: "ZAR" },
+  { id: "2", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA, Pretoria", category: "Concert", venue: "Propaganda, Pretoria", startsAt: new Date("2026-05-17T12:00:00"), status: "published", sold: 420, capacity: 800, revenue: 147000, currency: "ZAR" },
   { id: "3", slug: "nyuki-warmup-run", title: "Nyuki Warm-up Run", category: "Walkathon", venue: "Harare Gardens", startsAt: new Date("2026-04-12T07:00:00"), status: "draft", sold: 0, capacity: 300, revenue: 0, currency: "USD" },
 ] as const
 

@@ -29,7 +29,7 @@ const CATEGORIES: NavCategory[] = [
 ]
 
 const FEATURED_PEEK = [
-  { slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA — Pretoria",         emoji: "🎵", date: "Sun 17 May" },
+  { slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA, Pretoria",         emoji: "🎵", date: "Sun 17 May" },
   { slug: "nyuki-marathon-2026",        title: "Nyuki Marathon 2026",             emoji: "🏃", date: "Sun 17 May" },
 ]
 
@@ -350,7 +350,7 @@ export default function Navbar() {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-ink">Sell tickets</p>
-                <p className="text-[11.5px] text-ink-2">Launch in minutes — verified payouts.</p>
+                <p className="text-[11.5px] text-ink-2">Launch in minutes, verified payouts.</p>
               </div>
               <ArrowRight size={14} className="text-ink-2 shrink-0" />
             </Link>

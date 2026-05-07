@@ -48,14 +48,14 @@ export const VENDORS: VendorProfile[] = [
     priceFrom: 300,
     currency: "USD",
     portfolio: [
-      { title: "Nyuki Marathon 2025 — breakfast for 1,200", year: 2025, venue: "National Sports Stadium" },
+      { title: "Nyuki Marathon 2025, breakfast for 1,200", year: 2025, venue: "National Sports Stadium" },
       { title: "Worker Bees AGM dinner", year: 2025, venue: "Meikles Hotel" },
       { title: "ZIMRA staff awards", year: 2024, venue: "Rainbow Towers" },
     ],
     packages: [
       { id: "mk1", name: "Breakfast buffet", description: "Continental + local breakfast for up to 200 guests.", price: 800, currency: "USD",
         bullets: ["Sadza, eggs, toast, juice, tea", "Service staff included", "All equipment + cleanup"] },
-      { id: "mk2", name: "Stadium catering — full day", description: "Coverage for up to 1,000 guests across multiple stations.", price: 4500, currency: "USD",
+      { id: "mk2", name: "Stadium catering, full day", description: "Coverage for up to 1,000 guests across multiple stations.", price: 4500, currency: "USD",
         bullets: ["3 menu rotations", "10 service staff", "Onsite coordinator"] },
       { id: "mk3", name: "Corporate canapés", description: "Plated finger food for 50 guests.", price: 350, currency: "USD",
         bullets: ["12 selections", "Bar-side service", "2 hr coverage"] },
@@ -106,7 +106,7 @@ export const VENDORS: VendorProfile[] = [
     priceFrom: 500,
     currency: "USD",
     portfolio: [
-      { title: "HIFA Main Stage — 5 nights", year: 2024, venue: "Harare Gardens" },
+      { title: "HIFA Main Stage. 5 nights", year: 2024, venue: "Harare Gardens" },
       { title: "Winky D Stadium Show", year: 2025, venue: "Glamis Arena" },
       { title: "Independence Gala", year: 2025, venue: "National Sports Stadium" },
     ],
@@ -136,7 +136,7 @@ export const VENDORS: VendorProfile[] = [
     currency: "USD",
     portfolio: [
       { title: "Nyuki Marathon 2025", year: 2025, venue: "National Sports Stadium" },
-      { title: "Diplomatic gala — French Embassy", year: 2024, venue: "Borrowdale" },
+      { title: "Diplomatic gala. French Embassy", year: 2024, venue: "Borrowdale" },
       { title: "Sungura Festival", year: 2024, venue: "Glamis Arena" },
     ],
     packages: [
@@ -155,7 +155,7 @@ export const VENDORS: VendorProfile[] = [
     tagline: "Charcoal grills. No queues.",
     city: "Harare",
     serves: ["Harare", "Norton"],
-    description: "Two trucks, three stations — burgers, boerewors, halloumi wraps. We can serve 80 covers an hour and bring our own power, water, and bins.",
+    description: "Two trucks, three stations, burgers, boerewors, halloumi wraps. We can serve 80 covers an hour and bring our own power, water, and bins.",
     verified: true,
     rating: 4.6,
     reviewCount: 54,

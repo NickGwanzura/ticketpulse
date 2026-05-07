@@ -18,7 +18,12 @@ export default async function SignUpPage({
   const initialRole = (sp.role as "attendee" | "organizer" | "vendor") ?? "attendee"
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-paper-2 px-4 py-10 md:py-16">
+    <div
+      className="relative min-h-[calc(100vh-4rem)] px-4 py-10 md:py-16"
+      style={{
+        background:
+          "radial-gradient(800px 400px at 80% -10%, #DBE8FB 0%, transparent 55%), radial-gradient(600px 300px at 0% 100%, rgba(254,235,200,0.4) 0%, transparent 55%), linear-gradient(180deg, #F6F9FC 0%, #FFFFFF 100%)",
+      }}>
       <div className="max-w-md mx-auto">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">

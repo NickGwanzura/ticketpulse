@@ -197,7 +197,7 @@ export default function EventCard({
           </span>
         )}
 
-        {/* Bottom strip — date band */}
+        {/* Bottom strip, date band */}
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-paper/40 to-transparent pointer-events-none" />
       </div>
 

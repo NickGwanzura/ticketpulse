@@ -59,7 +59,7 @@ export default async function VendorsPage({
             Trusted vendors. <span className="text-blue">Booked direct.</span>
           </h1>
           <p className="mt-4 md:mt-5 text-[15px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
-            Catering, photography, sound, security and more — verified by TicketPulse, rated by organizers across Zimbabwe.
+            Catering, photography, sound, security and more, verified by TicketPulse, rated by organizers across Zimbabwe.
           </p>
 
           {/* Quick stats */}

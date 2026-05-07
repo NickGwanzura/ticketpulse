@@ -5,7 +5,7 @@ const RAILS = [
   { icon: Smartphone, title: "EcoCash",  body: "Instant on event completion. No fee under USD 50.", chip: "Instant" },
   { icon: Banknote,   title: "USD bank", body: "Wire to your nominated USD account, settled in 24h.", chip: "24 hours" },
   { icon: Banknote,   title: "ZAR bank", body: "EFT to South African bank, settled in 24h.",         chip: "24 hours" },
-  { icon: Wallet,     title: "Card refund pool", body: "Refunds to attendees come from this — auto.", chip: "Automatic" },
+  { icon: Wallet,     title: "Card refund pool", body: "Refunds to attendees come from this, auto.", chip: "Automatic" },
 ]
 
 const TIMELINE = [
@@ -36,7 +36,7 @@ export default function PayoutsPage() {
             Get paid the day your event ends.
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-xl leading-relaxed">
-            EcoCash, USD, or ZAR — release straight to your account when the gate closes. No invoices, no chasing.
+            EcoCash, USD, or ZAR, release straight to your account when the gate closes. No invoices, no chasing.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[12.5px] text-ink-3">
             <span className="inline-flex items-center gap-2"><Clock size={14} className="text-emerald-600" /> 24-hour settlement</span>

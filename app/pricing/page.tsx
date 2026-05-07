@@ -54,7 +54,7 @@ const FAQ = [
   { q: "How does the 5% organizer fee work?", a: "We deduct 5% from each ticket sold and pay out the rest directly to your linked EcoCash, ZAR, or USD account on event completion. There are no monthly fees, no setup fees, and no charges if you don't sell." },
   { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash and Paynow processing fees out of our 5% on amounts under USD 50. For card payments above USD 50, a 2.5% processor fee is passed through." },
   { q: "When do payouts arrive?",             a: "USD and ZAR payouts arrive within 24 hours of your event ending. EcoCash payouts are instant once the event has been marked complete." },
-  { q: "Can I refund attendees?",             a: "Yes — full or partial, any time. Funds are returned to the original payment method automatically." },
+  { q: "Can I refund attendees?",             a: "Yes, full or partial, any time. Funds are returned to the original payment method automatically." },
 ]
 
 export default function PricingPage() {
@@ -71,7 +71,7 @@ export default function PricingPage() {
             Simple. <span className="text-blue">Pay-as-you-sell.</span>
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-2xl leading-relaxed">
-            Free for attendees. Free to list as a vendor. Organizers pay 5% — and only when you actually sell tickets. No setup costs, no monthly fees.
+            Free for attendees. Free to list as a vendor. Organizers pay 5%, and only when you actually sell tickets. No setup costs, no monthly fees.
           </p>
         </div>
       </section>

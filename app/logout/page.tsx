@@ -10,7 +10,12 @@ export default async function LogoutPage() {
   const initials = (session.user.name?.[0] ?? session.user.email?.[0] ?? "U").toUpperCase()
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-paper-2 px-4 py-12">
+    <div
+      className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12"
+      style={{
+        background:
+          "radial-gradient(800px 400px at 80% -10%, #DBE8FB 0%, transparent 55%), radial-gradient(600px 300px at 0% 100%, rgba(254,235,200,0.4) 0%, transparent 55%), linear-gradient(180deg, #F6F9FC 0%, #FFFFFF 100%)",
+      }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-7">
           <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">
@@ -65,7 +70,7 @@ export default async function LogoutPage() {
 
         <p className="mt-5 text-center text-[12px] text-ink-3 inline-flex items-center justify-center gap-1.5 w-full">
           <ShieldCheck size={12} className="text-emerald-600" />
-          Your tickets stay safe — re-sign in with the same email.
+          Your tickets stay safe, re-sign in with the same email.
         </p>
       </div>
     </div>

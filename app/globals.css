@@ -60,3 +60,36 @@ body {
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* Smoother default transitions on common interactives. */
+button, a, input, select, textarea, [role="button"] {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Number-tabular look on prices, counts, dates. */
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Subtle scroll-margin so anchor jumps clear the sticky navbar. */
+html { scroll-padding-top: 5rem; }
+
+/* Dotted hover underline on inline copy links inside long-form prose. */
+.prose a:not(.button) {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-navy) 30%, transparent);
+  text-underline-offset: 3px;
+}
+.prose a:not(.button):hover {
+  text-decoration-color: var(--color-navy);
+}

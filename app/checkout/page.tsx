@@ -148,7 +148,7 @@ export default function CheckoutPage() {
           <section className="rounded-2xl border border-line bg-paper p-6 md:p-7">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">02 · Payment</p>
             <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-1">How would you like to pay?</h2>
-            <p className="text-xs text-ink-3 mb-5">Choose your method — we&apos;ll redirect to confirm.</p>
+            <p className="text-xs text-ink-3 mb-5">Choose your method, we&apos;ll redirect to confirm.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {

@@ -6,7 +6,7 @@ export default function TermsPage() {
       kicker="Legal"
       title="Terms of Service"
       lastUpdated="May 2026"
-      intro="These Terms govern your use of TicketPulse. By creating an account or buying a ticket, you agree to them. We've kept the language as plain as we can — but the legal effect is real."
+      intro="These Terms govern your use of TicketPulse. By creating an account or buying a ticket, you agree to them. We've kept the language as plain as we can, but the legal effect is real."
       sections={[
         {
           id: "agreement", title: "Your agreement with us",
@@ -32,7 +32,7 @@ export default function TermsPage() {
             <ul>
               <li>Tickets may not be resold above face value without organizer consent.</li>
               <li>Unauthorized resale may void the ticket.</li>
-              <li>The organizer — not TicketPulse — is responsible for delivering the event.</li>
+              <li>The organizer, not TicketPulse, is responsible for delivering the event.</li>
             </ul>
           </>,
         },

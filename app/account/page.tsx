@@ -174,7 +174,7 @@ export default async function AccountPage() {
               <Lock size={16} className="text-ink-3 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Active sessions</p>
-                <p className="text-[12.5px] text-ink-2 mt-0.5">1 device — this browser. Sign out everywhere if you suspect access.</p>
+                <p className="text-[12.5px] text-ink-2 mt-0.5">1 device, this browser. Sign out everywhere if you suspect access.</p>
               </div>
               <form
                 action={async () => {
@@ -191,7 +191,7 @@ export default async function AccountPage() {
               <LogOut size={16} className="text-ink-3 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Sign out of this browser</p>
-                <p className="text-[12.5px] text-ink-2 mt-0.5">End your current session — your tickets stay in your account.</p>
+                <p className="text-[12.5px] text-ink-2 mt-0.5">End your current session, your tickets stay in your account.</p>
               </div>
               <Link
                 href="/logout"
@@ -204,7 +204,7 @@ export default async function AccountPage() {
 
           <div className="mt-6 rounded-2xl border border-rose-200/60 bg-rose-50/40 p-5 flex items-start gap-3">
             <p className="flex-1 text-[13px] text-ink-2">
-              <span className="font-semibold text-rose-700">Delete account</span> — permanently remove your account and bookings. This can&apos;t be undone.
+              <span className="font-semibold text-rose-700">Delete account</span>, permanently remove your account and bookings. This can&apos;t be undone.
             </p>
             <button className="text-[12.5px] font-semibold text-rose-700 hover:underline shrink-0">Delete</button>
           </div>

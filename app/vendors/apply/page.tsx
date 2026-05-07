@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Sparkles, ArrowRight, Check, ShieldCheck, Wallet, Calendar } from "lucide-react"
 
 const PERKS = [
-  { icon: Wallet,      title: "Verified payouts",  body: "USD, ZAR, EcoCash. Released on event completion — no chasing organizers." },
+  { icon: Wallet,      title: "Verified payouts",  body: "USD, ZAR, EcoCash. Released on event completion, no chasing organizers." },
   { icon: ShieldCheck, title: "Verification badge", body: "Earn the verified badge after your first 5 paid events on the platform." },
   { icon: Calendar,    title: "Calendar sync",      body: "We block your calendar automatically once an event is confirmed." },
 ]
@@ -25,7 +25,7 @@ export default function VendorsApplyPage() {
               List your service. <span className="text-blue">Get booked.</span>
             </h1>
             <p className="mt-4 text-[15px] md:text-[16px] leading-relaxed text-ink-2 max-w-md">
-              Join the marketplace organizers reach for first. Free to apply — we approve in 48 hours.
+              Join the marketplace organizers reach for first. Free to apply, we approve in 48 hours.
             </p>
 
             <ul className="mt-8 space-y-5">

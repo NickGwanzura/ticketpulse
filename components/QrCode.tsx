@@ -4,7 +4,7 @@ interface QrCodeProps {
   className?: string
 }
 
-// Stylized pseudo-QR — visually convincing, deterministic from `value`.
+// Stylized pseudo-QR, visually convincing, deterministic from `value`.
 // Not a scannable code; for demo polish only.
 export default function QrCode({ value, size = 160, className }: QrCodeProps) {
   const N = 25

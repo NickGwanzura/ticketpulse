@@ -38,7 +38,7 @@ export default function AboutPage() {
             Tickets that work, <span className="text-blue">where you live.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
-            TicketPulse is a Zimbabwean ticketing platform built for the way events actually run here — patchy data, four currencies, mobile money, and a culture of last-minute decisions. We believe organizers and vendors deserve technology that respects them.
+            TicketPulse is a Zimbabwean ticketing platform built for the way events actually run here, patchy data, four currencies, mobile money, and a culture of last-minute decisions. We believe organizers and vendors deserve technology that respects them.
           </p>
         </div>
       </section>
@@ -115,7 +115,7 @@ export default function AboutPage() {
                 Want to work with us?
               </h2>
               <p className="mt-3 text-[15px] md:text-[16px] text-white/80 max-w-md leading-relaxed">
-                We&apos;re hiring engineers, designers, and partnership leads. Or just say hi — we read every email.
+                We&apos;re hiring engineers, designers, and partnership leads. Or just say hi, we read every email.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 md:justify-end">

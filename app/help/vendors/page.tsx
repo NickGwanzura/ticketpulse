@@ -13,7 +13,7 @@ const FAQ = [
   { q: "How are payments held?",            a: "Organizers pay TicketPulse on confirmation. Funds are held in a TrustCo Zimbabwe escrow account and released to you when the event is marked complete." },
   { q: "What's the cut?",                   a: "Vendors keep 95% of the booking. We take 5% to cover payment processing, escrow, and organizer support." },
   { q: "How do I get the verified badge?",  a: "Complete 5 paid events with a 4.5+ average rating. Verification is free and reviewed monthly." },
-  { q: "Can I sync my external calendar?",  a: "Yes — we support iCal feeds. Confirmed bookings auto-block your TicketPulse calendar." },
+  { q: "Can I sync my external calendar?",  a: "Yes, we support iCal feeds. Confirmed bookings auto-block your TicketPulse calendar." },
   { q: "What happens if an event is cancelled?", a: "If the organizer cancels more than 7 days out, you keep a 25% deposit. Within 7 days, 50%. Day-of cancellations are paid in full per our standard terms." },
 ]
 
@@ -34,7 +34,7 @@ export default function HelpVendorsPage() {
             How TicketPulse works for vendors.
           </h1>
           <p className="mt-5 text-[16px] text-ink-2 max-w-xl leading-relaxed">
-            Catering, sound, photography, security, decor — here&apos;s the full picture before you apply.
+            Catering, sound, photography, security, decor, here&apos;s the full picture before you apply.
           </p>
         </div>
       </section>

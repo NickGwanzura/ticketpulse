@@ -6,16 +6,16 @@ export default function PrivacyPage() {
       kicker="Legal"
       title="Privacy Policy"
       lastUpdated="May 2026"
-      intro="We collect what we need to deliver the service — and nothing more. Here's exactly what we hold, why, who sees it, and how to ask for it back."
+      intro="We collect what we need to deliver the service, and nothing more. Here's exactly what we hold, why, who sees it, and how to ask for it back."
       sections={[
         {
           id: "what",  title: "What we collect",
           body: <>
             <p>We hold three categories of data:</p>
             <ul>
-              <li><strong>Account data</strong> — name, email, phone, city, role (attendee, organizer, vendor).</li>
-              <li><strong>Transaction data</strong> — tickets bought/sold, payment method (last four digits only), refunds.</li>
-              <li><strong>Usage data</strong> — pages viewed, IP address, device type, referrer (for fraud detection).</li>
+              <li><strong>Account data</strong>, name, email, phone, city, role (attendee, organizer, vendor).</li>
+              <li><strong>Transaction data</strong>, tickets bought/sold, payment method (last four digits only), refunds.</li>
+              <li><strong>Usage data</strong>, pages viewed, IP address, device type, referrer (for fraud detection).</li>
             </ul>
             <p>We do not collect: sensitive identifiers (national ID), location beyond city, or biometric data.</p>
           </>,
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               <li><strong>Organizers</strong> see attendee names and emails for the events you buy tickets to.</li>
               <li><strong>Vendors</strong> see contact details only after a booking is confirmed.</li>
               <li><strong>Payment processors</strong> (EcoCash, Paynow, Stripe-hosted card processing) handle the financial leg.</li>
-              <li><strong>Authorities</strong>, where required by Zimbabwean law (e.g. fraud, terrorism investigations).</li>
+              <li><strong>Authorities</strong>, where required by Zimbabwean law (e.g, fraud, terrorism investigations).</li>
             </ul>
             <p>We never sell your data to third parties.</p>
           </>,
@@ -48,9 +48,9 @@ export default function PrivacyPage() {
           id: "retention", title: "How long we keep it",
           body: <>
             <ul>
-              <li>Account data — until you delete your account, plus 30 days for backups.</li>
-              <li>Transaction records — 7 years, as required by Zimbabwean tax law.</li>
-              <li>Marketing preferences — until you opt out.</li>
+              <li>Account data, until you delete your account, plus 30 days for backups.</li>
+              <li>Transaction records. 7 years, as required by Zimbabwean tax law.</li>
+              <li>Marketing preferences, until you opt out.</li>
             </ul>
           </>,
         },
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
         {
           id: "security", title: "Security",
           body: <>
-            <p>Data is encrypted in transit (TLS 1.3) and at rest. Payment data is tokenized — we never store card numbers. Access to production systems is limited and logged.</p>
+            <p>Data is encrypted in transit (TLS 1.3) and at rest. Payment data is tokenized, we never store card numbers. Access to production systems is limited and logged.</p>
             <p>If we ever experience a breach affecting your data, we will notify you within 72 hours.</p>
           </>,
         },
