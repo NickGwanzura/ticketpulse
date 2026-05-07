@@ -41,7 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
     Resend({
       apiKey: process.env.AUTH_RESEND_KEY,
-      from: "TicketPulse <no-reply@ticketpulse.co.zw>",
+      from: "TicketPulse <no-reply@ticketpulse.tech>",
     }),
     Credentials({
       name: "credentials",
