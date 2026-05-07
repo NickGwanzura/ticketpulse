@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Geist } from "next/font/google"
+import { headers } from "next/headers"
 import "./globals.css"
 import Providers from "@/components/layout/Providers"
 import Navbar from "@/components/layout/Navbar"
@@ -16,14 +17,18 @@ export const metadata: Metadata = {
   description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const h = await headers()
+  const path = h.get("x-pathname") ?? ""
+  const bare = path.startsWith("/coming-soon")
+
   return (
     <html lang="en" className={geist.variable}>
       <body className="font-sans bg-paper text-ink antialiased">
         <Providers>
-          <Navbar />
-          <div className="min-h-[calc(100vh-4rem)]">{children}</div>
-          <Footer />
+          {!bare && <Navbar />}
+          <div className={bare ? "" : "min-h-[calc(100vh-4rem)]"}>{children}</div>
+          {!bare && <Footer />}
         </Providers>
       </body>
     </html>
