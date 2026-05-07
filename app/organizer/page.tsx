@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
-  MoreHorizontal, Zap, Star, CheckCircle, RefreshCw, Send,
+  MoreHorizontal, Zap, Star, CheckCircle, RefreshCw, Send, ScanLine,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -159,12 +159,20 @@ export default async function OrganizerPage() {
         subtitle={`Welcome back, ${session.user.name?.split(" ")[0] ?? "organizer"}.`}
         width="xl"
         actions={
-          <Link
-            href="/organizer/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
-          >
-            <Plus size={15} /> Create event
-          </Link>
+          <>
+            <Link
+              href="/organizer/scan"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <ScanLine size={15} /> Open scanner
+            </Link>
+            <Link
+              href="/organizer/new"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
+            >
+              <Plus size={15} /> Create event
+            </Link>
+          </>
         }
       />
 
@@ -474,10 +482,33 @@ export default async function OrganizerPage() {
           {/* Quick links */}
           <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4 content-start">
             <p className="text-[16px] font-semibold tracking-tight text-ink sm:col-span-3">Quick links</p>
+
+            <Link
+              href="/organizer/scan"
+              className="sm:col-span-3 rounded-2xl border border-navy/10 bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-5 tp-lift relative overflow-hidden"
+            >
+              <span className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-blue/30 blur-3xl pointer-events-none" aria-hidden />
+              <div className="relative flex items-start gap-4">
+                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 shrink-0">
+                  <ScanLine size={18} className="text-white" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10.5px] font-semibold tracking-[0.18em] text-white/70 uppercase">End-to-end · included</p>
+                  <p className="text-[15.5px] font-semibold tracking-tight text-white mt-0.5">Open the gate scanner</p>
+                  <p className="text-[12.5px] text-white/75 mt-1 leading-relaxed">
+                    Run TicketPulse&apos;s reader app on a phone or tablet at the gate. Reads PDF, mobile QR, and wallet passes. No third-party scanner contracts.
+                  </p>
+                  <p className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-white">
+                    Launch scanner <ArrowUpRight size={12} />
+                  </p>
+                </div>
+              </div>
+            </Link>
+
             {[
-              { title: "Set up payouts", body: "Add EcoCash or bank to receive payouts.", href: "/payouts" },
-              { title: "Browse vendors", body: "Find catering, sound, security and more.", href: "/vendors" },
-              { title: "Read the guide", body: "Selling tips for first-time organizers.",  href: "/help" },
+              { title: "Set up payouts", body: "Add EcoCash or bank to receive payouts.",   href: "/payouts" },
+              { title: "Browse vendors", body: "Find catering, sound, security and more.",  href: "/vendors" },
+              { title: "Read the guide", body: "Selling tips for first-time organizers.",    href: "/help" },
             ].map(({ title, body, href }) => (
               <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{title}</p>

@@ -13,7 +13,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     if (!ready) return
-    setOrder(getOrder(id))
+    queueMicrotask(() => { setOrder(getOrder(id)) })
   }, [ready, id, getOrder])
 
   if (!ready) {
@@ -55,12 +55,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <p className="mt-1.5 text-[13.5px] text-ink-2">{formatDate(order.createdAt)}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors">
+              <Link
+                href={`/orders/${order.id}/print`}
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
+              >
                 <Printer size={14} /> Print
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition">
-                <Download size={14} /> PDF
-              </button>
+              </Link>
+              <Link
+                href={`/orders/${order.id}/print?auto=1`}
+                className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition"
+              >
+                <Download size={14} /> Save as PDF
+              </Link>
             </div>
           </div>
         </div>

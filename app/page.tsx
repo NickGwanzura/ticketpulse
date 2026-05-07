@@ -1,8 +1,8 @@
 import Link from "next/link"
 import {
-  ArrowRight, ArrowUpRight, Search, Ticket, ShieldCheck, Smartphone, Wallet,
-  Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick, QrCode,
-  Calendar, MapPin, Star, Quote,
+  ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
+  Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,
+  Calendar, MapPin, Star, Quote, FileText, ScanLine, DoorOpen,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -37,7 +37,8 @@ const TESTIMONIALS = [
 ]
 
 const FAQ = [
-  { q: "How do I get my ticket after I buy?",       a: "Instantly via email and inside your TicketPulse account. The QR is bound to your account, so you can sign in on any device the day-of." },
+  { q: "How do I get my ticket after I buy?",       a: "Instantly. You get a printable PDF ticket by email and inside your TicketPulse account, plus a mobile QR. The QR is bound to your account, so you can sign in on any device the day-of." },
+  { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet — it reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
   { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24–72h for cards)." },
   { q: "What payments do you accept?",              a: "EcoCash, Paynow, USD cash at venue, ZAR, GBP, and Visa / Mastercard / AmEx. We pick the best processor at checkout based on your method." },
   { q: "Is TicketPulse only for Harare?",           a: "We started here, but events are live in Bulawayo, Vic Falls, Mutare, Pretoria, Durban, and London. New cities open every month." },
@@ -125,22 +126,25 @@ const CATEGORIES = [
 ]
 
 const STATS = [
-  { value: "120+",   label: "Events live" },
-  { value: "50K",    label: "Tickets sold" },
-  { value: "320",    label: "Verified organizers" },
-  { value: "12",     label: "Cities covered" },
+  { value: "120+",   label: "Events live",          delta: "+12 this month" },
+  { value: "50K",    label: "Tickets sold",         delta: "+2.4K this week" },
+  { value: "320",    label: "Verified organizers",  delta: "+18 this month" },
+  { value: "12",     label: "Cities covered",       delta: "+2 in 2026" },
 ]
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Browse",        body: "Find concerts, marathons, premieres, and more across Zimbabwe and the region." },
-  { icon: Wallet,            title: "Pay your way",  body: "EcoCash, Paynow, USD, ZAR, or card. Pick what works, checkout takes seconds." },
-  { icon: QrCode,            title: "Show your QR",  body: "Mobile QR entry at the gate. Plus shuttle, merch, and photo packs in one app." },
+  { icon: MousePointerClick, title: "Browse & buy",   body: "Find concerts, marathons, premieres, and more. Pay with EcoCash, Paynow, USD, ZAR, or card in seconds." },
+  { icon: FileText,          title: "Get your ticket", body: "Printable PDF by email and a mobile QR in your account — same code, your choice. Save to wallet, print at home, or screenshot it." },
+  { icon: ScanLine,          title: "We scan you in",  body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, or wallet pass. End to end on TicketPulse — no third-party scanners." },
 ]
 
-function HeroTicketCard({ ticket }: { ticket: (typeof HERO_TICKETS)[number] }) {
+const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
+
+function HeroTicketCard({ ticket, index = 0 }: { ticket: (typeof HERO_TICKETS)[number]; index?: number }) {
   return (
     <div
-      className={`relative lg:absolute ${ticket.placement ?? ""} ${ticket.rotate ?? ""} ${ticket.z ?? ""} w-full max-w-[280px] rounded-2xl border border-line bg-paper shadow-[0_24px_60px_-24px_rgba(10,37,64,0.25)] overflow-hidden transition-transform duration-500 hover:rotate-0 hover:scale-[1.02]`}
+      style={{ animationDelay: FADE_DELAY[index] ?? "0ms" }}
+      className={`tp-fade-up relative lg:absolute ${ticket.placement ?? ""} ${ticket.rotate ?? ""} ${ticket.z ?? ""} w-full max-w-[280px] rounded-2xl border border-line bg-paper shadow-[0_24px_60px_-24px_rgba(10,37,64,0.25)] overflow-hidden transition-transform duration-500 hover:rotate-0 hover:scale-[1.02] hover:z-40`}
     >
       <div className={`relative h-24 bg-gradient-to-br ${ticket.gradient} flex items-center justify-center`}>
         <div className="absolute inset-0 [background:radial-gradient(400px_circle_at_30%_20%,rgba(255,255,255,0.65),transparent_60%)]" />
@@ -296,13 +300,13 @@ export default function Home() {
                 <span className="relative inline-block">
                   <span className="bg-gradient-to-r from-navy via-navy-700 to-blue bg-clip-text text-transparent">One ticket.</span>
                   <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 200 10" preserveAspectRatio="none" aria-hidden>
-                    <path d="M0 5 Q 50 0, 100 5 T 200 5" stroke="#0570DE" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                    <path className="tp-stroke-draw" d="M0 5 Q 50 0, 100 5 T 200 5" stroke="#0570DE" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                   </svg>
                 </span>
               </h1>
 
               <p className="mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
-                Concerts, marathons, premieres, and more, discover what&apos;s on, grab tickets, book the shuttle, and keep the photos. All in one place.
+                Concerts, marathons, premieres, and more. Discover what&apos;s on, grab a ticket, and walk in — printable PDF or mobile QR, scanned at the gate by our own app. End to end, on one platform.
               </p>
 
               <form action="/events" className="mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl">
@@ -325,10 +329,12 @@ export default function Home() {
                 </button>
               </form>
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2.5 text-[12.5px] text-ink-3">
-                <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-emerald-600" /> Verified organizers</span>
-                <span className="inline-flex items-center gap-1.5"><Wallet size={13} className="text-emerald-600" /> EcoCash, USD, ZAR, Card</span>
-                <span className="inline-flex items-center gap-1.5"><Smartphone size={13} className="text-emerald-600" /> Mobile QR entry</span>
+              <div className="mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
+                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-emerald-600" /> Pay your way</span>
+                <span className="hidden md:inline-block w-px h-3 bg-line/80" aria-hidden />
+                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-emerald-600" /> PDF + mobile QR</span>
+                <span className="hidden md:inline-block w-px h-3 bg-line/80" aria-hidden />
+                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-emerald-600" /> Our gate scanner</span>
               </div>
 
               {/* Social proof */}
@@ -374,8 +380,8 @@ export default function Home() {
 
               {/* Desktop: absolute floating */}
               <div className="hidden lg:block relative h-full">
-                {HERO_TICKETS.map((t) => (
-                  <HeroTicketCard key={t.title} ticket={t} />
+                {HERO_TICKETS.map((t, i) => (
+                  <HeroTicketCard key={t.title} ticket={t} index={i} />
                 ))}
               </div>
             </div>
@@ -388,10 +394,14 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-line">
               {STATS.map((s, i) => (
                 <div key={i} className="md:px-6 md:first:pl-0 md:last:pr-0">
-                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none">
+                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none tabular-nums">
                     {s.value}
                   </p>
                   <p className="mt-1.5 text-[12.5px] text-ink-3">{s.label}</p>
+                  <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-semibold tracking-wide text-emerald-700">
+                    <span className="inline-block w-1 h-1 rounded-full bg-emerald-500" aria-hidden />
+                    {s.delta}
+                  </p>
                 </div>
               ))}
             </div>
@@ -403,7 +413,7 @@ export default function Home() {
       <section className="border-b border-line bg-paper">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-12">
           <p className="text-center text-[11px] font-semibold tracking-[0.22em] text-ink-3 uppercase mb-7">
-            Trusted by Zimbabwe&apos;s biggest organizers
+            Trusted by leading organizers across Southern Africa
           </p>
           <div className="relative">
             <div
@@ -444,6 +454,7 @@ export default function Home() {
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Trending</p>
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Featured events</h2>
+            <p className="mt-3 text-[15px] text-ink-2 max-w-xl">Hand-picked happenings on sale right now — the ones our team is going to themselves.</p>
           </div>
           <Link
             href="/events"
@@ -494,8 +505,9 @@ export default function Home() {
       {/* TESTIMONIALS */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
         <div className="mb-10 md:mb-12 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">From the people running events</p>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Customer stories</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Loved by organizers and vendors.</h2>
+          <p className="mt-3 text-[15px] text-ink-2">From sold-out marathons to weekly jazz nights — the people running events on TicketPulse, in their own words.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
@@ -530,24 +542,52 @@ export default function Home() {
       {/* HOW IT WORKS */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24 border-t border-line">
         <div className="mb-10 md:mb-14 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works</p>
-          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to gate, in three taps.</h2>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
+          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
+          <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout — no third-party scanner contracts.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {STEPS.map(({ icon: Icon, title, body }, i) => (
             <div
               key={title}
-              className="relative rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 transition-colors"
+              className="group relative overflow-hidden rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-28px_rgba(10,37,64,0.18)] transition-all duration-300"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15">
-                  <Icon size={18} className="text-blue" />
+              <span
+                className="pointer-events-none absolute -top-2 -right-1 select-none text-[80px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft transition-colors"
+                aria-hidden
+              >
+                0{i + 1}
+              </span>
+
+              <div className="relative flex items-center gap-3 mb-5">
+                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-blue-soft ring-1 ring-blue/15 group-hover:ring-blue/25 transition-colors">
+                  <Icon size={22} className="text-blue" />
                 </span>
-                <span className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase">Step {i + 1}</span>
+                <span className="text-[10.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
               </div>
-              <h3 className="text-[18px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
-              <p className="text-[14.5px] leading-relaxed text-ink-2">{body}</p>
+
+              <h3 className="relative text-[19px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
+              <p className="relative text-[14.5px] leading-relaxed text-ink-2">{body}</p>
+
+              <div className="pointer-events-none absolute -bottom-16 -right-12 w-40 h-40 rounded-full bg-blue/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden />
+            </div>
+          ))}
+        </div>
+
+        {/* End-to-end strip */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          {[
+            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-blue/15",   accent: "text-blue" },
+            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF — pick whichever you have on hand.", tone: "from-emerald-50 to-paper-2", ring: "ring-emerald-200/60", accent: "text-emerald-700" },
+            { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
+          ].map(({ icon: Icon, k, v, tone, ring, accent }) => (
+            <div key={k} className="group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 transition-all duration-300">
+              <span className={`inline-flex w-11 h-11 items-center justify-center rounded-xl bg-gradient-to-br ${tone} ring-1 ${ring} shrink-0 mb-3.5`}>
+                <Icon size={18} className={accent} />
+              </span>
+              <p className="text-[14.5px] font-semibold tracking-tight text-ink">{k}</p>
+              <p className="mt-1 text-[12.5px] text-ink-2 leading-relaxed">{v}</p>
             </div>
           ))}
         </div>
@@ -566,10 +606,10 @@ export default function Home() {
             {FAQ.map((f, i) => (
               <details
                 key={i}
-                className="group rounded-2xl border border-line bg-paper p-5 md:p-6 hover:border-line-2 transition-colors [&_summary::-webkit-details-marker]:hidden"
+                className="group rounded-2xl border border-line bg-paper p-5 md:p-6 hover:border-line-2 open:border-blue/30 open:shadow-[0_18px_50px_-30px_rgba(5,112,222,0.30)] transition-all [&_summary::-webkit-details-marker]:hidden"
               >
                 <summary className="flex items-center justify-between gap-3 cursor-pointer">
-                  <p className="text-[15px] font-semibold tracking-tight text-ink">{f.q}</p>
+                  <p className="text-[15px] font-semibold tracking-tight text-ink group-open:text-navy transition-colors">{f.q}</p>
                   <span className="shrink-0 inline-flex w-7 h-7 items-center justify-center rounded-full bg-paper-2 ring-1 ring-line text-ink-2 text-lg leading-none transition-transform group-open:rotate-45 group-open:bg-navy group-open:text-white group-open:ring-navy/20">
                     +
                   </span>
@@ -623,13 +663,13 @@ export default function Home() {
 
               <div className="grid grid-cols-2 gap-3 md:gap-4">
                 {[
-                  { k: "98%",   l: "Payout success" },
-                  { k: "<2 min", l: "Setup time" },
-                  { k: "0%",    l: "Booking fees on you" },
-                  { k: "24/7",  l: "Organizer support" },
+                  { k: "98%",     l: "Payout success" },
+                  { k: "<2 min",  l: "Setup time" },
+                  { k: "0%",      l: "Booking fees on you" },
+                  { k: "Included", l: "Gate scanner & PDF tickets" },
                 ].map(({ k, l }) => (
-                  <div key={l} className="rounded-2xl bg-white/[0.06] border border-white/10 p-4 backdrop-blur">
-                    <p className="text-[24px] md:text-[28px] font-bold tracking-tight">{k}</p>
+                  <div key={l} className="rounded-2xl bg-white/[0.06] border border-white/10 p-4 backdrop-blur hover:bg-white/[0.09] transition-colors">
+                    <p className="text-[22px] md:text-[26px] font-bold tracking-tight">{k}</p>
                     <p className="text-[12.5px] text-white/70 mt-1">{l}</p>
                   </div>
                 ))}

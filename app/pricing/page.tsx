@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Check, Sparkles, ArrowRight, ShieldCheck } from "lucide-react"
+import { Check, Sparkles, ArrowRight, ShieldCheck, FileText, Smartphone, ScanLine } from "lucide-react"
 
 const TIERS = [
   {
@@ -9,7 +9,7 @@ const TIERS = [
     sub: "forever",
     features: [
       "Browse all events",
-      "Mobile QR ticket entry",
+      "Printable PDF ticket + mobile QR",
       "EcoCash, USD, ZAR, Card",
       "Refund up to 24h before",
       "Photo packs & merch in-app",
@@ -24,9 +24,10 @@ const TIERS = [
     sub: "per ticket sold",
     features: [
       "Unlimited events & tiers",
+      "PDF + mobile tickets, our gate scanner — no third-party app",
       "Built-in shuttle, merch, photo packs",
       "Verified payouts (USD, ZAR, EcoCash)",
-      "Real-time scan analytics",
+      "Real-time scan analytics & duplicate guard",
       "Vendor marketplace access",
       "Email & live chat support",
     ],
@@ -52,6 +53,7 @@ const TIERS = [
 
 const FAQ = [
   { q: "How does the 5% organizer fee work?", a: "We deduct 5% from each ticket sold and pay out the rest directly to your linked EcoCash, ZAR, or USD account on event completion. There are no monthly fees, no setup fees, and no charges if you don't sell." },
+  { q: "Is the gate scanner included in the 5%?", a: "Yes. The 5% covers the full pipeline — sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
   { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash and Paynow processing fees out of our 5% on amounts under USD 50. For card payments above USD 50, a 2.5% processor fee is passed through." },
   { q: "When do payouts arrive?",             a: "USD and ZAR payouts arrive within 24 hours of your event ending. EcoCash payouts are instant once the event has been marked complete." },
   { q: "Can I refund attendees?",             a: "Yes, full or partial, any time. Funds are returned to the original payment method automatically." },
@@ -71,8 +73,26 @@ export default function PricingPage() {
             Simple. <span className="text-blue">Pay-as-you-sell.</span>
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-2xl leading-relaxed">
-            Free for attendees. Free to list as a vendor. Organizers pay 5%, and only when you actually sell tickets. No setup costs, no monthly fees.
+            Free for attendees. Free to list as a vendor. Organizers pay 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts.
           </p>
+
+          <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl">
+            {[
+              { icon: FileText,   k: "Printable PDF tickets", v: "Emailed at checkout. A4-ready, scan from paper." },
+              { icon: Smartphone, k: "Mobile QR + wallet",    v: "Same code in your account, on any device." },
+              { icon: ScanLine,   k: "Our gate scanner",      v: "Reader app for organizers — included in 5%." },
+            ].map(({ icon: Icon, k, v }) => (
+              <div key={k} className="rounded-xl border border-line bg-paper/80 backdrop-blur p-3.5 flex items-start gap-3">
+                <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-blue-soft ring-1 ring-blue/15 shrink-0">
+                  <Icon size={14} className="text-blue" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[12.5px] font-semibold tracking-tight text-ink">{k}</p>
+                  <p className="text-[11.5px] text-ink-2 leading-snug">{v}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

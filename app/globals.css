@@ -168,3 +168,17 @@ html { scroll-padding-top: 5rem; }
 /* Hide horizontal scrollbars on filter rows / sidebar tabs. */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* ------------------------------------------------------------------
+   Landing-page polish utilities — entrance flourishes used by Home.
+   ------------------------------------------------------------------ */
+
+@keyframes tp-stroke-draw {
+  from { stroke-dashoffset: 240; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.tp-stroke-draw {
+  stroke-dasharray: 240;
+  animation: tp-stroke-draw 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) 220ms both;
+}
