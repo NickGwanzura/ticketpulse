@@ -3,6 +3,16 @@ import { db } from "@/db"
 import { eventGalleries, galleryPhotos } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 import { auth } from "@/auth"
+import { z } from "zod"
+
+const PostSchema = z.object({
+  eventId: z.uuid(),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  packPrice: z.number().nonnegative().optional(),
+  currency: z.string().optional(),
+  isPublic: z.boolean().optional(),
+})
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -36,8 +46,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await req.json()
-  const { eventId, name, description, packPrice, currency, isPublic } = body
+  const parsed = PostSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
+  }
+  const { eventId, name, description, packPrice, currency, isPublic } = parsed.data
 
   const [gallery] = await db
     .insert(eventGalleries)

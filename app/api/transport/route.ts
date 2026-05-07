@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
 import { shuttleRoutes, transportOperators, transportBookings } from "@/db/schema"
-import { eq, and } from "drizzle-orm"
+import { eq, and, sql } from "drizzle-orm"
 import { auth } from "@/auth"
+import { z } from "zod"
+
+const PostSchema = z.object({
+  routeId: z.uuid(),
+  seats: z.int().positive().max(50),
+})
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -42,19 +48,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await req.json()
-  const { routeId, seats } = body
+  const parsed = PostSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
+  }
+  const { routeId, seats } = parsed.data
 
   const [route] = await db
-    .select()
-    .from(shuttleRoutes)
-    .where(eq(shuttleRoutes.id, routeId))
-    .limit(1)
+    .update(shuttleRoutes)
+    .set({ bookedSeats: sql`${shuttleRoutes.bookedSeats} + ${seats}` })
+    .where(and(
+      eq(shuttleRoutes.id, routeId),
+      sql`${shuttleRoutes.bookedSeats} + ${seats} <= ${shuttleRoutes.totalSeats}`
+    ))
+    .returning()
 
-  if (!route) return NextResponse.json({ error: "Route not found" }, { status: 404 })
-
-  const available = route.totalSeats - (route.bookedSeats ?? 0)
-  if (seats > available) {
+  if (!route) {
     return NextResponse.json({ error: "Not enough seats available" }, { status: 400 })
   }
 
@@ -70,11 +79,6 @@ export async function POST(req: NextRequest) {
       status: "pending",
     })
     .returning()
-
-  await db
-    .update(shuttleRoutes)
-    .set({ bookedSeats: (route.bookedSeats ?? 0) + seats })
-    .where(eq(shuttleRoutes.id, routeId))
 
   return NextResponse.json({ booking }, { status: 201 })
 }

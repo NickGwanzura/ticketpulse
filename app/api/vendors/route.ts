@@ -3,6 +3,15 @@ import { db } from "@/db"
 import { vendors, vendorListings } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 import { auth } from "@/auth"
+import { z } from "zod"
+
+const VENDOR_CATS = ["catering", "bar", "food_truck", "photography", "sound", "security", "decor", "other"] as const
+type VendorCat = typeof VENDOR_CATS[number]
+
+const PostSchema = z.object({
+  listingId: z.uuid(),
+  eventId: z.uuid().optional(),
+})
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -32,7 +41,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ listings })
   }
 
-  const conditions = category ? [eq(vendors.category, category as any)] : []
+  const conditions = category && (VENDOR_CATS as readonly string[]).includes(category)
+    ? [eq(vendors.category, category as VendorCat)]
+    : []
   const allVendors = await db
     .select()
     .from(vendors)
@@ -47,19 +58,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await req.json()
-  const { listingId, eventId } = body
+  const parsed = PostSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
+  }
+  const { listingId } = parsed.data
 
   const [listing] = await db
-    .select()
-    .from(vendorListings)
-    .where(and(eq(vendorListings.id, listingId), eq(vendorListings.available, true)))
-    .limit(1)
-
-  if (!listing) return NextResponse.json({ error: "Listing not found or unavailable" }, { status: 404 })
-  if (listing.booked) return NextResponse.json({ error: "Already booked" }, { status: 400 })
-
-  const [updated] = await db
     .update(vendorListings)
     .set({
       booked: true,
@@ -67,8 +72,16 @@ export async function POST(req: NextRequest) {
       bookedById: session.user.id,
       bookedAt: new Date(),
     })
-    .where(eq(vendorListings.id, listingId))
+    .where(and(
+      eq(vendorListings.id, listingId),
+      eq(vendorListings.available, true),
+      eq(vendorListings.booked, false),
+    ))
     .returning()
 
-  return NextResponse.json({ listing: updated })
+  if (!listing) {
+    return NextResponse.json({ error: "Listing not found or already booked" }, { status: 404 })
+  }
+
+  return NextResponse.json({ listing })
 }

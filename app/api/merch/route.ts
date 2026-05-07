@@ -3,6 +3,21 @@ import { db } from "@/db"
 import { merchItems } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 import { auth } from "@/auth"
+import { z } from "zod"
+
+const PostSchema = z.object({
+  eventId: z.uuid(),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  price: z.number().nonnegative(),
+  currency: z.string().optional(),
+  images: z.array(z.url()).optional(),
+  sizes: z.array(z.string()).optional(),
+  colors: z.array(z.string()).optional(),
+  stockQuantity: z.int().nonnegative().optional(),
+  deliveryAvailable: z.boolean().optional(),
+  pickupAtEvent: z.boolean().optional(),
+})
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -26,7 +41,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await req.json()
+  const parsed = PostSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
+  }
   const {
     eventId,
     name,
@@ -39,7 +57,7 @@ export async function POST(req: NextRequest) {
     stockQuantity,
     deliveryAvailable,
     pickupAtEvent,
-  } = body
+  } = parsed.data
 
   const [item] = await db
     .insert(merchItems)

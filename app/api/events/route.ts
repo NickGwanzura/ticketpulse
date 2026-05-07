@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
-import { events, ticketTiers, users } from "@/db/schema"
+import { events, users } from "@/db/schema"
 import { eq, desc, and, gte, like, or } from "drizzle-orm"
 import { auth } from "@/auth"
+import { z } from "zod"
+
+const PostSchema = z.object({
+  title: z.string().min(1),
+  slug: z.string().regex(/^[a-z0-9-]+$/),
+  description: z.string().optional(),
+  category: z.string().min(1),
+  venue: z.string().min(1),
+  city: z.string().min(1),
+  address: z.string().optional(),
+  startsAt: z.iso.datetime(),
+  endsAt: z.iso.datetime().optional(),
+  tags: z.array(z.string()).optional(),
+})
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -10,8 +24,8 @@ export async function GET(req: NextRequest) {
   const city = searchParams.get("city")
   const search = searchParams.get("q")
   const featured = searchParams.get("featured")
-  const limit = parseInt(searchParams.get("limit") ?? "20")
-  const offset = parseInt(searchParams.get("offset") ?? "0")
+  const limit = parseInt(searchParams.get("limit") ?? "20", 10)
+  const offset = parseInt(searchParams.get("offset") ?? "0", 10)
 
   const conditions = [
     eq(events.status, "published"),
@@ -22,11 +36,12 @@ export async function GET(req: NextRequest) {
   if (city) conditions.push(eq(events.city, city))
   if (featured === "true") conditions.push(eq(events.featured, true))
   if (search) {
+    const safe = search.replace(/[%_\\]/g, (m) => "\\" + m)
     conditions.push(
       or(
-        like(events.title, `%${search}%`),
-        like(events.venue, `%${search}%`),
-        like(events.city, `%${search}%`)
+        like(events.title, `%${safe}%`),
+        like(events.venue, `%${safe}%`),
+        like(events.city, `%${safe}%`)
       )!
     )
   }
@@ -63,8 +78,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await req.json()
-  const { title, slug, description, category, venue, city, address, startsAt, endsAt, tags } = body
+  const parsed = PostSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
+  }
+  const { title, slug, description, category, venue, city, address, startsAt, endsAt, tags } = parsed.data
 
   const [event] = await db
     .insert(events)

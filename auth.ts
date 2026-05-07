@@ -56,26 +56,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const name     = (credentials?.name     as string | undefined)?.trim() || null
         if (!email || !password) return null
 
-        const DEMO: Record<string, { role: "attendee" | "organizer" | "vendor" | "admin"; name: string }> = {
-          "demo@ticketpulse.zw":      { role: "attendee",  name: "Demo Attendee" },
-          "organizer@ticketpulse.zw": { role: "organizer", name: "Demo Organizer" },
-          "vendor@ticketpulse.zw":    { role: "vendor",    name: "Demo Vendor" },
-          "admin@ticketpulse.zw":     { role: "admin",     name: "Demo Admin" },
-        }
-        const demo = DEMO[email]
-        if (demo) {
-          if (password !== "demo1234") return null
-          return { id: `demo-${email}`, email, name: demo.name, role: demo.role }
-        }
+        if (process.env.NODE_ENV !== "production" || process.env.ENABLE_DEMO_AUTH === "true") {
+          const DEMO: Record<string, { role: "attendee" | "organizer" | "vendor" | "admin"; name: string }> = {
+            "demo@ticketpulse.zw":      { role: "attendee",  name: "Demo Attendee" },
+            "organizer@ticketpulse.zw": { role: "organizer", name: "Demo Organizer" },
+            "vendor@ticketpulse.zw":    { role: "vendor",    name: "Demo Vendor" },
+            "admin@ticketpulse.zw":     { role: "admin",     name: "Demo Admin" },
+          }
+          const demo = DEMO[email]
+          if (demo) {
+            if (password !== "demo1234") return null
+            return { id: `demo-${email}`, email, name: demo.name, role: demo.role }
+          }
 
-        // Demo-mode fallback: any email + password ≥ 6 chars creates a synthetic attendee session.
-        if (password.length < 6) return null
-        return {
-          id: `demo-${email}`,
-          email,
-          name: name ?? email.split("@")[0],
-          role: "attendee",
+          if (password.length < 6) return null
+          return {
+            id: `demo-${email}`,
+            email,
+            name: name ?? email.split("@")[0],
+            role: "attendee",
+          }
         }
+        return null
       },
     }),
   ],
