@@ -25,6 +25,7 @@ const adapter = process.env.DATABASE_URL
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter,
+  trustHost: true,
   session: {
     strategy: "jwt",
   },
