@@ -31,3 +31,4 @@ Zimbabwe's premier event ticketing platform. Built with Next.js 15, Neon Postgre
 - npm run db:migrate     Apply migrations
 - npm run db:studio      Open Drizzle Studio
 - npm run auth:secret    Generate AUTH_SECRET
+
