@@ -7,11 +7,6 @@ import {
 import EventCard from "@/components/events/EventCard"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
-const PARTNERS = [
-  "EcoCash", "Old Mutual", "Econet", "Dairibord", "Stanbic Bank",
-  "Worker Bees Africa", "Delta Beverages", "ZTV", "Nyaradzo",
-]
-
 const TESTIMONIALS = [
   {
     quote: "We sold out the marathon in 9 days. The shuttle and merch bundles took the back-office work off our plate completely.",
@@ -40,7 +35,7 @@ const FAQ = [
   { q: "How do I get my ticket after I buy?",       a: "Instantly. You get a printable PDF ticket by email and inside your TicketPulse account, plus a mobile QR. The QR is bound to your account, so you can sign in on any device the day-of." },
   { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet — it reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
   { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24–72h for cards)." },
-  { q: "What payments do you accept?",              a: "EcoCash, Paynow, USD cash at venue, ZAR, GBP, and Visa / Mastercard / AmEx. We pick the best processor at checkout based on your method." },
+  { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
   { q: "Is TicketPulse only for Harare?",           a: "We started here, but events are live in Bulawayo, Vic Falls, Mutare, Pretoria, Durban, and London. New cities open every month." },
   { q: "How do I sell tickets to my own event?",    a: "Sign up as an organizer, build your event in the dashboard, and share your link. We pay out within 24h of the event ending." },
   { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event, no extra integrations." },
@@ -83,12 +78,12 @@ const CATEGORIES = [
 const STATS = [
   { value: "Live",    label: "Day 1 — May 2026" },
   { value: "1",       label: "Event on sale today" },
-  { value: "4 ways",  label: "EcoCash · USD · ZAR · Card" },
+  { value: "2 ways",  label: "EcoCash · Visa" },
   { value: "5%",      label: "Organizer fee, pay as you sell" },
 ]
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Browse & buy",   body: "Find concerts, marathons, premieres, and more. Pay with EcoCash, Paynow, USD, ZAR, or card in seconds." },
+  { icon: MousePointerClick, title: "Browse & buy",   body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or a Visa card in seconds." },
   { icon: FileText,          title: "Get your ticket", body: "Printable PDF by email and a mobile QR in your account — same code, your choice. Save to wallet, print at home, or screenshot it." },
   { icon: ScanLine,          title: "We scan you in",  body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, or wallet pass. End to end on TicketPulse — no third-party scanners." },
 ]
@@ -336,45 +331,6 @@ export default function Home() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* PARTNERS */}
-      <section className="border-b border-line bg-paper">
-        <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-12">
-          <p className="text-center text-[11px] font-semibold tracking-[0.22em] text-ink-3 uppercase mb-7">
-            Trusted by leading organizers across Southern Africa
-          </p>
-          <div className="relative">
-            <div
-              className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none"
-              style={{ background: "linear-gradient(to right, var(--color-paper), transparent)" }}
-              aria-hidden
-            />
-            <div
-              className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none"
-              style={{ background: "linear-gradient(to left, var(--color-paper), transparent)" }}
-              aria-hidden
-            />
-            <div className="overflow-hidden">
-              <div className="flex items-center gap-10 md:gap-14 whitespace-nowrap animate-[tp-marquee_36s_linear_infinite] hover:[animation-play-state:paused]">
-                {[...PARTNERS, ...PARTNERS].map((p, i) => (
-                  <span
-                    key={`${p}-${i}`}
-                    className="inline-flex items-center text-[15px] md:text-[17px] font-semibold tracking-tight text-ink-2/80 hover:text-ink transition-colors"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <style>{`
-            @keyframes tp-marquee {
-              from { transform: translateX(0); }
-              to   { transform: translateX(-50%); }
-            }
-          `}</style>
         </div>
       </section>
 

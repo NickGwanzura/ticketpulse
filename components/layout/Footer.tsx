@@ -144,7 +144,7 @@ export default function Footer() {
             {/* Office */}
             <div className="mt-5 inline-flex items-start gap-2 text-[12.5px] text-ink-3">
               <MapPin size={13} className="text-ink-3 mt-0.5 shrink-0" />
-              <span className="leading-relaxed">3rd Floor, Building 4<br />Eastgate Centre, Harare</span>
+              <span className="leading-relaxed">Harare CBD, Zimbabwe</span>
             </div>
 
             {/* Socials */}
@@ -167,7 +167,7 @@ export default function Footer() {
             <div className="mt-6">
               <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-2.5">We accept</p>
               <div className="flex flex-wrap gap-1.5">
-                {["EcoCash", "USD", "ZAR", "Paynow", "Card"].map((m) => (
+                {["EcoCash", "Visa"].map((m) => (
                   <span
                     key={m}
                     className="text-[11px] font-medium rounded-md border border-line bg-paper px-2 py-1 text-ink-2"

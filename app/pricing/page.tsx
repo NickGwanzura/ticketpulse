@@ -10,7 +10,7 @@ const TIERS = [
     features: [
       "Browse all events",
       "Printable PDF ticket + mobile QR",
-      "EcoCash, USD, ZAR, Card",
+      "EcoCash and Visa cards",
       "Refund up to 24h before",
       "Photo packs & merch in-app",
     ],
@@ -54,7 +54,7 @@ const TIERS = [
 const FAQ = [
   { q: "How does the 5% organizer fee work?", a: "We deduct 5% from each ticket sold and pay out the rest directly to your linked EcoCash, ZAR, or USD account on event completion. There are no monthly fees, no setup fees, and no charges if you don't sell." },
   { q: "Is the gate scanner included in the 5%?", a: "Yes. The 5% covers the full pipeline — sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
-  { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash and Paynow processing fees out of our 5% on amounts under USD 50. For card payments above USD 50, a 2.5% processor fee is passed through." },
+  { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash processing fees out of our 5% on amounts under USD 50. For Visa card payments above USD 50, a 2.5% processor fee is passed through." },
   { q: "When do payouts arrive?",             a: "USD and ZAR payouts arrive within 24 hours of your event ending. EcoCash payouts are instant once the event has been marked complete." },
   { q: "Can I refund attendees?",             a: "Yes, full or partial, any time. Funds are returned to the original payment method automatically." },
 ]

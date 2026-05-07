@@ -102,9 +102,8 @@ export default function ContactPage() {
               <div>
                 <p className="text-[14.5px] font-semibold tracking-tight text-ink">Office</p>
                 <p className="text-[12.5px] text-ink-2 mt-1 leading-relaxed">
-                  3rd Floor, Building 4<br />
-                  Eastgate Centre<br />
-                  Harare, Zimbabwe
+                  Harare CBD<br />
+                  Zimbabwe
                 </p>
                 <p className="mt-2 inline-flex items-center gap-1 text-[12px] text-ink-3">
                   <Clock size={11} /> Mon–Fri, 8:00–18:00 CAT
