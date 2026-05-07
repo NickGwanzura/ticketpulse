@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { Search, ShieldCheck, Sparkles, ArrowRight } from "lucide-react"
+import { Search, ShieldCheck, Sparkles, ArrowRight, SearchX } from "lucide-react"
 import VendorCard from "@/components/vendors/VendorCard"
+import EmptyState from "@/components/dashboard/EmptyState"
 import { VENDORS, VENDOR_VISUAL } from "@/lib/vendors"
 import type { VendorCategory } from "@/types"
 
@@ -39,7 +40,7 @@ export default async function VendorsPage({
   const cityCount = new Set(VENDORS.flatMap((v) => v.serves)).size
 
   return (
-    <div>
+    <div className="tp-fade-up">
       {/* Header */}
       <section className="relative overflow-hidden border-b border-line">
         <div
@@ -154,22 +155,19 @@ export default async function VendorsPage({
 
         {/* Grid */}
         {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 tp-fade-up-1">
             {filtered.map((vendor) => (
               <VendorCard key={vendor.slug} vendor={vendor} />
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-line bg-paper-2 p-12 text-center">
-            <p className="text-[15px] font-medium text-ink mb-1">No vendors match those filters</p>
-            <p className="text-sm text-ink-2 mb-6">Try clearing the search or picking a different category.</p>
-            <Link
-              href="/vendors"
-              className="inline-flex items-center justify-center rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-700 transition-colors"
-            >
-              See all vendors
-            </Link>
-          </div>
+          <EmptyState
+            icon={SearchX}
+            title="No vendors match those filters"
+            body="Try clearing the search or picking a different category."
+            ctaLabel="See all vendors"
+            ctaHref="/vendors"
+          />
         )}
       </div>
 

@@ -1,22 +1,18 @@
 import { Settings as SettingsIcon } from "lucide-react"
+import PageHeader from "@/components/dashboard/PageHeader"
 
 export default function AdminSettingsPage() {
   return (
-    <div>
-      <div className="border-b border-line bg-paper-2">
-        <div className="px-5 md:px-8 py-9 md:py-12">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Settings</p>
-          <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight text-ink">
-            Platform settings
-          </h1>
-          <p className="mt-1.5 text-[14px] text-ink-2">
-            Defaults that apply across every event and organizer.
-          </p>
-        </div>
-      </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Settings"
+        title="Platform settings"
+        subtitle="Defaults that apply across every event and organizer."
+        width="full"
+      />
 
       <div className="px-5 md:px-8 py-8 md:py-10">
-        <form className="rounded-2xl border border-line bg-paper overflow-hidden max-w-2xl">
+        <form className="rounded-2xl border border-line bg-paper overflow-hidden max-w-2xl tp-fade-up-1">
           <div className="px-5 md:px-6 py-4 border-b border-line flex items-center gap-2">
             <SettingsIcon size={14} className="text-ink-3" />
             <h2 className="text-[15px] font-semibold tracking-tight text-ink">General</h2>

@@ -4,10 +4,11 @@ import Link from "next/link"
 import {
   Calendar, MapPin, Ticket, ArrowUpRight, Download, Share2,
   Wallet, TrendingUp, ShoppingBag, Bus, Camera, RotateCcw,
-  HelpCircle, ClipboardList, Music2, Footprints, CheckCircle2,
+  HelpCircle, ClipboardList, CheckCircle2,
   Star,
 } from "lucide-react"
 import QrCode from "@/components/QrCode"
+import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const FEATURED_TICKET = {
@@ -114,34 +115,30 @@ export default async function DashboardPage() {
   const attendeeName = session.user.name ?? "Demo Attendee"
 
   return (
-    <div>
-      {/* Header */}
-      <div className="border-b border-line bg-paper-2">
-        <div className="max-w-6xl mx-auto px-5 md:px-8 py-10 md:py-14">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Dashboard</p>
-          <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
-            Welcome back, {attendeeName.split(" ")[0]}
-          </h1>
-          <p className="mt-1.5 text-[14.5px] text-ink-2">{session.user.email}</p>
-        </div>
-      </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Dashboard"
+        title={`Welcome back, ${attendeeName.split(" ")[0]}`}
+        subtitle={session.user.email ?? undefined}
+        width="xl"
+      />
 
-      <div className="max-w-6xl mx-auto px-5 md:px-8 py-10 md:py-12 space-y-8">
+      <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-12 space-y-8">
 
         {/* Stats strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {[
             { l: "Upcoming events", v: "3",     i: Calendar,  trend: "Next: 17 May" },
             { l: "Total tickets",   v: "5",     i: Ticket,    trend: "All time" },
             { l: "Past events",     v: "12",    i: CheckCircle2, trend: "Completed" },
             { l: "Loyalty points",  v: "1,240", i: Star,      trend: "+50 this week" },
           ].map(({ l, v, i: Icon, trend }) => (
-            <div key={l} className="rounded-2xl border border-line bg-paper p-5">
+            <div key={l} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <div className="flex items-center gap-2 mb-2.5">
                 <Icon size={14} className="text-ink-3" />
                 <span className="text-[11.5px] text-ink-3">{l}</span>
               </div>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">{v}</p>
+              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
               <p className="text-[11.5px] text-emerald-700 mt-2 inline-flex items-center gap-1">
                 <TrendingUp size={11} /> {trend}
               </p>
@@ -150,7 +147,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Featured ticket + upcoming list */}
-        <div className="grid grid-cols-12 gap-4 md:gap-6">
+        <div className="grid grid-cols-12 gap-4 md:gap-6 tp-fade-up-2">
 
           {/* Featured ticket card */}
           <div className="col-span-12 md:col-span-7 rounded-2xl border border-line bg-paper shadow-sm overflow-hidden">
@@ -272,7 +269,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Recent activity */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="px-5 md:px-6 py-4 border-b border-line">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent activity</h2>
           </div>
@@ -317,7 +314,7 @@ export default async function DashboardPage() {
               icon: HelpCircle,
             },
           ].map(({ title, body, href, icon: Icon }) => (
-            <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all group">
+            <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 tp-lift group">
               <div className="w-8 h-8 rounded-lg bg-paper-2 border border-line flex items-center justify-center mb-3">
                 <Icon size={15} className="text-ink-2" />
               </div>

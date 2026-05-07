@@ -1,8 +1,9 @@
 import Link from "next/link"
 import {
-  ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, Calendar, Users,
+  ArrowUpRight, ArrowDownRight,
   UserPlus, Wallet, CalendarCheck, RefreshCw, Store, ShieldCheck, Receipt, AlertCircle,
 } from "lucide-react"
+import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency } from "@/lib/utils"
 
 const KPIS = [
@@ -63,26 +64,21 @@ function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
 
 export default function AdminOverviewPage() {
   return (
-    <div>
-      <div className="border-b border-line bg-paper-2">
-        <div className="px-5 md:px-8 py-9 md:py-12">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Overview</p>
-          <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight text-ink">
-            Platform pulse
-          </h1>
-          <p className="mt-1.5 text-[14px] text-ink-2">
-            Real-time activity across organizers, vendors, and attendees.
-          </p>
-        </div>
-      </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Overview"
+        title="Platform pulse"
+        subtitle="Real-time activity across organizers, vendors, and attendees."
+        width="full"
+      />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-8">
         {/* KPI grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {KPIS.map(({ label, value, currency, delta, up, spark }) => (
-            <div key={label} className="rounded-2xl border border-line bg-paper p-5">
+            <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <p className="text-[11.5px] text-ink-3 mb-2.5">{label}</p>
-              <p className="text-[24px] md:text-[26px] font-bold tracking-tight text-ink leading-none">
+              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
                 {currency ? formatCurrency(value, currency) : value.toLocaleString()}
               </p>
               <div className="mt-3 flex items-center justify-between gap-3">
@@ -99,7 +95,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Activity + Top events */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 tp-fade-up-2">
           <div className="lg:col-span-3 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[15px] font-semibold tracking-tight text-ink">Recent activity</h2>
@@ -150,9 +146,9 @@ export default function AdminOverviewPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1 bg-paper-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[11px] text-ink-3 whitespace-nowrap">{e.sold}/{e.capacity}</span>
+                      <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{e.sold}/{e.capacity}</span>
                     </div>
                   </li>
                 )
@@ -162,7 +158,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Pending review */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
             <div>
               <h2 className="text-[15px] font-semibold tracking-tight text-ink">Pending review</h2>

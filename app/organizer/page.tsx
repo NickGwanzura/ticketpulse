@@ -3,8 +3,9 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
-  MoreHorizontal, Zap, Star, Clock, CheckCircle, RefreshCw, Send,
+  MoreHorizontal, Zap, Star, CheckCircle, RefreshCw, Send,
 } from "lucide-react"
+import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const MOCK_EVENTS = [
@@ -151,32 +152,26 @@ export default async function OrganizerPage() {
   const maxSales = Math.max(...SALES_BY_EVENT.map((e) => e.revenue))
 
   return (
-    <div>
-      {/* Header */}
-      <div className="border-b border-line bg-paper-2">
-        <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-14 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Organizer</p>
-            <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
-              Your events
-            </h1>
-            <p className="mt-1.5 text-[14.5px] text-ink-2">
-              Welcome back, {session.user.name?.split(" ")[0] ?? "organizer"}.
-            </p>
-          </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Organizer"
+        title="Your events"
+        subtitle={`Welcome back, ${session.user.name?.split(" ")[0] ?? "organizer"}.`}
+        width="xl"
+        actions={
           <Link
             href="/organizer/new"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
           >
             <Plus size={15} /> Create event
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-8">
 
         {/* KPI strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {(
             [
               { l: "Live events",   v: liveEvents.toString(),               i: Calendar,   trend: "+1 this week",   pos: true  },
@@ -187,13 +182,13 @@ export default async function OrganizerPage() {
           ).map(({ l, v, i: Icon, trend, pos }) => {
             const spark = KPI_SPARKLINES[l as keyof typeof KPI_SPARKLINES] ?? []
             return (
-              <div key={l} className="rounded-2xl border border-line bg-paper p-5 flex flex-col justify-between min-h-[120px]">
+              <div key={l} className="rounded-2xl border border-line bg-paper p-5 flex flex-col justify-between min-h-[120px] tp-lift">
                 <div>
                   <div className="flex items-center gap-2 mb-2.5">
                     <Icon size={14} className="text-ink-3" />
                     <span className="text-[11.5px] text-ink-3">{l}</span>
                   </div>
-                  <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">{v}</p>
+                  <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
                   <p className="text-[11.5px] text-emerald-700 mt-2 inline-flex items-center gap-1">
                     <TrendingUp size={11} /> {trend}
                   </p>
@@ -207,7 +202,7 @@ export default async function OrganizerPage() {
         </div>
 
         {/* Revenue chart */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-2">
           <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Revenue (last 30 days)</h2>
             <div className="flex items-center gap-1">
@@ -244,7 +239,7 @@ export default async function OrganizerPage() {
         </div>
 
         {/* Events table + side column */}
-        <div className="grid grid-cols-12 gap-4 md:gap-6">
+        <div className="grid grid-cols-12 gap-4 md:gap-6 tp-fade-up-3">
 
           {/* Events table */}
           <div className="col-span-12 lg:col-span-8 rounded-2xl border border-line bg-paper overflow-hidden">
@@ -308,7 +303,7 @@ export default async function OrganizerPage() {
                       <td className="px-3 py-4 text-right whitespace-nowrap">
                         <p className="text-[13px] font-semibold text-ink">{e.sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {e.capacity.toLocaleString()}</span></p>
                         <div className="w-24 h-1 bg-paper-2 rounded-full mt-1.5 ml-auto overflow-hidden">
-                          <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
                         </div>
                       </td>
                       <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
@@ -385,7 +380,7 @@ export default async function OrganizerPage() {
                       <span className="text-[13px] font-bold text-ink tabular-nums shrink-0 ml-3">{formatCurrency(e.revenue, "USD")}</span>
                     </div>
                     <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-navy rounded-full" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-navy rounded-full tp-progress-fill" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )
@@ -484,7 +479,7 @@ export default async function OrganizerPage() {
               { title: "Browse vendors", body: "Find catering, sound, security and more.", href: "/vendors" },
               { title: "Read the guide", body: "Selling tips for first-time organizers.",  href: "/help" },
             ].map(({ title, body, href }) => (
-              <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all">
+              <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{title}</p>
                 <p className="text-[12.5px] text-ink-2 mt-1">{body}</p>
                 <p className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy">

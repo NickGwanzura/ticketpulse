@@ -1,4 +1,5 @@
 import { Search, DollarSign, Receipt, RefreshCw, TrendingUp, Smartphone, CreditCard, Building2, Banknote } from "lucide-react"
+import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 type Status = "paid" | "pending" | "refunded"
@@ -43,35 +44,30 @@ export default function AdminOrdersPage() {
   ]
 
   return (
-    <div>
-      <div className="border-b border-line bg-paper-2">
-        <div className="px-5 md:px-8 py-9 md:py-12">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Orders</p>
-          <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight text-ink">
-            Recent transactions
-          </h1>
-          <p className="mt-1.5 text-[14px] text-ink-2">
-            Every order placed across the platform.
-          </p>
-        </div>
-      </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Orders"
+        title="Recent transactions"
+        subtitle="Every order placed across the platform."
+        width="full"
+      />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {stats.map(({ label, value, icon: Icon, tone, bg }) => (
-            <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4">
+            <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">
               <span className={`inline-flex w-10 h-10 items-center justify-center rounded-xl ${bg}`}>
                 <Icon size={16} className={tone} />
               </span>
               <div>
                 <p className="text-[11.5px] text-ink-3 mb-0.5">{label}</p>
-                <p className="text-[22px] font-bold tracking-tight text-ink leading-none">{value}</p>
+                <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 tp-fade-up-2">
           <div className="relative flex-1 max-w-md">
             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
             <input
@@ -94,7 +90,7 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[820px]">
               <thead>

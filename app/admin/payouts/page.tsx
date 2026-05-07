@@ -1,5 +1,7 @@
 import Link from "next/link"
-import { Wallet, Clock, CheckCircle2, AlertOctagon, Send, ArrowUpRight, Smartphone, Building2 } from "lucide-react"
+import { Wallet, Clock, CheckCircle2, AlertOctagon, Send, ArrowUpRight, Smartphone, Building2, Inbox } from "lucide-react"
+import PageHeader from "@/components/dashboard/PageHeader"
+import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 type Status = "pending" | "transit" | "completed" | "held"
@@ -52,37 +54,32 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
   ]
 
   return (
-    <div>
-      <div className="border-b border-line bg-paper-2">
-        <div className="px-5 md:px-8 py-9 md:py-12">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Payouts</p>
-          <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight text-ink">
-            Organizer payouts
-          </h1>
-          <p className="mt-1.5 text-[14px] text-ink-2">
-            Review and process payout requests across EcoCash and bank transfers.
-          </p>
-        </div>
-      </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Payouts"
+        title="Organizer payouts"
+        subtitle="Review and process payout requests across EcoCash and bank transfers."
+        width="full"
+      />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {stats.map(({ label, value, icon: Icon, tone, bg }) => (
-            <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4">
+            <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">
               <span className={`inline-flex w-10 h-10 items-center justify-center rounded-xl ${bg}`}>
                 <Icon size={16} className={tone} />
               </span>
               <div>
                 <p className="text-[11.5px] text-ink-3 mb-0.5">{label}</p>
-                <p className="text-[22px] font-bold tracking-tight text-ink leading-none">{value}</p>
+                <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* CTA banner */}
-        <div className="rounded-2xl border border-blue/15 bg-blue-soft/60 px-5 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="rounded-2xl border border-blue/15 bg-blue-soft/60 px-5 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 tp-fade-up-2">
           <div className="flex items-start gap-3">
             <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line shrink-0">
               <Wallet size={15} className="text-blue" />
@@ -120,7 +117,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="hidden md:block">
             <table className="w-full">
               <thead>
@@ -193,9 +190,12 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
           </ul>
 
           {visible.length === 0 && (
-            <div className="px-6 py-10 text-center text-[13px] text-ink-3">
-              No payouts in this status.
-            </div>
+            <EmptyState
+              icon={Inbox}
+              title="No payouts in this status"
+              body="When payouts are requested, processed, or held they'll appear here."
+              variant="inline"
+            />
           )}
         </div>
       </div>

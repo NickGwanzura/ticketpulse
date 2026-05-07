@@ -1,4 +1,5 @@
 import { ArrowUpRight, ArrowDownRight, MapPin, CreditCard, TrendingUp } from "lucide-react"
+import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency } from "@/lib/utils"
 
 const REVENUE_30D = [
@@ -90,22 +91,17 @@ export default function AdminAnalyticsPage() {
   const delta = ((total - prevTotal) / prevTotal) * 100
 
   return (
-    <div>
-      <div className="border-b border-line bg-paper-2">
-        <div className="px-5 md:px-8 py-9 md:py-12">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Analytics</p>
-          <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight text-ink">
-            Revenue and conversion
-          </h1>
-          <p className="mt-1.5 text-[14px] text-ink-2">
-            How the platform is trending against last period.
-          </p>
-        </div>
-      </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Analytics"
+        title="Revenue and conversion"
+        subtitle="How the platform is trending against last period."
+        width="full"
+      />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
         {/* Revenue chart card */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-5 md:px-6 pt-5 pb-4 border-b border-line">
             <div>
               <p className="text-[11.5px] text-ink-3 mb-1">Revenue over time</p>
@@ -146,7 +142,7 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* Sales mix */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-2">
           <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
             <div>
               <h2 className="text-[15px] font-semibold tracking-tight text-ink">Sales mix by category</h2>
@@ -165,7 +161,7 @@ export default function AdminAnalyticsPage() {
                   </div>
                 </div>
                 <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+                  <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
                 </div>
               </li>
             ))}
@@ -173,7 +169,7 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* 3-col grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 tp-fade-up-3">
           <div className="rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 py-4 border-b border-line">
               <h3 className="text-[14px] font-semibold tracking-tight text-ink">Top organizers</h3>
@@ -214,9 +210,9 @@ export default function AdminAnalyticsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1 bg-paper-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="text-[10.5px] text-ink-3 whitespace-nowrap">{pct.toFixed(1)}%</span>
+                    <span className="text-[10.5px] text-ink-3 whitespace-nowrap tabular-nums">{pct.toFixed(1)}%</span>
                   </div>
                 </li>
               ))}
