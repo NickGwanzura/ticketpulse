@@ -11,13 +11,20 @@ import {
   verificationTokens,
 } from "@/db/schema"
 
+// DrizzleAdapter introspects `db` at construction time, so we only
+// build it when DATABASE_URL is available. With JWT-strategy sessions
+// the adapter is optional anyway; skip it during build / demo runs.
+const adapter = process.env.DATABASE_URL
+  ? DrizzleAdapter(db, {
+      usersTable: users,
+      accountsTable: accounts,
+      sessionsTable: sessions,
+      verificationTokensTable: verificationTokens,
+    })
+  : undefined
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-    verificationTokensTable: verificationTokens,
-  }),
+  adapter,
   session: {
     strategy: "jwt",
   },
