@@ -1,5 +1,11 @@
-import { auth } from "@/auth"
+import NextAuth from "next-auth"
 import { NextResponse } from "next/server"
+import { authConfig } from "@/auth.config"
+
+// Middleware runs on the Edge runtime — it must not transitively
+// import lib/password (node:crypto) or other Node-only deps. We
+// re-init NextAuth here with the Edge-safe authConfig only.
+const { auth } = NextAuth(authConfig)
 
 const protectedRoutes = ["/dashboard", "/organizer", "/account", "/orders", "/payouts", "/cart", "/checkout"]
 const authRoutes = ["/auth/signin", "/auth/signup"]

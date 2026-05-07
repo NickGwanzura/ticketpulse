@@ -12,6 +12,7 @@ import {
   verificationTokens,
 } from "@/db/schema"
 import { verifyPassword } from "@/lib/password"
+import { authConfig } from "@/auth.config"
 
 // DrizzleAdapter introspects `db` at construction time, so we only
 // build it when DATABASE_URL is available. With JWT-strategy sessions
@@ -26,16 +27,8 @@ const adapter = process.env.DATABASE_URL
   : undefined
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig,
   adapter,
-  trustHost: true,
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/auth/signin",
-    newUser: "/auth/signup",
-    error: "/auth/error",
-  },
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -71,22 +64,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role
-        token.id = user.id
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.role = token.role as string
-        session.user.id = token.id as string
-      }
-      return session
-    },
-  },
 })
 
 declare module "next-auth" {
