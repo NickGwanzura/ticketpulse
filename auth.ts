@@ -55,10 +55,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const name     = (credentials?.name     as string | undefined)?.trim() || null
         if (!email || !password) return null
 
-        const DEMO: Record<string, { role: "attendee" | "organizer" | "vendor"; name: string }> = {
+        const DEMO: Record<string, { role: "attendee" | "organizer" | "vendor" | "admin"; name: string }> = {
           "demo@ticketpulse.zw":      { role: "attendee",  name: "Demo Attendee" },
           "organizer@ticketpulse.zw": { role: "organizer", name: "Demo Organizer" },
           "vendor@ticketpulse.zw":    { role: "vendor",    name: "Demo Vendor" },
+          "admin@ticketpulse.zw":     { role: "admin",     name: "Demo Admin" },
         }
         const demo = DEMO[email]
         if (demo) {
