@@ -2,7 +2,7 @@ import Link from "next/link"
 import {
   ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
   Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,
-  Calendar, MapPin, Star, Quote, FileText, ScanLine, DoorOpen,
+  Calendar, MapPin, Star, Quote, FileText, ScanLine, DoorOpen, ShieldCheck,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -71,13 +71,6 @@ const HERO_TICKETS = [
   },
 ]
 
-const AVATARS = [
-  { initials: "TM", bg: "from-violet-500 to-fuchsia-500" },
-  { initials: "RS", bg: "from-sky-500 to-blue-600" },
-  { initials: "FC", bg: "from-emerald-500 to-teal-600" },
-  { initials: "NT", bg: "from-amber-500 to-rose-500" },
-]
-
 const CATEGORIES = [
   { label: "Concerts",    value: "concert",    icon: Music,      gradient: "from-violet-50 to-fuchsia-50",   ring: "ring-violet-200/60",   accent: "text-violet-700" },
   { label: "Marathons",   value: "marathon",   icon: Trophy,     gradient: "from-sky-50 to-blue-50",         ring: "ring-sky-200/60",      accent: "text-sky-700" },
@@ -88,10 +81,10 @@ const CATEGORIES = [
 ]
 
 const STATS = [
-  { value: "120+",   label: "Events live",          delta: "+12 this month" },
-  { value: "50K",    label: "Tickets sold",         delta: "+2.4K this week" },
-  { value: "320",    label: "Verified organizers",  delta: "+18 this month" },
-  { value: "12",     label: "Cities covered",       delta: "+2 in 2026" },
+  { value: "Live",    label: "Day 1 — May 2026" },
+  { value: "1",       label: "Event on sale today" },
+  { value: "4 ways",  label: "EcoCash · USD · ZAR · Card" },
+  { value: "5%",      label: "Organizer fee, pay as you sell" },
 ]
 
 const STEPS = [
@@ -246,8 +239,8 @@ export default function Home() {
                   <span className="relative block w-2 h-2 rounded-full bg-emerald-500" />
                 </span>
                 <span className="text-[11.5px] font-semibold tracking-[0.04em] text-ink">
-                  <span className="text-emerald-700">12 events</span>
-                  <span className="text-ink-3"> on sale today</span>
+                  <span className="text-emerald-700">Live</span>
+                  <span className="text-ink-3"> · launching May 2026</span>
                 </span>
               </div>
 
@@ -293,29 +286,14 @@ export default function Home() {
                 <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-emerald-600" /> Our gate scanner</span>
               </div>
 
-              {/* Social proof */}
-              <div className="mt-8 inline-flex items-center gap-3.5 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-2.5">
-                <div className="flex -space-x-2">
-                  {AVATARS.map((a) => (
-                    <span
-                      key={a.initials}
-                      className={`inline-flex w-7 h-7 items-center justify-center rounded-full bg-gradient-to-br ${a.bg} text-white text-[10px] font-semibold ring-2 ring-paper shadow-sm`}
-                    >
-                      {a.initials}
-                    </span>
-                  ))}
-                  <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-full bg-navy text-white text-[10px] font-semibold ring-2 ring-paper shadow-sm">
-                    +5K
-                  </span>
-                </div>
+              {/* Launch credibility */}
+              <div className="mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-2.5">
+                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 shrink-0">
+                  <ShieldCheck size={16} className="text-blue" />
+                </span>
                 <div className="leading-tight">
-                  <div className="flex items-center gap-1.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={11} className="text-amber-500 fill-amber-500" />
-                    ))}
-                    <span className="text-[11.5px] font-semibold text-ink">4.9</span>
-                  </div>
-                  <p className="text-[11.5px] text-ink-3 mt-0.5">5,840 attendees this month</p>
+                  <p className="text-[12.5px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
+                  <p className="text-[11.5px] text-ink-3 mt-0.5">Sell, deliver, scan — one platform, no third-party stack.</p>
                 </div>
               </div>
             </div>
@@ -350,14 +328,10 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-line">
               {STATS.map((s, i) => (
                 <div key={i} className="md:px-6 md:first:pl-0 md:last:pr-0">
-                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none tabular-nums">
+                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none">
                     {s.value}
                   </p>
                   <p className="mt-1.5 text-[12.5px] text-ink-3">{s.label}</p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-semibold tracking-wide text-emerald-700">
-                    <span className="inline-block w-1 h-1 rounded-full bg-emerald-500" aria-hidden />
-                    {s.delta}
-                  </p>
                 </div>
               ))}
             </div>

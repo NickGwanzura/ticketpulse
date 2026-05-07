@@ -9,11 +9,9 @@ const VALUES = [
 ]
 
 const MILESTONES = [
-  { year: "2024", title: "Founded in Harare",         body: "TicketPulse launches as a side project for the Nyuki Marathon." },
-  { year: "2024", title: "First 5,000 tickets",       body: "Sold to runners across 18 cities." },
-  { year: "2025", title: "Vendor marketplace",        body: "Catering, sound, photography on board." },
-  { year: "2025", title: "Cross-border bookings",     body: "Pretoria, Johannesburg, Vic Falls, London." },
-  { year: "2026", title: "120+ events live",          body: "And just getting started." },
+  { year: "2024", title: "An idea in Harare",          body: "Started as a side project to run ticketing for the Nyuki Marathon." },
+  { year: "2025", title: "Built end-to-end",           body: "Sale, printable PDF + mobile QR delivery, and our own gate-scanner — one platform, no third-party stack." },
+  { year: "2026", title: "Day 1 launch",               body: "Going live with our first event on sale, payouts in EcoCash, USD, and ZAR. Just getting started." },
 ]
 
 export default function AboutPage() {
@@ -60,7 +58,7 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-16 md:py-20">
           <div className="mb-10">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">The story so far</p>
-            <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">From one race to a region.</h2>
+            <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">From one race to launch day.</h2>
           </div>
           <ol className="relative">
             <span className="absolute left-[7px] top-2 bottom-2 w-px bg-line" aria-hidden />
