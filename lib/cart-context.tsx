@@ -1,42 +1,28 @@
 "use client"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
-export type CartLine =
-  | {
-      kind: "ticket"
-      key: string
-      eventSlug: string
-      eventTitle: string
-      tierId: string
-      tierName: string
-      emoji: string
-      price: number
-      currency: string
-      qty: number
-    }
-  | {
-      kind: "merch"
-      key: string
-      eventSlug: string
-      eventTitle: string
-      itemId: string
-      name: string
-      size?: string
-      price: number
-      currency: string
-      qty: number
-    }
-  | {
-      kind: "shuttle"
-      key: string
-      eventSlug: string
-      eventTitle: string
-      routeId: string
-      description: string
-      price: number
-      currency: string
-      qty: number
-    }
+interface CartLineBase {
+  key: string
+  eventSlug: string
+  eventTitle: string
+  price: number
+  currency: string
+  qty: number
+}
+
+export interface TicketLine  extends CartLineBase { kind: "ticket";  tierId: string;  tierName: string; emoji: string }
+export interface MerchLine   extends CartLineBase { kind: "merch";   itemId: string;  name: string;     size?: string }
+export interface ShuttleLine extends CartLineBase { kind: "shuttle"; routeId: string; description: string }
+
+export type CartLine = TicketLine | MerchLine | ShuttleLine
+
+// Per-variant input types. Using a distributive union here (instead of
+// Omit<CartLine, "key">) preserves each variant's required fields, so
+// TypeScript narrows correctly when callers pass `kind: "ticket"` etc.
+export type CartLineInput =
+  | Omit<TicketLine,  "key">
+  | Omit<MerchLine,   "key">
+  | Omit<ShuttleLine, "key">
 
 export interface OrderRecord {
   id: string
@@ -53,7 +39,7 @@ interface CartContextValue {
   ready: boolean
   totalCount: number
   totalsByCurrency: Record<string, number>
-  addItem: (item: Omit<CartLine, "key">) => void
+  addItem: (item: CartLineInput) => void
   removeItem: (key: string) => void
   updateQty: (key: string, qty: number) => void
   clear: () => void
@@ -66,7 +52,7 @@ const CartContext = createContext<CartContextValue | null>(null)
 const STORAGE_KEY = "tp_cart"
 const ORDERS_KEY = "tp_orders"
 
-function keyFor(item: Omit<CartLine, "key">): string {
+function keyFor(item: CartLineInput): string {
   if (item.kind === "ticket")  return `ticket:${item.eventSlug}:${item.tierId}`
   if (item.kind === "merch")   return `merch:${item.eventSlug}:${item.itemId}:${item.size ?? ""}`
   return `shuttle:${item.eventSlug}:${item.routeId}`
@@ -97,7 +83,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [items, ready])
 
-  const addItem = useCallback((item: Omit<CartLine, "key">) => {
+  const addItem = useCallback((item: CartLineInput) => {
     const key = keyFor(item)
     setItems((prev) => {
       const existing = prev.find((p) => p.key === key)

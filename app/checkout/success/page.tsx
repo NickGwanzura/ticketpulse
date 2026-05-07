@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
@@ -13,6 +13,18 @@ import Confetti from "@/components/Confetti"
 import CheckoutSteps from "@/components/CheckoutSteps"
 
 export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
+        <div className="h-14 w-14 mx-auto bg-paper-2 rounded-2xl animate-pulse" />
+      </div>
+    }>
+      <CheckoutSuccessInner />
+    </Suspense>
+  )
+}
+
+function CheckoutSuccessInner() {
   const params = useSearchParams()
   const id = params.get("id") ?? ""
   const { ready, getOrder } = useCart()
