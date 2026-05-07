@@ -5,7 +5,7 @@ import { signOut, useSession } from "next-auth/react"
 import {
   Menu, X, LogOut, LayoutDashboard, ChevronDown, ShoppingBag, Search,
   Music, Trophy, Footprints, Film, Building2, Mountain, ArrowRight, ArrowUpRight,
-  CalendarCog, Store,
+  CalendarCog, Store, Shield,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useCart } from "@/lib/cart-context"
@@ -191,6 +191,11 @@ export default function Navbar() {
                       <p className="text-sm font-semibold text-ink truncate">{session.user.name ?? "Account"}</p>
                       <p className="text-xs text-ink-3 truncate">{session.user.email}</p>
                     </div>
+                    {session.user.role === "admin" && (
+                      <Link href="/admin" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
+                        <Shield size={15} className="text-ink-3" /> Admin
+                      </Link>
+                    )}
                     <Link href="/dashboard" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
                       <LayoutDashboard size={15} className="text-ink-3" /> Dashboard
                     </Link>
@@ -369,6 +374,11 @@ export default function Navbar() {
             <div className="pt-2">
               {session ? (
                 <div className="space-y-2">
+                  {session.user.role === "admin" && (
+                    <Link href="/admin" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
+                      <Shield size={15} /> Admin
+                    </Link>
+                  )}
                   <Link href="/dashboard" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
                     <LayoutDashboard size={15} /> Dashboard
                   </Link>
