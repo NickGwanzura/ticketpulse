@@ -29,8 +29,7 @@ const CATEGORIES: NavCategory[] = [
 ]
 
 const FEATURED_PEEK = [
-  { slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA, Pretoria",         emoji: "🎵", date: "Sun 17 May" },
-  { slug: "nyuki-marathon-2026",        title: "Nyuki Marathon 2026",             emoji: "🏃", date: "Sun 17 May" },
+  { slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures", emoji: "🏃", date: "Sun 17 May · National Sports Stadium, Harare" },
 ]
 
 const TOP_LINKS: { label: string; href: string }[] = [

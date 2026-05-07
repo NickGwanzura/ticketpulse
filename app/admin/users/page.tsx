@@ -1,24 +1,21 @@
-import { Search, MoreHorizontal, UserCheck, ShieldCheck, Store, User, ShieldAlert } from "lucide-react"
+import { Search, MoreHorizontal, UserCheck, ShieldCheck, Store, User, ShieldAlert, Users } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
-import { formatDateShort } from "@/lib/utils"
+import EmptyState from "@/components/dashboard/EmptyState"
 
 type Role = "attendee" | "organizer" | "vendor" | "admin"
 type Status = "active" | "suspended"
 
-const USERS = [
-  { id: "u-01", name: "Tinashe Moyo",         email: "tinashe.moyo@example.zw",     role: "attendee"  as Role, status: "active"    as Status, joined: new Date("2026-04-28"), color: "bg-violet-100 text-violet-700" },
-  { id: "u-02", name: "Tariro Chiweshe",      email: "tariro@tarir-events.zw",      role: "organizer" as Role, status: "active"    as Status, joined: new Date("2026-03-12"), color: "bg-sky-100 text-sky-700" },
-  { id: "u-03", name: "Kudzai Productions",   email: "hello@kudzai.zw",             role: "organizer" as Role, status: "active"    as Status, joined: new Date("2026-02-04"), color: "bg-sky-100 text-sky-700" },
-  { id: "u-04", name: "Anesu Sound & AV",     email: "ops@anesu-sound.zw",          role: "vendor"    as Role, status: "active"    as Status, joined: new Date("2026-01-19"), color: "bg-emerald-100 text-emerald-700" },
-  { id: "u-05", name: "Farai Films",          email: "team@faraifilms.zw",          role: "organizer" as Role, status: "active"    as Status, joined: new Date("2025-12-08"), color: "bg-sky-100 text-sky-700" },
-  { id: "u-06", name: "Rumbidzai Chari",      email: "rumbi.chari@example.zw",      role: "attendee"  as Role, status: "active"    as Status, joined: new Date("2025-11-21"), color: "bg-violet-100 text-violet-700" },
-  { id: "u-07", name: "Munyaradzi Tafadzwa",  email: "muny.t@example.zw",           role: "attendee"  as Role, status: "suspended" as Status, joined: new Date("2025-10-04"), color: "bg-rose-100 text-rose-700" },
-  { id: "u-08", name: "Chiedza Live",         email: "events@chiedza.zw",           role: "organizer" as Role, status: "active"    as Status, joined: new Date("2025-09-14"), color: "bg-sky-100 text-sky-700" },
-  { id: "u-09", name: "Tendai Outdoors",      email: "info@tendai-outdoors.zw",     role: "vendor"    as Role, status: "active"    as Status, joined: new Date("2025-08-02"), color: "bg-emerald-100 text-emerald-700" },
-  { id: "u-10", name: "Demo Admin",           email: "admin@ticketpulse.zw",        role: "admin"     as Role, status: "active"    as Status, joined: new Date("2025-06-01"), color: "bg-amber-100 text-amber-700" },
-  { id: "u-11", name: "Anesu Mhondoro",       email: "anesu.m@example.zw",          role: "attendee"  as Role, status: "active"    as Status, joined: new Date("2026-04-12"), color: "bg-violet-100 text-violet-700" },
-  { id: "u-12", name: "Tafadzwa Catering",    email: "book@tafa-cater.zw",          role: "vendor"    as Role, status: "active"    as Status, joined: new Date("2026-03-30"), color: "bg-emerald-100 text-emerald-700" },
-] as const
+type UserRow = {
+  id: string
+  name: string
+  email: string
+  role: Role
+  status: Status
+  joined: Date
+  color: string
+}
+
+const USERS: UserRow[] = []
 
 const ROLE_STYLE: Record<Role, string> = {
   attendee:  "bg-violet-50 text-violet-700",
@@ -36,11 +33,11 @@ const FILTER_PILLS = ["All", "Attendees", "Organizers", "Vendors", "Suspended"]
 
 export default function AdminUsersPage() {
   const stats = [
-    { label: "Total users",  value: USERS.length,                                          icon: User,        tone: "text-ink-2",      bg: "bg-paper-2" },
-    { label: "Attendees",    value: USERS.filter((u) => u.role === "attendee").length,    icon: UserCheck,   tone: "text-violet-700", bg: "bg-violet-50" },
-    { label: "Organizers",   value: USERS.filter((u) => u.role === "organizer").length,   icon: ShieldCheck, tone: "text-sky-700",    bg: "bg-sky-50" },
-    { label: "Vendors",      value: USERS.filter((u) => u.role === "vendor").length,      icon: Store,       tone: "text-emerald-700",bg: "bg-emerald-50" },
-    { label: "Admins",       value: USERS.filter((u) => u.role === "admin").length,       icon: ShieldAlert, tone: "text-amber-700",  bg: "bg-amber-50" },
+    { label: "Total users",  value: 0, icon: User,        tone: "text-ink-2",      bg: "bg-paper-2" },
+    { label: "Attendees",    value: 0, icon: UserCheck,   tone: "text-violet-700", bg: "bg-violet-50" },
+    { label: "Organizers",   value: 0, icon: ShieldCheck, tone: "text-sky-700",    bg: "bg-sky-50" },
+    { label: "Vendors",      value: 0, icon: Store,       tone: "text-emerald-700",bg: "bg-emerald-50" },
+    { label: "Admins",       value: 0, icon: ShieldAlert, tone: "text-amber-700",  bg: "bg-amber-50" },
   ]
 
   return (
@@ -93,70 +90,80 @@ export default function AdminUsersPage() {
 
         {/* Table */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
-          <div className="hidden md:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
-                  <th className="text-left px-5 py-3 font-semibold">User</th>
-                  <th className="text-left px-3 py-3 font-semibold">Role</th>
-                  <th className="text-left px-3 py-3 font-semibold">Joined</th>
-                  <th className="text-left px-3 py-3 font-semibold">Status</th>
-                  <th className="px-3 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
+          {USERS.length > 0 ? (
+            <>
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                      <th className="text-left px-5 py-3 font-semibold">User</th>
+                      <th className="text-left px-3 py-3 font-semibold">Role</th>
+                      <th className="text-left px-3 py-3 font-semibold">Joined</th>
+                      <th className="text-left px-3 py-3 font-semibold">Status</th>
+                      <th className="px-3 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {USERS.map((u) => (
+                      <tr key={u.id} className="hover:bg-paper-2 transition-colors">
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <span className={`inline-flex w-9 h-9 items-center justify-center rounded-full text-[12.5px] font-bold ${u.color}`}>
+                              {u.name[0]}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{u.name}</p>
+                              <p className="text-[11.5px] text-ink-3 line-clamp-1">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3.5">
+                          <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${ROLE_STYLE[u.role]}`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">{u.joined.toLocaleDateString()}</td>
+                        <td className="px-3 py-3.5">
+                          <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[u.status]}`}>
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3.5 text-right">
+                          <button className="text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2">
+                            <MoreHorizontal size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className="md:hidden divide-y divide-line">
                 {USERS.map((u) => (
-                  <tr key={u.id} className="hover:bg-paper-2 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <span className={`inline-flex w-9 h-9 items-center justify-center rounded-full text-[12.5px] font-bold ${u.color}`}>
-                          {u.name[0]}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{u.name}</p>
-                          <p className="text-[11.5px] text-ink-3 line-clamp-1">{u.email}</p>
-                        </div>
+                  <li key={u.id} className="p-5 flex items-center gap-3">
+                    <span className={`shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-full text-[13px] font-bold ${u.color}`}>
+                      {u.name[0]}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{u.name}</p>
+                      <p className="text-[11.5px] text-ink-3 line-clamp-1">{u.email}</p>
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ROLE_STYLE[u.role]}`}>{u.role}</span>
+                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[u.status]}`}>{u.status}</span>
                       </div>
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${ROLE_STYLE[u.role]}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">{formatDateShort(u.joined)}</td>
-                    <td className="px-3 py-3.5">
-                      <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[u.status]}`}>
-                        {u.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3.5 text-right">
-                      <button className="text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2">
-                        <MoreHorizontal size={15} />
-                      </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          <ul className="md:hidden divide-y divide-line">
-            {USERS.map((u) => (
-              <li key={u.id} className="p-5 flex items-center gap-3">
-                <span className={`shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-full text-[13px] font-bold ${u.color}`}>
-                  {u.name[0]}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{u.name}</p>
-                  <p className="text-[11.5px] text-ink-3 line-clamp-1">{u.email}</p>
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ROLE_STYLE[u.role]}`}>{u.role}</span>
-                    <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[u.status]}`}>{u.status}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+              </ul>
+            </>
+          ) : (
+            <EmptyState
+              icon={Users}
+              title="No users yet"
+              body="Registered attendees, organizers, and vendors will appear here."
+              variant="inline"
+            />
+          )}
         </div>
       </div>
     </div>

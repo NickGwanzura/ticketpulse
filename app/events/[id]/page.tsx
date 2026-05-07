@@ -14,7 +14,7 @@ const MOCK_EVENT = {
   slug: "nyuki-marathon-2026",
   title: "Nyuki Marathon 2026: One Bee, Million Futures",
   category: "Marathon",
-  description: "Join thousands of runners at Zimbabwe's most celebrated marathon. The Nyuki Marathon 2026 brings together corporate teams, elite runners, and community participants for a morning of energy, purpose, and collective achievement. Every kilometer you run supports literacy programs across Zimbabwe.",
+  description: "Join runners at Zimbabwe's Nyuki Marathon 2026. The event brings together corporate teams, elite runners, and community participants for a morning of energy, purpose, and collective achievement. Every kilometer you run supports literacy programs across Zimbabwe.",
   venue: "National Sports Stadium",
   city: "Harare",
   country: "Zimbabwe",
@@ -22,30 +22,33 @@ const MOCK_EVENT = {
   startsAt: new Date("2026-05-17T06:00:00"),
   organizer: { name: "Worker Bees Africa", image: null },
   tiers: [
-    { id: "t1", name: "5km Fun Run", description: "Perfect for families and beginners", price: 3, currency: "USD", totalQuantity: 500, soldQuantity: 280, maxPerOrder: 10 },
-    { id: "t2", name: "10km Standard", description: "Timed race with official certification", price: 5, currency: "USD", totalQuantity: 1000, soldQuantity: 650, maxPerOrder: 10 },
-    { id: "t3", name: "21km Half Marathon", description: "Full competitive half marathon experience", price: 10, currency: "USD", totalQuantity: 300, soldQuantity: 290, maxPerOrder: 5 },
-    { id: "t4", name: "Corporate Team (5 runners)", description: "Register your full team at a discounted rate", price: 20, currency: "USD", totalQuantity: 100, soldQuantity: 60, maxPerOrder: 3 },
+    { id: "t1", name: "5km Fun Run", description: "Perfect for families and beginners", price: 5, currency: "USD", totalQuantity: 0, soldQuantity: 0, maxPerOrder: 10 },
+    { id: "t2", name: "10km Standard", description: "Timed race with official certification", price: 5, currency: "USD", totalQuantity: 0, soldQuantity: 0, maxPerOrder: 10 },
+    { id: "t3", name: "21km Half Marathon", description: "Full competitive half marathon experience", price: 5, currency: "USD", totalQuantity: 0, soldQuantity: 0, maxPerOrder: 5 },
+    { id: "t4", name: "Corporate Team (5 runners)", description: "Register your full team at a discounted rate", price: 5, currency: "USD", totalQuantity: 0, soldQuantity: 0, maxPerOrder: 3 },
   ],
-  merch: [
-    { id: "m1", eventId: "nyuki", name: "Official Race Tee", description: "Moisture-wicking finisher t-shirt", price: 8, currency: "USD", images: [], sizes: ["XS", "S", "M", "L", "XL", "XXL"], colors: ["White", "Green"], stockQuantity: 200, soldQuantity: 45, pickupAtEvent: true, deliveryAvailable: false },
-    { id: "m2", eventId: "nyuki", name: "Nyuki Cap", description: "Breathable running cap with embroidered logo", price: 6, currency: "USD", images: [], sizes: [], colors: ["Black", "White"], stockQuantity: 150, soldQuantity: 30, pickupAtEvent: true, deliveryAvailable: true },
-    { id: "m3", eventId: "nyuki", name: "Water Bottle", description: "BPA-free 750ml with Nyuki branding", price: 5, currency: "USD", images: [], sizes: [], colors: ["Green"], stockQuantity: 100, soldQuantity: 80, pickupAtEvent: true, deliveryAvailable: true },
-    { id: "m4", eventId: "nyuki", name: "Finisher Medal Holder", description: "Engraved wooden medal display", price: 12, currency: "USD", images: [], sizes: [], colors: [], stockQuantity: 50, soldQuantity: 48, pickupAtEvent: false, deliveryAvailable: true },
-  ],
-  shuttles: [
-    { id: "s1", eventId: "nyuki", operator: { companyName: "Mbare Express", verified: true, rating: 4.7 }, vehicleType: "bus" as const, vehicleDescription: "45-seater coach", departurePoint: "Mbare Musika Terminus", departureTime: new Date("2026-05-17T04:30:00"), returnTime: new Date("2026-05-17T12:00:00"), totalSeats: 45, bookedSeats: 22, pricePerSeat: 2, currency: "USD" },
-    { id: "s2", eventId: "nyuki", operator: { companyName: "Avondale Rides", verified: true, rating: 4.5 }, vehicleType: "kombi" as const, vehicleDescription: "15-seater kombi", departurePoint: "Avondale Shopping Centre", departureTime: new Date("2026-05-17T05:00:00"), returnTime: new Date("2026-05-17T12:30:00"), totalSeats: 15, bookedSeats: 13, pricePerSeat: 1.5, currency: "USD" },
-    { id: "s3", eventId: "nyuki", operator: { companyName: "CBD Shuttles", verified: false, rating: 4.1 }, vehicleType: "bus" as const, vehicleDescription: "30-seater bus", departurePoint: "Harare CBD. Joina City", departureTime: new Date("2026-05-17T04:45:00"), returnTime: new Date("2026-05-17T12:00:00"), totalSeats: 30, bookedSeats: 30, pricePerSeat: 2, currency: "USD" },
-  ],
-  vendors: [
-    { id: "v1", eventId: "nyuki", vendor: { businessName: "Mama's Kitchen", category: "catering" as const, logo: null, verified: true, rating: 4.8 }, packageName: "Full breakfast buffet", packageDescription: "Continental and local breakfast for up to 200 guests. Includes sadza, eggs, toast, juice, and tea.", price: 800, currency: "USD", available: true, booked: false },
-    { id: "v2", eventId: "nyuki", vendor: { businessName: "Zviyo Bar", category: "bar" as const, logo: null, verified: false, rating: 4.2 }, packageName: "Post-race refreshment bar", packageDescription: "Full bar service with water, sports drinks, Chibuku, and craft beer. Equipment included.", price: 500, currency: "USD", available: true, booked: false },
-    { id: "v3", eventId: "nyuki", vendor: { businessName: "Lens & Light Photography", category: "photography" as const, logo: null, verified: true, rating: 4.9 }, packageName: "Official event photography", packageDescription: "2 photographers covering the full event. All photos delivered via TicketPulse gallery within 48 hours.", price: 600, currency: "USD", available: false, booked: true },
-  ],
-  galleries: [
-    { id: "g1", eventId: "nyuki", name: "Nyuki 2025 Highlights", description: "Photos from last year's edition", coverImage: null, photoCount: 0, packPrice: 3, currency: "USD", isPublic: true, photos: [] },
-  ],
+  merch: [] as {
+    id: string; eventId: string; name: string; description: string; price: number; currency: string;
+    images: string[]; sizes: string[]; colors: string[]; stockQuantity: number; soldQuantity: number;
+    pickupAtEvent: boolean; deliveryAvailable: boolean;
+  }[],
+  shuttles: [] as {
+    id: string; eventId: string;
+    operator: { companyName: string; verified: boolean; rating: number };
+    vehicleType: "bus" | "kombi"; vehicleDescription: string; departurePoint: string;
+    departureTime: Date; returnTime: Date; totalSeats: number; bookedSeats: number;
+    pricePerSeat: number; currency: string;
+  }[],
+  vendors: [] as {
+    id: string; eventId: string;
+    vendor: { businessName: string; category: "catering" | "bar" | "food_truck" | "photography" | "sound" | "security" | "decor" | "other"; logo: null; verified: boolean; rating: number };
+    packageName: string; packageDescription: string; price: number; currency: string;
+    available: boolean; booked: boolean;
+  }[],
+  galleries: [] as {
+    id: string; eventId: string; name: string; description: string; coverImage: null;
+    photoCount: number; packPrice: number; currency: string; isPublic: boolean; photos: never[];
+  }[],
 }
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {

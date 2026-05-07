@@ -3,17 +3,65 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
-  MoreHorizontal, Zap, Star, CheckCircle, RefreshCw, Send, ScanLine,
+  MoreHorizontal, ScanLine, LayoutList, ShoppingCart,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
-import { formatCurrency, formatDateShort } from "@/lib/utils"
+import EmptyState from "@/components/dashboard/EmptyState"
+import { formatCurrency } from "@/lib/utils"
 
-const MOCK_EVENTS = [
-  { id: "1", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures", category: "Marathon", venue: "National Sports Stadium, Harare", startsAt: new Date("2026-05-17T06:00:00"), status: "published", sold: 1280, capacity: 2000, revenue: 9430, currency: "USD" },
-  { id: "2", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA, Pretoria", category: "Concert", venue: "Propaganda, Pretoria", startsAt: new Date("2026-05-17T12:00:00"), status: "published", sold: 420, capacity: 800, revenue: 147000, currency: "ZAR" },
-  { id: "3", slug: "nyuki-warmup-run", title: "Nyuki Warm-up Run", category: "Walkathon", venue: "Harare Gardens", startsAt: new Date("2026-04-12T07:00:00"), status: "draft", sold: 0, capacity: 300, revenue: 0, currency: "USD" },
-  { id: "4", slug: "harare-jazz-night", title: "Harare Jazz Night Vol. 4", category: "Concert", venue: "The Venue, Harare", startsAt: new Date("2026-06-05T19:00:00"), status: "published", sold: 310, capacity: 500, revenue: 4340, currency: "USD" },
-] as const
+type EventRow = {
+  id: string
+  slug: string
+  title: string
+  category: string
+  venue: string
+  startsAt: Date
+  status: string
+  sold: number
+  capacity: number
+  revenue: number
+  currency: string
+}
+
+type OrderRow = {
+  name: string
+  event: string
+  amount: number
+  method: string
+  status: string
+  ago: string
+}
+
+type VipBuyer = {
+  name: string
+  spent: number
+  tickets: number
+}
+
+type ActivityItem = {
+  icon: React.ElementType
+  text: string
+  ago: string
+}
+
+type SalesByEvent = {
+  title: string
+  revenue: number
+}
+
+const MOCK_EVENTS: EventRow[] = []
+const MOCK_ORDERS: OrderRow[] = []
+const VIP_BUYERS: VipBuyer[] = []
+const ACTIVITY: ActivityItem[] = []
+const SALES_BY_EVENT: SalesByEvent[] = []
+const REVENUE_30D: number[] = []
+
+const KPI_SPARKLINES: Record<string, number[]> = {
+  "Live events":   [],
+  "Tickets sold":  [],
+  "Revenue (USD)": [],
+  "Followers":     [],
+}
 
 const STATUS_STYLE: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700",
@@ -22,44 +70,29 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "bg-rose-50 text-rose-700",
 }
 
-const REVENUE_30D = [1840, 2100, 1650, 3200, 2800, 4100, 3600, 5200, 4700, 6100, 5400, 7200, 6800, 8100, 7400, 9200, 8600, 10100, 9300, 11200, 10500, 12100, 11400, 13200, 12600, 14100, 13200, 15400, 14800, 16240]
+const METHOD_STYLE: Record<string, string> = {
+  EcoCash: "bg-emerald-50 text-emerald-700",
+  Card:    "bg-blue-soft text-blue",
+  Bank:    "bg-paper-2 text-ink-2 ring-1 ring-line",
+}
 
-const MOCK_ORDERS = [
-  { name: "Tinashe Moyo",      event: "Nyuki Marathon 2026", amount: 25,  method: "EcoCash", status: "confirmed", ago: "2m ago" },
-  { name: "Tariro Chigwida",   event: "Harare Jazz Night",   amount: 14,  method: "Card",    status: "confirmed", ago: "9m ago" },
-  { name: "Kudzai Mutasa",     event: "Nyuki Marathon 2026", amount: 50,  method: "Bank",    status: "confirmed", ago: "18m ago" },
-  { name: "Farai Nhira",       event: "Rumble in SA",        amount: 120, method: "Card",    status: "confirmed", ago: "34m ago" },
-  { name: "Rumbidzai Sithole", event: "Harare Jazz Night",   amount: 14,  method: "EcoCash", status: "refunded",  ago: "1h ago" },
-  { name: "Tendai Zvobgo",     event: "Nyuki Marathon 2026", amount: 25,  method: "EcoCash", status: "confirmed", ago: "2h ago" },
-  { name: "Chiedza Makoni",    event: "Nyuki Warm-up Run",   amount: 0,   method: "EcoCash", status: "pending",   ago: "3h ago" },
-  { name: "Munyaradzi Dube",   event: "Rumble in SA",        amount: 240, method: "Card",    status: "confirmed", ago: "5h ago" },
-] as const
-
-const VIP_BUYERS = [
-  { name: "Anesu Chikwanda",   spent: 890,  tickets: 12 },
-  { name: "Rutendo Mapfumo",   spent: 640,  tickets: 8  },
-  { name: "Munyaradzi Dube",   spent: 480,  tickets: 5  },
-  { name: "Kudzai Mutasa",     spent: 310,  tickets: 4  },
-  { name: "Farai Nhira",       spent: 240,  tickets: 3  },
-] as const
-
-const ACTIVITY = [
-  { icon: Ticket,    text: "Tinashe bought 2 tickets to Nyuki Marathon",       ago: "2m ago"  },
-  { icon: Star,      text: "New review on Nyuki Marathon 2026 (5 stars)",       ago: "1h ago"  },
-  { icon: CheckCircle, text: "Vendor confirmed: Rainbow Catering for Jazz Night", ago: "3h ago"  },
-  { icon: Send,      text: "Payout of $1,240 sent to EcoCash",                 ago: "Yesterday"},
-  { icon: RefreshCw, text: "Refund issued to Tendai Zvobgo ($14.00)",          ago: "Yesterday"},
-  { icon: Zap,       text: "Harare Jazz Night reached 60% capacity",           ago: "2d ago"  },
-] as const
-
-const SALES_BY_EVENT = [
-  { title: "Nyuki Marathon 2026",   revenue: 9430  },
-  { title: "Rumble in SA, Pretoria", revenue: 8200  },
-  { title: "Harare Jazz Night Vol. 4", revenue: 4340  },
-  { title: "Nyuki Warm-up Run",     revenue: 1200  },
-] as const
+const ORDER_STATUS_STYLE: Record<string, string> = {
+  confirmed: "bg-emerald-50 text-emerald-700",
+  refunded:  "bg-rose-50 text-rose-600",
+  pending:   "bg-amber-50 text-amber-700",
+}
 
 function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
+  if (data.length < 2) {
+    const w = 80
+    const h = 28
+    const color = positive ? "#0a2540" : "#dc2626"
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+        <line x1="0" y1={h / 2} x2={w} y2={h / 2} stroke={color} strokeWidth="1.5" opacity="0.25" strokeDasharray="3 3" />
+      </svg>
+    )
+  }
   const min = Math.min(...data)
   const max = Math.max(...data)
   const w = 80
@@ -79,23 +112,28 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
 }
 
 function RevenueChart({ data }: { data: number[] }) {
+  if (data.length === 0) {
+    return (
+      <EmptyState
+        icon={TrendingUp}
+        title="No revenue data yet"
+        body="Revenue will appear here once tickets are sold."
+        variant="inline"
+      />
+    )
+  }
   const min = 0
   const max = Math.max(...data)
   const w = 800
   const h = 120
   const pts = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w
-    const y = h - ((v - min) / (max - min)) * h
+    const y = h - ((v - min) / (max - min || 1)) * h
     return [x, y] as [number, number]
   })
 
   const linePath = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ")
   const areaPath = `${linePath} L${w} ${h} L0 ${h} Z`
-
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
-    y: h - t * h,
-    label: formatCurrency(t * max, "USD"),
-  }))
 
   return (
     <svg viewBox={`0 0 ${w} ${h + 4}`} className="w-full overflow-visible" preserveAspectRatio="none" style={{ height: 120 }}>
@@ -105,9 +143,6 @@ function RevenueChart({ data }: { data: number[] }) {
           <stop offset="100%" stopColor="#0a2540" stopOpacity="0.01" />
         </linearGradient>
       </defs>
-      {yTicks.map(({ y }) => (
-        <line key={y} x1="0" y1={y.toFixed(1)} x2={w} y2={y.toFixed(1)} stroke="#e3e8ee" strokeWidth="0.8" />
-      ))}
       <path d={areaPath} fill="url(#rev-fill)" />
       <path d={linePath} fill="none" stroke="#0a2540" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
       {pts.map(([x, y], i) => i === pts.length - 1 && (
@@ -115,25 +150,6 @@ function RevenueChart({ data }: { data: number[] }) {
       ))}
     </svg>
   )
-}
-
-const KPI_SPARKLINES = {
-  "Live events":   [1, 1, 2, 2, 2, 3, 2, 3, 3, 3],
-  "Tickets sold":  [820, 940, 1010, 1090, 1180, 1240, 1310, 1420, 1580, 1700],
-  "Revenue (USD)": [6200, 7100, 7800, 8200, 8600, 9000, 9100, 9200, 9350, 9430],
-  "Followers":     [5200, 5320, 5440, 5510, 5580, 5650, 5710, 5760, 5800, 5840],
-}
-
-const METHOD_STYLE: Record<string, string> = {
-  EcoCash: "bg-emerald-50 text-emerald-700",
-  Card:    "bg-blue-soft text-blue",
-  Bank:    "bg-paper-2 text-ink-2 ring-1 ring-line",
-}
-
-const ORDER_STATUS_STYLE: Record<string, string> = {
-  confirmed: "bg-emerald-50 text-emerald-700",
-  refunded:  "bg-rose-50 text-rose-600",
-  pending:   "bg-amber-50 text-amber-700",
 }
 
 export default async function OrganizerPage() {
@@ -144,12 +160,10 @@ export default async function OrganizerPage() {
   const totalSold    = MOCK_EVENTS.reduce((s, e) => s + e.sold, 0)
   const liveEvents   = MOCK_EVENTS.filter((e) => e.status === "published").length
 
-  const gross    = 16240
-  const net      = Math.round(gross * 0.95)
-  const refunds  = 280
-  const avgOrder = Math.round(gross / 142)
-
-  const maxSales = Math.max(...SALES_BY_EVENT.map((e) => e.revenue))
+  const gross    = 0
+  const net      = 0
+  const refunds  = 0
+  const avgOrder = 0
 
   return (
     <div className="tp-fade-up">
@@ -182,13 +196,13 @@ export default async function OrganizerPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {(
             [
-              { l: "Live events",   v: liveEvents.toString(),               i: Calendar,   trend: "+1 this week",   pos: true  },
-              { l: "Tickets sold",  v: totalSold.toLocaleString(),          i: Ticket,     trend: "+248 this week", pos: true  },
-              { l: "Revenue (USD)", v: formatCurrency(totalRevenue, "USD"), i: DollarSign, trend: "+12.4% MoM",     pos: true  },
-              { l: "Followers",     v: "5,840",                             i: Users,      trend: "+184 this week", pos: true  },
+              { l: "Live events",   v: liveEvents.toString(),               i: Calendar,   pos: true  },
+              { l: "Tickets sold",  v: totalSold.toLocaleString(),          i: Ticket,     pos: true  },
+              { l: "Revenue (USD)", v: formatCurrency(totalRevenue, "USD"), i: DollarSign, pos: true  },
+              { l: "Followers",     v: "0",                                 i: Users,      pos: true  },
             ] as const
-          ).map(({ l, v, i: Icon, trend, pos }) => {
-            const spark = KPI_SPARKLINES[l as keyof typeof KPI_SPARKLINES] ?? []
+          ).map(({ l, v, i: Icon, pos }) => {
+            const spark = KPI_SPARKLINES[l] ?? []
             return (
               <div key={l} className="rounded-2xl border border-line bg-paper p-5 flex flex-col justify-between min-h-[120px] tp-lift">
                 <div>
@@ -197,9 +211,7 @@ export default async function OrganizerPage() {
                     <span className="text-[11.5px] text-ink-3">{l}</span>
                   </div>
                   <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
-                  <p className="text-[11.5px] text-emerald-700 mt-2 inline-flex items-center gap-1">
-                    <TrendingUp size={11} /> {trend}
-                  </p>
+                  <p className="text-[11.5px] text-ink-3 mt-2">—</p>
                 </div>
                 <div className="flex justify-end mt-3">
                   <Sparkline data={spark} positive={pos} />
@@ -260,73 +272,80 @@ export default async function OrganizerPage() {
               </div>
             </div>
 
-            {/* Mobile cards */}
-            <div className="md:hidden divide-y divide-line">
-              {MOCK_EVENTS.map((e) => (
-                <Link key={e.id} href={`/events/${e.slug}`} className="block p-5 hover:bg-paper-2 transition-colors">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status]}`}>
-                      {e.status}
-                    </span>
-                    <ArrowUpRight size={14} className="text-ink-3" />
-                  </div>
-                  <p className="text-[14.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                  <p className="text-[12.5px] text-ink-2 mt-0.5">{e.venue}</p>
-                  <div className="mt-3 flex items-center gap-x-4 gap-y-1 flex-wrap text-[12px]">
-                    <span className="text-ink-3">{formatDateShort(e.startsAt)}</span>
-                    <span className="text-ink-2"><span className="font-semibold text-ink">{e.sold}</span>/{e.capacity}</span>
-                    <span className="text-ink font-semibold">{formatCurrency(e.revenue, e.currency)}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Desktop table */}
-            <table className="hidden md:table w-full">
-              <thead>
-                <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
-                  <th className="text-left px-6 py-3 font-semibold">Event</th>
-                  <th className="text-left px-3 py-3 font-semibold">Date</th>
-                  <th className="text-left px-3 py-3 font-semibold">Status</th>
-                  <th className="text-right px-3 py-3 font-semibold">Sold</th>
-                  <th className="text-right px-3 py-3 font-semibold">Revenue</th>
-                  <th className="px-3 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {MOCK_EVENTS.map((e) => {
-                  const pct = Math.round((e.sold / e.capacity) * 100)
-                  return (
-                    <tr key={e.id} className="hover:bg-paper-2 transition-colors">
-                      <td className="px-6 py-4 max-w-xs">
-                        <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                        <p className="text-[12px] text-ink-3 mt-0.5">{e.venue}</p>
-                      </td>
-                      <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{formatDateShort(e.startsAt)}</td>
-                      <td className="px-3 py-4">
-                        <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[e.status]}`}>
+            {MOCK_EVENTS.length === 0 ? (
+              <EmptyState
+                icon={LayoutList}
+                title="No events yet"
+                body="Create your first event to start selling tickets."
+                ctaLabel="Create event"
+                ctaHref="/organizer/new"
+              />
+            ) : (
+              <>
+                {/* Mobile cards */}
+                <div className="md:hidden divide-y divide-line">
+                  {MOCK_EVENTS.map((e) => (
+                    <Link key={e.id} href={`/events/${e.slug}`} className="block p-5 hover:bg-paper-2 transition-colors">
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status]}`}>
                           {e.status}
                         </span>
-                      </td>
-                      <td className="px-3 py-4 text-right whitespace-nowrap">
-                        <p className="text-[13px] font-semibold text-ink">{e.sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {e.capacity.toLocaleString()}</span></p>
-                        <div className="w-24 h-1 bg-paper-2 rounded-full mt-1.5 ml-auto overflow-hidden">
-                          <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
-                        {formatCurrency(e.revenue, e.currency)}
-                      </td>
-                      <td className="px-3 py-4 text-right">
-                        <button className="text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2">
-                          <MoreHorizontal size={15} />
-                        </button>
-                      </td>
+                        <ArrowUpRight size={14} className="text-ink-3" />
+                      </div>
+                      <p className="text-[14.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
+                      <p className="text-[12.5px] text-ink-2 mt-0.5">{e.venue}</p>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Desktop table */}
+                <table className="hidden md:table w-full">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                      <th className="text-left px-6 py-3 font-semibold">Event</th>
+                      <th className="text-left px-3 py-3 font-semibold">Date</th>
+                      <th className="text-left px-3 py-3 font-semibold">Status</th>
+                      <th className="text-right px-3 py-3 font-semibold">Sold</th>
+                      <th className="text-right px-3 py-3 font-semibold">Revenue</th>
+                      <th className="px-3 py-3" />
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {MOCK_EVENTS.map((e) => {
+                      const pct = Math.round((e.sold / e.capacity) * 100)
+                      return (
+                        <tr key={e.id} className="hover:bg-paper-2 transition-colors">
+                          <td className="px-6 py-4 max-w-xs">
+                            <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
+                            <p className="text-[12px] text-ink-3 mt-0.5">{e.venue}</p>
+                          </td>
+                          <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{e.startsAt.toLocaleDateString()}</td>
+                          <td className="px-3 py-4">
+                            <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[e.status]}`}>
+                              {e.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4 text-right whitespace-nowrap">
+                            <p className="text-[13px] font-semibold text-ink">{e.sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {e.capacity.toLocaleString()}</span></p>
+                            <div className="w-24 h-1 bg-paper-2 rounded-full mt-1.5 ml-auto overflow-hidden">
+                              <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                          </td>
+                          <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
+                            {formatCurrency(e.revenue, e.currency)}
+                          </td>
+                          <td className="px-3 py-4 text-right">
+                            <button className="text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2">
+                              <MoreHorizontal size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
 
           {/* Side column */}
@@ -335,16 +354,16 @@ export default async function OrganizerPage() {
             {/* Upcoming payout */}
             <div className="rounded-2xl border border-line bg-paper p-5">
               <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">Upcoming payout</p>
-              <p className="text-[32px] font-bold tracking-tight text-ink tabular-nums">$1,536</p>
+              <p className="text-[32px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(0, "USD")}</p>
               <p className="text-[12px] text-ink-3 mt-0.5 mb-4">USD via EcoCash</p>
               <div className="space-y-2 text-[12.5px] text-ink-2">
                 <div className="flex justify-between">
                   <span>Scheduled</span>
-                  <span className="font-medium text-ink">14 May 2026</span>
+                  <span className="font-medium text-ink-3">—</span>
                 </div>
                 <div className="flex justify-between">
                   <span>From event</span>
-                  <span className="font-medium text-ink truncate max-w-[140px]">Nyuki Marathon 2026</span>
+                  <span className="font-medium text-ink-3">—</span>
                 </div>
               </div>
               <button className="mt-5 w-full rounded-xl border border-line text-[13px] font-semibold text-ink py-2.5 hover:bg-paper-2 transition">
@@ -355,18 +374,27 @@ export default async function OrganizerPage() {
             {/* VIP attendees */}
             <div className="rounded-2xl border border-line bg-paper p-5 flex-1">
               <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">Top buyers</p>
-              <div className="space-y-3">
-                {VIP_BUYERS.map((b, i) => (
-                  <div key={b.name} className="flex items-center gap-3">
-                    <span className="text-[11px] font-bold text-ink-3 w-4 tabular-nums">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-ink truncate">{b.name}</p>
-                      <p className="text-[11px] text-ink-3">{b.tickets} tickets</p>
+              {VIP_BUYERS.length === 0 ? (
+                <EmptyState
+                  icon={Users}
+                  title="No buyers yet"
+                  body="Top ticket buyers will appear here."
+                  variant="inline"
+                />
+              ) : (
+                <div className="space-y-3">
+                  {VIP_BUYERS.map((b, i) => (
+                    <div key={b.name} className="flex items-center gap-3">
+                      <span className="text-[11px] font-bold text-ink-3 w-4 tabular-nums">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-ink truncate">{b.name}</p>
+                        <p className="text-[11px] text-ink-3">{b.tickets} tickets</p>
+                      </div>
+                      <span className="text-[13px] font-bold text-ink tabular-nums shrink-0">{formatCurrency(b.spent, "USD")}</span>
                     </div>
-                    <span className="text-[13px] font-bold text-ink tabular-nums shrink-0">{formatCurrency(b.spent, "USD")}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
@@ -378,22 +406,32 @@ export default async function OrganizerPage() {
           {/* Sales by event */}
           <div className="col-span-12 lg:col-span-5 rounded-2xl border border-line bg-paper p-5">
             <p className="text-[16px] font-semibold tracking-tight text-ink mb-5">Sales by event</p>
-            <div className="space-y-4">
-              {SALES_BY_EVENT.map((e) => {
-                const pct = Math.round((e.revenue / maxSales) * 100)
-                return (
-                  <div key={e.title}>
-                    <div className="flex justify-between items-baseline mb-1.5">
-                      <p className="text-[13px] font-medium text-ink truncate max-w-[180px]">{e.title}</p>
-                      <span className="text-[13px] font-bold text-ink tabular-nums shrink-0 ml-3">{formatCurrency(e.revenue, "USD")}</span>
+            {SALES_BY_EVENT.length === 0 ? (
+              <EmptyState
+                icon={DollarSign}
+                title="No sales data yet"
+                body="Revenue by event will appear here once orders come in."
+                variant="inline"
+              />
+            ) : (
+              <div className="space-y-4">
+                {SALES_BY_EVENT.map((e) => {
+                  const maxSales = Math.max(...SALES_BY_EVENT.map((s) => s.revenue))
+                  const pct = Math.round((e.revenue / maxSales) * 100)
+                  return (
+                    <div key={e.title}>
+                      <div className="flex justify-between items-baseline mb-1.5">
+                        <p className="text-[13px] font-medium text-ink truncate max-w-[180px]">{e.title}</p>
+                        <span className="text-[13px] font-bold text-ink tabular-nums shrink-0 ml-3">{formatCurrency(e.revenue, "USD")}</span>
+                      </div>
+                      <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
+                        <div className="h-full bg-navy rounded-full tp-progress-fill" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                    <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
-                      <div className="h-full bg-navy rounded-full tp-progress-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Recent orders */}
@@ -402,59 +440,69 @@ export default async function OrganizerPage() {
               <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent orders</h2>
             </div>
 
-            {/* Mobile: stacked cards */}
-            <div className="md:hidden divide-y divide-line">
-              {MOCK_ORDERS.map((o) => (
-                <div key={`${o.name}-${o.ago}`} className="p-4">
-                  <div className="flex justify-between items-start gap-2 mb-1">
-                    <p className="text-[13.5px] font-semibold text-ink">{o.name}</p>
-                    <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full shrink-0 ${ORDER_STATUS_STYLE[o.status]}`}>
-                      {o.status}
-                    </span>
-                  </div>
-                  <p className="text-[12px] text-ink-3 truncate mb-2">{o.event}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(o.amount, "USD")}</span>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method]}`}>{o.method}</span>
-                    <span className="text-[11px] text-ink-3 ml-auto">{o.ago}</span>
-                  </div>
+            {MOCK_ORDERS.length === 0 ? (
+              <EmptyState
+                icon={ShoppingCart}
+                title="No orders yet"
+                body="Orders will appear here as attendees purchase tickets."
+              />
+            ) : (
+              <>
+                {/* Mobile: stacked cards */}
+                <div className="md:hidden divide-y divide-line">
+                  {MOCK_ORDERS.map((o) => (
+                    <div key={`${o.name}-${o.ago}`} className="p-4">
+                      <div className="flex justify-between items-start gap-2 mb-1">
+                        <p className="text-[13.5px] font-semibold text-ink">{o.name}</p>
+                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full shrink-0 ${ORDER_STATUS_STYLE[o.status]}`}>
+                          {o.status}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-ink-3 truncate mb-2">{o.event}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(o.amount, "USD")}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method]}`}>{o.method}</span>
+                        <span className="text-[11px] text-ink-3 ml-auto">{o.ago}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Desktop: table */}
-            <table className="hidden md:table w-full">
-              <thead>
-                <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
-                  <th className="text-left px-5 py-3 font-semibold">Customer</th>
-                  <th className="text-left px-3 py-3 font-semibold">Event</th>
-                  <th className="text-right px-3 py-3 font-semibold">Amount</th>
-                  <th className="text-center px-3 py-3 font-semibold">Method</th>
-                  <th className="text-center px-3 py-3 font-semibold">Status</th>
-                  <th className="text-right px-3 py-3 font-semibold">When</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {MOCK_ORDERS.map((o) => (
-                  <tr key={`${o.name}-${o.ago}`} className="hover:bg-paper-2 transition-colors">
-                    <td className="px-5 py-3 text-[13px] font-semibold text-ink whitespace-nowrap">{o.name}</td>
-                    <td className="px-3 py-3 text-[12px] text-ink-2 max-w-[160px]">
-                      <span className="line-clamp-1">{o.event}</span>
-                    </td>
-                    <td className="px-3 py-3 text-right text-[13px] font-bold text-ink tabular-nums whitespace-nowrap">{formatCurrency(o.amount, "USD")}</td>
-                    <td className="px-3 py-3 text-center">
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method]}`}>{o.method}</span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ORDER_STATUS_STYLE[o.status]}`}>
-                        {o.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right text-[11.5px] text-ink-3 whitespace-nowrap">{o.ago}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                {/* Desktop: table */}
+                <table className="hidden md:table w-full">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                      <th className="text-left px-5 py-3 font-semibold">Customer</th>
+                      <th className="text-left px-3 py-3 font-semibold">Event</th>
+                      <th className="text-right px-3 py-3 font-semibold">Amount</th>
+                      <th className="text-center px-3 py-3 font-semibold">Method</th>
+                      <th className="text-center px-3 py-3 font-semibold">Status</th>
+                      <th className="text-right px-3 py-3 font-semibold">When</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {MOCK_ORDERS.map((o) => (
+                      <tr key={`${o.name}-${o.ago}`} className="hover:bg-paper-2 transition-colors">
+                        <td className="px-5 py-3 text-[13px] font-semibold text-ink whitespace-nowrap">{o.name}</td>
+                        <td className="px-3 py-3 text-[12px] text-ink-2 max-w-[160px]">
+                          <span className="line-clamp-1">{o.event}</span>
+                        </td>
+                        <td className="px-3 py-3 text-right text-[13px] font-bold text-ink tabular-nums whitespace-nowrap">{formatCurrency(o.amount, "USD")}</td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method]}`}>{o.method}</span>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ORDER_STATUS_STYLE[o.status]}`}>
+                            {o.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right text-[11.5px] text-ink-3 whitespace-nowrap">{o.ago}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
         </div>
 
@@ -464,19 +512,28 @@ export default async function OrganizerPage() {
           {/* Activity timeline */}
           <div className="col-span-12 lg:col-span-5 rounded-2xl border border-line bg-paper p-5">
             <p className="text-[16px] font-semibold tracking-tight text-ink mb-5">What&apos;s happening</p>
-            <div className="space-y-4">
-              {ACTIVITY.map(({ icon: Icon, text, ago }) => (
-                <div key={text} className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-lg bg-paper-2 p-1.5 shrink-0">
-                    <Icon size={13} className="text-ink-2" />
+            {ACTIVITY.length === 0 ? (
+              <EmptyState
+                icon={Calendar}
+                title="No recent activity"
+                body="Activity from your events will appear here."
+                variant="inline"
+              />
+            ) : (
+              <div className="space-y-4">
+                {ACTIVITY.map(({ icon: Icon, text, ago }) => (
+                  <div key={text} className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-paper-2 p-1.5 shrink-0">
+                      <Icon size={13} className="text-ink-2" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-ink leading-snug">{text}</p>
+                      <p className="text-[11px] text-ink-3 mt-0.5">{ago}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-ink leading-snug">{text}</p>
-                    <p className="text-[11px] text-ink-3 mt-0.5">{ago}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick links */}

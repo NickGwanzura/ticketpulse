@@ -3,12 +3,12 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Calendar, MapPin, Ticket, ArrowUpRight, Download, Share2,
-  Wallet, TrendingUp, ShoppingBag, Bus, Camera, RotateCcw,
-  HelpCircle, ClipboardList, CheckCircle2,
-  Star,
+  Wallet, CheckCircle2, ClipboardList,
+  HelpCircle, Star, Activity,
 } from "lucide-react"
 import QrCode from "@/components/QrCode"
 import PageHeader from "@/components/dashboard/PageHeader"
+import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const FEATURED_TICKET = {
@@ -24,86 +24,27 @@ const FEATURED_TICKET = {
   currency: "USD",
 } as const
 
-const UPCOMING_TICKETS = [
-  {
-    id: "TP-2026-RUMBLE-B0198",
-    event: "Rumble in SA, Pretoria",
-    category: "Concert",
-    emoji: "🎵",
-    venue: "Propaganda, Pretoria",
-    startsAt: new Date("2026-05-17T12:00:00"),
-    href: "/tickets/TP-2026-RUMBLE-B0198",
-  },
-  {
-    id: "TP-2026-WARMUP-C0044",
-    event: "Nyuki Warm-up Run",
-    category: "Walkathon",
-    emoji: "🚶",
-    venue: "Harare Gardens",
-    startsAt: new Date("2026-04-12T07:00:00"),
-    href: "/tickets/TP-2026-WARMUP-C0044",
-  },
-  {
-    id: "TP-2026-NYUKI-A0427",
-    event: "Nyuki Marathon 2026: One Bee, Million Futures",
-    category: "Marathon",
-    emoji: "🏃",
-    venue: "National Sports Stadium, Harare",
-    startsAt: new Date("2026-05-17T06:00:00"),
-    href: "/tickets/TP-2026-NYUKI-A0427",
-  },
-] as const
+type UpcomingTicket = {
+  id: string
+  event: string
+  category: string
+  emoji: string
+  venue: string
+  startsAt: Date
+  href: string
+}
 
-const ACTIVITY = [
-  {
-    icon: Ticket,
-    title: "Ticket purchased",
-    sub: "Nyuki Marathon 2026 — Early Bird Half Marathon",
-    ago: "2 days ago",
-    color: "text-blue",
-    bg: "bg-blue-soft",
-  },
-  {
-    icon: ShoppingBag,
-    title: "Merch ordered",
-    sub: "Nyuki 2026 finisher tee (L) + cap",
-    ago: "2 days ago",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-  },
-  {
-    icon: Bus,
-    title: "Shuttle booked",
-    sub: "Kombi, Avondale to NSS — 05:00 pickup",
-    ago: "1 day ago",
-    color: "text-amber-600",
-    bg: "bg-amber-50",
-  },
-  {
-    icon: Camera,
-    title: "Photo pack purchased",
-    sub: "Race day digital photos — high resolution",
-    ago: "1 day ago",
-    color: "text-violet-600",
-    bg: "bg-violet-50",
-  },
-  {
-    icon: Ticket,
-    title: "Ticket purchased",
-    sub: "Rumble in SA, Pretoria — General Admission",
-    ago: "5 days ago",
-    color: "text-blue",
-    bg: "bg-blue-soft",
-  },
-  {
-    icon: RotateCcw,
-    title: "Refund processed",
-    sub: "Nyuki Warm-up Run — EcoCash refund $8.00",
-    ago: "8 days ago",
-    color: "text-rose-600",
-    bg: "bg-rose-50",
-  },
-] as const
+type ActivityItem = {
+  icon: React.ElementType
+  title: string
+  sub: string
+  ago: string
+  color: string
+  bg: string
+}
+
+const UPCOMING_TICKETS: UpcomingTicket[] = []
+const ACTIVITY: ActivityItem[] = []
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -128,10 +69,10 @@ export default async function DashboardPage() {
         {/* Stats strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {[
-            { l: "Upcoming events", v: "3",     i: Calendar,  trend: "Next: 17 May" },
-            { l: "Total tickets",   v: "5",     i: Ticket,    trend: "All time" },
-            { l: "Past events",     v: "12",    i: CheckCircle2, trend: "Completed" },
-            { l: "Loyalty points",  v: "1,240", i: Star,      trend: "+50 this week" },
+            { l: "Upcoming events", v: "0",  i: Calendar,    trend: "—" },
+            { l: "Total tickets",   v: "0",  i: Ticket,      trend: "All time" },
+            { l: "Past events",     v: "0",  i: CheckCircle2, trend: "Completed" },
+            { l: "Loyalty points",  v: "0",  i: Star,        trend: "—" },
           ].map(({ l, v, i: Icon, trend }) => (
             <div key={l} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <div className="flex items-center gap-2 mb-2.5">
@@ -139,9 +80,7 @@ export default async function DashboardPage() {
                 <span className="text-[11.5px] text-ink-3">{l}</span>
               </div>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
-              <p className="text-[11.5px] text-emerald-700 mt-2 inline-flex items-center gap-1">
-                <TrendingUp size={11} /> {trend}
-              </p>
+              <p className="text-[11.5px] text-ink-3 mt-2">{trend}</p>
             </div>
           ))}
         </div>
@@ -237,34 +176,46 @@ export default async function DashboardPage() {
             <div className="px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink">Upcoming tickets</h2>
             </div>
-            <div className="divide-y divide-line">
-              {UPCOMING_TICKETS.map((t) => (
-                <Link
-                  key={t.id}
-                  href={t.href}
-                  className="flex items-center gap-3 p-4 md:p-5 hover:bg-paper-2 transition-colors group"
-                >
-                  <div className="w-9 h-9 rounded-full border border-line bg-paper-2 flex items-center justify-center text-[18px] shrink-0 select-none">
-                    {t.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13.5px] font-semibold text-ink leading-snug line-clamp-1">{t.event}</p>
-                    <p className="text-[11.5px] text-ink-3 mt-0.5">
-                      {formatDateShort(t.startsAt)} &middot; {t.venue.split(",")[0]}
-                    </p>
-                  </div>
-                  <ArrowUpRight size={14} className="text-ink-3 group-hover:text-ink transition-colors shrink-0" />
-                </Link>
-              ))}
-            </div>
-            <div className="px-5 md:px-6 py-3.5 border-t border-line">
-              <Link
-                href="/tickets"
-                className="text-[12.5px] font-semibold text-navy hover:underline inline-flex items-center gap-1"
-              >
-                View all tickets <ArrowUpRight size={12} />
-              </Link>
-            </div>
+            {UPCOMING_TICKETS.length === 0 ? (
+              <EmptyState
+                icon={Ticket}
+                title="No upcoming tickets"
+                body="Tickets you buy will appear here."
+                ctaLabel="Browse events"
+                ctaHref="/events"
+              />
+            ) : (
+              <>
+                <div className="divide-y divide-line">
+                  {UPCOMING_TICKETS.map((t) => (
+                    <Link
+                      key={t.id}
+                      href={t.href}
+                      className="flex items-center gap-3 p-4 md:p-5 hover:bg-paper-2 transition-colors group"
+                    >
+                      <div className="w-9 h-9 rounded-full border border-line bg-paper-2 flex items-center justify-center text-[18px] shrink-0 select-none">
+                        {t.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13.5px] font-semibold text-ink leading-snug line-clamp-1">{t.event}</p>
+                        <p className="text-[11.5px] text-ink-3 mt-0.5">
+                          {formatDateShort(t.startsAt)} &middot; {t.venue.split(",")[0]}
+                        </p>
+                      </div>
+                      <ArrowUpRight size={14} className="text-ink-3 group-hover:text-ink transition-colors shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+                <div className="px-5 md:px-6 py-3.5 border-t border-line">
+                  <Link
+                    href="/tickets"
+                    className="text-[12.5px] font-semibold text-navy hover:underline inline-flex items-center gap-1"
+                  >
+                    View all tickets <ArrowUpRight size={12} />
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -273,23 +224,31 @@ export default async function DashboardPage() {
           <div className="px-5 md:px-6 py-4 border-b border-line">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent activity</h2>
           </div>
-          <div className="divide-y divide-line">
-            {ACTIVITY.map((item, i) => {
-              const Icon = item.icon
-              return (
-                <div key={i} className="flex items-start gap-3.5 px-5 md:px-6 py-4">
-                  <div className={`mt-0.5 w-8 h-8 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                    <Icon size={14} className={item.color} />
+          {ACTIVITY.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="No activity yet"
+              body="Your ticket purchases, refunds, and orders will appear here."
+            />
+          ) : (
+            <div className="divide-y divide-line">
+              {ACTIVITY.map((item, i) => {
+                const Icon = item.icon
+                return (
+                  <div key={i} className="flex items-start gap-3.5 px-5 md:px-6 py-4">
+                    <div className={`mt-0.5 w-8 h-8 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
+                      <Icon size={14} className={item.color} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13.5px] font-semibold text-ink">{item.title}</p>
+                      <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{item.sub}</p>
+                    </div>
+                    <span className="text-[11.5px] text-ink-3 whitespace-nowrap mt-0.5">{item.ago}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13.5px] font-semibold text-ink">{item.title}</p>
-                    <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{item.sub}</p>
-                  </div>
-                  <span className="text-[11.5px] text-ink-3 whitespace-nowrap mt-0.5">{item.ago}</span>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Quick actions */}
@@ -334,7 +293,7 @@ export default async function DashboardPage() {
               <Star size={15} className="text-blue" />
             </div>
             <div>
-              <p className="text-[14px] font-semibold text-ink">You have 1,240 loyalty points</p>
+              <p className="text-[14px] font-semibold text-ink">You have 0 loyalty points</p>
               <p className="text-[12.5px] text-ink-2 mt-0.5">
                 Earn 50 points for every friend you refer. Redeem for ticket discounts.
               </p>

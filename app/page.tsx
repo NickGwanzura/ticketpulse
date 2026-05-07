@@ -2,34 +2,10 @@ import Link from "next/link"
 import {
   ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
   Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,
-  Calendar, MapPin, Star, Quote, FileText, ScanLine, DoorOpen, ShieldCheck,
+  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
-
-const TESTIMONIALS = [
-  {
-    quote: "We sold out the marathon in 9 days. The shuttle and merch bundles took the back-office work off our plate completely.",
-    name: "Tendai Moyo",
-    role: "Director, Worker Bees Africa",
-    initials: "TM",
-    color: "from-violet-500 to-fuchsia-500",
-  },
-  {
-    quote: "Verified payouts in USD the day after our event. After years of chasing organizers, this is what running a small catering business should feel like.",
-    name: "Rumbidzai Sibanda",
-    role: "Owner, Mama's Kitchen",
-    initials: "RS",
-    color: "from-amber-500 to-rose-500",
-  },
-  {
-    quote: "Mobile QR entry handled 1,200 runners in a tent with one bar of signal. I've never seen a queue move that fast.",
-    name: "Farai Chikomba",
-    role: "Race director, Nyuki Marathon",
-    initials: "FC",
-    color: "from-sky-500 to-blue-600",
-  },
-]
 
 const FAQ = [
   { q: "How do I get my ticket after I buy?",       a: "Instantly. You get a printable PDF ticket by email and inside your TicketPulse account, plus a mobile QR. The QR is bound to your account, so you can sign in on any device the day-of." },
@@ -377,43 +353,6 @@ export default function Home() {
               </Link>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-        <div className="mb-10 md:mb-12 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Customer stories</p>
-          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Loved by organizers and vendors.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">From sold-out marathons to weekly jazz nights — the people running events on TicketPulse, in their own words.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-          {TESTIMONIALS.map((t) => (
-            <figure
-              key={t.name}
-              className="relative flex flex-col rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:shadow-[0_18px_60px_-24px_rgba(10,37,64,0.18)] transition-all duration-300"
-            >
-              <Quote size={22} className="text-blue/50 mb-4" />
-              <blockquote className="flex-1">
-                <p className="text-[15px] leading-relaxed text-ink">&ldquo;{t.quote}&rdquo;</p>
-              </blockquote>
-              <div className="mt-5 flex items-center gap-1 mb-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} size={12} className="text-amber-500 fill-amber-500" />
-                ))}
-              </div>
-              <figcaption className="flex items-center gap-3 pt-4 border-t border-line">
-                <span className={`inline-flex w-9 h-9 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-white text-[12px] font-semibold ring-2 ring-paper shadow-sm shrink-0`}>
-                  {t.initials}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{t.name}</p>
-                  <p className="text-[12px] text-ink-3 truncate">{t.role}</p>
-                </div>
-              </figcaption>
-            </figure>
-          ))}
         </div>
       </section>
 

@@ -6,18 +6,18 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 type Status = "pending" | "transit" | "completed" | "held"
 
-const PAYOUTS = [
-  { id: "PO-2401", organizer: "Tariro Events",       event: "Rumble in SA, Pretoria",         amount: 12480, currency: "ZAR", method: "Bank",    requestedAt: new Date("2026-04-29"), status: "pending"   as Status },
-  { id: "PO-2402", organizer: "Kudzai Productions",  event: "Nyuki Marathon 2026",            amount: 4280,  currency: "USD", method: "EcoCash", requestedAt: new Date("2026-04-28"), status: "pending"   as Status },
-  { id: "PO-2403", organizer: "Chiedza Live",        event: "Harare Jazz Night",              amount: 1820,  currency: "USD", method: "EcoCash", requestedAt: new Date("2026-04-28"), status: "transit"   as Status },
-  { id: "PO-2404", organizer: "Tendai Outdoors",     event: "Vic Falls Eco Expedition",       amount: 2440,  currency: "USD", method: "Bank",    requestedAt: new Date("2026-04-27"), status: "transit"   as Status },
-  { id: "PO-2405", organizer: "Farai Films",         event: "Bulawayo Film Premiere: Mukoma", amount: 980,   currency: "USD", method: "EcoCash", requestedAt: new Date("2026-04-26"), status: "completed" as Status },
-  { id: "PO-2406", organizer: "Anesu Events",        event: "Mutare Country Fair",            amount: 1640,  currency: "USD", method: "Bank",    requestedAt: new Date("2026-04-26"), status: "completed" as Status },
-  { id: "PO-2407", organizer: "Tariro Events",       event: "Sungura Sundowner",              amount: 740,   currency: "USD", method: "EcoCash", requestedAt: new Date("2026-04-25"), status: "completed" as Status },
-  { id: "PO-2408", organizer: "Munyaradzi Tafadzwa", event: "Avondale Open Mic",              amount: 320,   currency: "USD", method: "EcoCash", requestedAt: new Date("2026-04-24"), status: "held"      as Status },
-  { id: "PO-2409", organizer: "Rumbidzai Chari",     event: "CBD 5K",                          amount: 540,   currency: "USD", method: "Bank",    requestedAt: new Date("2026-04-24"), status: "held"      as Status },
-  { id: "PO-2410", organizer: "Tariro Events",       event: "Sungura Sundowner Vol. 2",        amount: 420,   currency: "USD", method: "EcoCash", requestedAt: new Date("2026-04-23"), status: "completed" as Status },
-] as const
+type Payout = {
+  id: string
+  organizer: string
+  event: string
+  amount: number
+  currency: string
+  method: string
+  requestedAt: Date
+  status: Status
+}
+
+const PAYOUTS: Payout[] = []
 
 const STATUS_STYLE: Record<Status, string> = {
   pending:   "bg-amber-50 text-amber-700",
@@ -85,8 +85,8 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
               <Wallet size={15} className="text-blue" />
             </span>
             <div>
-              <p className="text-[14px] font-semibold tracking-tight text-ink">2 payouts ready to send</p>
-              <p className="text-[12.5px] text-ink-2">Combined value $16,760. Funds clear in 1-2 business days.</p>
+              <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(0, "USD")} ready to send</p>
+              <p className="text-[12.5px] text-ink-2">No pending payouts. New requests will appear here.</p>
             </div>
           </div>
           <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition-colors">
@@ -118,78 +118,80 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
 
         {/* Table */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
-          <div className="hidden md:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
-                  <th className="text-left px-5 py-3 font-semibold">Organizer / Event</th>
-                  <th className="text-left px-3 py-3 font-semibold">Method</th>
-                  <th className="text-left px-3 py-3 font-semibold">Requested</th>
-                  <th className="text-left px-3 py-3 font-semibold">Status</th>
-                  <th className="text-right px-3 py-3 font-semibold">Amount</th>
-                  <th className="px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
+          {visible.length > 0 ? (
+            <>
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                      <th className="text-left px-5 py-3 font-semibold">Organizer / Event</th>
+                      <th className="text-left px-3 py-3 font-semibold">Method</th>
+                      <th className="text-left px-3 py-3 font-semibold">Requested</th>
+                      <th className="text-left px-3 py-3 font-semibold">Status</th>
+                      <th className="text-right px-3 py-3 font-semibold">Amount</th>
+                      <th className="px-5 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {visible.map((p) => (
+                      <tr key={p.id} className="hover:bg-paper-2 transition-colors">
+                        <td className="px-5 py-4">
+                          <p className="text-[13.5px] font-semibold tracking-tight text-ink">{p.organizer}</p>
+                          <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.event} · {p.id}</p>
+                        </td>
+                        <td className="px-3 py-4">
+                          <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
+                            {p.method === "EcoCash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                            {p.method}
+                          </span>
+                        </td>
+                        <td className="px-3 py-4 text-[12.5px] text-ink-2 whitespace-nowrap">{formatDateShort(p.requestedAt)}</td>
+                        <td className="px-3 py-4">
+                          <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status]}`}>
+                            {STATUS_LABEL[p.status]}
+                          </span>
+                        </td>
+                        <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
+                          {formatCurrency(p.amount, p.currency)}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all">
+                            View <ArrowUpRight size={11} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <ul className="md:hidden divide-y divide-line">
                 {visible.map((p) => (
-                  <tr key={p.id} className="hover:bg-paper-2 transition-colors">
-                    <td className="px-5 py-4">
-                      <p className="text-[13.5px] font-semibold tracking-tight text-ink">{p.organizer}</p>
-                      <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.event} · {p.id}</p>
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
-                        {p.method === "EcoCash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                        {p.method}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-[12.5px] text-ink-2 whitespace-nowrap">{formatDateShort(p.requestedAt)}</td>
-                    <td className="px-3 py-4">
-                      <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status]}`}>
+                  <li key={p.id} className="p-5">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{p.organizer}</p>
+                        <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.event}</p>
+                      </div>
+                      <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[p.status]}`}>
                         {STATUS_LABEL[p.status]}
                       </span>
-                    </td>
-                    <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
-                      {formatCurrency(p.amount, p.currency)}
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <button className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all">
-                        View <ArrowUpRight size={11} />
-                      </button>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-[12.5px]">
+                      <span className="inline-flex items-center gap-1.5 text-ink-2">
+                        {p.method === "EcoCash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                        {p.method} · {formatDateShort(p.requestedAt)}
+                      </span>
+                      <span className="text-[14px] font-bold tracking-tight text-ink">
+                        {formatCurrency(p.amount, p.currency)}
+                      </span>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <ul className="md:hidden divide-y divide-line">
-            {visible.map((p) => (
-              <li key={p.id} className="p-5">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{p.organizer}</p>
-                    <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.event}</p>
-                  </div>
-                  <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[p.status]}`}>
-                    {STATUS_LABEL[p.status]}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 text-[12.5px]">
-                  <span className="inline-flex items-center gap-1.5 text-ink-2">
-                    {p.method === "EcoCash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                    {p.method} · {formatDateShort(p.requestedAt)}
-                  </span>
-                  <span className="text-[14px] font-bold tracking-tight text-ink">
-                    {formatCurrency(p.amount, p.currency)}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {visible.length === 0 && (
+              </ul>
+            </>
+          ) : (
             <EmptyState
               icon={Inbox}
               title="No payouts in this status"
