@@ -1,7 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
 import { Check, User, CalendarCog, Store, Mail, Lock, ArrowRight } from "lucide-react"
-import DemoAccounts from "@/components/auth/DemoAccounts"
 
 const ROLES = [
   { value: "attendee",  label: "Attendee",  body: "Buy tickets, book shuttles, grab merch and photo packs.",   icon: User },
@@ -39,14 +38,31 @@ export default async function SignUpPage({
         <form
           action={async (formData: FormData) => {
             "use server"
-            const role  = (formData.get("role") as string) ?? "attendee"
-            const email = formData.get("email")    as string
-            const password = formData.get("password") as string
-            const name  = formData.get("name")     as string
+            const { db } = await import("@/db")
+            const { users } = await import("@/db/schema")
+            const { eq } = await import("drizzle-orm")
+            const { hashPassword } = await import("@/lib/password")
+
+            const role  = ((formData.get("role") as string) ?? "attendee") as "attendee" | "organizer" | "vendor"
+            const email = ((formData.get("email") as string) ?? "").toLowerCase().trim()
+            const password = (formData.get("password") as string) ?? ""
+            const name  = ((formData.get("name") as string) ?? "").trim() || null
+            if (!email || password.length < 6) return
+
+            const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+            if (!existing) {
+              await db.insert(users).values({
+                email,
+                name,
+                role,
+                passwordHash: hashPassword(password),
+                emailVerified: new Date(),
+              })
+            }
+
             await signIn("credentials", {
               email,
               password,
-              name,
               redirectTo: role === "organizer" ? "/organizer" : role === "vendor" ? "/vendors/apply" : "/dashboard",
             })
           }}
@@ -162,10 +178,6 @@ export default async function SignUpPage({
           </button>
         </form>
 
-        <div className="my-5">
-          <DemoAccounts />
-        </div>
-
         <p className="text-center text-xs text-ink-3 mt-6">
           Already have an account?{" "}
           <Link href="/auth/signin" className="font-semibold text-navy hover:underline">Sign in</Link>
@@ -174,7 +186,7 @@ export default async function SignUpPage({
         <ul className="mt-8 space-y-2.5">
           {[
             "Mobile QR ticket entry",
-            "Pay with EcoCash, USD, ZAR, Card",
+            "Pay with EcoCash or Visa",
             "Cancel & refund up to 24hrs before",
           ].map((p) => (
             <li key={p} className="flex items-center gap-2 text-[13px] text-ink-2">

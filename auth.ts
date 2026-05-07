@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google"
 import Resend from "next-auth/providers/resend"
 import Credentials from "next-auth/providers/credentials"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import {
   users,
@@ -10,6 +11,7 @@ import {
   sessions,
   verificationTokens,
 } from "@/db/schema"
+import { verifyPassword } from "@/lib/password"
 
 // DrizzleAdapter introspects `db` at construction time, so we only
 // build it when DATABASE_URL is available. With JWT-strategy sessions
@@ -48,36 +50,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email:    { label: "Email",    type: "email" },
         password: { label: "Password", type: "password" },
-        name:     { label: "Name",     type: "text" },
       },
       async authorize(credentials) {
         const email    = (credentials?.email    as string | undefined)?.toLowerCase().trim()
         const password = (credentials?.password as string | undefined) ?? ""
-        const name     = (credentials?.name     as string | undefined)?.trim() || null
         if (!email || !password) return null
+        if (!process.env.DATABASE_URL) return null
 
-        if (process.env.NODE_ENV !== "production" || process.env.ENABLE_DEMO_AUTH === "true") {
-          const DEMO: Record<string, { role: "attendee" | "organizer" | "vendor" | "admin"; name: string }> = {
-            "demo@ticketpulse.zw":      { role: "attendee",  name: "Demo Attendee" },
-            "organizer@ticketpulse.zw": { role: "organizer", name: "Demo Organizer" },
-            "vendor@ticketpulse.zw":    { role: "vendor",    name: "Demo Vendor" },
-            "admin@ticketpulse.zw":     { role: "admin",     name: "Demo Admin" },
-          }
-          const demo = DEMO[email]
-          if (demo) {
-            if (password !== "demo1234") return null
-            return { id: `demo-${email}`, email, name: demo.name, role: demo.role }
-          }
+        const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+        if (!user || !user.passwordHash) return null
+        if (!verifyPassword(password, user.passwordHash)) return null
 
-          if (password.length < 6) return null
-          return {
-            id: `demo-${email}`,
-            email,
-            name: name ?? email.split("@")[0],
-            role: "attendee",
-          }
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          role: user.role ?? "attendee",
         }
-        return null
       },
     }),
   ],

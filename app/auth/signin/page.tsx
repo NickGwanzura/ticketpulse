@@ -1,7 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
 import { Mail, Lock, ArrowRight } from "lucide-react"
-import DemoAccounts from "@/components/auth/DemoAccounts"
 
 export default function SignInPage() {
   return (
@@ -132,11 +131,6 @@ export default function SignInPage() {
               Email me a link
             </button>
           </form>
-        </div>
-
-        {/* Demo */}
-        <div className="my-5">
-          <DemoAccounts />
         </div>
 
         <p className="text-center text-xs text-ink-3 mt-4">
