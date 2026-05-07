@@ -9,13 +9,23 @@ const { auth } = NextAuth(authConfig)
 
 const protectedRoutes = ["/dashboard", "/organizer", "/account", "/orders", "/payouts", "/cart", "/checkout"]
 const authRoutes = ["/auth/signin", "/auth/signup"]
+const ACCESS_COOKIE = "tp_access"
 
 export default auth((req) => {
   const { nextUrl } = req
-  const isLoggedIn = !!req.auth
+  const path = nextUrl.pathname
 
-  const isProtected = protectedRoutes.some((r) => nextUrl.pathname.startsWith(r))
-  const isAuthRoute = authRoutes.some((r) => nextUrl.pathname.startsWith(r))
+  if (process.env.LAUNCH_GATE_ENABLED === "true") {
+    const hasAccess = req.cookies.get(ACCESS_COOKIE)?.value === "ok"
+    const isComingSoon = path === "/coming-soon" || path.startsWith("/coming-soon/")
+    if (!hasAccess && !isComingSoon) {
+      return NextResponse.redirect(new URL("/coming-soon", nextUrl))
+    }
+  }
+
+  const isLoggedIn = !!req.auth
+  const isProtected = protectedRoutes.some((r) => path.startsWith(r))
+  const isAuthRoute = authRoutes.some((r) => path.startsWith(r))
 
   if (isProtected && !isLoggedIn) {
     return NextResponse.redirect(new URL("/auth/signin", nextUrl))
