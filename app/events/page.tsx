@@ -4,34 +4,9 @@ import { Search, SlidersHorizontal } from "lucide-react"
 
 const MOCK_EVENTS = [
   {
-    id: "1", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA 2026, Pretoria",
-    category: "concert", venue: "Propaganda", city: "Pretoria", startsAt: new Date("2026-05-17T12:00:00"),
-    featured: true, lowestPrice: 350, currency: "ZAR", status: "published",
-  },
-  {
-    id: "2", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures",
+    id: "1", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures",
     category: "marathon", venue: "National Sports Stadium", city: "Harare", startsAt: new Date("2026-05-17T06:00:00"),
     featured: true, lowestPrice: 5, currency: "USD", status: "published",
-  },
-  {
-    id: "3", slug: "becoming-madam-boss-harare", title: "Becoming Madam Boss: Film Premiere, Harare",
-    category: "film", venue: "Ster-Kinekor", city: "Harare", startsAt: new Date("2026-05-30T18:00:00"),
-    featured: true, lowestPrice: 15, currency: "USD", status: "published",
-  },
-  {
-    id: "4", slug: "rumble-in-sa-durban-2026", title: "Rumble in SA 2026, Durban",
-    category: "concert", venue: "The Station", city: "Durban", startsAt: new Date("2026-05-16T12:00:00"),
-    featured: false, lowestPrice: 350, currency: "ZAR", status: "published",
-  },
-  {
-    id: "5", slug: "becoming-madam-boss-london", title: "Becoming Madam Boss: Film Premiere, London",
-    category: "film", venue: "Vue Cinema", city: "London", startsAt: new Date("2026-06-19T18:00:00"),
-    featured: true, lowestPrice: 20, currency: "GBP", status: "published",
-  },
-  {
-    id: "6", slug: "nyuki-marathon-exhibition-stands", title: "Nyuki Marathon: Corporate Exhibition Stands",
-    category: "exhibition", venue: "National Sports Stadium", city: "Harare", startsAt: new Date("2026-05-17T06:00:00"),
-    featured: false, lowestPrice: 200, currency: "USD", status: "published",
   },
 ]
 
@@ -67,7 +42,7 @@ export default async function EventsPage({
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Discover</p>
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight text-ink">All events</h1>
           <p className="mt-3 text-[15px] text-ink-2 max-w-xl">
-            {filtered.length} live across Zimbabwe and the region. Filter by category or search by venue and city.
+            {filtered.length === 1 ? "1 event live right now" : `${filtered.length} events live`} — more landing as organizers come online.
           </p>
         </div>
       </div>

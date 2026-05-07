@@ -16,13 +16,6 @@ const MILESTONES = [
   { year: "2026", title: "120+ events live",          body: "And just getting started." },
 ]
 
-const TEAM = [
-  { name: "Tendai Moyo",   role: "Co-founder & CEO",      bio: "Ex-Econet engineer. Marathon obsessive." },
-  { name: "Ruvimbo Sibanda", role: "Co-founder & Head of Product", bio: "Built mobile commerce at OK Zim." },
-  { name: "Farai Chikomba", role: "Engineering",            bio: "Payments, infra, and the on-call rotation." },
-  { name: "Nyasha Tafara", role: "Partnerships",           bio: "Connects organizers, vendors, sponsors." },
-]
-
 export default function AboutPage() {
   return (
     <div>
@@ -80,28 +73,6 @@ export default function AboutPage() {
               </li>
             ))}
           </ol>
-        </div>
-      </section>
-
-      {/* Team */}
-      <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-20">
-        <div className="mb-10 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Who we are</p>
-          <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">A small team. Big plans.</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {TEAM.map((p) => (
-            <div key={p.name} className="rounded-2xl border border-line bg-paper p-5">
-              <div className="aspect-square rounded-xl bg-gradient-to-br from-blue-soft via-paper-2 to-paper-3 mb-4 flex items-center justify-center">
-                <span className="text-[28px] font-bold tracking-tight text-navy">
-                  {p.name.split(" ").map((n) => n[0]).join("")}
-                </span>
-              </div>
-              <p className="text-[14.5px] font-semibold tracking-tight text-ink">{p.name}</p>
-              <p className="text-[11.5px] font-medium text-blue mt-0.5">{p.role}</p>
-              <p className="text-[12.5px] text-ink-2 mt-2 leading-relaxed">{p.bio}</p>
-            </div>
-          ))}
         </div>
       </section>
 

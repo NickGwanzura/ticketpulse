@@ -48,19 +48,9 @@ const FAQ = [
 
 const FEATURED_EVENTS = [
   {
-    id: "1", slug: "rumble-in-sa-pretoria-2026", title: "Rumble in SA 2026, Pretoria",
-    category: "concert", venue: "Propaganda", city: "Pretoria", startsAt: new Date("2026-05-17T12:00:00"),
-    featured: true, lowestPrice: 350, currency: "ZAR", status: "published",
-  },
-  {
-    id: "2", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures",
+    id: "1", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures",
     category: "marathon", venue: "National Sports Stadium", city: "Harare", startsAt: new Date("2026-05-17T06:00:00"),
     featured: true, lowestPrice: 5, currency: "USD", status: "published",
-  },
-  {
-    id: "3", slug: "becoming-madam-boss-harare", title: "Becoming Madam Boss: Film Premiere",
-    category: "film", venue: "Ster-Kinekor", city: "Harare", startsAt: new Date("2026-05-30T18:00:00"),
-    featured: true, lowestPrice: 15, currency: "USD", status: "published",
   },
 ]
 
@@ -75,37 +65,9 @@ const HERO_TICKETS = [
     gradient: "from-sky-100 via-blue-50 to-cyan-50",
     accent: "text-sky-700",
     badge: { label: "ON SALE", color: "bg-emerald-600 text-white" },
-    rotate: "lg:-rotate-[3deg]",
-    placement: "lg:top-4 lg:right-12 lg:left-auto",
+    rotate: "lg:-rotate-[2deg]",
+    placement: "lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2",
     z: "z-30",
-  },
-  {
-    title: "Rumble in SA, Pretoria",
-    venue: "Propaganda · Pretoria",
-    date: new Date("2026-05-17T12:00:00"),
-    price: 350,
-    currency: "ZAR",
-    emoji: "🎵",
-    gradient: "from-violet-100 via-fuchsia-50 to-pink-50",
-    accent: "text-violet-700",
-    badge: { label: "FEATURED", color: "bg-navy text-white" },
-    rotate: "lg:rotate-[2deg]",
-    placement: "lg:top-32 lg:left-2 lg:right-auto",
-    z: "z-20",
-  },
-  {
-    title: "Becoming Madam Boss",
-    venue: "Ster-Kinekor · Harare",
-    date: new Date("2026-05-30T18:00:00"),
-    price: 15,
-    currency: "USD",
-    emoji: "🎬",
-    gradient: "from-amber-100 via-orange-50 to-rose-50",
-    accent: "text-amber-700",
-    badge: { label: "LIVE", color: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/60", pulse: true },
-    rotate: "lg:-rotate-[4deg]",
-    placement: "lg:top-[260px] lg:right-4 lg:left-auto",
-    z: "z-10",
   },
 ]
 
@@ -150,12 +112,6 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: (typeof HERO_TICKETS)[n
         <div className="absolute inset-0 [background:radial-gradient(400px_circle_at_30%_20%,rgba(255,255,255,0.65),transparent_60%)]" />
         <span className="text-3xl relative">{ticket.emoji}</span>
         <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 ${ticket.badge.color} text-[9.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full`}>
-          {ticket.badge.pulse && (
-            <span className="relative flex w-1.5 h-1.5">
-              <span className="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-75" />
-              <span className="relative block w-1.5 h-1.5 rounded-full bg-rose-500" />
-            </span>
-          )}
           {ticket.badge.label}
         </span>
       </div>
@@ -450,21 +406,13 @@ export default function Home() {
 
       {/* FEATURED */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-8 md:mb-10">
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Trending</p>
-            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Featured events</h2>
-            <p className="mt-3 text-[15px] text-ink-2 max-w-xl">Hand-picked happenings on sale right now — the ones our team is going to themselves.</p>
-          </div>
-          <Link
-            href="/events"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-navy hover:gap-1.5 transition-all"
-          >
-            View all events <ArrowUpRight size={14} />
-          </Link>
+        <div className="mb-8 md:mb-10 max-w-2xl">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
+          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Our launch event.</h2>
+          <p className="mt-3 text-[15px] text-ink-2">We&apos;re starting with one anchor event. More coming as the calendar fills up — <Link href="/events" className="text-navy font-semibold hover:underline">see what else is on</Link>.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+        <div className="max-w-md mx-auto">
           {FEATURED_EVENTS.map((e) => (
             <EventCard key={e.id} {...e} />
           ))}
