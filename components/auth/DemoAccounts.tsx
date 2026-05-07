@@ -1,5 +1,5 @@
 import { signIn } from "@/auth"
-import { User, CalendarCog, Store, ArrowRight, Sparkles, Copy } from "lucide-react"
+import { User, CalendarCog, Store, Shield, ArrowRight, Sparkles, Copy } from "lucide-react"
 
 const DEMO = [
   {
@@ -31,6 +31,16 @@ const DEMO = [
     redirect: "/vendors",
     icon: Store,
     accent: "text-emerald-600",
+  },
+  {
+    role: "admin" as const,
+    label: "Admin",
+    body: "Platform analytics, payouts, oversight.",
+    email: "admin@ticketpulse.zw",
+    password: "demo1234",
+    redirect: "/admin",
+    icon: Shield,
+    accent: "text-rose-600",
   },
 ]
 

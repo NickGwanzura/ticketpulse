@@ -107,6 +107,9 @@ const ACTIVITY = [
 export default async function DashboardPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin")
+  if (session.user.role === "admin")     redirect("/admin")
+  if (session.user.role === "organizer") redirect("/organizer")
+  if (session.user.role === "vendor")    redirect("/vendors")
 
   const attendeeName = session.user.name ?? "Demo Attendee"
 
