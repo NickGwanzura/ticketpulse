@@ -57,7 +57,7 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
-    setMenuOpen(false); setProfileOpen(false); setEventsOpen(false)
+    queueMicrotask(() => { setMenuOpen(false); setProfileOpen(false); setEventsOpen(false) })
   }, [pathname])
 
   // Close events menu on outside click

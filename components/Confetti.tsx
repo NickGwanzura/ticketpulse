@@ -31,7 +31,7 @@ export default function Confetti({ count = 60 }: { count?: number }) {
   const [pieces, setPieces] = useState<Piece[]>([])
 
   useEffect(() => {
-    setPieces(makePieces(count))
+    queueMicrotask(() => { setPieces(makePieces(count)) })
   }, [count])
 
   if (!pieces.length) return null

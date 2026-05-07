@@ -32,7 +32,7 @@ function CheckoutSuccessInner() {
 
   useEffect(() => {
     if (!ready) return
-    setOrder(getOrder(id))
+    queueMicrotask(() => { setOrder(getOrder(id)) })
   }, [ready, id, getOrder])
 
   if (!ready) {
@@ -56,7 +56,6 @@ function CheckoutSuccessInner() {
   }
 
   const tickets = order.items.filter((i) => i.kind === "ticket")
-  const lineCount = order.items.reduce((s, i) => s + i.qty, 0)
   const eventTitle = order.items[0]?.eventTitle ?? "TicketPulse event"
 
   const calendarUrl = (() => {

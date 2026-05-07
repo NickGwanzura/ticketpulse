@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 import { Camera, Download, Lock } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import type { GalleryWithPhotos } from "@/types"
@@ -62,11 +63,12 @@ export default function MediaSection({ galleries, eventTitle }: MediaSectionProp
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {current.photos.map((photo, i) => (
                 <div key={photo.id} className="aspect-square bg-paper-2 rounded-lg overflow-hidden relative group cursor-pointer ring-1 ring-line">
-                  <img
+                  <Image
                     src={photo.thumbnailUrl ?? photo.url}
                     alt={photo.caption ?? `Event photo ${i + 1}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   />
                   <div className="absolute inset-0 bg-ink/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Download size={20} className="text-white" />

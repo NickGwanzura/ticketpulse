@@ -12,7 +12,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (!ready) return
-    setOrders(getOrders())
+    queueMicrotask(() => { setOrders(getOrders()) })
   }, [ready, getOrders])
 
   if (!ready) {

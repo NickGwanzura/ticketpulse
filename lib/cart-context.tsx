@@ -69,11 +69,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) setItems(JSON.parse(raw))
-    } catch {}
-    setReady(true)
+    queueMicrotask(() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) setItems(JSON.parse(raw))
+      } catch {}
+      setReady(true)
+    })
   }, [])
 
   useEffect(() => {
