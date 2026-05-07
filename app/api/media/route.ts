@@ -1,0 +1,56 @@
+import { NextRequest, NextResponse } from "next/server"
+import { db } from "@/db"
+import { eventGalleries, galleryPhotos } from "@/db/schema"
+import { eq, and } from "drizzle-orm"
+import { auth } from "@/auth"
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const eventId = searchParams.get("eventId")
+  const galleryId = searchParams.get("galleryId")
+
+  if (galleryId) {
+    const photos = await db
+      .select()
+      .from(galleryPhotos)
+      .where(eq(galleryPhotos.galleryId, galleryId))
+
+    return NextResponse.json({ photos })
+  }
+
+  if (!eventId) {
+    return NextResponse.json({ error: "eventId or galleryId required" }, { status: 400 })
+  }
+
+  const galleries = await db
+    .select()
+    .from(eventGalleries)
+    .where(and(eq(eventGalleries.eventId, eventId), eq(eventGalleries.isPublic, true)))
+
+  return NextResponse.json({ galleries })
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const body = await req.json()
+  const { eventId, name, description, packPrice, currency, isPublic } = body
+
+  const [gallery] = await db
+    .insert(eventGalleries)
+    .values({
+      eventId,
+      photographerId: session.user.id,
+      name,
+      description,
+      packPrice: packPrice ? String(packPrice) : null,
+      currency: currency ?? "USD",
+      isPublic: isPublic ?? true,
+    })
+    .returning()
+
+  return NextResponse.json({ gallery }, { status: 201 })
+}

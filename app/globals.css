@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: #ffffff;
+  --color-paper-2: #f6f9fc;
+  --color-paper-3: #eef3f8;
+
+  --color-ink: #0a2540;
+  --color-ink-2: #425466;
+  --color-ink-3: #697386;
+
+  --color-line: #e3e8ee;
+  --color-line-2: #d0d9e2;
+
+  --color-navy: #0a2540;
+  --color-navy-700: #143d6b;
+  --color-navy-600: #1a4f8c;
+
+  --color-blue: #0570de;
+  --color-blue-soft: #eff4fb;
+
+  --color-success: #0e9f6e;
+}
+
+html { color-scheme: light; }
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-navy);
+  color: white;
+}
+
+/* Prevent iOS Safari zoom-on-focus by enforcing 16px minimum on form fields below the md breakpoint. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Tap targets — buttons should never be smaller than 40px on touch screens. */
+@media (hover: none) and (pointer: coarse) {
+  button, [role="button"], a.button {
+    min-height: 40px;
+  }
+}
+
+/* Better default focus ring for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
