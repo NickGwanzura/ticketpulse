@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { eq, desc } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
   MoreHorizontal, ScanLine, LayoutList, ShoppingCart,
@@ -8,6 +9,8 @@ import {
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
+import { db } from "@/db"
+import { events } from "@/db/schema"
 
 type EventRow = {
   id: string
@@ -49,7 +52,6 @@ type SalesByEvent = {
   revenue: number
 }
 
-const MOCK_EVENTS: EventRow[] = []
 const MOCK_ORDERS: OrderRow[] = []
 const VIP_BUYERS: VipBuyer[] = []
 const ACTIVITY: ActivityItem[] = []
@@ -155,10 +157,42 @@ function RevenueChart({ data }: { data: number[] }) {
 export default async function OrganizerPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer")
+  if (session.user.role !== "organizer" && session.user.role !== "admin") redirect("/dashboard")
 
-  const totalRevenue = MOCK_EVENTS.reduce((s, e) => s + (e.currency === "USD" ? e.revenue : 0), 0)
-  const totalSold    = MOCK_EVENTS.reduce((s, e) => s + e.sold, 0)
-  const liveEvents   = MOCK_EVENTS.filter((e) => e.status === "published").length
+  const rows = await db
+    .select({
+      id: events.id,
+      slug: events.slug,
+      title: events.title,
+      category: events.category,
+      venue: events.venue,
+      startsAt: events.startsAt,
+      status: events.status,
+    })
+    .from(events)
+    .where(eq(events.organizerId, session.user.id))
+    .orderBy(desc(events.startsAt))
+    .limit(50)
+
+  // Sales/revenue/capacity figures will land once tickets+orders are wired up.
+  // For now we surface honest empty rows so the dashboard reflects real data.
+  const ORGANIZER_EVENTS: EventRow[] = rows.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    category: r.category,
+    venue: r.venue,
+    startsAt: r.startsAt,
+    status: r.status ?? "draft",
+    sold: 0,
+    capacity: 0,
+    revenue: 0,
+    currency: "USD",
+  }))
+
+  const totalRevenue = ORGANIZER_EVENTS.reduce((s, e) => s + (e.currency === "USD" ? e.revenue : 0), 0)
+  const totalSold    = ORGANIZER_EVENTS.reduce((s, e) => s + e.sold, 0)
+  const liveEvents   = ORGANIZER_EVENTS.filter((e) => e.status === "published").length
 
   const gross    = 0
   const net      = 0
@@ -181,7 +215,7 @@ export default async function OrganizerPage() {
               <ScanLine size={15} /> Open scanner
             </Link>
             <Link
-              href="/organizer/new"
+              href="/organizer/events/new"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
             >
               <Plus size={15} /> Create event
@@ -272,22 +306,22 @@ export default async function OrganizerPage() {
               </div>
             </div>
 
-            {MOCK_EVENTS.length === 0 ? (
+            {ORGANIZER_EVENTS.length === 0 ? (
               <EmptyState
                 icon={LayoutList}
                 title="No events yet"
                 body="Create your first event to start selling tickets."
                 ctaLabel="Create event"
-                ctaHref="/organizer/new"
+                ctaHref="/organizer/events/new"
               />
             ) : (
               <>
                 {/* Mobile cards */}
                 <div className="md:hidden divide-y divide-line">
-                  {MOCK_EVENTS.map((e) => (
-                    <Link key={e.id} href={`/events/${e.slug}`} className="block p-5 hover:bg-paper-2 transition-colors">
+                  {ORGANIZER_EVENTS.map((e) => (
+                    <Link key={e.id} href={`/organizer/events/${e.id}/edit`} className="block p-5 hover:bg-paper-2 transition-colors">
                       <div className="flex items-center justify-between gap-3 mb-2">
-                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status]}`}>
+                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status] ?? STATUS_STYLE.draft}`}>
                           {e.status}
                         </span>
                         <ArrowUpRight size={14} className="text-ink-3" />
@@ -311,17 +345,19 @@ export default async function OrganizerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {MOCK_EVENTS.map((e) => {
-                      const pct = Math.round((e.sold / e.capacity) * 100)
+                    {ORGANIZER_EVENTS.map((e) => {
+                      const pct = e.capacity > 0 ? Math.round((e.sold / e.capacity) * 100) : 0
                       return (
                         <tr key={e.id} className="hover:bg-paper-2 transition-colors">
                           <td className="px-6 py-4 max-w-xs">
-                            <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                            <p className="text-[12px] text-ink-3 mt-0.5">{e.venue}</p>
+                            <Link href={`/organizer/events/${e.id}/edit`} className="block">
+                              <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
+                              <p className="text-[12px] text-ink-3 mt-0.5">{e.venue}</p>
+                            </Link>
                           </td>
                           <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{e.startsAt.toLocaleDateString()}</td>
                           <td className="px-3 py-4">
-                            <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[e.status]}`}>
+                            <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[e.status] ?? STATUS_STYLE.draft}`}>
                               {e.status}
                             </span>
                           </td>
@@ -335,9 +371,12 @@ export default async function OrganizerPage() {
                             {formatCurrency(e.revenue, e.currency)}
                           </td>
                           <td className="px-3 py-4 text-right">
-                            <button className="text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2">
+                            <Link
+                              href={`/organizer/events/${e.id}/edit`}
+                              className="inline-flex items-center justify-center text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2"
+                            >
                               <MoreHorizontal size={15} />
-                            </button>
+                            </Link>
                           </td>
                         </tr>
                       )

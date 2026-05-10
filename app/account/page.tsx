@@ -1,7 +1,11 @@
 import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { ArrowUpRight, Bell, CreditCard, Globe, Lock, Mail, Phone, ShieldCheck, User, LogOut } from "lucide-react"
+import { ArrowUpRight, Bell, CreditCard, Globe, Lock, ShieldCheck, Store, User, LogOut } from "lucide-react"
+import { eq, sql } from "drizzle-orm"
+import { db } from "@/db"
+import { users, vendors } from "@/db/schema"
+import AccountForm from "./AccountForm"
 
 const SECTIONS = [
   { href: "#profile",       label: "Profile",       icon: User,         body: "Name, email, phone" },
@@ -13,7 +17,25 @@ const SECTIONS = [
 export default async function AccountPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin")
-  const user = session.user
+  const sessionUser = session.user
+
+  const [dbUser] = await db
+    .select({ phone: users.phone, bio: users.bio })
+    .from(users)
+    .where(eq(users.id, sessionUser.id))
+    .limit(1)
+
+  const [vendorCount] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(vendors)
+    .where(eq(vendors.userId, sessionUser.id))
+  const hasVendor = (vendorCount?.count ?? 0) > 0
+
+  const user = {
+    ...sessionUser,
+    phone: dbUser?.phone ?? null,
+    bio:   dbUser?.bio   ?? null,
+  }
 
   return (
     <div>
@@ -43,70 +65,34 @@ export default async function AccountPage() {
           ))}
         </div>
 
+        {hasVendor && (
+          <Link
+            href="/vendors/dashboard"
+            className="group mb-10 flex items-center gap-4 rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all"
+          >
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15">
+              <Store size={16} className="text-blue" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold tracking-tight text-ink">Vendor dashboard</p>
+              <p className="text-[12.5px] text-ink-2 mt-0.5">Edit your business profile, logo, and portfolio.</p>
+            </div>
+            <ArrowUpRight size={16} className="text-ink-3 group-hover:text-ink transition-colors shrink-0" />
+          </Link>
+        )}
+
         {/* Profile */}
         <section id="profile" className="mb-12 scroll-mt-24">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Profile</p>
           <h2 className="text-[22px] font-bold tracking-tight text-ink mb-5">Personal information</h2>
 
-          <form className="rounded-2xl border border-line bg-paper p-6 md:p-7 space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="inline-flex w-14 h-14 items-center justify-center rounded-2xl bg-navy text-white text-[18px] font-semibold">
-                {(user.name?.[0] ?? user.email?.[0] ?? "U").toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[14.5px] font-semibold tracking-tight text-ink">{user.name ?? "Add your name"}</p>
-                <p className="text-[12.5px] text-ink-3 truncate">{user.email}</p>
-              </div>
-              <button type="button" className="text-[12.5px] font-semibold text-navy hover:underline shrink-0">Change photo</button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Full name</label>
-                <input
-                  type="text"
-                  defaultValue={user.name ?? ""}
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
-                />
-              </div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
-                  <input
-                    type="email"
-                    defaultValue={user.email ?? ""}
-                    className="w-full bg-paper-2 border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink-2"
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Phone</label>
-                <div className="relative">
-                  <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
-                  <input
-                    type="tel"
-                    placeholder="+263 77…"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">City</label>
-                <input
-                  type="text"
-                  placeholder="Harare"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button type="reset" className="text-sm font-medium text-ink-2 hover:text-ink px-3 py-2">Cancel</button>
-              <button type="submit" className="rounded-xl bg-navy text-white text-sm font-semibold px-4 py-2.5 hover:bg-navy-700 transition-colors shadow-sm shadow-navy/20">Save changes</button>
-            </div>
-          </form>
+          <AccountForm
+            initialName={user.name ?? null}
+            initialEmail={user.email ?? null}
+            initialPhone={user.phone}
+            initialImage={user.image ?? null}
+            initialBio={user.bio}
+          />
         </section>
 
         {/* Payments */}

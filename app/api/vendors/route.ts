@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
-import { vendors, vendorListings } from "@/db/schema"
+import { vendors, vendorListings, events } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 import { auth } from "@/auth"
 import { z } from "zod"
@@ -63,6 +63,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
   }
   const { listingId } = parsed.data
+
+  const [target] = await db
+    .select({ organizerId: events.organizerId })
+    .from(vendorListings)
+    .leftJoin(events, eq(vendorListings.eventId, events.id))
+    .where(eq(vendorListings.id, listingId))
+  if (!target) {
+    return NextResponse.json({ error: "Listing not found" }, { status: 404 })
+  }
+  if (target.organizerId !== session.user.id && session.user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const [listing] = await db
     .update(vendorListings)

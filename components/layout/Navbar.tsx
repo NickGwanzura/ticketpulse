@@ -176,9 +176,18 @@ export default function Navbar() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-sm font-medium text-ink hover:border-line-2 transition-colors"
               >
-                <span className="flex w-6 h-6 items-center justify-center rounded-full bg-navy text-white text-[11px] font-semibold">
-                  {(session.user.name?.[0] ?? "U").toUpperCase()}
-                </span>
+                {session.user.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={session.user.image}
+                    alt=""
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex w-6 h-6 items-center justify-center rounded-full bg-navy text-white text-[11px] font-semibold">
+                    {(session.user.name?.[0] ?? "U").toUpperCase()}
+                  </span>
+                )}
                 <span className="hidden lg:block">{session.user.name?.split(" ")[0] ?? "Account"}</span>
                 <ChevronDown size={14} className="text-ink-3" />
               </button>

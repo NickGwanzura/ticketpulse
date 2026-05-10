@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
-import { eventGalleries, galleryPhotos } from "@/db/schema"
+import { eventGalleries, galleryPhotos, events } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 import { auth } from "@/auth"
 import { z } from "zod"
@@ -51,6 +51,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
   }
   const { eventId, name, description, packPrice, currency, isPublic } = parsed.data
+
+  const [event] = await db
+    .select({ organizerId: events.organizerId })
+    .from(events)
+    .where(eq(events.id, eventId))
+  if (!event) {
+    return NextResponse.json({ error: "Event not found" }, { status: 404 })
+  }
+  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const [gallery] = await db
     .insert(eventGalleries)

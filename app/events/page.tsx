@@ -1,14 +1,9 @@
 import EventCard from "@/components/events/EventCard"
 import Link from "next/link"
 import { Search, SlidersHorizontal } from "lucide-react"
-
-const MOCK_EVENTS = [
-  {
-    id: "1", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures",
-    category: "marathon", venue: "National Sports Stadium", city: "Harare", startsAt: new Date("2026-05-17T06:00:00"),
-    featured: true, lowestPrice: 5, currency: "USD", status: "published",
-  },
-]
+import { db } from "@/db"
+import { events, ticketTiers } from "@/db/schema"
+import { and, asc, eq, ilike, inArray, or } from "drizzle-orm"
 
 const CATEGORIES = ["All", "Concerts", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
@@ -21,17 +16,79 @@ export default async function EventsPage({
   const activeCategory = sp.category ?? "all"
   const query = sp.q ?? ""
 
-  const filtered = MOCK_EVENTS.filter((e) => {
-    if (activeCategory && activeCategory !== "all") {
-      const cat = activeCategory.replace(/s$/, "").toLowerCase()
-      if (!e.category.toLowerCase().includes(cat)) return false
+  const conditions = [eq(events.status, "published")]
+
+  if (activeCategory && activeCategory !== "all") {
+    const cat = activeCategory.toLowerCase()
+    conditions.push(ilike(events.category, `%${cat}%`))
+  }
+
+  if (query) {
+    const safe = `%${query.replace(/[%_\\]/g, (m) => "\\" + m)}%`
+    conditions.push(
+      or(
+        ilike(events.title, safe),
+        ilike(events.venue, safe),
+        ilike(events.city, safe)
+      )!
+    )
+  }
+
+  const rows = await db
+    .select({
+      id: events.id,
+      slug: events.slug,
+      title: events.title,
+      category: events.category,
+      venue: events.venue,
+      city: events.city,
+      startsAt: events.startsAt,
+      coverImage: events.coverImage,
+      featured: events.featured,
+      status: events.status,
+    })
+    .from(events)
+    .where(and(...conditions))
+    .orderBy(asc(events.startsAt))
+    .limit(50)
+
+  // Fetch lowest tier price per event in one query
+  const eventIds = rows.map((r) => r.id)
+  const priceRows = eventIds.length
+    ? await db
+        .select({
+          eventId: ticketTiers.eventId,
+          price: ticketTiers.price,
+          currency: ticketTiers.currency,
+        })
+        .from(ticketTiers)
+        .where(inArray(ticketTiers.eventId, eventIds))
+    : []
+
+  const lowestByEvent = new Map<string, { price: number; currency: string }>()
+  for (const t of priceRows) {
+    const price = Number(t.price)
+    const currency = t.currency ?? "USD"
+    const cur = lowestByEvent.get(t.eventId)
+    if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
+  }
+
+  const eventCards = rows.map((r) => {
+    const low = lowestByEvent.get(r.id)
+    return {
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      category: r.category,
+      venue: r.venue,
+      city: r.city,
+      startsAt: r.startsAt,
+      coverImage: r.coverImage,
+      featured: r.featured ?? false,
+      lowestPrice: low?.price ?? null,
+      currency: low?.currency ?? "USD",
+      status: r.status ?? "published",
     }
-    if (query) {
-      return e.title.toLowerCase().includes(query.toLowerCase()) ||
-        e.venue.toLowerCase().includes(query.toLowerCase()) ||
-        e.city.toLowerCase().includes(query.toLowerCase())
-    }
-    return true
   })
 
   return (
@@ -42,7 +99,11 @@ export default async function EventsPage({
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Discover</p>
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight text-ink">All events</h1>
           <p className="mt-3 text-[15px] text-ink-2 max-w-xl">
-            {filtered.length === 1 ? "1 event live right now" : `${filtered.length} events live`} — more landing as organizers come online.
+            {eventCards.length === 0
+              ? "No events live yet — check back soon."
+              : eventCards.length === 1
+              ? "1 event live right now"
+              : `${eventCards.length} events live`} {eventCards.length > 0 && "— more landing as organizers come online."}
           </p>
         </div>
       </div>
@@ -89,22 +150,30 @@ export default async function EventsPage({
           })}
         </div>
 
-        {filtered.length > 0 ? (
+        {eventCards.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-            {filtered.map((event) => (
+            {eventCards.map((event) => (
               <EventCard key={event.id} {...event} />
             ))}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-line bg-paper-2 p-12 text-center">
-            <p className="text-[15px] font-medium text-ink mb-1">No events match your filters</p>
-            <p className="text-sm text-ink-2 mb-6">Try clearing the search or picking a different category.</p>
-            <Link
-              href="/events"
-              className="inline-flex items-center justify-center rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-700 transition-colors"
-            >
-              Browse events
-            </Link>
+            <p className="text-[15px] font-medium text-ink mb-1">
+              {query || activeCategory !== "all" ? "No events match your filters" : "No events yet"}
+            </p>
+            <p className="text-sm text-ink-2 mb-6">
+              {query || activeCategory !== "all"
+                ? "Try clearing the search or picking a different category."
+                : "Check back soon — organizers are still coming online."}
+            </p>
+            {(query || activeCategory !== "all") && (
+              <Link
+                href="/events"
+                className="inline-flex items-center justify-center rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-700 transition-colors"
+              >
+                Browse all events
+              </Link>
+            )}
           </div>
         )}
       </div>

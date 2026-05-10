@@ -15,12 +15,24 @@ export default auth((req) => {
   const { nextUrl } = req
   const path = nextUrl.pathname
 
+  const isApi = path.startsWith("/api/")
+  const isAuthApi = path.startsWith("/api/auth/")
+
   if (process.env.LAUNCH_GATE_ENABLED === "true") {
     const hasAccess = req.cookies.get(ACCESS_COOKIE)?.value === "ok"
     const isComingSoon = path === "/coming-soon" || path.startsWith("/coming-soon/")
-    if (!hasAccess && !isComingSoon) {
+    if (!hasAccess && !isComingSoon && !isAuthApi) {
+      if (isApi) {
+        return NextResponse.json({ error: "not found" }, { status: 404 })
+      }
       return NextResponse.redirect(new URL("/coming-soon", nextUrl))
     }
+  }
+
+  if (isApi) {
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set("x-pathname", path)
+    return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   const isLoggedIn = !!req.auth
@@ -41,5 +53,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }

@@ -54,31 +54,42 @@ export async function POST(req: NextRequest) {
   }
   const { routeId, seats } = parsed.data
 
-  const [route] = await db
-    .update(shuttleRoutes)
-    .set({ bookedSeats: sql`${shuttleRoutes.bookedSeats} + ${seats}` })
-    .where(and(
-      eq(shuttleRoutes.id, routeId),
-      sql`${shuttleRoutes.bookedSeats} + ${seats} <= ${shuttleRoutes.totalSeats}`
-    ))
-    .returning()
+  try {
+    const booking = await db.transaction(async (tx) => {
+      const [route] = await tx
+        .update(shuttleRoutes)
+        .set({ bookedSeats: sql`${shuttleRoutes.bookedSeats} + ${seats}` })
+        .where(and(
+          eq(shuttleRoutes.id, routeId),
+          sql`${shuttleRoutes.bookedSeats} + ${seats} <= ${shuttleRoutes.totalSeats}`
+        ))
+        .returning()
 
-  if (!route) {
-    return NextResponse.json({ error: "Not enough seats available" }, { status: 400 })
-  }
+      if (!route) {
+        throw new Error("NOT_ENOUGH_SEATS")
+      }
 
-  const total = parseFloat(route.pricePerSeat) * seats
+      const total = parseFloat(route.pricePerSeat) * seats
 
-  const [booking] = await db
-    .insert(transportBookings)
-    .values({
-      routeId,
-      userId: session.user.id,
-      seats,
-      totalAmount: String(total),
-      status: "pending",
+      const [created] = await tx
+        .insert(transportBookings)
+        .values({
+          routeId,
+          userId: session.user.id,
+          seats,
+          totalAmount: String(total),
+          status: "pending",
+        })
+        .returning()
+
+      return created
     })
-    .returning()
 
-  return NextResponse.json({ booking }, { status: 201 })
+    return NextResponse.json({ booking }, { status: 201 })
+  } catch (err) {
+    if (err instanceof Error && err.message === "NOT_ENOUGH_SEATS") {
+      return NextResponse.json({ error: "Not enough seats" }, { status: 409 })
+    }
+    throw err
+  }
 }

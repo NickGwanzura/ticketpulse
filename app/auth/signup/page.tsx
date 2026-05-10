@@ -43,11 +43,16 @@ export default async function SignUpPage({
             const { eq } = await import("drizzle-orm")
             const { hashPassword } = await import("@/lib/password")
 
-            const role  = ((formData.get("role") as string) ?? "attendee") as "attendee" | "organizer" | "vendor"
+            const ALLOWED_SIGNUP_ROLES = ["attendee", "organizer", "vendor"] as const
+            type AllowedRole = typeof ALLOWED_SIGNUP_ROLES[number]
+            const rawRole = formData.get("role")
+            const role: AllowedRole = ALLOWED_SIGNUP_ROLES.includes(rawRole as AllowedRole)
+              ? (rawRole as AllowedRole)
+              : "attendee"
             const email = ((formData.get("email") as string) ?? "").toLowerCase().trim()
             const password = (formData.get("password") as string) ?? ""
             const name  = ((formData.get("name") as string) ?? "").trim() || null
-            if (!email || password.length < 6) return
+            if (!email || password.length < 8) return
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
             if (!existing) {
@@ -56,8 +61,18 @@ export default async function SignUpPage({
                 name,
                 role,
                 passwordHash: hashPassword(password),
-                emailVerified: new Date(),
               })
+
+              // Fire-and-forget welcome email — signup must not fail if mail fails.
+              const { sendEmail } = await import("@/lib/email")
+              const { welcomeEmail } = await import("@/lib/email-templates")
+              const built = welcomeEmail({ name })
+              sendEmail({
+                to: email,
+                subject: "Welcome to TicketPulse",
+                html: built.html,
+                text: built.text,
+              }).catch((e) => console.error("welcome email", e))
             }
 
             await signIn("credentials", {
@@ -129,9 +144,9 @@ export default async function SignUpPage({
                 type="password"
                 name="password"
                 required
-                minLength={6}
+                minLength={8}
                 autoComplete="new-password"
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
               />
             </div>

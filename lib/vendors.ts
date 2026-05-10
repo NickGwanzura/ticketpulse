@@ -14,6 +14,9 @@ export interface VendorPackage {
 
 export interface VendorProfile {
   slug: string
+  /** Optional DB id. Falls back to `slug` when the vendor lives only in the
+   *  in-memory list (e.g. seeded marketing fixtures). */
+  id?: string
   businessName: string
   category: VendorCategory
   tagline: string

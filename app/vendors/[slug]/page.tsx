@@ -7,6 +7,7 @@ import {
 import { formatCurrency } from "@/lib/utils"
 import { getVendorBySlug, VENDOR_VISUAL, VENDORS } from "@/lib/vendors"
 import MobileBuyBar from "@/components/MobileBuyBar"
+import EnquiryForm from "@/components/vendors/EnquiryForm"
 
 export function generateStaticParams() {
   return VENDORS.map((v) => ({ slug: v.slug }))
@@ -197,38 +198,12 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
           {/* Sticky aside */}
           <aside className="lg:col-span-1">
             <div id="contact" className="lg:sticky lg:top-24 rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04] scroll-mt-24">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">Get a quote</p>
-              <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-1">Reach {vendor.businessName.split(" ")[0]} directly</h2>
-              <p className="text-xs text-ink-3 mb-5">Average reply: {vendor.responseTimeHours} hours.</p>
-
-              <form className="space-y-3 mb-5">
-                <div>
-                  <label className="block text-[11px] font-medium text-ink-2 mb-1.5">Event date</label>
-                  <input
-                    type="date"
-                    className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-ink-2 mb-1.5">Guest count</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 250"
-                    className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-ink-2 mb-1.5">Notes</label>
-                  <textarea
-                    rows={3}
-                    placeholder="What are you planning?"
-                    className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition resize-none"
-                  />
-                </div>
-                <button className="w-full bg-navy text-white font-semibold py-3 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20 text-sm">
-                  Send enquiry
-                </button>
-              </form>
+              <EnquiryForm
+                vendorSlug={vendor.slug}
+                vendorId={vendor.id ?? vendor.slug}
+                vendorName={vendor.businessName}
+                responseTimeHours={vendor.responseTimeHours}
+              />
 
               <div className="border-t border-line pt-5 space-y-2.5">
                 <div className="flex items-center gap-2.5 text-[12.5px] text-ink-2">

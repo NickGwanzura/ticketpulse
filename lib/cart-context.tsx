@@ -73,7 +73,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const raw = localStorage.getItem(STORAGE_KEY)
         if (raw) setItems(JSON.parse(raw))
-      } catch {}
+      } catch (err) { console.warn("[cart] hydrate", err) }
       setReady(true)
     })
   }, [])
@@ -82,7 +82,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-    } catch {}
+    } catch (err) { console.warn("[cart] persist cart", err) }
   }, [items, ready])
 
   const addItem = useCallback((item: CartLineInput) => {
@@ -119,7 +119,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = localStorage.getItem(ORDERS_KEY)
       return raw ? (JSON.parse(raw) as OrderRecord[]) : []
-    } catch { return [] }
+    } catch (err) { console.warn("[cart] read orders", err); return [] }
   }, [])
 
   const getOrder = useCallback((id: string): OrderRecord | null => {
@@ -140,7 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const existing = getOrders()
         localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing]))
-      } catch {}
+      } catch (err) { console.warn("[cart] placeOrder persist", err); throw err }
       setItems([])
       return order
     },
