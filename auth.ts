@@ -13,6 +13,8 @@ import {
 } from "@/db/schema"
 import { verifyPassword } from "@/lib/password"
 import { authConfig } from "@/auth.config"
+import { sendMagicLinkEmail, sendPurchaseVerificationEmail } from "@/lib/email"
+import { orders, events } from "@/db/schema"
 
 // DrizzleAdapter introspects `db` at construction time, so we only
 // build it when DATABASE_URL is available. With JWT-strategy sessions
@@ -37,6 +39,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Resend({
       apiKey: process.env.AUTH_RESEND_KEY,
       from: "TicketPulse <no-reply@ticketpulse.tech>",
+      async sendVerificationRequest({ identifier: email, url }) {
+        const host = new URL(url).host
+
+        // Inspect the embedded callbackUrl to decide which branded template
+        // to send. Guest-checkout flows route the magic link through
+        // `/api/orders/<id>/finalize`, so swap to the purchase template and
+        // pull order context for the email body.
+        const callback = new URL(url).searchParams.get("callbackUrl") ?? ""
+        const finalizeMatch = callback.match(/\/api\/orders\/([0-9a-fA-F-]+)\/finalize/)
+
+        if (finalizeMatch && process.env.DATABASE_URL) {
+          const orderId = finalizeMatch[1]
+          const [row] = await db
+            .select({
+              total: orders.totalAmount,
+              currency: orders.currency,
+              eventTitle: events.title,
+            })
+            .from(orders)
+            .leftJoin(events, eq(events.id, orders.eventId))
+            .where(eq(orders.id, orderId))
+            .limit(1)
+
+          if (row) {
+            await sendPurchaseVerificationEmail({
+              to: email,
+              url,
+              eventTitle: row.eventTitle ?? "your event",
+              amount: row.total,
+              currency: row.currency ?? "USD",
+            })
+            return
+          }
+        }
+
+        await sendMagicLinkEmail({ to: email, url, host })
+      },
     }),
     Credentials({
       name: "credentials",

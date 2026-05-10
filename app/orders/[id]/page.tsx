@@ -1,13 +1,99 @@
 "use client"
 import { useEffect, useState, use } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, MailCheck, RefreshCw, Loader2 } from "lucide-react"
 import QrCode from "@/components/QrCode"
+
+type AwaitingStatus = {
+  status: string
+  sentTo: string | null
+  expiresAt: string | null
+}
+
+function AwaitingVerification({ orderId }: { orderId: string }) {
+  const [info, setInfo] = useState<AwaitingStatus | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resendNote, setResendNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/orders/${orderId}/status`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (!cancelled && data) setInfo(data) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [orderId])
+
+  async function resend() {
+    if (resending) return
+    setResending(true)
+    setResendNote(null)
+    try {
+      const res = await fetch(`/api/orders/${orderId}/resend-verification`, { method: "POST" })
+      if (res.status === 429) setResendNote("Hold on a moment — you can resend once per minute.")
+      else if (!res.ok) setResendNote("Couldn't resend. Please try again shortly.")
+      else setResendNote("Sent. Check your inbox.")
+    } catch {
+      setResendNote("Couldn't resend. Please try again shortly.")
+    } finally {
+      setResending(false)
+    }
+  }
+
+  return (
+    <div className="max-w-xl mx-auto px-5 md:px-8 py-16 md:py-24">
+      <div className="rounded-3xl border border-line bg-paper p-8 md:p-10 shadow-sm shadow-ink/[0.04]">
+        <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-blue-soft ring-1 ring-blue/20 mb-5">
+          <MailCheck size={20} className="text-blue" />
+        </span>
+        <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Almost there</p>
+        <h1 className="text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.15] text-ink">
+          Confirm your email to receive your tickets.
+        </h1>
+        <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">
+          We sent a confirmation link to{" "}
+          <span className="font-semibold text-ink">{info?.sentTo ?? "your email"}</span>. Tap it from your inbox and your tickets land here instantly.
+        </p>
+
+        <div className="mt-6 rounded-xl border border-line bg-paper-2 p-4 text-[13px] text-ink-2 leading-relaxed">
+          The link expires in 24 hours. If you don&apos;t confirm in time, your purchase is automatically refunded.
+        </div>
+
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={resend}
+            disabled={resending}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition disabled:opacity-60"
+          >
+            {resending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Resend email
+          </button>
+          <Link
+            href="/events"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition"
+          >
+            Browse more events
+          </Link>
+        </div>
+        {resendNote && <p className="mt-3 text-[12.5px] text-ink-3">{resendNote}</p>}
+
+        <p className="mt-8 text-[12px] text-ink-3 leading-relaxed">
+          Wrong email? Reply to the confirmation email and we&apos;ll cancel and refund right away. Order ref{" "}
+          <span className="font-mono">{orderId.slice(0, 8)}</span>.
+        </p>
+      </div>
+    </div>
+  )
+}
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const search = useSearchParams()
+  const awaitingFlag = search.get("awaiting") === "1"
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
 
@@ -15,6 +101,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     if (!ready) return
     queueMicrotask(() => { setOrder(getOrder(id)) })
   }, [ready, id, getOrder])
+
+  if (awaitingFlag) {
+    return <AwaitingVerification orderId={id} />
+  }
 
   if (!ready) {
     return (

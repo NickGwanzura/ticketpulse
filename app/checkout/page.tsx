@@ -20,6 +20,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, ready, totalsByCurrency, placeOrder } = useCart()
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -53,14 +54,57 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (submitting) return
+    setSubmitError(null)
     setSubmitting(true)
-    // Tiny delay to feel like a real submit
-    await new Promise((r) => setTimeout(r, 700))
-    const order = placeOrder(
-      { name: form.name, email: form.email, phone: form.phone },
-      { method: form.payment },
-    )
-    router.push(`/checkout/success?id=${order.id}`)
+
+    // Group ticket lines by event — guest checkout creates one order per event.
+    // For v1 we require all tickets in the cart to be for the same event; if
+    // the cart spans multiple events the buyer needs to check out per event.
+    const ticketLines = items.filter((i) => i.kind === "ticket")
+    if (ticketLines.length === 0) {
+      setSubmitError("Your cart has no tickets. Add a ticket to continue.")
+      setSubmitting(false)
+      return
+    }
+    const slugs = new Set(ticketLines.map((i) => i.eventSlug))
+    if (slugs.size > 1) {
+      setSubmitError("You have tickets for multiple events. Please check out one event at a time.")
+      setSubmitting(false)
+      return
+    }
+
+    try {
+      const res = await fetch("/api/checkout/guest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: form.email,
+          name: form.name,
+          phone: form.phone,
+          paymentMethod: form.payment,
+          eventSlug: ticketLines[0].eventSlug,
+          items: ticketLines.map((l) => ({ tierId: l.tierId, quantity: l.qty })),
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? "Checkout failed")
+      }
+      const data = (await res.json()) as { orderId: string; sentTo: string }
+      // Mirror the order client-side so existing /orders pages still render.
+      placeOrder(
+        { name: form.name, email: form.email, phone: form.phone },
+        { method: form.payment },
+      )
+      router.push(`/orders/${data.orderId}?awaiting=1`)
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't process your order. Please try again.",
+      )
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -185,6 +229,12 @@ export default function CheckoutPage() {
               })}
             </div>
           </section>
+
+          {submitError && (
+            <p role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {submitError}
+            </p>
+          )}
 
           {/* Submit (mobile) */}
           <button

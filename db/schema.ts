@@ -8,6 +8,8 @@ import {
   uuid,
   pgEnum,
   json,
+  primaryKey,
+  index,
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
@@ -31,6 +33,7 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
 
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
+  "awaiting_verification",
   "paid",
   "cancelled",
   "refunded",
@@ -89,7 +92,9 @@ export const accounts = pgTable("accounts", {
   scope: text("scope"),
   id_token: text("id_token"),
   session_state: text("session_state"),
-})
+}, (table) => [
+  primaryKey({ columns: [table.provider, table.providerAccountId] }),
+])
 
 export const sessions = pgTable("sessions", {
   sessionToken: text("session_token").primaryKey(),
@@ -126,7 +131,10 @@ export const events = pgTable("events", {
   featured: boolean("featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-})
+}, (table) => [
+  index("events_organizer_id_idx").on(table.organizerId),
+  index("events_status_idx").on(table.status),
+])
 
 export const ticketTiers = pgTable("ticket_tiers", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -141,7 +149,9 @@ export const ticketTiers = pgTable("ticket_tiers", {
   salesStart: timestamp("sales_start"),
   salesEnd: timestamp("sales_end"),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("ticket_tiers_event_id_idx").on(table.eventId),
+])
 
 export const tickets = pgTable("tickets", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -153,13 +163,17 @@ export const tickets = pgTable("tickets", {
   qrCode: text("qr_code").unique(),
   scannedAt: timestamp("scanned_at"),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("tickets_event_id_idx").on(table.eventId),
+  index("tickets_user_id_idx").on(table.userId),
+  index("tickets_order_id_idx").on(table.orderId),
+])
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: text("user_id").notNull().references(() => users.id),
+  userId: text("user_id").references(() => users.id),
   eventId: uuid("event_id").notNull().references(() => events.id),
   status: orderStatusEnum("status").default("pending"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
@@ -167,10 +181,24 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method"),
   paymentRef: text("payment_ref"),
   paidAt: timestamp("paid_at"),
+  // Guest checkout — captured before the buyer verifies and links to a user.
+  guestEmail: text("guest_email"),
+  guestName: text("guest_name"),
+  guestPhone: text("guest_phone"),
+  // Verification gating: tickets are only emailed once the buyer clicks the
+  // magic link sent to guestEmail. NextAuth handles the actual token; we
+  // store these for ops/UX (resend window, audit, expiry display).
+  verificationSentAt: timestamp("verification_sent_at"),
+  verificationExpires: timestamp("verification_expires"),
+  verifiedAt: timestamp("verified_at"),
   metadata: json("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-})
+}, (table) => [
+  index("orders_user_id_idx").on(table.userId),
+  index("orders_event_id_idx").on(table.eventId),
+  index("orders_guest_email_idx").on(table.guestEmail),
+])
 
 export const orderItems = pgTable("order_items", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -182,7 +210,9 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-})
+}, (table) => [
+  index("order_items_order_id_idx").on(table.orderId),
+])
 
 // ─── TIER 1: Merchandise ─────────────────────────────────────────────────────
 
@@ -203,7 +233,9 @@ export const merchItems = pgTable("merch_items", {
   deliveryAvailable: boolean("delivery_available").default(false),
   pickupAtEvent: boolean("pickup_at_event").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("merch_items_event_id_idx").on(table.eventId),
+])
 
 // ─── TIER 1: Event Photo Gallery ─────────────────────────────────────────────
 
@@ -220,7 +252,9 @@ export const eventGalleries = pgTable("event_galleries", {
   isPublic: boolean("is_public").default(true),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("event_galleries_event_id_idx").on(table.eventId),
+])
 
 export const galleryPhotos = pgTable("gallery_photos", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -233,7 +267,9 @@ export const galleryPhotos = pgTable("gallery_photos", {
   height: integer("height"),
   downloadCount: integer("download_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("gallery_photos_gallery_id_idx").on(table.galleryId),
+])
 
 export const photoDownloads = pgTable("photo_downloads", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -276,7 +312,9 @@ export const shuttleRoutes = pgTable("shuttle_routes", {
   notes: text("notes"),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("shuttle_routes_event_id_idx").on(table.eventId),
+])
 
 export const transportBookings = pgTable("transport_bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -287,7 +325,10 @@ export const transportBookings = pgTable("transport_bookings", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   status: orderStatusEnum("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("transport_bookings_route_id_idx").on(table.routeId),
+  index("transport_bookings_user_id_idx").on(table.userId),
+])
 
 // ─── TIER 1: Food and Vendor Bookings ────────────────────────────────────────
 
@@ -324,7 +365,10 @@ export const vendorListings = pgTable("vendor_listings", {
   bookedAt: timestamp("booked_at"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-})
+}, (table) => [
+  index("vendor_listings_event_id_idx").on(table.eventId),
+  index("vendor_listings_vendor_id_idx").on(table.vendorId),
+])
 
 // ─── Relations ────────────────────────────────────────────────────────────────
 
