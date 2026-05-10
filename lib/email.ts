@@ -5,6 +5,8 @@ import MagicLinkEmail from "@/emails/magic-link"
 import OrderConfirmationEmail, { type OrderLine } from "@/emails/order-confirmation"
 import PayoutNotificationEmail from "@/emails/payout-notification"
 import VerifyPurchaseEmail from "@/emails/verify-purchase"
+import AdminInviteEmail from "@/emails/admin-invite"
+import ResetPasswordEmail from "@/emails/reset-password"
 
 // TODO: verify the `ticketpulse.tech` sending domain in Resend before
 // going live, otherwise outbound mail will be rejected.
@@ -100,6 +102,35 @@ export function sendPurchaseVerificationEmail(args: {
       amount: args.amount,
       currency: args.currency,
       expiresInHours: args.expiresInHours,
+    }),
+  })
+}
+
+export function sendPasswordResetEmail(args: {
+  to: string
+  name?: string | null
+  resetUrl: string
+}) {
+  return send({
+    to: args.to,
+    subject: "Reset your TicketPulse password",
+    react: ResetPasswordEmail({ name: args.name, resetUrl: args.resetUrl }),
+  })
+}
+
+export function sendAdminInviteEmail(args: {
+  to: string
+  role: string
+  inviteUrl: string
+  inviterName?: string | null
+}) {
+  return send({
+    to: args.to,
+    subject: "You’re invited to TicketPulse",
+    react: AdminInviteEmail({
+      role: args.role,
+      inviteUrl: args.inviteUrl,
+      inviterName: args.inviterName,
     }),
   })
 }

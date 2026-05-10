@@ -1,6 +1,7 @@
 import { Search, MoreHorizontal, UserCheck, ShieldCheck, Store, User, ShieldAlert, Users } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import InviteUserDialog from "./_components/InviteUserDialog"
 
 type Role = "attendee" | "organizer" | "vendor" | "admin"
 type Status = "active" | "suspended"
@@ -47,6 +48,7 @@ export default function AdminUsersPage() {
         title="People on TicketPulse"
         subtitle="Search, filter, and moderate accounts across roles."
         width="full"
+        actions={<InviteUserDialog />}
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">

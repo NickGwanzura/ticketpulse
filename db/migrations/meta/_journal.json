@@ -15,6 +15,13 @@
       "when": 1778431805404,
       "tag": "0001_thick_quasar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778435975850,
+      "tag": "0002_public_silver_sable",
+      "breakpoints": true
     }
   ]
 }

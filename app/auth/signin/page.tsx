@@ -1,8 +1,15 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
-import { Mail, Lock, ArrowRight } from "lucide-react"
+import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react"
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>
+}) {
+  const sp = await searchParams
+  const resetOk = sp.reset === "ok"
+
   return (
     <div
       className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12"
@@ -21,6 +28,15 @@ export default function SignInPage() {
           <h1 className="mt-6 text-[22px] font-semibold tracking-tight text-ink">Welcome back</h1>
           <p className="text-sm text-ink-2 mt-1">Sign in to continue</p>
         </div>
+
+        {resetOk ? (
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3">
+            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+            <p className="text-[13px] font-medium text-emerald-900">
+              Password updated. Sign in below.
+            </p>
+          </div>
+        ) : null}
 
         {/* Email + password */}
         <form
@@ -60,7 +76,7 @@ export default function SignInPage() {
                 type="password"
                 name="password"
                 required
-                minLength={6}
+                minLength={8}
                 autoComplete="current-password"
                 placeholder="••••••••"
                 className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
