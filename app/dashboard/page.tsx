@@ -12,15 +12,15 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const FEATURED_TICKET = {
-  id: "TP-2026-NYUKI-A0427",
-  event: "Nyuki Marathon 2026: One Bee, Million Futures",
-  tier: "Early Bird: Half Marathon",
-  venue: "National Sports Stadium, Harare",
-  startsAt: new Date("2026-05-17T06:00:00"),
-  gate: "Gate B",
+  id: "TP-DEMO-TICKET",
+  event: "Your next event",
+  tier: "Sample tier",
+  venue: "Venue, City",
+  startsAt: new Date("2026-12-31T18:00:00"),
+  gate: "Gate A",
   seat: "Open seating",
-  qrValue: "TP|NYUKI2026|A0427|HRRE|EBHM",
-  price: 12,
+  qrValue: "TP|DEMO|PREVIEW",
+  price: 0,
   currency: "USD",
 } as const
 

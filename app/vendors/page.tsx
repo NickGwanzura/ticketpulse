@@ -164,7 +164,7 @@ export default async function VendorsPage({
           <EmptyState
             icon={SearchX}
             title="Vendor catalogue coming soon"
-            body="We're onboarding vendors for the Nyuki Marathon 2026 and beyond. Apply below to be first in the catalogue."
+            body="We're onboarding vendors for our upcoming events. Apply below to be first in the catalogue."
           />
         ) : (
           <EmptyState

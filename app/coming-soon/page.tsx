@@ -9,6 +9,17 @@ import {
   LAUNCH_DATE_ISO,
   verifyAccessPassword,
 } from "@/lib/launch-gate"
+import { getFeaturedEvents } from "@/lib/events"
+import { formatDateShort } from "@/lib/utils"
+
+const COMING_SOON_CATEGORY_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
+  concert:    { emoji: "🎵", gradient: "from-violet-50 to-fuchsia-50",   accent: "text-violet-700" },
+  marathon:   { emoji: "🏃", gradient: "from-sky-100 via-blue-50 to-cyan-50", accent: "text-sky-700" },
+  walkathon:  { emoji: "🚶", gradient: "from-emerald-50 to-teal-50",     accent: "text-emerald-700" },
+  film:       { emoji: "🎬", gradient: "from-amber-50 to-orange-50",     accent: "text-amber-700" },
+  exhibition: { emoji: "🏢", gradient: "from-slate-50 to-indigo-50",     accent: "text-slate-700" },
+  expedition: { emoji: "⛰️", gradient: "from-lime-50 to-emerald-50",     accent: "text-emerald-800" },
+}
 
 const WHATSAPP_PHONE = "263777816368"
 
@@ -42,6 +53,14 @@ export default async function ComingSoonPage({
 }) {
   const { e } = await searchParams
   const showError = e === "1"
+  const [soonest] = await getFeaturedEvents(1)
+  const teaserVisual = soonest
+    ? COMING_SOON_CATEGORY_VISUAL[soonest.category.toLowerCase()] ?? {
+        emoji: "🎫",
+        gradient: "from-slate-50 to-indigo-50",
+        accent: "text-slate-700",
+      }
+    : null
   const launchLabel = new Intl.DateTimeFormat("en-ZW", {
     weekday: "long",
     day: "numeric",
@@ -66,20 +85,22 @@ export default async function ComingSoonPage({
       }}
     >
       {/* Floating decorative ticket — top right */}
-      <div
-        aria-hidden
-        className="hidden md:block absolute top-16 right-[8%] w-44 rounded-2xl border border-line bg-paper shadow-[0_24px_60px_-24px_rgba(10,37,64,0.25)] -rotate-[6deg] overflow-hidden tp-fade-up"
-        style={{ animationDelay: "120ms" }}
-      >
-        <div className="h-16 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center">
-          <span className="text-2xl">🏃</span>
+      {soonest && teaserVisual && (
+        <div
+          aria-hidden
+          className="hidden md:block absolute top-16 right-[8%] w-44 rounded-2xl border border-line bg-paper shadow-[0_24px_60px_-24px_rgba(10,37,64,0.25)] -rotate-[6deg] overflow-hidden tp-fade-up"
+          style={{ animationDelay: "120ms" }}
+        >
+          <div className={`h-16 bg-gradient-to-br ${teaserVisual.gradient} flex items-center justify-center`}>
+            <span className="text-2xl">{teaserVisual.emoji}</span>
+          </div>
+          <div className="p-3">
+            <p className={`text-[9px] font-semibold tracking-[0.18em] uppercase ${teaserVisual.accent} mb-0.5`}>Ticket</p>
+            <p className="text-[11px] font-semibold tracking-tight text-ink truncate">{soonest.title}</p>
+            <p className="text-[10px] text-ink-3 mt-0.5">{formatDateShort(soonest.startsAt)} · {soonest.city}</p>
+          </div>
         </div>
-        <div className="p-3">
-          <p className="text-[9px] font-semibold tracking-[0.18em] uppercase text-sky-700 mb-0.5">Ticket</p>
-          <p className="text-[11px] font-semibold tracking-tight text-ink truncate">Nyuki Marathon 2026</p>
-          <p className="text-[10px] text-ink-3 mt-0.5">Sun 17 May · Harare</p>
-        </div>
-      </div>
+      )}
 
       {/* Floating decorative ticket — bottom left */}
       <div

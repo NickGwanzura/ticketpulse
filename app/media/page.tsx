@@ -31,7 +31,7 @@ export default function MediaPage() {
         <EmptyState
           icon={ImageOff}
           title="No galleries yet"
-          body="Photo packs will appear here after each event. Check back after the Nyuki Marathon 2026 on 17 May."
+          body="Photo packs will appear here after each event. Check back after our first events wrap up."
         />
       </section>
     </div>

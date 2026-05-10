@@ -9,9 +9,9 @@ const VALUES = [
 ]
 
 const MILESTONES = [
-  { year: "2024",     title: "An idea in Harare",        body: "Started as a side project to run ticketing for the Nyuki Marathon." },
+  { year: "2024",     title: "An idea in Harare",        body: "Started as a side project to run ticketing for a local race." },
   { year: "2025",     title: "Built end-to-end",         body: "One platform: sale, printable PDF + mobile QR delivery, and our own gate-scanner. No third-party stack." },
-  { year: "May 2026", title: "Launched.",                body: "Public on-sale opened with the Nyuki Marathon as our anchor event. EcoCash, Visa, USD and ZAR all clearing at checkout." },
+  { year: "May 2026", title: "Launched.",                body: "Public on-sale opened with our first anchor event. EcoCash, Visa, USD and ZAR all clearing at checkout." },
   { year: "Now",      title: "Filling the calendar",     body: "Onboarding organizers across Harare, Bulawayo and Vic Falls. New events going live every week." },
 ]
 

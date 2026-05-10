@@ -7,6 +7,31 @@ import {
 import EventCard from "@/components/events/EventCard"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
+import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
+
+const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
+  concert:    { emoji: "🎵", gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  accent: "text-violet-700" },
+  marathon:   { emoji: "🏃", gradient: "from-sky-100 via-blue-50 to-cyan-50",        accent: "text-sky-700" },
+  walkathon:  { emoji: "🚶", gradient: "from-emerald-100 via-teal-50 to-cyan-50",    accent: "text-emerald-700" },
+  film:       { emoji: "🎬", gradient: "from-amber-100 via-orange-50 to-rose-50",    accent: "text-amber-700" },
+  exhibition: { emoji: "🏢", gradient: "from-slate-100 via-blue-50 to-indigo-50",    accent: "text-slate-700" },
+  expedition: { emoji: "⛰️", gradient: "from-lime-100 via-emerald-50 to-teal-50",    accent: "text-emerald-800" },
+}
+
+interface HeroTicket {
+  title: string
+  venue: string
+  date: Date
+  price: number
+  currency: string
+  emoji: string
+  gradient: string
+  accent: string
+  badge: { label: string; color: string }
+  rotate?: string
+  placement?: string
+  z?: string
+}
 
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay first with just your name, email, and phone. We hold your seat and email a magic link. One click verifies the email, releases your tickets, and creates your account passwordless. You can set a password later from your account settings, or never. The tickets work either way." },
@@ -19,30 +44,38 @@ const FAQ = [
   { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event, no extra integrations." },
 ]
 
-const FEATURED_EVENTS = [
-  {
-    id: "1", slug: "nyuki-marathon-2026", title: "Nyuki Marathon 2026: One Bee, Million Futures",
-    category: "marathon", venue: "National Sports Stadium", city: "Harare", startsAt: new Date("2026-05-17T06:00:00"),
-    featured: true, lowestPrice: 5, currency: "USD", status: "published",
-  },
-]
+const HERO_PLACEMENTS = [
+  { rotate: "lg:-rotate-[2deg]", placement: "lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2", z: "z-30" },
+  { rotate: "lg:rotate-[3deg]",  placement: "lg:top-[12%] lg:right-[6%]",                                      z: "z-20" },
+  { rotate: "lg:-rotate-[4deg]", placement: "lg:bottom-[8%] lg:left-[6%]",                                     z: "z-10" },
+] as const
 
-const HERO_TICKETS = [
-  {
-    title: "Nyuki Marathon 2026",
-    venue: "National Sports Stadium · Harare",
-    date: new Date("2026-05-17T06:00:00"),
-    price: 5,
-    currency: "USD",
-    emoji: "🏃",
-    gradient: "from-sky-100 via-blue-50 to-cyan-50",
-    accent: "text-sky-700",
-    badge: { label: "ON SALE", color: "bg-emerald-600 text-white" },
-    rotate: "lg:-rotate-[2deg]",
-    placement: "lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2",
-    z: "z-30",
-  },
-]
+function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
+  return featured.slice(0, HERO_PLACEMENTS.length).map((event, i) => {
+    const visual = CATEGORY_HERO_VISUAL[event.category.toLowerCase()] ?? {
+      emoji: "🎫",
+      gradient: "from-slate-100 via-blue-50 to-indigo-50",
+      accent: "text-slate-700",
+    }
+    const placement = HERO_PLACEMENTS[i]
+    return {
+      title: event.title,
+      venue: `${event.venue} · ${event.city}`,
+      date: event.startsAt,
+      price: event.lowestPrice ?? 0,
+      currency: event.currency,
+      emoji: visual.emoji,
+      gradient: visual.gradient,
+      accent: visual.accent,
+      badge: event.status === "sold_out"
+        ? { label: "SOLD OUT", color: "bg-rose-600 text-white" }
+        : { label: "ON SALE", color: "bg-emerald-600 text-white" },
+      rotate: placement.rotate,
+      placement: placement.placement,
+      z: placement.z,
+    }
+  })
+}
 
 const CATEGORIES = [
   { label: "Concerts",    value: "concert",    icon: Music,      gradient: "from-violet-50 to-fuchsia-50",   ring: "ring-violet-200/60",   accent: "text-violet-700" },
@@ -53,12 +86,14 @@ const CATEGORIES = [
   { label: "Expeditions", value: "expedition", icon: Mountain,   gradient: "from-lime-50 to-emerald-50",     ring: "ring-lime-200/60",     accent: "text-lime-700" },
 ]
 
-const STATS = [
-  { value: "Live",    label: "Launched May 2026" },
-  { value: "1",       label: "Event on sale today" },
-  { value: "2 ways",  label: "EcoCash · Visa" },
-  { value: "5%",      label: "Organizer fee, pay as you sell" },
-]
+function buildStats(eventsOnSale: number) {
+  return [
+    { value: "Live",    label: "Launched May 2026" },
+    { value: String(eventsOnSale), label: eventsOnSale === 1 ? "Event on sale today" : "Events on sale today" },
+    { value: "2 ways",  label: "EcoCash · Visa" },
+    { value: "5%",      label: "Organizer fee, pay as you sell" },
+  ]
+}
 
 const STEPS = [
   { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
@@ -68,7 +103,7 @@ const STEPS = [
 
 const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
 
-function HeroTicketCard({ ticket, index = 0 }: { ticket: (typeof HERO_TICKETS)[number]; index?: number }) {
+function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: number }) {
   return (
     <div
       style={{ animationDelay: FADE_DELAY[index] ?? "0ms" }}
@@ -90,8 +125,14 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: (typeof HERO_TICKETS)[n
         </div>
         <div className="mt-3 pt-3 border-t border-dashed border-line flex items-center justify-between">
           <span className="text-[13px] font-semibold tracking-tight text-ink">
-            <span className="text-[10px] text-ink-3 font-normal mr-1">From</span>
-            {formatCurrency(ticket.price, ticket.currency)}
+            {ticket.price > 0 ? (
+              <>
+                <span className="text-[10px] text-ink-3 font-normal mr-1">From</span>
+                {formatCurrency(ticket.price, ticket.currency)}
+              </>
+            ) : (
+              <span className="text-emerald-700">Free entry</span>
+            )}
           </span>
           <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-navy">
             View <ArrowUpRight size={11} />
@@ -105,7 +146,11 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: (typeof HERO_TICKETS)[n
   )
 }
 
-export default function Home() {
+export default async function Home() {
+  const featuredEvents = await getFeaturedEvents(3)
+  const heroTickets = buildHeroTickets(featuredEvents)
+  const eventsOnSale = featuredEvents.length
+
   return (
     <main>
       {/* HERO */}
@@ -274,21 +319,32 @@ export default function Home() {
               {/* Decorative glow */}
               <div className="absolute inset-0 -z-10 [background:radial-gradient(500px_circle_at_50%_45%,rgba(5,112,222,0.10),transparent_60%)] pointer-events-none" />
 
-              {/* Mobile/tablet: stack horizontally with snap */}
-              <div className="lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-5 px-5 scrollbar-none">
-                {HERO_TICKETS.map((t) => (
-                  <div key={t.title} className="snap-center shrink-0 w-[280px]">
-                    <HeroTicketCard ticket={t} />
+              {heroTickets.length > 0 ? (
+                <>
+                  {/* Mobile/tablet: stack horizontally with snap */}
+                  <div className="lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-5 px-5 scrollbar-none">
+                    {heroTickets.map((t) => (
+                      <div key={t.title} className="snap-center shrink-0 w-[280px]">
+                        <HeroTicketCard ticket={t} />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {/* Desktop: absolute floating */}
-              <div className="hidden lg:block relative h-full">
-                {HERO_TICKETS.map((t, i) => (
-                  <HeroTicketCard key={t.title} ticket={t} index={i} />
-                ))}
-              </div>
+                  {/* Desktop: absolute floating */}
+                  <div className="hidden lg:block relative h-full">
+                    {heroTickets.map((t, i) => (
+                      <HeroTicketCard key={t.title} ticket={t} index={i} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="rounded-2xl border border-dashed border-line bg-paper/70 backdrop-blur p-8 text-center max-w-sm">
+                    <p className="text-[13.5px] font-semibold tracking-tight text-ink">Events drop soon.</p>
+                    <p className="mt-1.5 text-[12.5px] text-ink-2">The first tickets land here the moment organizers go live.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -297,7 +353,7 @@ export default function Home() {
         <div className="border-t border-line bg-paper/60 backdrop-blur">
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 md:py-9">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-line">
-              {STATS.map((s, i) => (
+              {buildStats(eventsOnSale).map((s, i) => (
                 <div key={i} className="md:px-6 md:first:pl-0 md:last:pr-0">
                   <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none">
                     {s.value}
@@ -311,19 +367,23 @@ export default function Home() {
       </section>
 
       {/* FEATURED */}
-      <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-        <div className="mb-8 md:mb-10 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
-          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Our launch event.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We opened with one anchor event in May 2026. The calendar is filling up fast. <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.</p>
-        </div>
+      {featuredEvents.length > 0 && (
+        <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <div className="mb-8 md:mb-10 max-w-2xl">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
+            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">
+              {featuredEvents.length === 1 ? "Our launch event." : "What's on."}
+            </h2>
+            <p className="mt-3 text-[15px] text-ink-2">The calendar is filling up fast. <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.</p>
+          </div>
 
-        <div className="max-w-md mx-auto">
-          {FEATURED_EVENTS.map((e) => (
-            <EventCard key={e.id} {...e} />
-          ))}
-        </div>
-      </section>
+          <div className={featuredEvents.length === 1 ? "max-w-md mx-auto" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6"}>
+            {featuredEvents.map((e) => (
+              <EventCard key={e.id} {...e} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CATEGORIES */}
       <section className="bg-paper-2 border-y border-line">
