@@ -201,7 +201,7 @@ export default function CheckoutPage() {
                   <label
                     key={value}
                     className={`relative cursor-pointer rounded-xl border p-4 transition-all ${
-                      checked ? "border-navy bg-blue-soft/40 ring-1 ring-navy/15" : "border-line bg-paper hover:border-line-2"
+                      checked ? "border-navy bg-blue-soft/40 ring-2 ring-navy/40" : "border-line bg-paper hover:border-line-2"
                     }`}
                   >
                     <input
@@ -247,8 +247,8 @@ export default function CheckoutPage() {
         </div>
 
         {/* Summary */}
-        <aside>
-          <div className="sticky top-24 rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04]">
+        <aside className="order-first lg:order-none">
+          <div className="lg:sticky lg:top-24 rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04]">
             <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-1">Order summary</h2>
             <p className="text-xs text-ink-3 mb-5">{lineCount} {lineCount === 1 ? "item" : "items"}</p>
 

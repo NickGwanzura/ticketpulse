@@ -28,7 +28,7 @@ export default function MobileBuyBar({ label, primary, secondary, href, showAfte
 
   return (
     <div
-      className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-paper/95 backdrop-blur-xl px-4 py-3 shadow-[0_-12px_40px_-12px_rgba(10,37,64,0.18)] transition-transform duration-200 ${
+      className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-paper/95 backdrop-blur-xl px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_40px_-12px_rgba(10,37,64,0.18)] transition-transform duration-200 ${
         visible ? "translate-y-0" : "translate-y-full"
       }`}
       role="complementary"

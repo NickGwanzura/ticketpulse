@@ -261,7 +261,7 @@ export default function Navbar() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden -mr-2 inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-paper-2"
+          className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-paper-2"
           aria-label="Menu"
           aria-expanded={menuOpen}
         >

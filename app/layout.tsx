@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist } from "next/font/google"
 import { headers } from "next/headers"
 import "./globals.css"
@@ -17,6 +17,12 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "TicketPulse. Every event. One ticket.",
   description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

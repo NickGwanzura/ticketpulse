@@ -1,6 +1,6 @@
 import EventCard from "@/components/events/EventCard"
 import Link from "next/link"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search } from "lucide-react"
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
 import { and, asc, eq, ilike, inArray, or } from "drizzle-orm"
@@ -121,12 +121,7 @@ export default async function EventsPage({
               className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
             />
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-2 h-12 rounded-xl border border-line bg-paper px-4 text-sm font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
-          >
-            <SlidersHorizontal size={15} /> Filters
-          </button>
+          {/* Filters button hidden until functionality lands; category chips below cover the same need. */}
         </form>
 
         {/* Category chips */}

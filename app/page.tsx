@@ -252,9 +252,7 @@ export default function Home() {
 
               <div className="mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
                 <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-emerald-600" /> No signup to buy</span>
-                <span className="hidden md:inline-block w-px h-3 bg-line/80" aria-hidden />
                 <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-emerald-600" /> PDF + mobile QR</span>
-                <span className="hidden md:inline-block w-px h-3 bg-line/80" aria-hidden />
                 <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-emerald-600" /> Our gate scanner</span>
               </div>
 
@@ -271,7 +269,7 @@ export default function Home() {
             </div>
 
             {/* RIGHT. Floating ticket cards */}
-            <div className="relative h-[420px] lg:h-[480px] hidden sm:block">
+            <div className="relative h-[420px] lg:h-[480px]">
               {/* Decorative glow */}
               <div className="absolute inset-0 -z-10 [background:radial-gradient(500px_circle_at_50%_45%,rgba(5,112,222,0.10),transparent_60%)] pointer-events-none" />
 

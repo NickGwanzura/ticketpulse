@@ -94,7 +94,7 @@ export default function TopBar() {
         <button
           onClick={dismiss}
           aria-label="Dismiss announcement"
-          className="shrink-0 inline-flex w-7 h-7 items-center justify-center rounded-md text-white/55 hover:text-white hover:bg-white/10 transition-colors"
+          className="relative shrink-0 inline-flex w-7 h-7 items-center justify-center rounded-md text-white/55 hover:text-white hover:bg-white/10 transition-colors before:absolute before:content-[''] before:-inset-2"
         >
           <X size={13} />
         </button>

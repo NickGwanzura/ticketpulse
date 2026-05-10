@@ -83,10 +83,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
         <span className="text-8xl relative">{emoji}</span>
         <div className="absolute top-5 right-5 flex gap-2">
-          <button className="border border-line bg-paper/80 backdrop-blur text-ink-2 rounded-lg p-2.5 hover:text-ink hover:border-line-2 transition-colors">
+          <button
+            type="button"
+            aria-label="Share event"
+            className="border border-line bg-paper/80 backdrop-blur text-ink-2 rounded-lg p-3 hover:text-ink hover:border-line-2 transition-colors"
+          >
             <Share2 size={16} />
           </button>
-          <button className="border border-line bg-paper/80 backdrop-blur text-ink-2 rounded-lg p-2.5 hover:text-rose-600 hover:border-line-2 transition-colors">
+          <button
+            type="button"
+            aria-label="Save to favourites"
+            className="border border-line bg-paper/80 backdrop-blur text-ink-2 rounded-lg p-3 hover:text-rose-600 hover:border-line-2 transition-colors"
+          >
             <Heart size={16} />
           </button>
         </div>
