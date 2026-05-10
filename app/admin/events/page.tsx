@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CalendarCheck, FileText, Clock3, XCircle, MoreHorizontal, Star, Calendar } from "lucide-react"
+import { CalendarCheck, FileText, Clock3, XCircle, MoreHorizontal, Star, Calendar, Plus } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -53,6 +53,14 @@ export default function AdminEventsPage() {
         title="Event moderation"
         subtitle="Approve publish requests, feature picks, and pause cancellations."
         width="full"
+        actions={
+          <Link
+            href="/organizer/events/new"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
+          >
+            <Plus size={14} /> Create event
+          </Link>
+        }
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
@@ -184,7 +192,9 @@ export default function AdminEventsPage() {
             <EmptyState
               icon={Calendar}
               title="No events yet"
-              body="Published, draft, and pending events will appear here once organizers create them."
+              body="Published, draft, and pending events will appear here once organizers create them — or create one yourself."
+              ctaLabel="Create event"
+              ctaHref="/organizer/events/new"
               variant="inline"
             />
           )}
