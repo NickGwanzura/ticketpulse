@@ -1,49 +1,116 @@
 import Link from "next/link"
-import { CalendarCheck, FileText, Clock3, XCircle, MoreHorizontal, Star, Calendar, Plus } from "lucide-react"
+import { redirect } from "next/navigation"
+import {
+  CalendarCheck, FileText, XCircle, PackageCheck,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus,
+} from "lucide-react"
+import { desc, eq, sql } from "drizzle-orm"
+
+import { auth } from "@/auth"
+import { db } from "@/db"
+import { events, ticketTiers, orders, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
-type Status = "published" | "draft" | "review" | "cancelled"
+type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
 
-type Event = {
-  id: string
-  title: string
-  organizer: string
-  city: string
-  startsAt: Date
-  status: Status
-  sold: number
-  capacity: number
-  revenue: number
-  currency: string
-  featured: boolean
-}
-
-const EVENTS: Event[] = []
-
-const STATUS_STYLE: Record<Status, string> = {
+const STATUS_STYLE: Record<EventStatus, string> = {
   published: "bg-emerald-50 text-emerald-700",
   draft:     "bg-paper-2 text-ink-2 ring-1 ring-line",
-  review:    "bg-amber-50 text-amber-700",
+  sold_out:  "bg-blue-soft text-navy",
   cancelled: "bg-rose-50 text-rose-700",
+  completed: "bg-paper-2 text-ink-3 ring-1 ring-line",
 }
 
-const STATUS_LABEL: Record<Status, string> = {
+const STATUS_LABEL: Record<EventStatus, string> = {
   published: "Live",
   draft:     "Draft",
-  review:    "Review",
+  sold_out:  "Sold out",
   cancelled: "Cancelled",
+  completed: "Completed",
 }
 
-const TABS = ["All", "Live", "Drafts", "Pending review", "Cancelled"]
+const TABS: { label: string; value: string }[] = [
+  { label: "All",       value: "all" },
+  { label: "Live",      value: "published" },
+  { label: "Drafts",    value: "draft" },
+  { label: "Sold out",  value: "sold_out" },
+  { label: "Cancelled", value: "cancelled" },
+]
 
-export default function AdminEventsPage() {
+export default async function AdminEventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    redirect("/auth/signin?callbackUrl=/admin/events")
+  }
+
+  const sp = await searchParams
+  const activeTab = sp.status ?? "all"
+
+  const eventRows = await db
+    .select({
+      id:           events.id,
+      slug:         events.slug,
+      title:        events.title,
+      city:         events.city,
+      startsAt:     events.startsAt,
+      status:       events.status,
+      featured:     events.featured,
+      organizerId:  events.organizerId,
+      organizerName:  users.name,
+      organizerEmail: users.email,
+      capacity:  sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)::int`,
+      sold:      sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)::int`,
+    })
+    .from(events)
+    .leftJoin(users, eq(events.organizerId, users.id))
+    .leftJoin(ticketTiers, eq(ticketTiers.eventId, events.id))
+    .groupBy(events.id, users.id)
+    .orderBy(desc(events.createdAt))
+    .limit(100)
+
+  const revenueRows = await db
+    .select({
+      eventId:  orders.eventId,
+      currency: orders.currency,
+      revenue:  sql<string>`SUM(${orders.totalAmount})`,
+    })
+    .from(orders)
+    .where(eq(orders.status, "paid"))
+    .groupBy(orders.eventId, orders.currency)
+
+  const revenueByEvent = new Map<string, { revenue: number; currency: string }>()
+  for (const r of revenueRows) {
+    if (!r.eventId) continue
+    const amount = Number(r.revenue ?? 0)
+    const cur = r.currency ?? "USD"
+    const existing = revenueByEvent.get(r.eventId)
+    if (!existing || amount > existing.revenue) {
+      revenueByEvent.set(r.eventId, { revenue: amount, currency: cur })
+    }
+  }
+
+  const filtered = activeTab === "all"
+    ? eventRows
+    : eventRows.filter((e) => e.status === activeTab)
+
+  const totals = {
+    published: eventRows.filter((e) => e.status === "published").length,
+    draft:     eventRows.filter((e) => e.status === "draft").length,
+    sold_out:  eventRows.filter((e) => e.status === "sold_out").length,
+    cancelled: eventRows.filter((e) => e.status === "cancelled").length,
+  }
+
   const stats = [
-    { label: "Live",            value: EVENTS.filter((e) => e.status === "published").length, icon: CalendarCheck, tone: "text-emerald-700", bg: "bg-emerald-50" },
-    { label: "Drafts",          value: EVENTS.filter((e) => e.status === "draft").length,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
-    { label: "Pending review",  value: EVENTS.filter((e) => e.status === "review").length,    icon: Clock3,        tone: "text-amber-700",   bg: "bg-amber-50" },
-    { label: "Cancelled",       value: EVENTS.filter((e) => e.status === "cancelled").length, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
+    { label: "Live",      value: totals.published, icon: CalendarCheck, tone: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: "Drafts",    value: totals.draft,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
+    { label: "Sold out",  value: totals.sold_out,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-blue-soft" },
+    { label: "Cancelled", value: totals.cancelled, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
   ]
 
   return (
@@ -80,20 +147,24 @@ export default function AdminEventsPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar tp-fade-up-2">
-          {TABS.map((t, i) => (
-            <button
-              key={t}
-              className={`rounded-lg px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors ${
-                i === 0 ? "bg-paper-2 text-ink font-semibold ring-1 ring-line" : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const isActive = activeTab === t.value
+            return (
+              <Link
+                key={t.value}
+                href={t.value === "all" ? "/admin/events" : `/admin/events?status=${t.value}`}
+                className={`rounded-lg px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors ${
+                  isActive ? "bg-paper-2 text-ink font-semibold ring-1 ring-line" : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
+                }`}
+              >
+                {t.label}
+              </Link>
+            )
+          })}
         </div>
 
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
-          {EVENTS.length > 0 ? (
+          {filtered.length > 0 ? (
             <>
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[820px]">
@@ -106,51 +177,85 @@ export default function AdminEventsPage() {
                       <th className="text-center px-3 py-3 font-semibold">Featured</th>
                       <th className="text-right px-3 py-3 font-semibold">Sold</th>
                       <th className="text-right px-3 py-3 font-semibold">Revenue</th>
-                      <th className="px-3 py-3" />
+                      <th className="px-3 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {EVENTS.map((e) => {
-                      const pct = Math.round((e.sold / e.capacity) * 100)
+                    {filtered.map((e) => {
+                      const status = (e.status ?? "draft") as EventStatus
+                      const capacity = e.capacity ?? 0
+                      const sold = e.sold ?? 0
+                      const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
+                      const rev = revenueByEvent.get(e.id)
+                      const organizer = e.organizerName ?? e.organizerEmail ?? "—"
                       return (
                         <tr key={e.id} className="hover:bg-paper-2 transition-colors">
                           <td className="px-5 py-3.5 max-w-xs">
-                            <Link href={`/events/${e.id}`} className="block">
+                            <Link href={`/events/${e.slug}`} className="block">
                               <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
                               <p className="text-[11.5px] text-ink-3 mt-0.5">{e.city}</p>
                             </Link>
                           </td>
-                          <td className="px-3 py-3.5 text-[12.5px] text-ink-2">{e.organizer}</td>
+                          <td className="px-3 py-3.5 text-[12.5px] text-ink-2 max-w-[180px] truncate">{organizer}</td>
                           <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">{formatDateShort(e.startsAt)}</td>
                           <td className="px-3 py-3.5">
-                            <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[e.status]}`}>
-                              {STATUS_LABEL[e.status]}
+                            <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[status]}`}>
+                              {STATUS_LABEL[status]}
                             </span>
                           </td>
                           <td className="px-3 py-3.5">
                             <div className="flex items-center justify-center">
-                              <button
-                                type="button"
-                                aria-label={e.featured ? "Unfeature" : "Feature"}
-                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${e.featured ? "bg-navy" : "bg-paper-2 ring-1 ring-line"}`}
-                              >
-                                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${e.featured ? "translate-x-5" : "translate-x-1"}`} />
-                              </button>
+                              {e.featured ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                                  <Star size={11} className="fill-amber-400 text-amber-500" /> Yes
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-ink-3">—</span>
+                              )}
                             </div>
                           </td>
                           <td className="px-3 py-3.5 text-right whitespace-nowrap">
-                            <p className="text-[12.5px] font-semibold text-ink">{e.sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {e.capacity.toLocaleString()}</span></p>
+                            <p className="text-[12.5px] font-semibold text-ink">
+                              {sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {capacity.toLocaleString()}</span>
+                            </p>
                             <div className="w-20 h-1 bg-paper-2 rounded-full mt-1 ml-auto overflow-hidden">
-                              <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
+                              <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
                             </div>
                           </td>
                           <td className="px-3 py-3.5 text-right text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
-                            {formatCurrency(e.revenue, e.currency)}
+                            {rev ? formatCurrency(rev.revenue, rev.currency) : <span className="text-ink-3 font-normal">—</span>}
                           </td>
-                          <td className="px-3 py-3.5 text-right">
-                            <button className="text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2">
-                              <MoreHorizontal size={15} />
-                            </button>
+                          <td className="px-3 py-3.5">
+                            <div className="flex items-center justify-end gap-1">
+                              <Link
+                                href={`/events/${e.slug}`}
+                                aria-label="View public page"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <ExternalLink size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/edit`}
+                                aria-label="Edit event"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <Pencil size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/gallery`}
+                                aria-label="Gallery"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <ImageIcon size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/merch`}
+                                aria-label="Merch"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <ShoppingBag size={14} />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -160,28 +265,46 @@ export default function AdminEventsPage() {
               </div>
 
               <ul className="md:hidden divide-y divide-line">
-                {EVENTS.map((e) => {
-                  const pct = Math.round((e.sold / e.capacity) * 100)
+                {filtered.map((e) => {
+                  const status = (e.status ?? "draft") as EventStatus
+                  const capacity = e.capacity ?? 0
+                  const sold = e.sold ?? 0
+                  const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
+                  const rev = revenueByEvent.get(e.id)
+                  const organizer = e.organizerName ?? e.organizerEmail ?? "—"
                   return (
                     <li key={e.id} className="p-5">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-1">
-                            <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status]}`}>{STATUS_LABEL[e.status]}</span>
+                            <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[status]}`}>{STATUS_LABEL[status]}</span>
                             {e.featured && <Star size={11} className="text-amber-500 fill-amber-400" />}
                           </div>
-                          <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                          <p className="text-[11.5px] text-ink-3 mt-0.5">{e.organizer} · {e.city}</p>
+                          <Link href={`/events/${e.slug}`} className="block">
+                            <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
+                          </Link>
+                          <p className="text-[11.5px] text-ink-3 mt-0.5 truncate">{organizer} · {e.city}</p>
                         </div>
                         <p className="text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
-                          {formatCurrency(e.revenue, e.currency)}
+                          {rev ? formatCurrency(rev.revenue, rev.currency) : <span className="text-ink-3 font-normal">—</span>}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-3">
                         <div className="flex-1 h-1 bg-paper-2 rounded-full overflow-hidden">
-                          <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{e.sold}/{e.capacity}</span>
+                        <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{sold}/{capacity}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[12px]">
+                        <Link href={`/organizer/events/${e.id}/edit`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
+                          <Pencil size={12} /> Edit
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/gallery`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
+                          <ImageIcon size={12} /> Gallery
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/merch`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
+                          <ShoppingBag size={12} /> Merch
+                        </Link>
                       </div>
                     </li>
                   )
@@ -191,10 +314,14 @@ export default function AdminEventsPage() {
           ) : (
             <EmptyState
               icon={Calendar}
-              title="No events yet"
-              body="Published, draft, and pending events will appear here once organizers create them — or create one yourself."
-              ctaLabel="Create event"
-              ctaHref="/organizer/events/new"
+              title={activeTab === "all" ? "No events yet" : `No events in "${TABS.find(t => t.value === activeTab)?.label ?? activeTab}"`}
+              body={
+                activeTab === "all"
+                  ? "Published, draft, and pending events will appear here once organizers create them — or create one yourself."
+                  : "Try a different tab, or check back as state changes."
+              }
+              ctaLabel={activeTab === "all" ? "Create event" : undefined}
+              ctaHref={activeTab === "all" ? "/organizer/events/new" : undefined}
               variant="inline"
             />
           )}
