@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Mail, MapPin, Globe } from "lucide-react"
+import { ArrowRight, Mail, MapPin, Globe, Apple, Smartphone } from "lucide-react"
 
 function IconX(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -46,6 +46,7 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
   {
     title: "Organizers",
     links: [
+      ["How it works", "/how-it-works"],
       ["Sell tickets", "/auth/signup?role=organizer"],
       ["Pricing", "/pricing"],
       ["Payouts", "/payouts"],
@@ -176,6 +177,24 @@ export default function Footer() {
                   </span>
                 ))}
               </div>
+            </div>
+
+            {/* Mobile apps */}
+            <div className="mt-6">
+              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-2.5">Mobile apps</p>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-line bg-paper px-2 py-1 text-ink-2">
+                  <Apple size={11} className="text-ink-3" />
+                  iOS
+                  <span className="ml-1 rounded bg-blue/10 px-1 py-px text-[9.5px] font-semibold tracking-wide uppercase text-blue">Soon</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-line bg-paper px-2 py-1 text-ink-2">
+                  <Smartphone size={11} className="text-ink-3" />
+                  Android
+                  <span className="ml-1 rounded bg-blue/10 px-1 py-px text-[9.5px] font-semibold tracking-wide uppercase text-blue">Soon</span>
+                </span>
+              </div>
+              <p className="mt-2 text-[11.5px] text-ink-3">iOS and Android apps coming soon.</p>
             </div>
           </div>
 
