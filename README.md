@@ -17,12 +17,23 @@ Zimbabwe's premier event ticketing platform. Built with Next.js 15, Neon Postgre
 
 ## Setup
 
-1. Copy .env.local and fill in values
+1. Copy `.env.example` to `.env.local` and fill in values
 2. Get DATABASE_URL from neon.tech
 3. Run: npm run auth:secret
 4. Set up Google OAuth at console.cloud.google.com
 5. npm run db:push
 6. npm run dev
+
+## Environment variables
+
+| Variable | Description |
+|---|---|
+| `AUTH_URL` | Canonical public URL — must be `https://ticketpulse.tech` in production (not the Railway internal domain) |
+| `AUTH_SECRET` | Random secret for Auth.js — generate with `npm run auth:secret` |
+| `AUTH_GOOGLE_ID` | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
+| `AUTH_RESEND_KEY` | Resend API key for magic-link emails |
+| `DATABASE_URL` | Neon Postgres connection string |
 
 ## Scripts
 - npm run dev
