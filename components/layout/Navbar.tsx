@@ -33,9 +33,10 @@ const FEATURED_PEEK = [
 ]
 
 const TOP_LINKS: { label: string; href: string }[] = [
-  { label: "Vendors", href: "/vendors" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "About",   href: "/about" },
+  { label: "How it works", href: "/how-it-works" },
+  { label: "Vendors",      href: "/vendors" },
+  { label: "Pricing",      href: "/pricing" },
+  { label: "About",        href: "/about" },
 ]
 
 export default function Navbar() {

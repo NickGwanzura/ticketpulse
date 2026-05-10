@@ -35,7 +35,7 @@ export default function HelpPage() {
             Need a hand?
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-xl leading-relaxed">
-            Search the help center, or skip ahead to a topic. Still stuck? Live chat is open weekdays.
+            Search the help center, or skip ahead to a topic. Still stuck? Live chat is open weekdays — average reply under five minutes.
           </p>
 
           <form action="/help/search" className="mt-8 max-w-2xl relative">

@@ -5,6 +5,7 @@ import "./globals.css"
 import Providers from "@/components/layout/Providers"
 import Navbar from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
+import CookiesNotice from "@/components/CookiesNotice"
 
 const geist = Geist({
   subsets: ["latin"],
@@ -29,6 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {!bare && <Navbar />}
           <div className={bare ? "" : "min-h-[calc(100vh-4rem)]"}>{children}</div>
           {!bare && <Footer />}
+          {!bare && <CookiesNotice />}
         </Providers>
       </body>
     </html>

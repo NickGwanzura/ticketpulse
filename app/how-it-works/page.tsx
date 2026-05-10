@@ -124,7 +124,7 @@ export default function HowItWorksPage() {
             Tickets in three taps. <span className="text-blue">Sales in three steps.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
-            Whether you&apos;re buying a ticket, hosting an event, or selling a service, here&apos;s exactly what happens — and how pre-sales fit in.
+            Buying a ticket, hosting an event, or selling a service — here&apos;s what happens, and how pre-sales fit in. Live and running since May 2026.
           </p>
         </div>
       </section>

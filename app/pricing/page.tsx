@@ -73,7 +73,7 @@ export default function PricingPage() {
             Simple. <span className="text-blue">Pay-as-you-sell.</span>
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-2xl leading-relaxed">
-            Free for attendees. Free to list as a vendor. Organizers pay 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts.
+            Free for attendees. Free to list as a vendor. Organizers pay a flat 5% — and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts. Same pricing since launch in May 2026.
           </p>
 
           <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl">

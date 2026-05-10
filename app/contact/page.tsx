@@ -30,7 +30,7 @@ export default function ContactPage() {
             We read every message.
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-xl leading-relaxed">
-            Pick the channel that suits you. Most enquiries are answered within four hours during business hours.
+            Pick whichever channel suits you. Most enquiries are answered inside four hours during business hours, weekdays CAT.
           </p>
         </div>
       </section>
