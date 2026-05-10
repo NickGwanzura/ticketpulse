@@ -100,10 +100,10 @@ export default async function EventsPage({
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight text-ink">All events</h1>
           <p className="mt-3 text-[15px] text-ink-2 max-w-xl">
             {eventCards.length === 0
-              ? "No events live yet — check back soon."
+              ? "No events live yet. Check back soon."
               : eventCards.length === 1
               ? "1 event live right now"
-              : `${eventCards.length} events live`} {eventCards.length > 0 && "— more landing as organizers come online."}
+              : `${eventCards.length} events live`} {eventCards.length > 0 && "More landing as organizers come online."}
           </p>
         </div>
       </div>
@@ -159,7 +159,7 @@ export default async function EventsPage({
             <p className="text-sm text-ink-2 mb-6">
               {query || activeCategory !== "all"
                 ? "Try clearing the search or picking a different category."
-                : "Check back soon — organizers are still coming online."}
+                : "Check back soon. Organizers are still coming online."}
             </p>
             {(query || activeCategory !== "all") && (
               <Link

@@ -223,7 +223,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
               <div className="border-t border-dashed border-line px-7 md:px-9 py-3.5 flex flex-wrap items-center justify-between gap-2 bg-paper-2/50 print:bg-white">
                 <p className="text-[10.5px] text-ink-3 inline-flex items-center gap-1.5">
                   <ShieldCheck size={11} className="text-emerald-600" />
-                  Verified by TicketPulse — scanned at the gate by our reader app. Valid for one entry only.
+                  Verified by TicketPulse. Scanned at the gate by our reader app. Valid for one entry only.
                 </p>
                 <p className="text-[10px] font-mono text-ink-3 tabular-nums">{human}</p>
               </div>

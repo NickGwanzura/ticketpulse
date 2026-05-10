@@ -39,7 +39,7 @@ export default function AdminAnalyticsPage() {
                   {formatCurrency(total, "USD")}
                 </p>
                 <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-3">
-                  <ArrowUpRight size={12} /> —% vs prev
+                  <ArrowUpRight size={12} /> vs prev
                 </span>
               </div>
             </div>
@@ -76,7 +76,7 @@ export default function AdminAnalyticsPage() {
                 {["Avg order value", "Conversion rate", "Refund rate", "Tickets / event"].map((label, i) => (
                   <div key={label} className={`px-5 md:px-6 py-4 ${i > 0 ? "border-l border-line" : ""} ${i >= 2 ? "border-t lg:border-t-0 border-line" : ""}`}>
                     <p className="text-[11px] text-ink-3 mb-1.5">{label}</p>
-                    <p className="text-[18px] font-bold tracking-tight text-ink leading-none">—</p>
+                    <p className="text-[18px] font-bold tracking-tight text-ink leading-none">0</p>
                   </div>
                 ))}
               </>

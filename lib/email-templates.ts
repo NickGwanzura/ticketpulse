@@ -153,7 +153,7 @@ export function welcomeEmail(opts: { name?: string | null }): { html: string; te
     </p>`
 
   const html = layout({
-    preheader: "Welcome to TicketPulse — one ticket, every event.",
+    preheader: "Welcome to TicketPulse. One ticket, every event.",
     heading,
     body,
     cta: { label: "Browse events", href: eventsUrl },
@@ -162,12 +162,12 @@ export function welcomeEmail(opts: { name?: string | null }): { html: string; te
   const text = [
     heading,
     "",
-    "You are in. TicketPulse is Zimbabwe's home for live events — concerts, marathons, film, and more.",
+    "You are in. TicketPulse is Zimbabwe's home for live events: concerts, marathons, film, and more.",
     "EcoCash and Visa, printable PDF tickets, mobile QR at the gate.",
     "",
     `Browse events: ${eventsUrl}`,
     "",
-    "— TicketPulse",
+    "TicketPulse",
   ].join("\n")
 
   return { html, text }
@@ -254,14 +254,14 @@ export function orderReceiptEmail(opts: {
     "",
     ...items.map(
       (i) =>
-        `${i.qty} x ${i.description}  —  ${formatMoney(i.price * i.qty, currency)}`,
+        `${i.qty} x ${i.description}  :  ${formatMoney(i.price * i.qty, currency)}`,
     ),
     "",
     `Total: ${formatMoney(total, currency)}`,
     "",
     `View tickets: ${orderUrl}`,
     "",
-    "— TicketPulse",
+    "TicketPulse",
   ]
 
   return { html, text: lines.join("\n") }
@@ -390,7 +390,7 @@ export function magicLinkEmail(opts: { url: string; host: string }): {
     "",
     "If you did not request this, you can ignore this email.",
     "",
-    "— TicketPulse",
+    "TicketPulse",
   ].join("\n")
 
   return { html, text }

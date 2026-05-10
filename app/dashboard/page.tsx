@@ -14,7 +14,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 const FEATURED_TICKET = {
   id: "TP-2026-NYUKI-A0427",
   event: "Nyuki Marathon 2026: One Bee, Million Futures",
-  tier: "Early Bird — Half Marathon",
+  tier: "Early Bird: Half Marathon",
   venue: "National Sports Stadium, Harare",
   startsAt: new Date("2026-05-17T06:00:00"),
   gate: "Gate B",
@@ -69,10 +69,10 @@ export default async function DashboardPage() {
         {/* Stats strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {[
-            { l: "Upcoming events", v: "0",  i: Calendar,    trend: "—" },
+            { l: "Upcoming events", v: "0",  i: Calendar,    trend: "" },
             { l: "Total tickets",   v: "0",  i: Ticket,      trend: "All time" },
             { l: "Past events",     v: "0",  i: CheckCircle2, trend: "Completed" },
-            { l: "Loyalty points",  v: "0",  i: Star,        trend: "—" },
+            { l: "Loyalty points",  v: "0",  i: Star,        trend: "" },
           ].map(({ l, v, i: Icon, trend }) => (
             <div key={l} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <div className="flex items-center gap-2 mb-2.5">

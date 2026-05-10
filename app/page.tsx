@@ -5,13 +5,14 @@ import {
   Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
+import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const FAQ = [
-  { q: "Do I need an account to buy tickets?",      a: "No. Pay first with just your name, email, and phone — we hold your seat and email a magic link. One click verifies the email, releases your tickets, and creates your account passwordless. You can set a password later from your account settings, or never. The tickets work either way." },
+  { q: "Do I need an account to buy tickets?",      a: "No. Pay first with just your name, email, and phone. We hold your seat and email a magic link. One click verifies the email, releases your tickets, and creates your account passwordless. You can set a password later from your account settings, or never. The tickets work either way." },
   { q: "How do I get my ticket after I buy?",       a: "Instantly after you click the magic link. You get a printable PDF ticket by email and inside your TicketPulse account, plus a mobile QR. The QR is bound to your account, so you can sign in on any device the day-of." },
-  { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet — it reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
-  { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24–72h for cards)." },
+  { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet. It reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
+  { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24 to 72h for cards)." },
   { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
   { q: "Is TicketPulse only for Harare?",           a: "We started here, but events are live in Bulawayo, Vic Falls, Mutare, Pretoria, Durban, and London. New cities open every month." },
   { q: "How do I sell tickets to my own event?",    a: "Sign up as an organizer, build your event in the dashboard, and share your link. We pay out within 24h of the event ending." },
@@ -60,9 +61,9 @@ const STATS = [
 ]
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa — no signup, no friction. Just an email and a phone number." },
-  { icon: FileText,          title: "One-click verify",     body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in. Your account is created and signed in — set a password later if you want." },
-  { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, or wallet pass. End to end on TicketPulse — no third-party scanners." },
+  { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
+  { icon: FileText,          title: "One-click verify",     body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in. Your account is created and signed in. Set a password later if you want." },
+  { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, or wallet pass. End to end on TicketPulse. No third-party scanners." },
 ]
 
 const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
@@ -227,7 +228,7 @@ export default function Home() {
               </h1>
 
               <p className="mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
-                Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span> — pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
+                Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
               </p>
 
               <form action="/events" className="mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl">
@@ -263,7 +264,7 @@ export default function Home() {
                 </span>
                 <div className="leading-tight">
                   <p className="text-[12.5px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
-                  <p className="text-[11.5px] text-ink-3 mt-0.5">Sell, deliver, scan — one platform, no third-party stack.</p>
+                  <p className="text-[11.5px] text-ink-3 mt-0.5">Sell, deliver, scan: one platform, no third-party stack.</p>
                 </div>
               </div>
             </div>
@@ -314,7 +315,7 @@ export default function Home() {
         <div className="mb-8 md:mb-10 max-w-2xl">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Our launch event.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We opened with one anchor event in May 2026. The calendar is filling up fast — <Link href="/events" className="text-navy font-semibold hover:underline">see what else is on</Link>.</p>
+          <p className="mt-3 text-[15px] text-ink-2">We opened with one anchor event in May 2026. The calendar is filling up fast. <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.</p>
         </div>
 
         <div className="max-w-md mx-auto">
@@ -360,7 +361,7 @@ export default function Home() {
         <div className="mb-10 md:mb-14 max-w-2xl">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout — no third-party scanner contracts.</p>
+          <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout. No third-party scanner contracts.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -395,7 +396,7 @@ export default function Home() {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {[
             { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-blue/15",   accent: "text-blue" },
-            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF — pick whichever you have on hand.", tone: "from-emerald-50 to-paper-2", ring: "ring-emerald-200/60", accent: "text-emerald-700" },
+            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-emerald-50 to-paper-2", ring: "ring-emerald-200/60", accent: "text-emerald-700" },
             { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
           ].map(({ icon: Icon, k, v, tone, ring, accent }) => (
             <div key={k} className="group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 transition-all duration-300">
@@ -418,22 +419,7 @@ export default function Home() {
             <p className="mt-3 text-[15px] text-ink-2">Still wondering? <Link href="/help" className="text-navy font-semibold hover:underline">Browse the help center</Link> or <Link href="/contact" className="text-navy font-semibold hover:underline">talk to a human</Link>.</p>
           </div>
 
-          <div className="space-y-3">
-            {FAQ.map((f, i) => (
-              <details
-                key={i}
-                className="group rounded-2xl border border-line bg-paper p-5 md:p-6 hover:border-line-2 open:border-blue/30 open:shadow-[0_18px_50px_-30px_rgba(5,112,222,0.30)] transition-all [&_summary::-webkit-details-marker]:hidden"
-              >
-                <summary className="flex items-center justify-between gap-3 cursor-pointer">
-                  <p className="text-[15px] font-semibold tracking-tight text-ink group-open:text-navy transition-colors">{f.q}</p>
-                  <span className="shrink-0 inline-flex w-7 h-7 items-center justify-center rounded-full bg-paper-2 ring-1 ring-line text-ink-2 text-lg leading-none transition-transform group-open:rotate-45 group-open:bg-navy group-open:text-white group-open:ring-navy/20">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-4 text-[14px] leading-relaxed text-ink-2">{f.a}</p>
-              </details>
-            ))}
-          </div>
+          <FAQSection items={FAQ} />
         </div>
       </section>
 

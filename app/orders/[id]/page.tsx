@@ -33,7 +33,7 @@ function AwaitingVerification({ orderId }: { orderId: string }) {
     setResendNote(null)
     try {
       const res = await fetch(`/api/orders/${orderId}/resend-verification`, { method: "POST" })
-      if (res.status === 429) setResendNote("Hold on a moment — you can resend once per minute.")
+      if (res.status === 429) setResendNote("Hold on a moment. You can resend once per minute.")
       else if (!res.ok) setResendNote("Couldn't resend. Please try again shortly.")
       else setResendNote("Sent. Check your inbox.")
     } catch {

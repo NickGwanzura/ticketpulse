@@ -117,7 +117,7 @@ export default function AdminOverviewPage() {
               <EmptyState
                 icon={LayoutList}
                 title="No activity yet"
-                body="Platform events — signups, orders, payouts, and refunds — will appear here."
+                body="Platform events, signups, orders, payouts, and refunds will appear here."
                 variant="inline"
               />
             )}

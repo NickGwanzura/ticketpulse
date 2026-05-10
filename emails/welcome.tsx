@@ -16,13 +16,13 @@ type Props = {
 export default function WelcomeEmail({ name, url = BRAND.url }: Props) {
   const first = name?.split(" ")[0]?.trim()
   return (
-    <EmailShell preview="Welcome to TicketPulse — one ticket, every event.">
+    <EmailShell preview="Welcome to TicketPulse. One ticket, every event.">
       <EmailEyebrow>Welcome</EmailEyebrow>
       <EmailHeading>
         {first ? `Welcome, ${first}.` : "Welcome to TicketPulse."}
       </EmailHeading>
       <EmailParagraph>
-        You&apos;re in. TicketPulse is Zimbabwe&apos;s home for live events — concerts, marathons, film, and more. EcoCash and Visa, printable PDF tickets, mobile QR at the gate.
+        You&apos;re in. TicketPulse is Zimbabwe&apos;s home for live events: concerts, marathons, film, and more. EcoCash and Visa, printable PDF tickets, mobile QR at the gate.
       </EmailParagraph>
       <EmailParagraph>
         Start by browsing what&apos;s on. We&apos;ll only email you when there&apos;s a real reason to.
@@ -46,7 +46,7 @@ export default function WelcomeEmail({ name, url = BRAND.url }: Props) {
             lineHeight: "20px",
           }}
         >
-          Hosting an event? You can sell tickets in minutes —{" "}
+          Hosting an event? You can sell tickets in minutes.{" "}
           <a
             href={`${url}/how-it-works`}
             style={{ color: BRAND.blue, textDecoration: "underline" }}

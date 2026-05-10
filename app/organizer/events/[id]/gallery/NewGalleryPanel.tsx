@@ -13,7 +13,7 @@ export default function NewGalleryPanel({ eventId }: { eventId: string }) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <p className="text-[14.5px] font-semibold text-ink">New gallery</p>
-          <p className="text-[12.5px] text-ink-2 mt-0.5">Group photos into a pack — Saturday night, backstage, after-party.</p>
+          <p className="text-[12.5px] text-ink-2 mt-0.5">Group photos into a pack: Saturday night, backstage, after-party.</p>
         </div>
         <button
           type="button"

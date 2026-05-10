@@ -75,7 +75,7 @@ export default async function GalleryPage({
     <div className="tp-fade-up">
       <PageHeader
         eyebrow="Organizer"
-        title={`Photo galleries — ${event.title}`}
+        title={`Photo galleries: ${event.title}`}
         subtitle="Group event photos into packs. Each gallery has its own cover, price, and visibility."
       />
 

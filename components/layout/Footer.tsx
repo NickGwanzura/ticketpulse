@@ -207,7 +207,7 @@ export default function Footer() {
               TicketPulse
             </Link>
             <p className="mt-5 text-[14px] leading-relaxed text-white/65 max-w-xs">
-              Zimbabwe&apos;s ticketing platform. Sell, deliver, scan — one stack, built in Harare and live since May 2026.
+              Zimbabwe&apos;s ticketing platform. Sell, deliver, scan: one stack, built in Harare and live since May 2026.
             </p>
 
             <div className="mt-5 inline-flex items-start gap-2 text-[12.5px] text-white/55">

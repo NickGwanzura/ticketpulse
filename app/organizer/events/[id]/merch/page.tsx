@@ -47,7 +47,7 @@ export default async function MerchPage({
     <div className="tp-fade-up">
       <PageHeader
         eyebrow="Organizer"
-        title={`Merch — ${event.title}`}
+        title={`Merch: ${event.title}`}
         subtitle="Add t-shirts, caps, posters and other merch attendees can buy alongside tickets."
       />
 

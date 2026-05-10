@@ -24,18 +24,18 @@ const ATTENDEE_STEPS = [
   },
   {
     icon: CreditCard,
-    title: "Pay — no signup",
+    title: "Pay, no signup",
     body: "EcoCash or Visa, USD or ZAR. Just your name, email, and phone. We hold your seat the moment you pay.",
   },
   {
     icon: Ticket,
     title: "One-click verify",
-    body: "We email a magic link. Click once: tickets release, account auto-created passwordless. Set a password later, or don't — your call.",
+    body: "We email a magic link. Click once: tickets release, account auto-created passwordless. Set a password later, or don't. Your call.",
   },
   {
     icon: ScanLine,
     title: "Walk in fast",
-    body: "Our scanner reads your QR in under a second. PDF, screen, or wallet pass — works offline at the gate.",
+    body: "Our scanner reads your QR in under a second. PDF, screen, or wallet pass: works offline at the gate.",
   },
 ]
 
@@ -71,7 +71,7 @@ const VENDOR_STEPS = [
   {
     icon: Store,
     title: "List your service",
-    body: "Caterers, sound, photo, security — set your profile, rates, and calendar.",
+    body: "Caterers, sound, photo, security: set your profile, rates, and calendar.",
   },
   {
     icon: CalendarCheck,
@@ -124,7 +124,7 @@ export default function HowItWorksPage() {
             Tickets in three taps. <span className="text-blue">Sales in three steps.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
-            Buying a ticket, hosting an event, or selling a service — here&apos;s what happens, and how pre-sales fit in. Live and running since May 2026.
+            Buying a ticket, hosting an event, or selling a service: here&apos;s what happens, and how pre-sales fit in. Live and running since May 2026.
           </p>
         </div>
       </section>

@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 export const metadata = {
-  title: "404 — Not Found | TicketPulse",
+  title: "404: Not Found | TicketPulse",
 }
 
 export default function NotFound() {
@@ -9,7 +9,7 @@ export default function NotFound() {
     <main className="tp-fade-up flex min-h-[calc(100vh-4rem)] items-center justify-center px-5 py-20">
       <div className="w-full max-w-md rounded-2xl border border-line bg-paper shadow-sm ring-1 ring-blue/10 px-8 py-12 text-center">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-4">
-          404 — Not found
+          404 Not found
         </p>
         <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-[1.1] text-ink mb-3">
           This page slipped past us.

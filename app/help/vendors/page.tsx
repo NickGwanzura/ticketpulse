@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck, Wallet, Calendar, Star } from "lucide-react"
+import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
 const STEPS = [
   { n: "01", title: "Apply",        body: "Fill the short form. We approve in 48 hours." },
@@ -81,17 +82,7 @@ export default function HelpVendorsPage() {
       <section className="max-w-4xl mx-auto px-5 md:px-8 py-14 md:py-20">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
         <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">Vendor questions, answered.</h2>
-        <div className="space-y-3">
-          {FAQ.map((f, i) => (
-            <details key={i} className="group rounded-2xl border border-line bg-paper p-5 [&_summary::-webkit-details-marker]:hidden">
-              <summary className="flex items-center justify-between gap-3 cursor-pointer">
-                <p className="text-[15px] font-semibold tracking-tight text-ink">{f.q}</p>
-                <span className="text-ink-3 text-xl transition-transform group-open:rotate-45 leading-none">+</span>
-              </summary>
-              <p className="mt-3 text-[14px] leading-relaxed text-ink-2">{f.a}</p>
-            </details>
-          ))}
-        </div>
+        <FAQSection items={FAQ} />
       </section>
 
       {/* CTA */}

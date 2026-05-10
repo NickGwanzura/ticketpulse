@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Zap, Mail, ShieldCheck, Sparkles, X } from "lucide-react"
 
 const MESSAGES = [
-  { icon: Zap,         text: "Buy tickets in 60 seconds — no signup required" },
+  { icon: Zap,         text: "Buy tickets in 60 seconds. No signup required" },
   { icon: Mail,        text: "Pay first, verify your email later. We hold your seat" },
   { icon: ShieldCheck, text: "Verified organizers · EcoCash + Visa · Refundable up to 24h before" },
 ] as const

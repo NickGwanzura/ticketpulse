@@ -2,16 +2,16 @@ import Link from "next/link"
 import { ArrowRight, Sparkles, Heart, ShieldCheck, Target, Zap } from "lucide-react"
 
 const VALUES = [
-  { icon: ShieldCheck, title: "Verified by default", body: "Every organizer and vendor is checked before they go live. Trust isn't a setting — it's the floor." },
+  { icon: ShieldCheck, title: "Verified by default", body: "Every organizer and vendor is checked before they go live. Trust isn't a setting. It's the floor." },
   { icon: Zap,         title: "Patchy-data friendly", body: "Mobile-first, EcoCash-native, scans at the gate even when venue Wi-Fi tanks." },
   { icon: Heart,       title: "Local first",          body: "Built in Harare by people who buy these tickets themselves. We sit on the same buses." },
-  { icon: Target,      title: "Aligned incentives",   body: "5% per ticket, paid out of sales — never up front. We only win when sellers do." },
+  { icon: Target,      title: "Aligned incentives",   body: "5% per ticket, paid out of sales, never up front. We only win when sellers do." },
 ]
 
 const MILESTONES = [
   { year: "2024",     title: "An idea in Harare",        body: "Started as a side project to run ticketing for the Nyuki Marathon." },
   { year: "2025",     title: "Built end-to-end",         body: "One platform: sale, printable PDF + mobile QR delivery, and our own gate-scanner. No third-party stack." },
-  { year: "May 2026", title: "Launched.",                body: "Public on-sale opened with the Nyuki Marathon as our anchor event. EcoCash, Visa, USD and ZAR — all clearing at checkout." },
+  { year: "May 2026", title: "Launched.",                body: "Public on-sale opened with the Nyuki Marathon as our anchor event. EcoCash, Visa, USD and ZAR all clearing at checkout." },
   { year: "Now",      title: "Filling the calendar",     body: "Onboarding organizers across Harare, Bulawayo and Vic Falls. New events going live every week." },
 ]
 
@@ -40,7 +40,7 @@ export default function AboutPage() {
             Tickets that work, <span className="text-blue">where you live.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
-            We&apos;re a Zimbabwean ticketing platform, built in Harare for the way events actually run here — patchy data, four currencies, mobile money and a culture of last-minute decisions. We launched in May 2026 with one anchor event and a single belief: organizers and vendors deserve technology that respects them.
+            We&apos;re a Zimbabwean ticketing platform, built in Harare for the way events actually run here: patchy data, four currencies, mobile money and a culture of last-minute decisions. We launched in May 2026 with one anchor event and a single belief: organizers and vendors deserve technology that respects them.
           </p>
 
           <div className="mt-9 md:mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl">
@@ -105,9 +105,9 @@ export default function AboutPage() {
           <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(600px 220px at 90% 0%, #EAF2FA 0%, transparent 60%)" }} />
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">A note from the team</p>
           <p className="text-[18px] md:text-[22px] font-medium tracking-tight leading-[1.4] text-ink max-w-3xl">
-            &ldquo;We built TicketPulse because we were tired of paying scanner fees on top of platform fees, of payouts that took weeks, of QR codes that didn&apos;t open offline at the gate. So we wrote our own — sale, ticket, scanner — and we&apos;re running it on real events from day one.&rdquo;
+            &ldquo;We built TicketPulse because we were tired of paying scanner fees on top of platform fees, of payouts that took weeks, of QR codes that didn&apos;t open offline at the gate. So we wrote our own (sale, ticket, scanner) and we&apos;re running it on real events from day one.&rdquo;
           </p>
-          <p className="mt-5 text-[13px] text-ink-3">— The TicketPulse team, Harare</p>
+          <p className="mt-5 text-[13px] text-ink-3">The TicketPulse team, Harare</p>
         </div>
       </section>
 
@@ -121,7 +121,7 @@ export default function AboutPage() {
                 Want to work with us?
               </h2>
               <p className="mt-3 text-[15px] md:text-[16px] text-white/80 max-w-md leading-relaxed">
-                We&apos;re hiring engineers, designers and partnership leads. Or just say hi — we read every email.
+                We&apos;re hiring engineers, designers and partnership leads. Or just say hi, we read every email.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 md:justify-end">

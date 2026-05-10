@@ -39,7 +39,7 @@ export default function AdminOrdersPage() {
     { label: "Today's revenue",   value: formatCurrency(0, "USD"), icon: DollarSign, tone: "text-emerald-700", bg: "bg-emerald-50" },
     { label: "Today's orders",    value: "0",                      icon: Receipt,    tone: "text-sky-700",     bg: "bg-sky-50" },
     { label: "Refunds this week", value: "0",                      icon: RefreshCw,  tone: "text-rose-700",    bg: "bg-rose-50" },
-    { label: "AOV",               value: "—",                      icon: TrendingUp, tone: "text-blue",        bg: "bg-blue-soft" },
+    { label: "AOV",               value: "0",                      icon: TrendingUp, tone: "text-blue",        bg: "bg-blue-soft" },
   ]
 
   return (

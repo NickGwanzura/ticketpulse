@@ -13,7 +13,7 @@ export default function NewMerchPanel({ eventId }: { eventId: string }) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <p className="text-[14.5px] font-semibold text-ink">New merch item</p>
-          <p className="text-[12.5px] text-ink-2 mt-0.5">T-shirts, caps, posters — sell merch alongside tickets.</p>
+          <p className="text-[12.5px] text-ink-2 mt-0.5">T-shirts, caps, posters: sell merch alongside tickets.</p>
         </div>
         <button
           type="button"

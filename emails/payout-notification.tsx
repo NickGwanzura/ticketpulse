@@ -132,7 +132,7 @@ export default function PayoutNotificationEmail({
 
       <Section style={{ marginTop: 12 }}>
         <Text style={{ fontSize: 12, color: BRAND.ink3, margin: 0, lineHeight: "18px" }}>
-          EcoCash typically lands within minutes; bank transfers can take 1–3 business days.
+          EcoCash typically lands within minutes; bank transfers can take 1 to 3 business days.
         </Text>
       </Section>
     </EmailShell>

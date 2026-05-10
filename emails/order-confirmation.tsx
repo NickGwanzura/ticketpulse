@@ -47,7 +47,7 @@ export default function OrderConfirmationEmail({
         {first ? `You're in, ${first}.` : "You're in."}
       </EmailHeading>
       <EmailParagraph>
-        Tickets for <strong style={{ color: BRAND.ink }}>{eventTitle}</strong> are ready. Show the QR at the gate or print the PDF — both work, even offline.
+        Tickets for <strong style={{ color: BRAND.ink }}>{eventTitle}</strong> are ready. Show the QR at the gate or print the PDF. Both work, even offline.
       </EmailParagraph>
 
       <EmailButton href={ticketUrl}>View / download tickets</EmailButton>

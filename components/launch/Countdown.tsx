@@ -49,7 +49,7 @@ export default function Countdown({ targetIso }: { targetIso: string }) {
             suppressHydrationWarning
             className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-ink tabular-nums"
           >
-            {value === null ? "—" : value.toString().padStart(2, "0")}
+            {value === null ? "00" : value.toString().padStart(2, "0")}
           </div>
           <div className="mt-1.5 text-[10.5px] sm:text-[11px] font-semibold tracking-[0.18em] uppercase text-ink-3">
             {label}

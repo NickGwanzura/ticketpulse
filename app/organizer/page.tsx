@@ -245,7 +245,6 @@ export default async function OrganizerPage() {
                     <span className="text-[11.5px] text-ink-3">{l}</span>
                   </div>
                   <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
-                  <p className="text-[11.5px] text-ink-3 mt-2">—</p>
                 </div>
                 <div className="flex justify-end mt-3">
                   <Sparkline data={spark} positive={pos} />
@@ -398,11 +397,11 @@ export default async function OrganizerPage() {
               <div className="space-y-2 text-[12.5px] text-ink-2">
                 <div className="flex justify-between">
                   <span>Scheduled</span>
-                  <span className="font-medium text-ink-3">—</span>
+                  <span className="font-medium text-ink-3">0</span>
                 </div>
                 <div className="flex justify-between">
                   <span>From event</span>
-                  <span className="font-medium text-ink-3">—</span>
+                  <span className="font-medium text-ink-3">0</span>
                 </div>
               </div>
               <button className="mt-5 w-full rounded-xl border border-line text-[13px] font-semibold text-ink py-2.5 hover:bg-paper-2 transition">

@@ -66,7 +66,7 @@ export default function MagicLinkEmail({ url, host = "ticketpulse.tech" }: Props
             lineHeight: "18px",
           }}
         >
-          Didn&apos;t request this? Ignore the email — your account stays safe. The link came from {host}.
+          Didn&apos;t request this? Ignore the email. Your account stays safe. The link came from {host}.
         </Text>
       </Section>
     </EmailShell>

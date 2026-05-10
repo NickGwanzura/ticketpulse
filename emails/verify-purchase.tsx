@@ -28,7 +28,7 @@ export default function VerifyPurchaseEmail({
       <EmailEyebrow tone="emerald">One last step</EmailEyebrow>
       <EmailHeading>Confirm to receive your tickets.</EmailHeading>
       <EmailParagraph>
-        Your payment of <strong style={{ color: BRAND.ink }}>{amount} {currency}</strong> for <strong style={{ color: BRAND.ink }}>{eventTitle}</strong> went through. Click below to confirm this email is yours — we&apos;ll send your tickets instantly.
+        Your payment of <strong style={{ color: BRAND.ink }}>{amount} {currency}</strong> for <strong style={{ color: BRAND.ink }}>{eventTitle}</strong> went through. Click below to confirm this email is yours. We&apos;ll send your tickets instantly.
       </EmailParagraph>
 
       <EmailButton href={url}>Confirm &amp; get my tickets</EmailButton>

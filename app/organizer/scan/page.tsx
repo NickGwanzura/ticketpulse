@@ -228,7 +228,7 @@ export default function OrganizerScanPage() {
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-6">
         {/* Trust strip */}
         <div className="rounded-2xl border border-line bg-paper p-4 md:p-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-[12.5px] text-ink-2">
-          <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-600" /> End-to-end on TicketPulse — we issue, you scan.</span>
+          <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
           <span className="inline-flex items-center gap-2"><Ticket size={14} className="text-ink-3" /> Reads PDF, mobile QR, and Apple/Google Wallet.</span>
           <span className={`inline-flex items-center gap-2 ${online ? "text-emerald-700" : "text-amber-700"}`}>
             {online ? <Wifi size={14} /> : <WifiOff size={14} />}
@@ -303,7 +303,7 @@ export default function OrganizerScanPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80 gap-3 px-6 text-center">
                   <Camera size={28} />
                   <p className="text-[14px] font-medium text-white">Tap <span className="text-blue-300">Start camera</span> to begin scanning</p>
-                  <p className="text-[12px] text-white/60 max-w-sm">Allow camera access. Point the rear camera at any TicketPulse QR — printed PDF, phone, or wallet pass.</p>
+                  <p className="text-[12px] text-white/60 max-w-sm">Allow camera access. Point the rear camera at any TicketPulse QR: printed PDF, phone, or wallet pass.</p>
                 </div>
               )}
               {cameraState === "denied" && (

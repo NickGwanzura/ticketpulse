@@ -95,7 +95,7 @@ export function sendPurchaseVerificationEmail(args: {
 }) {
   return send({
     to: args.to,
-    subject: `Confirm to receive your tickets — ${args.eventTitle}`,
+    subject: `Confirm to receive your tickets: ${args.eventTitle}`,
     react: VerifyPurchaseEmail({
       url: args.url,
       eventTitle: args.eventTitle,
@@ -149,7 +149,7 @@ export function sendOrderConfirmationEmail(args: {
 }) {
   return send({
     to: args.to,
-    subject: `Tickets confirmed — ${args.eventTitle}`,
+    subject: `Tickets confirmed: ${args.eventTitle}`,
     react: OrderConfirmationEmail(args),
   })
 }
@@ -166,7 +166,7 @@ export function sendPayoutNotificationEmail(args: {
 }) {
   return send({
     to: args.to,
-    subject: `Payout sent — ${args.amount} ${args.currency}`,
+    subject: `Payout sent: ${args.amount} ${args.currency}`,
     react: PayoutNotificationEmail(args),
   })
 }

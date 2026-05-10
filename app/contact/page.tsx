@@ -2,9 +2,9 @@ import Link from "next/link"
 import { Mail, MessageSquare, MapPin, Phone, Clock, Sparkles, ArrowRight } from "lucide-react"
 
 const CHANNELS = [
-  { icon: MessageSquare, title: "Live chat",     body: "Mon–Fri, 8:00–18:00 CAT", value: "Open chat",         href: "#chat" },
+  { icon: MessageSquare, title: "Live chat",     body: "Mon to Fri, 8:00 to 18:00 CAT", value: "Open chat",         href: "#chat" },
   { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "hello@ticketpulse.co.zw", href: "mailto:hello@ticketpulse.co.zw" },
-  { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00–20:00 CAT", value: "+263 77 000 0000",  href: "https://wa.me/26377" },
+  { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 77 000 0000",  href: "https://wa.me/26377" },
 ]
 
 const TOPICS = [
@@ -106,7 +106,7 @@ export default function ContactPage() {
                   Zimbabwe
                 </p>
                 <p className="mt-2 inline-flex items-center gap-1 text-[12px] text-ink-3">
-                  <Clock size={11} /> Mon–Fri, 8:00–18:00 CAT
+                  <Clock size={11} /> Mon to Fri, 8:00 to 18:00 CAT
                 </p>
               </div>
             </div>

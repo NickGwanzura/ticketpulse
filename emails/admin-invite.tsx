@@ -33,7 +33,7 @@ export default function AdminInviteEmail({ role, inviteUrl, inviterName }: Props
       <EmailHeading>You&apos;re invited to TicketPulse.</EmailHeading>
       <EmailParagraph>{fromLine}</EmailParagraph>
       <EmailParagraph>
-        Your account is ready. Tap the button below and request a sign-in link with this email address — your role is already set up.
+        Your account is ready. Tap the button below and request a sign-in link with this email address. Your role is already set up.
       </EmailParagraph>
 
       <EmailButton href={inviteUrl}>Accept invitation</EmailButton>
@@ -80,7 +80,7 @@ export default function AdminInviteEmail({ role, inviteUrl, inviterName }: Props
             lineHeight: "18px",
           }}
         >
-          Didn&apos;t expect this? You can ignore the email — no action will be taken on your behalf.
+          Didn&apos;t expect this? You can ignore the email. No action will be taken on your behalf.
         </Text>
       </Section>
     </EmailShell>

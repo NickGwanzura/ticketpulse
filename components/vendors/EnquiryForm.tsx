@@ -107,7 +107,7 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
   if (submitted) {
     return (
       <div className="py-6 text-center">
-        <p className="text-[15px] font-semibold text-ink mb-1">Thanks — we&apos;ll get back to you within 24 hours.</p>
+        <p className="text-[15px] font-semibold text-ink mb-1">Thanks. We&apos;ll get back to you within 24 hours.</p>
         <p className="text-[13px] text-ink-3">Your enquiry has been saved.</p>
       </div>
     )

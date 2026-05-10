@@ -69,7 +69,7 @@ export default function ResetPasswordEmail({ name, resetUrl }: Props) {
             lineHeight: "18px",
           }}
         >
-          Didn&apos;t request this? You can safely ignore this email — your password won&apos;t change.
+          Didn&apos;t request this? You can safely ignore this email. Your password won&apos;t change.
         </Text>
       </Section>
     </EmailShell>
