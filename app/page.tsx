@@ -52,7 +52,7 @@ const CATEGORIES = [
 ]
 
 const STATS = [
-  { value: "Live",    label: "Day 1 — May 2026" },
+  { value: "Live",    label: "Launched May 2026" },
   { value: "1",       label: "Event on sale today" },
   { value: "2 ways",  label: "EcoCash · Visa" },
   { value: "5%",      label: "Organizer fee, pay as you sell" },
@@ -211,7 +211,7 @@ export default function Home() {
                 </span>
                 <span className="text-[11.5px] font-semibold tracking-[0.04em] text-ink">
                   <span className="text-emerald-700">Live</span>
-                  <span className="text-ink-3"> · launching May 2026</span>
+                  <span className="text-ink-3"> · launched May 2026</span>
                 </span>
               </div>
 
@@ -315,7 +315,7 @@ export default function Home() {
         <div className="mb-8 md:mb-10 max-w-2xl">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Our launch event.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We&apos;re starting with one anchor event. More coming as the calendar fills up — <Link href="/events" className="text-navy font-semibold hover:underline">see what else is on</Link>.</p>
+          <p className="mt-3 text-[15px] text-ink-2">We opened with one anchor event in May 2026. The calendar is filling up fast — <Link href="/events" className="text-navy font-semibold hover:underline">see what else is on</Link>.</p>
         </div>
 
         <div className="max-w-md mx-auto">

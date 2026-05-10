@@ -2,16 +2,24 @@ import Link from "next/link"
 import { ArrowRight, Sparkles, Heart, ShieldCheck, Target, Zap } from "lucide-react"
 
 const VALUES = [
-  { icon: ShieldCheck, title: "Verified by default", body: "Every organizer and vendor on TicketPulse is checked. Trust isn't optional." },
-  { icon: Zap,         title: "Built for low-bandwidth", body: "Mobile-first, EcoCash-native, works on patchy data. Designed for here." },
-  { icon: Heart,       title: "Local first",        body: "Built in Harare, by people who actually go to these events." },
-  { icon: Target,      title: "Aligned incentives",  body: "We only win when sellers do. Pay-as-you-sell, never up front." },
+  { icon: ShieldCheck, title: "Verified by default", body: "Every organizer and vendor is checked before they go live. Trust isn't a setting — it's the floor." },
+  { icon: Zap,         title: "Patchy-data friendly", body: "Mobile-first, EcoCash-native, scans at the gate even when venue Wi-Fi tanks." },
+  { icon: Heart,       title: "Local first",          body: "Built in Harare by people who buy these tickets themselves. We sit on the same buses." },
+  { icon: Target,      title: "Aligned incentives",   body: "5% per ticket, paid out of sales — never up front. We only win when sellers do." },
 ]
 
 const MILESTONES = [
-  { year: "2024", title: "An idea in Harare",          body: "Started as a side project to run ticketing for the Nyuki Marathon." },
-  { year: "2025", title: "Built end-to-end",           body: "Sale, printable PDF + mobile QR delivery, and our own gate-scanner — one platform, no third-party stack." },
-  { year: "2026", title: "Day 1 launch",               body: "Going live with our first event on sale, payouts in EcoCash, USD, and ZAR. Just getting started." },
+  { year: "2024",     title: "An idea in Harare",        body: "Started as a side project to run ticketing for the Nyuki Marathon." },
+  { year: "2025",     title: "Built end-to-end",         body: "One platform: sale, printable PDF + mobile QR delivery, and our own gate-scanner. No third-party stack." },
+  { year: "May 2026", title: "Launched.",                body: "Public on-sale opened with the Nyuki Marathon as our anchor event. EcoCash, Visa, USD and ZAR — all clearing at checkout." },
+  { year: "Now",      title: "Filling the calendar",     body: "Onboarding organizers across Harare, Bulawayo and Vic Falls. New events going live every week." },
+]
+
+const FACTS = [
+  { k: "May 2026", v: "Day 1, public launch" },
+  { k: "Harare",   v: "Where we sit, code and answer support" },
+  { k: "5% flat",  v: "Per ticket sold. Nothing else" },
+  { k: "1 stack",  v: "Sell · deliver · scan, all on TicketPulse" },
 ]
 
 export default function AboutPage() {
@@ -22,15 +30,27 @@ export default function AboutPage() {
         <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-24 pb-12 md:pb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
-            <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">About</span>
+            <span className="relative flex w-2 h-2">
+              <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
+              <span className="relative block w-2 h-2 rounded-full bg-emerald-500" />
+            </span>
+            <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">About · Live since May 2026</span>
           </div>
           <h1 className="text-[40px] md:text-[64px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
             Tickets that work, <span className="text-blue">where you live.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
-            TicketPulse is a Zimbabwean ticketing platform built for the way events actually run here, patchy data, four currencies, mobile money, and a culture of last-minute decisions. We believe organizers and vendors deserve technology that respects them.
+            We&apos;re a Zimbabwean ticketing platform, built in Harare for the way events actually run here — patchy data, four currencies, mobile money and a culture of last-minute decisions. We launched in May 2026 with one anchor event and a single belief: organizers and vendors deserve technology that respects them.
           </p>
+
+          <div className="mt-9 md:mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl">
+            {FACTS.map(({ k, v }) => (
+              <div key={k} className="rounded-2xl border border-line bg-paper/80 backdrop-blur p-4">
+                <p className="text-[15px] md:text-[16px] font-semibold tracking-tight text-ink leading-tight">{k}</p>
+                <p className="text-[12px] text-ink-3 mt-1 leading-snug">{v}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -42,7 +62,7 @@ export default function AboutPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {VALUES.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="rounded-2xl border border-line bg-paper p-6 hover:border-line-2 transition-colors">
+            <div key={title} className="rounded-2xl border border-line bg-paper p-6 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-30px_rgba(10,37,64,0.18)] transition-all duration-300">
               <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
                 <Icon size={17} className="text-blue" />
               </span>
@@ -62,15 +82,32 @@ export default function AboutPage() {
           </div>
           <ol className="relative">
             <span className="absolute left-[7px] top-2 bottom-2 w-px bg-line" aria-hidden />
-            {MILESTONES.map((m, i) => (
-              <li key={i} className="relative pl-8 pb-8 last:pb-0">
-                <span className="absolute left-0 top-2 w-3.5 h-3.5 rounded-full bg-paper border-2 border-navy" />
-                <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">{m.year}</p>
-                <p className="text-[16px] font-semibold tracking-tight text-ink">{m.title}</p>
-                <p className="text-[13.5px] text-ink-2 mt-1 leading-relaxed">{m.body}</p>
-              </li>
-            ))}
+            {MILESTONES.map((m, i) => {
+              const isNow = m.year === "Now"
+              return (
+                <li key={i} className="relative pl-8 pb-8 last:pb-0">
+                  <span className={`absolute left-0 top-2 w-3.5 h-3.5 rounded-full bg-paper border-2 ${isNow ? "border-emerald-500" : "border-navy"}`}>
+                    {isNow && <span className="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping" aria-hidden />}
+                  </span>
+                  <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-1 ${isNow ? "text-emerald-700" : "text-blue"}`}>{m.year}</p>
+                  <p className="text-[16px] font-semibold tracking-tight text-ink">{m.title}</p>
+                  <p className="text-[13.5px] text-ink-2 mt-1 leading-relaxed">{m.body}</p>
+                </li>
+              )
+            })}
           </ol>
+        </div>
+      </section>
+
+      {/* Founders' note */}
+      <section className="max-w-5xl mx-auto px-5 md:px-8 py-16 md:py-20">
+        <div className="rounded-3xl border border-line bg-paper p-8 md:p-12 relative overflow-hidden">
+          <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(600px 220px at 90% 0%, #EAF2FA 0%, transparent 60%)" }} />
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">A note from the team</p>
+          <p className="text-[18px] md:text-[22px] font-medium tracking-tight leading-[1.4] text-ink max-w-3xl">
+            &ldquo;We built TicketPulse because we were tired of paying scanner fees on top of platform fees, of payouts that took weeks, of QR codes that didn&apos;t open offline at the gate. So we wrote our own — sale, ticket, scanner — and we&apos;re running it on real events from day one.&rdquo;
+          </p>
+          <p className="mt-5 text-[13px] text-ink-3">— The TicketPulse team, Harare</p>
         </div>
       </section>
 
@@ -84,7 +121,7 @@ export default function AboutPage() {
                 Want to work with us?
               </h2>
               <p className="mt-3 text-[15px] md:text-[16px] text-white/80 max-w-md leading-relaxed">
-                We&apos;re hiring engineers, designers, and partnership leads. Or just say hi, we read every email.
+                We&apos;re hiring engineers, designers and partnership leads. Or just say hi — we read every email.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 md:justify-end">
