@@ -3,6 +3,7 @@ import { Geist } from "next/font/google"
 import { headers } from "next/headers"
 import "./globals.css"
 import Providers from "@/components/layout/Providers"
+import TopBar from "@/components/layout/TopBar"
 import Navbar from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
 import CookiesNotice from "@/components/CookiesNotice"
@@ -27,6 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={geist.variable}>
       <body className="font-sans bg-paper text-ink antialiased">
         <Providers>
+          {!bare && <TopBar />}
           {!bare && <Navbar />}
           <div className={bare ? "" : "min-h-[calc(100vh-4rem)]"}>{children}</div>
           {!bare && <Footer />}

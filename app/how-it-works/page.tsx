@@ -24,18 +24,18 @@ const ATTENDEE_STEPS = [
   },
   {
     icon: CreditCard,
-    title: "Pay your way",
-    body: "EcoCash for mobile money, Visa for cards. USD or ZAR, your choice at checkout.",
+    title: "Pay — no signup",
+    body: "EcoCash or Visa, USD or ZAR. Just your name, email, and phone. We hold your seat the moment you pay.",
   },
   {
     icon: Ticket,
-    title: "Get your ticket",
-    body: "Printable PDF and a mobile QR, delivered instantly. Works offline at the gate.",
+    title: "One-click verify",
+    body: "We email a magic link. Click once: tickets release, account auto-created passwordless. Set a password later, or don't — your call.",
   },
   {
     icon: ScanLine,
     title: "Walk in fast",
-    body: "Our scanner reads your QR in under a second. No third-party app required.",
+    body: "Our scanner reads your QR in under a second. PDF, screen, or wallet pass — works offline at the gate.",
   },
 ]
 
@@ -149,6 +149,30 @@ export default function HowItWorksPage() {
             </li>
           ))}
         </ol>
+
+        {/* Fast checkout callout */}
+        <div className="mt-8 rounded-2xl border border-blue/15 bg-gradient-to-br from-blue-soft to-paper p-6 md:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <span className="inline-flex w-11 h-11 items-center justify-center rounded-xl bg-paper ring-1 ring-blue/20 shadow-sm shrink-0">
+              <Smartphone size={18} className="text-blue" />
+            </span>
+            <div>
+              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">Why no signup?</p>
+              <p className="text-[14.5px] font-semibold tracking-tight text-ink leading-snug">
+                Last-minute decisions deserve last-minute checkouts.
+              </p>
+              <p className="mt-1.5 text-[13px] text-ink-2 leading-relaxed max-w-xl">
+                Account creation is the #1 reason people abandon carts. So we put it after the buy. You pay, we hold the seat, the magic-link verifies you, tickets land. Total time: under a minute.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/events"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-navy px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition shrink-0"
+          >
+            Try it now <ArrowRight size={14} />
+          </Link>
+        </div>
       </section>
 
       {/* Organizers */}

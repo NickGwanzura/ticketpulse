@@ -81,24 +81,41 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-200 ${
+      className={`sticky top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-paper/85 backdrop-blur-xl border-b border-line shadow-[0_1px_0_rgba(10,37,64,0.04)]"
+          ? "bg-paper/85 backdrop-blur-xl border-b border-line shadow-[0_1px_0_rgba(10,37,64,0.04),0_8px_24px_-12px_rgba(10,37,64,0.10)]"
           : "bg-paper/70 backdrop-blur-xl border-b border-transparent"
       }`}
     >
+      {/* Hairline gradient under header (only when scrolled) */}
+      {scrolled && (
+        <span
+          className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-blue/30 to-transparent"
+          aria-hidden
+        />
+      )}
+
       <nav className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center gap-6">
         {/* Brand */}
         <Link
           href="/"
-          className="flex items-center gap-2 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
+          className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
           aria-label="TicketPulse home"
         >
-          <span className="relative inline-flex w-6 h-6 items-center justify-center rounded-md bg-navy">
-            <span className="block w-1.5 h-1.5 rounded-full bg-white" />
-            <span className="absolute inset-0 rounded-md ring-2 ring-navy/15 ring-offset-2 ring-offset-paper" aria-hidden />
+          <span className="relative inline-flex w-7 h-7 items-center justify-center rounded-lg bg-gradient-to-br from-navy-600 via-navy to-navy-700 shadow-[0_4px_16px_-4px_rgba(10,37,64,0.35)] ring-1 ring-white/15 transition-transform group-hover:scale-105">
+            <span className="block w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]" />
+            <span className="absolute -inset-px rounded-lg ring-1 ring-blue/40 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden />
           </span>
-          TicketPulse
+          <span className="leading-none">
+            TicketPulse
+            <span className="hidden lg:inline-flex items-center ml-2 align-middle text-[9.5px] font-semibold tracking-[0.16em] text-emerald-700 uppercase">
+              <span className="relative flex w-1.5 h-1.5 mr-1.5">
+                <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-70" />
+                <span className="relative block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              </span>
+              Live
+            </span>
+          </span>
         </Link>
 
         {/* Desktop nav with mega menu */}
@@ -122,11 +139,14 @@ export default function Navbar() {
               <Link
                 key={label}
                 href={href}
-                className={`rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors ${
-                  isActive ? "text-ink bg-paper-2" : "text-ink-2 hover:text-ink hover:bg-paper-2"
+                className={`relative rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                  isActive ? "text-ink" : "text-ink-2 hover:text-ink hover:bg-paper-2"
                 }`}
               >
                 {label}
+                {isActive && (
+                  <span className="absolute left-3 right-3 -bottom-px h-px bg-gradient-to-r from-transparent via-blue to-transparent" aria-hidden />
+                )}
               </Link>
             )
           })}
@@ -135,12 +155,12 @@ export default function Navbar() {
         {/* Search button (desktop) */}
         <Link
           href="/events"
-          className="hidden md:inline-flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink-3 hover:text-ink hover:border-line-2 transition-colors"
+          className="group hidden md:inline-flex items-center gap-2 rounded-lg border border-line bg-paper/70 backdrop-blur px-3 py-2 text-[13px] text-ink-3 hover:text-ink hover:border-line-2 hover:shadow-[0_2px_10px_-4px_rgba(10,37,64,0.12)] transition-all"
           aria-label="Search events"
         >
-          <Search size={14} />
+          <Search size={14} className="group-hover:text-blue transition-colors" />
           <span className="hidden xl:inline">Search events…</span>
-          <kbd className="hidden xl:inline-flex items-center font-mono text-[10px] font-semibold text-ink-3 bg-paper-2 ring-1 ring-line rounded px-1 py-0.5 ml-1">⌘K</kbd>
+          <kbd className="hidden xl:inline-flex items-center font-mono text-[10px] font-semibold text-ink-3 bg-paper-2 ring-1 ring-line rounded px-1.5 py-0.5 ml-1">⌘K</kbd>
         </Link>
 
         {/* Cart (mobile) */}
@@ -227,11 +247,12 @@ export default function Navbar() {
                 Sign in
               </Link>
               <Link
-                href="/auth/signup"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition-colors"
+                href="/events"
+                className="group relative inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-navy-600 via-navy to-navy-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(10,37,64,0.45)] hover:shadow-[0_8px_22px_-6px_rgba(10,37,64,0.55)] hover:-translate-y-px active:translate-y-0 transition-all overflow-hidden"
               >
+                <span className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "radial-gradient(120px 40px at 30% 0%, rgba(255,255,255,0.18), transparent 70%)" }} aria-hidden />
                 Get tickets
-                <ArrowRight size={13} />
+                <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
               </Link>
             </>
           )}
