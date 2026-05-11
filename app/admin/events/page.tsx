@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   CalendarCheck, FileText, XCircle, PackageCheck,
-  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket,
 } from "lucide-react"
 import { desc, eq, sql } from "drizzle-orm"
 
@@ -242,6 +242,13 @@ export default async function AdminEventsPage({
                                 <Pencil size={14} />
                               </Link>
                               <Link
+                                href={`/organizer/events/${e.id}/tiers`}
+                                aria-label="Ticket tiers"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <Ticket size={14} />
+                              </Link>
+                              <Link
                                 href={`/organizer/events/${e.id}/gallery`}
                                 aria-label="Gallery"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
@@ -298,6 +305,9 @@ export default async function AdminEventsPage({
                       <div className="flex items-center gap-2 text-[12px]">
                         <Link href={`/organizer/events/${e.id}/edit`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <Pencil size={12} /> Edit
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/tiers`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
+                          <Ticket size={12} /> Tickets
                         </Link>
                         <Link href={`/organizer/events/${e.id}/gallery`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <ImageIcon size={12} /> Gallery

@@ -116,5 +116,5 @@ export async function createEventAction(
   }
 
   revalidatePath("/organizer")
-  redirect(`/organizer/events/${created.id}/edit?created=1`)
+  redirect(`/organizer/events/${created.id}/tiers?created=1`)
 }

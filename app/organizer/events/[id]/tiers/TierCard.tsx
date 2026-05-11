@@ -1,0 +1,134 @@
+"use client"
+
+import { useState } from "react"
+import { Pencil, X, Trash2, Ticket } from "lucide-react"
+
+import TierForm from "./TierForm"
+import { deleteTierAction } from "./actions"
+import { formatCurrency } from "@/lib/utils"
+
+type Tier = {
+  id: string
+  name: string
+  description: string | null
+  price: string
+  currency: string | null
+  totalQuantity: number
+  soldQuantity: number | null
+  maxPerOrder: number | null
+  salesStart: Date | null
+  salesEnd: Date | null
+}
+
+function formatWindow(start: Date | null, end: Date | null): string | null {
+  if (!start && !end) return null
+  const fmt = (d: Date) =>
+    d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
+    ", " +
+    d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+  if (start && end) return `${fmt(start)} → ${fmt(end)}`
+  if (start) return `From ${fmt(start)}`
+  return `Until ${fmt(end!)}`
+}
+
+export default function TierCard({ eventId, tier }: { eventId: string; tier: Tier }) {
+  const [editing, setEditing] = useState(false)
+  const price = Number.parseFloat(tier.price) || 0
+  const sold = tier.soldQuantity ?? 0
+  const total = tier.totalQuantity
+  const remaining = Math.max(0, total - sold)
+  const pct = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0
+  const windowLabel = formatWindow(tier.salesStart, tier.salesEnd)
+
+  return (
+    <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+      <div className="p-5 md:p-6">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-blue-soft text-navy">
+                <Ticket size={13} />
+              </span>
+              <p className="text-[15.5px] font-semibold text-ink truncate">{tier.name}</p>
+            </div>
+            {tier.description && (
+              <p className="text-[12.5px] text-ink-2 line-clamp-2">{tier.description}</p>
+            )}
+          </div>
+          <p className="text-[15px] font-bold tracking-tight text-ink whitespace-nowrap">
+            {formatCurrency(price, tier.currency ?? "USD")}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-1.5 bg-paper-2 rounded-full overflow-hidden">
+            <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
+            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold ·{" "}
+            <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-3 mb-4">
+          <span>Capacity {total.toLocaleString()}</span>
+          {tier.maxPerOrder != null && <span>Max per order {tier.maxPerOrder}</span>}
+          {windowLabel && <span>{windowLabel}</span>}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
+          >
+            {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
+          </button>
+
+          <form
+            action={deleteTierAction}
+            onSubmit={(e) => {
+              if (sold > 0) {
+                e.preventDefault()
+                alert("This tier has sold tickets and can't be deleted. Set its sales end date instead.")
+                return
+              }
+              if (!confirm(`Delete "${tier.name}"?`)) e.preventDefault()
+            }}
+          >
+            <input type="hidden" name="tierId" value={tier.id} />
+            <input type="hidden" name="eventId" value={eventId} />
+            <button
+              type="submit"
+              title={sold > 0 ? "Can't delete — has sales" : "Delete tier"}
+              disabled={sold > 0}
+              className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-ink-2 disabled:hover:border-line"
+            >
+              <Trash2 size={13} />
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {editing && (
+        <div className="border-t border-line bg-paper-2/40 p-5 md:p-6">
+          <TierForm
+            eventId={eventId}
+            tier={{
+              id: tier.id,
+              name: tier.name,
+              description: tier.description,
+              price: tier.price,
+              currency: tier.currency,
+              totalQuantity: tier.totalQuantity,
+              maxPerOrder: tier.maxPerOrder,
+              salesStart: tier.salesStart,
+              salesEnd: tier.salesEnd,
+            }}
+            onDone={() => setEditing(false)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}

@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, ImageIcon, ShoppingBag, ExternalLink } from "lucide-react"
+import { ArrowLeft, ImageIcon, ShoppingBag, ExternalLink, Ticket } from "lucide-react"
 
 import { db } from "@/db"
 import { events } from "@/db/schema"
@@ -48,6 +48,12 @@ export default async function EditEventPage({
         subtitle="Edit the basics, upload a cover image, and manage gallery and merch."
         actions={
           <>
+            <Link
+              href={`/organizer/events/${id}/tiers`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <Ticket size={15} /> Tickets
+            </Link>
             <Link
               href={`/organizer/events/${id}/gallery`}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"

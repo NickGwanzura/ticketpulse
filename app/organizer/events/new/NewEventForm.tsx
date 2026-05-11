@@ -197,8 +197,8 @@ export default function NewEventForm() {
           <ImageIcon size={15} className="text-ink-3" />
         </span>
         <div className="text-[13px] text-ink-2 leading-relaxed">
-          <p className="font-semibold text-ink">You&apos;ll add a cover image on the next step.</p>
-          <p className="mt-0.5">Once the draft is saved, you&apos;ll be taken straight to the editor where you can upload a 16:9 cover, set up tickets, and add merch.</p>
+          <p className="font-semibold text-ink">Next: set up your ticket tiers.</p>
+          <p className="mt-0.5">Once the draft is saved we&apos;ll take you straight to the tickets page to add tiers. The cover image, merch, and gallery are one click away.</p>
         </div>
       </div>
 
