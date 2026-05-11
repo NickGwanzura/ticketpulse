@@ -1,3 +1,20 @@
-- [x] Wire admin overview (`app/admin/page.tsx`) to live DB data for KPIs, recent activity, and top events.
-- [x] Wire admin orders page (`app/admin/orders/page.tsx`) to live DB orders.
-- [ ] Run focused verification (type/lint check for touched files) and summarize.
+- [ ] Phase 3 schema updates in `db/schema.ts` for environment-scoped settings, approval workflow, immutable audit chain, and alert/webhook outbox.
+- [x] Create migration `db/migrations/0005_admin_settings_phase3.sql` for all new Phase 3 tables/columns/indexes/constraints.
+- [x] Update migration journal `db/migrations/meta/_journal.json` with 0005 entry.
+- [ ] Implement Phase 3 server logic in `app/admin/settings/actions.ts`:
+  - [ ] super-admin-only safeguards for sensitive settings + rollback/approvals
+  - [ ] propose/approve/reject workflow
+  - [ ] scheduled change apply path
+  - [ ] environment-scoped get/save APIs
+  - [ ] immutable signed audit writes + export API
+  - [ ] webhook/alert enqueue integration
+- [ ] Update `app/admin/settings/page.tsx` with Phase 3 UI:
+  - [ ] environment switcher
+  - [ ] proposal submission
+  - [ ] approval inbox
+  - [ ] scheduled changes list
+  - [ ] audit export controls
+- [ ] Run verification:
+  - [x] `npm run db:migrate`
+  - [x] `npm run lint -- app/admin/settings/page.tsx app/admin/settings/actions.ts db/schema.ts`
+  - [x] `npm run build`

@@ -10,6 +10,7 @@ import {
   json,
   primaryKey,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
@@ -342,6 +343,129 @@ export const transportBookings = pgTable("transport_bookings", {
 ])
 
 // ─── TIER 1: Food and Vendor Bookings ────────────────────────────────────────
+
+export const platformEnvEnum = pgEnum("platform_env", ["dev", "stage", "prod"])
+export const settingsProposalStatusEnum = pgEnum("settings_proposal_status", [
+  "pending_approval",
+  "approved",
+  "rejected",
+  "applied",
+  "cancelled",
+])
+export const settingsProposalActionEnum = pgEnum("settings_proposal_action", ["save", "rollback"])
+
+export const platformSettings = pgTable("platform_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  env: platformEnvEnum("env").notNull().default("prod"),
+  key: text("key").notNull(),
+  value: json("value").notNull(),
+  version: integer("version").notNull().default(1),
+  updatedBy: text("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("platform_settings_env_key_uidx").on(table.env, table.key),
+  index("platform_settings_env_idx").on(table.env),
+  index("platform_settings_key_idx").on(table.key),
+])
+
+export const settingsAuditLogs = pgTable("settings_audit_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  env: platformEnvEnum("env").notNull().default("prod"),
+  key: text("key").notNull(),
+  oldValue: json("old_value"),
+  newValue: json("new_value").notNull(),
+  actorUserId: text("actor_user_id").references(() => users.id),
+  actorEmail: text("actor_email"),
+  actorRole: text("actor_role"),
+  reason: text("reason"),
+  sourceAction: text("source_action").notNull().default("save"),
+  action: text("action").notNull().default("update"),
+  requestId: text("request_id"),
+  hash: text("hash").notNull(),
+  prevHash: text("prev_hash"),
+  signature: text("signature").notNull(),
+  immutable: boolean("immutable").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("settings_audit_logs_env_idx").on(table.env),
+  index("settings_audit_logs_key_idx").on(table.key),
+  index("settings_audit_logs_created_at_idx").on(table.createdAt),
+  index("settings_audit_logs_action_idx").on(table.action),
+  index("settings_audit_logs_source_action_idx").on(table.sourceAction),
+  uniqueIndex("settings_audit_logs_hash_uidx").on(table.hash),
+])
+
+export const settingsChangeProposals = pgTable("settings_change_proposals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  env: platformEnvEnum("env").notNull().default("prod"),
+  key: text("key").notNull(),
+  action: settingsProposalActionEnum("action").notNull().default("save"),
+  status: settingsProposalStatusEnum("status").notNull().default("pending_approval"),
+  sourceAuditLogId: uuid("source_audit_log_id").references(() => settingsAuditLogs.id),
+  proposedOldValue: json("proposed_old_value"),
+  proposedNewValue: json("proposed_new_value").notNull(),
+  reason: text("reason").notNull(),
+  requestedByUserId: text("requested_by_user_id").references(() => users.id),
+  requestedByEmail: text("requested_by_email"),
+  requestedByRole: text("requested_by_role"),
+  approvedByUserId: text("approved_by_user_id").references(() => users.id),
+  approvedByEmail: text("approved_by_email"),
+  approvedByRole: text("approved_by_role"),
+  approvedAt: timestamp("approved_at"),
+  rejectedByUserId: text("rejected_by_user_id").references(() => users.id),
+  rejectedByEmail: text("rejected_by_email"),
+  rejectedByRole: text("rejected_by_role"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectReason: text("reject_reason"),
+  effectiveAt: timestamp("effective_at"),
+  applyAfter: timestamp("apply_after"),
+  appliedAt: timestamp("applied_at"),
+  appliedAuditLogId: uuid("applied_audit_log_id").references(() => settingsAuditLogs.id),
+  expectedVersion: integer("expected_version"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("settings_change_proposals_env_idx").on(table.env),
+  index("settings_change_proposals_key_idx").on(table.key),
+  index("settings_change_proposals_status_idx").on(table.status),
+  index("settings_change_proposals_apply_after_idx").on(table.applyAfter),
+  index("settings_change_proposals_effective_at_idx").on(table.effectiveAt),
+])
+
+export const settingsWebhookSubscriptions = pgTable("settings_webhook_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  env: platformEnvEnum("env").notNull().default("prod"),
+  url: text("url").notNull(),
+  secret: text("secret").notNull(),
+  eventTypes: json("event_types").$type<string[]>().default([]).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdByUserId: text("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("settings_webhook_subscriptions_env_idx").on(table.env),
+  index("settings_webhook_subscriptions_active_idx").on(table.active),
+])
+
+export const settingsAlertOutbox = pgTable("settings_alert_outbox", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  env: platformEnvEnum("env").notNull().default("prod"),
+  eventType: text("event_type").notNull(),
+  payload: json("payload").notNull(),
+  status: text("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at"),
+  processedAt: timestamp("processed_at"),
+  lastError: text("last_error"),
+  webhookSubscriptionId: uuid("webhook_subscription_id").references(() => settingsWebhookSubscriptions.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("settings_alert_outbox_env_idx").on(table.env),
+  index("settings_alert_outbox_status_idx").on(table.status),
+  index("settings_alert_outbox_event_type_idx").on(table.eventType),
+  index("settings_alert_outbox_next_attempt_at_idx").on(table.nextAttemptAt),
+])
 
 export const vendors = pgTable("vendors", {
   id: uuid("id").primaryKey().defaultRandom(),
