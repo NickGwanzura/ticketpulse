@@ -3,13 +3,14 @@ import { z } from "zod"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers } from "@/db/schema"
-import { signIn } from "@/auth"
+import { startOrderVerification } from "@/lib/order-verification"
+import { PESEPAY_METHODS, getPesepay, pesepayUrls } from "@/lib/pesepay"
 
 const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
   phone: z.string().min(3).max(40).trim(),
-  paymentMethod: z.enum(["ecocash", "card", "paynow", "usd"]),
+  paymentMethod: z.enum(["ecocash", "card", "paynow", "usd", "omari"]),
   eventSlug: z.string().min(1).max(160),
   items: z
     .array(
@@ -21,8 +22,6 @@ const Body = z.object({
     .min(1)
     .max(20),
 })
-
-const VERIFICATION_TTL_HOURS = 24
 
 export async function POST(req: Request) {
   let parsed: z.infer<typeof Body>
@@ -62,27 +61,28 @@ export async function POST(req: Request) {
     return sum + Number(t.price) * i.quantity
   }, 0)
 
-  // TODO: integrate real payment capture here (EcoCash / Paynow / Visa).
-  // For now we trust the client's selection and mark the funds as captured.
-  // The order stays `awaiting_verification` until the buyer clicks the link.
-  const paidAt = new Date()
-  const expires = new Date(Date.now() + VERIFICATION_TTL_HOURS * 60 * 60 * 1000)
+  const method = PESEPAY_METHODS[parsed.paymentMethod]
+  if (!method) {
+    return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 })
+  }
+
+  // Offline cash flows skip PesePay entirely and go straight to the verify
+  // email step, just like before this integration existed. Online flows insert
+  // as `pending` and only progress once PesePay confirms the payment.
+  const initialStatus = method.flow === "offline" ? "awaiting_verification" : "pending"
 
   const [order] = await db
     .insert(orders)
     .values({
       userId: null,
       eventId: event.id,
-      status: "awaiting_verification",
+      status: initialStatus,
       totalAmount: total.toFixed(2),
       currency,
       paymentMethod: parsed.paymentMethod,
-      paidAt,
       guestEmail: parsed.email,
       guestName: parsed.name,
       guestPhone: parsed.phone,
-      verificationSentAt: new Date(),
-      verificationExpires: expires,
     })
     .returning({ id: orders.id })
 
@@ -101,22 +101,101 @@ export async function POST(req: Request) {
     }),
   )
 
-  // Trigger NextAuth's Resend provider — this writes the verification token
-  // to the DB and fires our `sendVerificationRequest` override, which detects
-  // the finalize callback and uses the branded purchase-verification template.
   const origin = new URL(req.url).origin
-  const finalizeUrl = `${origin}/api/orders/${order.id}/finalize`
 
-  await signIn("resend", {
-    email: parsed.email,
-    redirectTo: finalizeUrl,
-    redirect: false,
-  })
+  // ─── Offline (pay at venue) ───────────────────────────────────────────────
+  if (method.flow === "offline") {
+    const { expiresAt } = await startOrderVerification({
+      orderId: order.id,
+      email: parsed.email,
+      origin,
+    })
+    return NextResponse.json({
+      orderId: order.id,
+      flow: "offline",
+      status: "awaiting_verification",
+      sentTo: parsed.email,
+      expiresAt: expiresAt.toISOString(),
+    })
+  }
+
+  // ─── PesePay flows ────────────────────────────────────────────────────────
+  const pesepay = getPesepay()
+  const { resultUrl, returnUrl } = pesepayUrls(order.id, origin)
+  pesepay.resultUrl = resultUrl
+  pesepay.returnUrl = returnUrl
+
+  const reason = `${event.title} · order ${order.id.slice(0, 8)}`
+  const merchantRef = order.id
+
+  if (method.flow === "seamless" && method.code) {
+    const payment = pesepay.createPayment(
+      currency,
+      method.code,
+      parsed.email,
+      parsed.phone,
+      parsed.name,
+    )
+    const requiredFields = method.phoneField ? { [method.phoneField]: parsed.phone } : undefined
+
+    const res = await pesepay.makeSeamlessPayment(payment, reason, total, requiredFields)
+    if (!res.success) {
+      await db
+        .update(orders)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(eq(orders.id, order.id))
+      return NextResponse.json(
+        { error: res.message ?? "Payment provider rejected the request" },
+        { status: 502 },
+      )
+    }
+
+    await db
+      .update(orders)
+      .set({
+        paymentRef: res.referenceNumber,
+        metadata: { pesepay: { pollUrl: res.pollUrl, reference: res.referenceNumber } },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id))
+
+    // Some methods (e.g. Innbucks QR) might never resolve in this call; the
+    // client will poll /api/checkout/pesepay/status to drive the UX.
+    return NextResponse.json({
+      orderId: order.id,
+      flow: "seamless",
+      reference: res.referenceNumber,
+      paid: res.paid === true,
+    })
+  }
+
+  // Redirect flow (card / paynow). PesePay's hosted page collects the card
+  // details so we stay out of PCI scope.
+  const transaction = pesepay.createTransaction(total, currency, reason, merchantRef)
+  const res = await pesepay.initiateTransaction(transaction)
+  if (!res.success || !res.redirectUrl) {
+    await db
+      .update(orders)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(orders.id, order.id))
+    return NextResponse.json(
+      { error: res.message ?? "Could not start hosted checkout" },
+      { status: 502 },
+    )
+  }
+
+  await db
+    .update(orders)
+    .set({
+      paymentRef: res.referenceNumber,
+      metadata: { pesepay: { pollUrl: res.pollUrl, reference: res.referenceNumber } },
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, order.id))
 
   return NextResponse.json({
     orderId: order.id,
-    status: "awaiting_verification",
-    sentTo: parsed.email,
-    expiresAt: expires.toISOString(),
+    flow: "redirect",
+    redirectUrl: res.redirectUrl,
   })
 }

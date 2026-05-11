@@ -1,13 +1,21 @@
 "use client"
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"
 import {
-  ArrowLeft, ArrowRight, Lock, Smartphone, CreditCard, Banknote, Check, Mail, User, Phone, Loader2,
+  ArrowLeft, ArrowRight, Lock, Smartphone, CreditCard, Banknote, Check, Mail, User, Phone, Loader2, X,
 } from "lucide-react"
 import CheckoutSteps from "@/components/CheckoutSteps"
+
+type CheckoutResponse =
+  | { flow: "offline"; orderId: string; status: string; sentTo: string; expiresAt: string }
+  | { flow: "seamless"; orderId: string; reference: string; paid: boolean }
+  | { flow: "redirect"; orderId: string; redirectUrl: string }
+
+const POLL_INTERVAL_MS = 4000
+const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money TTL
 
 const PAYMENT_METHODS = [
   { value: "ecocash", label: "EcoCash",   body: "Mobile money. Instant.",        icon: Smartphone },
@@ -21,12 +29,61 @@ export default function CheckoutPage() {
   const { items, ready, totalsByCurrency, placeOrder } = useCart()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [pollingOrderId, setPollingOrderId] = useState<string | null>(null)
+  const pollingContact = useRef<{ name: string; email: string; phone: string; method: string } | null>(null)
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     payment: "ecocash",
   })
+
+  // Drives the "Check your phone" overlay for seamless mobile-money payments.
+  // Each tick asks our server to consult PesePay; once status flips to
+  // `awaiting_verification` we mirror the order client-side and hand off to
+  // the existing order page (which already drives the email-verify UI).
+  useEffect(() => {
+    if (!pollingOrderId) return
+    let cancelled = false
+    const startedAt = Date.now()
+
+    const tick = async () => {
+      if (cancelled) return
+      try {
+        const res = await fetch(`/api/checkout/pesepay/status/${pollingOrderId}`, { cache: "no-store" })
+        const data = await res.json()
+        if (data.paid && pollingContact.current) {
+          placeOrder(
+            { name: pollingContact.current.name, email: pollingContact.current.email, phone: pollingContact.current.phone },
+            { method: pollingContact.current.method },
+          )
+          router.push(`/orders/${pollingOrderId}?awaiting=1`)
+          return
+        }
+        if (data.status === "cancelled") {
+          if (!cancelled) {
+            setPollingOrderId(null)
+            setSubmitError("Payment was cancelled or declined. Please try again.")
+            setSubmitting(false)
+          }
+          return
+        }
+      } catch {
+        // Network blip — fall through to next tick.
+      }
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        if (!cancelled) {
+          setPollingOrderId(null)
+          setSubmitError("We didn't see a confirmation in time. Check your phone and try again.")
+          setSubmitting(false)
+        }
+        return
+      }
+      if (!cancelled) setTimeout(tick, POLL_INTERVAL_MS)
+    }
+    setTimeout(tick, POLL_INTERVAL_MS)
+    return () => { cancelled = true }
+  }, [pollingOrderId, placeOrder, router])
 
   if (!ready) {
     return (
@@ -90,8 +147,36 @@ export default function CheckoutPage() {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? "Checkout failed")
       }
-      const data = (await res.json()) as { orderId: string; sentTo: string }
-      // Mirror the order client-side so existing /orders pages still render.
+      const data = (await res.json()) as CheckoutResponse
+
+      if (data.flow === "redirect") {
+        // PesePay hosted checkout (card / paynow) — let them complete on the
+        // provider's page. We mirror the order locally first so the success
+        // page can render when the buyer comes back.
+        placeOrder(
+          { name: form.name, email: form.email, phone: form.phone },
+          { method: form.payment },
+        )
+        window.location.href = data.redirectUrl
+        return
+      }
+
+      if (data.flow === "seamless") {
+        if (data.paid) {
+          // Innbucks-style flows can resolve on the first call.
+          placeOrder(
+            { name: form.name, email: form.email, phone: form.phone },
+            { method: form.payment },
+          )
+          router.push(`/orders/${data.orderId}?awaiting=1`)
+          return
+        }
+        pollingContact.current = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
+        setPollingOrderId(data.orderId)
+        return
+      }
+
+      // Offline (pay-at-venue) — original magic-link flow.
       placeOrder(
         { name: form.name, email: form.email, phone: form.phone },
         { method: form.payment },
@@ -109,6 +194,17 @@ export default function CheckoutPage() {
 
   return (
     <div>
+      {pollingOrderId && (
+        <PesepayWaitingOverlay
+          method={form.payment}
+          phone={form.phone}
+          onCancel={() => {
+            setPollingOrderId(null)
+            setSubmitting(false)
+            setSubmitError("Payment cancelled. You can try again with the same or another method.")
+          }}
+        />
+      )}
       <div className="border-b border-line bg-paper-2">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12">
           <Link href="/cart" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-5">
@@ -294,6 +390,42 @@ export default function CheckoutPage() {
           </div>
         </aside>
       </form>
+    </div>
+  )
+}
+
+function PesepayWaitingOverlay({
+  method, phone, onCancel,
+}: { method: string; phone: string; onCancel: () => void }) {
+  const label = method === "ecocash" ? "EcoCash" : method === "omari" ? "Omari" : "Mobile money"
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm px-4">
+      <div className="relative w-full max-w-md rounded-2xl border border-line bg-paper p-7 shadow-xl shadow-ink/10">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-2 hover:text-ink transition"
+          aria-label="Cancel and close"
+        >
+          <X size={14} />
+        </button>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-soft text-navy">
+            <Smartphone size={18} />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">{label}</p>
+            <h3 className="text-[17px] font-semibold tracking-tight text-ink">Check your phone</h3>
+          </div>
+        </div>
+        <p className="mt-4 text-[13.5px] text-ink-2 leading-relaxed">
+          We sent a payment prompt to <span className="font-semibold text-ink">{phone}</span>. Open the prompt and enter your PIN to confirm. We&apos;ll move you forward as soon as it clears.
+        </p>
+        <div className="mt-5 inline-flex items-center gap-2 text-[12.5px] text-ink-3">
+          <Loader2 size={13} className="animate-spin text-blue" />
+          Waiting for confirmation…
+        </div>
+      </div>
     </div>
   )
 }
