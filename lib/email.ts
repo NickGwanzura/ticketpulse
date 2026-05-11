@@ -16,7 +16,15 @@ const ADMIN = process.env.ADMIN_EMAIL ?? "team@ticketpulse.tech"
 let _resend: Resend | null = null
 function client(): Resend | null {
   const key = process.env.AUTH_RESEND_KEY
-  if (!key) return null
+  if (!key) {
+    // In production, refuse to silently no-op — transactional mail is too
+    // important to fail invisibly. Dev/test can still skip.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("AUTH_RESEND_KEY is not set — refusing to send mail in production")
+    }
+    console.warn("[email] AUTH_RESEND_KEY not set — skipping send")
+    return null
+  }
   if (!_resend) _resend = new Resend(key)
   return _resend
 }
@@ -36,7 +44,10 @@ async function send(args: {
     subject: args.subject,
     react: args.react,
   })
-  if (error) throw new Error(error.message ?? "Resend send failed")
+  if (error) {
+    console.error("[email] Resend rejected send", { to: args.to, subject: args.subject, error })
+    throw new Error(error.message ?? "Resend send failed")
+  }
   return { id: data?.id ?? "" }
 }
 
@@ -63,7 +74,10 @@ export async function sendEmail(opts: {
     text: opts.text,
     replyTo: opts.replyTo,
   })
-  if (error) throw new Error(error.message ?? "Resend send failed")
+  if (error) {
+    console.error("[email] Resend rejected send", { to: opts.to, subject: opts.subject, error })
+    throw new Error(error.message ?? "Resend send failed")
+  }
   return { id: data?.id ?? "" }
 }
 
