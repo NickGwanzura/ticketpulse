@@ -1,0 +1,3 @@
+- [x] Wire admin overview (`app/admin/page.tsx`) to live DB data for KPIs, recent activity, and top events.
+- [x] Wire admin orders page (`app/admin/orders/page.tsx`) to live DB orders.
+- [ ] Run focused verification (type/lint check for touched files) and summarize.

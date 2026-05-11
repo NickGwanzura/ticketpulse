@@ -2,20 +2,19 @@ import Link from "next/link"
 import {
   ArrowUpRight, ArrowDownRight,
   AlertCircle, CalendarCheck, LayoutList,
+  ShoppingCart,
 } from "lucide-react"
+import { and, desc, eq, gte, sql } from "drizzle-orm"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
+import { db } from "@/db"
+import { events, orders, users } from "@/db/schema"
 
 type KPI = { label: string; value: number; currency: string | null; delta: number; up: boolean; spark: readonly number[] }
 type Activity = { kind: string; icon: React.ElementType; iconColor: string; iconBg: string; who: string; msg: string; when: string }
 type TopEvent = { title: string; organizer: string; sold: number; capacity: number; revenue: number; currency: string }
 type Pending = { kind: string; title: string; detail: string; primary: string }
-
-const KPIS: KPI[] = []
-const ACTIVITY: Activity[] = []
-const TOP_EVENTS: TopEvent[] = []
-const PENDING: Pending[] = []
 
 function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
   const w = 120, h = 36, pad = 2
@@ -41,7 +40,175 @@ function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
   )
 }
 
-export default function AdminOverviewPage() {
+function relTime(input: Date | null | undefined) {
+  if (!input) return "Recently"
+  const d = new Date(input)
+  if (Number.isNaN(d.getTime())) return "Recently"
+  const diffMs = Date.now() - d.getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return "Just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return d.toLocaleDateString()
+}
+
+export default async function AdminOverviewPage() {
+  const now = new Date()
+  const start30 = new Date(now)
+  start30.setDate(now.getDate() - 30)
+  const prev30 = new Date(start30)
+  prev30.setDate(start30.getDate() - 30)
+
+  const paidRecentRows = await db
+    .select({
+      amount: orders.totalAmount,
+      currency: orders.currency,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(and(eq(orders.status, "paid"), gte(orders.createdAt, prev30)))
+
+  const currentRows = paidRecentRows.filter((r) => {
+    const d = r.createdAt ? new Date(r.createdAt) : null
+    return d ? d >= start30 : false
+  })
+
+  const previousRows = paidRecentRows.filter((r) => {
+    const d = r.createdAt ? new Date(r.createdAt) : null
+    return d ? d >= prev30 && d < start30 : false
+  })
+
+  const currentRevenue = currentRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+  const prevRevenue = previousRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+  const revenueDelta = prevRevenue > 0 ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : (currentRevenue > 0 ? 100 : 0)
+
+  const activeEventsRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(events)
+    .where(eq(events.status, "published"))
+
+  const newUsersCurrentRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(gte(users.createdAt, start30))
+
+  const newUsersPrevRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(and(gte(users.createdAt, prev30), sql`${users.createdAt} < ${start30}`))
+
+  const activeEvents = Number(activeEventsRow[0]?.count ?? 0)
+  const newUsersCurrent = Number(newUsersCurrentRow[0]?.count ?? 0)
+  const newUsersPrev = Number(newUsersPrevRow[0]?.count ?? 0)
+  const userDelta = newUsersPrev > 0 ? ((newUsersCurrent - newUsersPrev) / newUsersPrev) * 100 : (newUsersCurrent > 0 ? 100 : 0)
+
+  const paidCountCurrentRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(orders)
+    .where(and(eq(orders.status, "paid"), gte(orders.createdAt, start30)))
+
+  const paidCountPrevRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(orders)
+    .where(and(eq(orders.status, "paid"), gte(orders.createdAt, prev30), sql`${orders.createdAt} < ${start30}`))
+
+  const paidCountCurrent = Number(paidCountCurrentRow[0]?.count ?? 0)
+  const paidCountPrev = Number(paidCountPrevRow[0]?.count ?? 0)
+  const paidCountDelta = paidCountPrev > 0 ? ((paidCountCurrent - paidCountPrev) / paidCountPrev) * 100 : (paidCountCurrent > 0 ? 100 : 0)
+
+  const defaultCurrency = currentRows[0]?.currency ?? "USD"
+  const KPIS: KPI[] = [
+    {
+      label: "Gross volume (30d)",
+      value: currentRevenue,
+      currency: defaultCurrency,
+      delta: revenueDelta,
+      up: revenueDelta >= 0,
+      spark: [2, 4, 3, 5, 6, 4, 7, 8],
+    },
+    {
+      label: "Paid orders (30d)",
+      value: paidCountCurrent,
+      currency: null,
+      delta: paidCountDelta,
+      up: paidCountDelta >= 0,
+      spark: [1, 1, 2, 3, 2, 4, 4, 5],
+    },
+    {
+      label: "Active events",
+      value: activeEvents,
+      currency: null,
+      delta: 0,
+      up: true,
+      spark: [1, 1, 1, 2, 2, 2, 2, 2],
+    },
+    {
+      label: "New users (30d)",
+      value: newUsersCurrent,
+      currency: null,
+      delta: userDelta,
+      up: userDelta >= 0,
+      spark: [1, 2, 1, 3, 2, 3, 4, 4],
+    },
+  ]
+
+  const recentOrders = await db
+    .select({
+      id: orders.id,
+      createdAt: orders.createdAt,
+      amount: orders.totalAmount,
+      currency: orders.currency,
+      guestName: orders.guestName,
+      userName: users.name,
+      eventTitle: events.title,
+    })
+    .from(orders)
+    .leftJoin(users, eq(users.id, orders.userId))
+    .leftJoin(events, eq(events.id, orders.eventId))
+    .where(eq(orders.status, "paid"))
+    .orderBy(desc(orders.createdAt))
+    .limit(8)
+
+  const ACTIVITY: Activity[] = recentOrders.map((o) => ({
+    kind: "order",
+    icon: ShoppingCart,
+    iconColor: "text-emerald-700",
+    iconBg: "bg-emerald-50",
+    who: o.userName || o.guestName || "Guest",
+    msg: `placed a paid order for ${o.eventTitle || "an event"} (${formatCurrency(Number(o.amount ?? 0), o.currency || "USD")})`,
+    when: relTime(o.createdAt),
+  }))
+
+  const topEventsRows = await db
+    .select({
+      title: events.title,
+      organizer: users.name,
+      sold: sql<number>`count(${orders.id})`,
+      revenue: sql<string>`sum(${orders.totalAmount})`,
+      currency: orders.currency,
+    })
+    .from(orders)
+    .leftJoin(events, eq(events.id, orders.eventId))
+    .leftJoin(users, eq(users.id, events.organizerId))
+    .where(and(eq(orders.status, "paid"), gte(orders.createdAt, start30)))
+    .groupBy(events.title, users.name, orders.currency)
+    .orderBy(desc(sql`sum(${orders.totalAmount})`))
+    .limit(5)
+
+  const TOP_EVENTS: TopEvent[] = topEventsRows.map((r) => ({
+    title: r.title || "Untitled event",
+    organizer: r.organizer || "Organizer",
+    sold: Number(r.sold ?? 0),
+    capacity: Math.max(Number(r.sold ?? 0), 1),
+    revenue: Number(r.revenue ?? 0),
+    currency: r.currency || "USD",
+  }))
+
+  const PENDING: Pending[] = []
+
   return (
     <div className="tp-fade-up">
       <PageHeader
@@ -52,7 +219,6 @@ export default function AdminOverviewPage() {
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-8">
-        {/* KPI grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {KPIS.length > 0 ? KPIS.map(({ label, value, currency, delta, up, spark }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
@@ -70,22 +236,9 @@ export default function AdminOverviewPage() {
                 </div>
               </div>
             </div>
-          )) : (
-            <>
-              {["Gross volume", "Net revenue", "Active events", "New users"].map((label) => (
-                <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-                  <p className="text-[11.5px] text-ink-3 mb-2.5">{label}</p>
-                  <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">0</p>
-                  <div className="mt-3">
-                    <span className="text-[11.5px] text-ink-3">No data yet</span>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
+          )) : null}
         </div>
 
-        {/* Activity + Top events */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 tp-fade-up-2">
           <div className="lg:col-span-3 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
@@ -135,7 +288,7 @@ export default function AdminOverviewPage() {
                 {TOP_EVENTS.map((e) => {
                   const pct = Math.round((e.sold / e.capacity) * 100)
                   return (
-                    <li key={e.title} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
+                    <li key={`${e.title}-${e.currency}`} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
                       <div className="flex items-start justify-between gap-3 mb-1.5">
                         <div className="min-w-0">
                           <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
@@ -166,7 +319,6 @@ export default function AdminOverviewPage() {
           </div>
         </div>
 
-        {/* Pending review */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
             <div>

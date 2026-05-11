@@ -1,7 +1,10 @@
 import { Search, DollarSign, Receipt, RefreshCw, TrendingUp, Smartphone, CreditCard, Building2, Banknote, ShoppingCart } from "lucide-react"
+import { and, desc, eq, gte, sql } from "drizzle-orm"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
+import { db } from "@/db"
+import { events, orders, users } from "@/db/schema"
 
 type Status = "paid" | "pending" | "refunded"
 type Method = "EcoCash" | "Card" | "Bank" | "USD cash"
@@ -17,29 +20,100 @@ type Order = {
   at: Date
 }
 
-const ORDERS: Order[] = []
-
 const STATUS_STYLE: Record<Status, string> = {
-  paid:     "bg-emerald-50 text-emerald-700",
-  pending:  "bg-amber-50 text-amber-700",
+  paid: "bg-emerald-50 text-emerald-700",
+  pending: "bg-amber-50 text-amber-700",
   refunded: "bg-rose-50 text-rose-700",
 }
 
 const METHOD_ICON: Record<Method, { Icon: typeof Smartphone; color: string }> = {
-  "EcoCash":  { Icon: Smartphone, color: "text-emerald-700" },
-  "Card":     { Icon: CreditCard, color: "text-blue" },
-  "Bank":     { Icon: Building2,  color: "text-sky-700" },
-  "USD cash": { Icon: Banknote,   color: "text-amber-700" },
+  EcoCash: { Icon: Smartphone, color: "text-emerald-700" },
+  Card: { Icon: CreditCard, color: "text-blue" },
+  Bank: { Icon: Building2, color: "text-sky-700" },
+  "USD cash": { Icon: Banknote, color: "text-amber-700" },
 }
 
 const FILTER_PILLS = ["All", "Paid", "Pending", "Refunded"]
 
-export default function AdminOrdersPage() {
+function normalizeMethod(method: string | null | undefined): Method {
+  const m = (method || "").toLowerCase()
+  if (m.includes("eco")) return "EcoCash"
+  if (m.includes("card") || m.includes("visa") || m.includes("master")) return "Card"
+  if (m.includes("bank") || m.includes("transfer")) return "Bank"
+  return "USD cash"
+}
+
+export default async function AdminOrdersPage() {
+  const now = new Date()
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startWeek = new Date(now)
+  startWeek.setDate(now.getDate() - 7)
+  const start30 = new Date(now)
+  start30.setDate(now.getDate() - 30)
+
+  const recentRows = await db
+    .select({
+      id: orders.id,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      totalAmount: orders.totalAmount,
+      currency: orders.currency,
+      createdAt: orders.createdAt,
+      guestName: orders.guestName,
+      userName: users.name,
+      eventTitle: events.title,
+    })
+    .from(orders)
+    .leftJoin(users, eq(users.id, orders.userId))
+    .leftJoin(events, eq(events.id, orders.eventId))
+    .orderBy(desc(orders.createdAt))
+    .limit(100)
+
+  const ORDERS: Order[] = recentRows
+    .filter((r) => r.status === "paid" || r.status === "pending" || r.status === "refunded")
+    .map((r) => ({
+      id: r.id,
+      customer: r.userName || r.guestName || "Guest",
+      event: r.eventTitle || "Untitled event",
+      amount: Number(r.totalAmount ?? 0),
+      currency: r.currency || "USD",
+      method: normalizeMethod(r.paymentMethod),
+      status: r.status as Status,
+      at: new Date(r.createdAt || new Date()),
+    }))
+
+  const todayPaidRows = await db
+    .select({ amount: orders.totalAmount, currency: orders.currency })
+    .from(orders)
+    .where(and(eq(orders.status, "paid"), gte(orders.createdAt, startToday)))
+
+  const todayRevenue = todayPaidRows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+  const todayCurrency = todayPaidRows[0]?.currency || "USD"
+
+  const todayOrdersRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(orders)
+    .where(gte(orders.createdAt, startToday))
+
+  const refundsWeekRow = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(orders)
+    .where(and(eq(orders.status, "refunded"), gte(orders.createdAt, startWeek)))
+
+  const paid30Rows = await db
+    .select({ amount: orders.totalAmount })
+    .from(orders)
+    .where(and(eq(orders.status, "paid"), gte(orders.createdAt, start30)))
+
+  const paid30Count = paid30Rows.length
+  const paid30Revenue = paid30Rows.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+  const aov = paid30Count > 0 ? paid30Revenue / paid30Count : 0
+
   const stats = [
-    { label: "Today's revenue",   value: formatCurrency(0, "USD"), icon: DollarSign, tone: "text-emerald-700", bg: "bg-emerald-50" },
-    { label: "Today's orders",    value: "0",                      icon: Receipt,    tone: "text-sky-700",     bg: "bg-sky-50" },
-    { label: "Refunds this week", value: "0",                      icon: RefreshCw,  tone: "text-rose-700",    bg: "bg-rose-50" },
-    { label: "AOV",               value: "0",                      icon: TrendingUp, tone: "text-blue",        bg: "bg-blue-soft" },
+    { label: "Today's revenue", value: formatCurrency(todayRevenue, todayCurrency), icon: DollarSign, tone: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: "Today's orders", value: String(Number(todayOrdersRow[0]?.count ?? 0)), icon: Receipt, tone: "text-sky-700", bg: "bg-sky-50" },
+    { label: "Refunds this week", value: String(Number(refundsWeekRow[0]?.count ?? 0)), icon: RefreshCw, tone: "text-rose-700", bg: "bg-rose-50" },
+    { label: "AOV", value: formatCurrency(aov, todayCurrency), icon: TrendingUp, tone: "text-blue", bg: "bg-blue-soft" },
   ]
 
   return (
