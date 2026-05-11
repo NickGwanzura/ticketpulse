@@ -1,6 +1,6 @@
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
-import { and, asc, eq, gte, inArray } from "drizzle-orm"
+import { and, asc, eq, inArray, sql } from "drizzle-orm"
 
 export interface FeaturedEvent {
   id: string
@@ -36,7 +36,12 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       status: events.status,
     })
     .from(events)
-    .where(and(eq(events.status, "published"), gte(events.startsAt, new Date())))
+    // Keep events visible while they're still running, not just before they start.
+    // Falls back to startsAt + 6h when no explicit endsAt is set.
+    .where(and(
+      eq(events.status, "published"),
+      sql`COALESCE(${events.endsAt}, ${events.startsAt} + INTERVAL '6 hours') >= NOW()`,
+    ))
     .orderBy(asc(events.startsAt))
     .limit(limit)
 
