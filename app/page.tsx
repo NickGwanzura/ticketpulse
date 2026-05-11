@@ -251,7 +251,7 @@ export default async function Home() {
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
             {/* LEFT. Text */}
             <div>
-              <div className="inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-7 shadow-sm shadow-ink/5">
+              <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-7 shadow-sm shadow-ink/5">
                 <span className="relative flex w-2 h-2">
                   <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
                   <span className="relative block w-2 h-2 rounded-full bg-emerald-500" />
@@ -262,7 +262,7 @@ export default async function Home() {
                 </span>
               </div>
 
-              <h1 className="font-bold tracking-[-0.035em] text-[44px] leading-[1.0] sm:text-[60px] md:text-[76px] md:leading-[0.96] text-ink">
+              <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[44px] leading-[1.0] sm:text-[60px] md:text-[76px] md:leading-[0.96] text-ink">
                 Every event.<br />
                 <span className="relative inline-block">
                   <span className="bg-gradient-to-r from-navy via-navy-700 to-blue bg-clip-text text-transparent">One ticket.</span>
@@ -272,11 +272,11 @@ export default async function Home() {
                 </span>
               </h1>
 
-              <p className="mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
+              <p className="tp-fade-up-2 mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
                 Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
               </p>
 
-              <form action="/events" className="mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl">
+              <form action="/events" className="tp-fade-up-3 mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl">
                 <div className="relative flex-1 group">
                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none transition-colors group-focus-within:text-blue" />
                   <input
@@ -296,14 +296,14 @@ export default async function Home() {
                 </button>
               </form>
 
-              <div className="mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
+              <div className="tp-fade-up-4 mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
                 <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-emerald-600" /> No signup to buy</span>
                 <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-emerald-600" /> PDF + mobile QR</span>
                 <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-emerald-600" /> Our gate scanner</span>
               </div>
 
               {/* Launch credibility */}
-              <div className="mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-2.5">
+              <div className="tp-fade-up-5 mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-2.5">
                 <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 shrink-0">
                   <ShieldCheck size={16} className="text-blue" />
                 </span>
@@ -354,8 +354,12 @@ export default async function Home() {
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 md:py-9">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-line">
               {buildStats(eventsOnSale).map((s, i) => (
-                <div key={i} className="md:px-6 md:first:pl-0 md:last:pr-0">
-                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none">
+                <div
+                  key={i}
+                  style={{ animationDelay: `${300 + i * 70}ms` }}
+                  className="tp-fade-up md:px-6 md:first:pl-0 md:last:pr-0"
+                >
+                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none pb-0.5">
                     {s.value}
                   </p>
                   <p className="mt-1.5 text-[12.5px] text-ink-3">{s.label}</p>
@@ -369,7 +373,7 @@ export default async function Home() {
       {/* FEATURED */}
       {featuredEvents.length > 0 && (
         <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div className="mb-8 md:mb-10 max-w-2xl">
+          <div className="tp-reveal mb-8 md:mb-10 max-w-2xl">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">
               {featuredEvents.length === 1 ? "Our launch event." : "What's on."}
@@ -378,8 +382,14 @@ export default async function Home() {
           </div>
 
           <div className={featuredEvents.length === 1 ? "max-w-md mx-auto" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6"}>
-            {featuredEvents.map((e) => (
-              <EventCard key={e.id} {...e} />
+            {featuredEvents.map((e, i) => (
+              <div
+                key={e.id}
+                style={{ animationDelay: `${i * 90}ms` }}
+                className="tp-fade-up"
+              >
+                <EventCard {...e} />
+              </div>
             ))}
           </div>
         </section>
@@ -388,18 +398,19 @@ export default async function Home() {
       {/* CATEGORIES */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div className="mb-8 md:mb-10">
+          <div className="tp-reveal mb-8 md:mb-10">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Browse</p>
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">By category</h2>
             <p className="mt-3 text-[15px] text-ink-2 max-w-xl">Find the experience you&apos;re after, from sold-out concerts to local marathons and premieres.</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            {CATEGORIES.map(({ label, value, icon: Icon, gradient, ring, accent }) => (
+            {CATEGORIES.map(({ label, value, icon: Icon, gradient, ring, accent }, i) => (
               <Link
                 key={value}
                 href={`/events?category=${value}`}
-                className={`group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-5 h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 transition-all`}
+                style={{ animationDelay: `${i * 60}ms` }}
+                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-5 h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
               >
                 <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
                   <Icon size={17} className={accent} />
@@ -418,7 +429,7 @@ export default async function Home() {
 
       {/* HOW IT WORKS */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24 border-t border-line">
-        <div className="mb-10 md:mb-14 max-w-2xl">
+        <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
           <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout. No third-party scanner contracts.</p>
@@ -428,7 +439,8 @@ export default async function Home() {
           {STEPS.map(({ icon: Icon, title, body }, i) => (
             <div
               key={title}
-              className="group relative overflow-hidden rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-28px_rgba(10,37,64,0.18)] transition-all duration-300"
+              style={{ animationDelay: `${i * 100}ms` }}
+              className="tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-28px_rgba(10,37,64,0.18)] transition-all duration-300"
             >
               <span
                 className="pointer-events-none absolute -top-2 -right-1 select-none text-[80px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft transition-colors"
@@ -458,8 +470,12 @@ export default async function Home() {
             { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-blue/15",   accent: "text-blue" },
             { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-emerald-50 to-paper-2", ring: "ring-emerald-200/60", accent: "text-emerald-700" },
             { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
-          ].map(({ icon: Icon, k, v, tone, ring, accent }) => (
-            <div key={k} className="group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 transition-all duration-300">
+          ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (
+            <div
+              key={k}
+              style={{ animationDelay: `${i * 80}ms` }}
+              className="tp-fade-up group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 transition-all duration-300"
+            >
               <span className={`inline-flex w-11 h-11 items-center justify-center rounded-xl bg-gradient-to-br ${tone} ring-1 ${ring} shrink-0 mb-3.5`}>
                 <Icon size={18} className={accent} />
               </span>
@@ -473,23 +489,26 @@ export default async function Home() {
       {/* FAQ */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div className="mb-10 max-w-xl">
+          <div className="tp-reveal mb-10 max-w-xl">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Quick answers.</h2>
             <p className="mt-3 text-[15px] text-ink-2">Still wondering? <Link href="/help" className="text-navy font-semibold hover:underline">Browse the help center</Link> or <Link href="/contact" className="text-navy font-semibold hover:underline">talk to a human</Link>.</p>
           </div>
 
-          <FAQSection items={FAQ} />
+          <div className="tp-reveal">
+            <FAQSection items={FAQ} />
+          </div>
         </div>
       </section>
 
       {/* ORGANIZER CTA */}
       <section className="px-5 md:px-8 pb-20 md:pb-28">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto tp-reveal">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-14">
-            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" />
+            {/* One restrained ambient detail: a soft blue glow in the top-right corner. */}
+            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" aria-hidden />
             <div
-              className="absolute inset-0 opacity-[0.07]"
+              className="absolute inset-0 opacity-[0.07] pointer-events-none"
               style={{
                 backgroundImage:
                   "linear-gradient(to right, #ffffff20 1px, transparent 1px), linear-gradient(to bottom, #ffffff20 1px, transparent 1px)",
@@ -498,41 +517,55 @@ export default async function Home() {
               aria-hidden
             />
 
-            <div className="relative grid md:grid-cols-2 gap-10 items-center">
+            <div className="relative grid md:grid-cols-2 gap-10 md:gap-12 items-start">
               <div>
-                <p className="text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase mb-3">For organizers</p>
-                <h2 className="font-bold tracking-[-0.02em] text-[28px] md:text-[44px] leading-[1.05]">
+                <p className="tp-fade-up text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase mb-3">For organizers</p>
+                <h2 className="tp-fade-up-1 font-bold tracking-[-0.02em] text-[28px] md:text-[44px] leading-[1.05]">
                   Sell out your next event.
                 </h2>
-                <p className="mt-4 text-[15.5px] md:text-[17px] leading-relaxed text-white/80 max-w-lg">
+                <p className="tp-fade-up-2 mt-4 text-[15.5px] md:text-[17px] leading-relaxed text-white/80 max-w-lg">
                   Launch in minutes. Verified payouts, mobile QR entry, and built-in shuttle, merch, and photo bundles. Keep more of every ticket.
                 </p>
-                <div className="mt-7 flex flex-wrap gap-3">
+                <div className="tp-fade-up-3 mt-7 flex flex-wrap gap-3">
                   <Link
                     href="/auth/signup?role=organizer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-white text-navy font-semibold px-5 py-3.5 text-sm hover:bg-paper-2 active:scale-[0.99] transition"
+                    className="group inline-flex items-center gap-2 rounded-xl bg-white text-navy font-semibold px-5 py-3.5 text-sm shadow-sm shadow-black/10 hover:bg-paper-2 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/20 active:scale-[0.99] active:translate-y-0 transition-all"
                   >
                     <Ticket size={15} /> Start selling
+                    <ArrowRight size={14} className="opacity-0 -ml-1 transition-all group-hover:opacity-100 group-hover:ml-0" />
                   </Link>
                   <Link
                     href="/events"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 text-white font-semibold px-5 py-3.5 text-sm hover:bg-white/10 transition"
+                    className="group inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 text-white font-semibold px-5 py-3.5 text-sm hover:bg-white/10 hover:border-white/30 active:scale-[0.99] transition-all"
                   >
-                    See live events <ArrowUpRight size={14} />
+                    See live events <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </Link>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
+              {/* Stats: align the grid's top edge to the heading on md+ so the eye reads
+                  eyebrow → heading || stat-row, side by side. On mobile, natural flow. */}
+              <div className="grid grid-cols-2 gap-3 md:gap-4 md:mt-7">
                 {[
-                  { k: "98%",     l: "Payout success" },
-                  { k: "<2 min",  l: "Setup time" },
-                  { k: "0%",      l: "Booking fees on you" },
+                  { k: "98%",      l: "Payout success" },
+                  { k: "<2 min",   l: "Setup time" },
+                  { k: "0%",       l: "Booking fees on you" },
                   { k: "Included", l: "Gate scanner & PDF tickets" },
-                ].map(({ k, l }) => (
-                  <div key={l} className="rounded-2xl bg-white/[0.06] border border-white/10 p-4 backdrop-blur hover:bg-white/[0.09] transition-colors">
-                    <p className="text-[22px] md:text-[26px] font-bold tracking-tight">{k}</p>
-                    <p className="text-[12.5px] text-white/70 mt-1">{l}</p>
+                ].map(({ k, l }, i) => (
+                  <div
+                    key={l}
+                    style={{ animationDelay: `${120 + i * 80}ms` }}
+                    className="tp-fade-up group relative overflow-hidden rounded-2xl bg-white/[0.06] border border-white/10 px-4 pt-5 pb-4 backdrop-blur hover:bg-white/[0.09] hover:border-white/20 hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    {/* Delicate accent bar — tells the eye these are stats, not links. */}
+                    <span
+                      className="absolute left-4 top-0 h-px w-8 bg-gradient-to-r from-blue/60 to-transparent group-hover:w-12 transition-all duration-300"
+                      aria-hidden
+                    />
+                    <p className="text-[22px] md:text-[26px] font-bold tracking-tight leading-none pb-1">
+                      {k}
+                    </p>
+                    <p className="text-[12.5px] text-white/70 mt-1.5 leading-snug">{l}</p>
                   </div>
                 ))}
               </div>

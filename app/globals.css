@@ -124,6 +124,25 @@ html { scroll-padding-top: 5rem; }
 .tp-fade-up-1    { animation: tp-fade-up 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 60ms both; }
 .tp-fade-up-2    { animation: tp-fade-up 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms both; }
 .tp-fade-up-3    { animation: tp-fade-up 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 180ms both; }
+.tp-fade-up-4    { animation: tp-fade-up 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 240ms both; }
+.tp-fade-up-5    { animation: tp-fade-up 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms both; }
+.tp-fade-up-6    { animation: tp-fade-up 380ms cubic-bezier(0.22, 0.61, 0.36, 1) 360ms both; }
+
+/* Viewport-aware entrance: fade up the first time the element scrolls into
+   view. Uses the Intersection-Observer-free `animation-timeline: view()` API
+   in browsers that support it; falls back to a static `tp-fade-up`-style
+   animation on initial-load otherwise. Pure CSS, no JS. */
+@supports (animation-timeline: view()) {
+  .tp-reveal {
+    opacity: 0;
+    animation: tp-fade-up 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+@supports not (animation-timeline: view()) {
+  .tp-reveal { animation: tp-fade-up 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+}
 
 /* Lift-on-hover for cards. */
 .tp-lift {
