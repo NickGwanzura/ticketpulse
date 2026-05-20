@@ -64,15 +64,19 @@ export default async function SignUpPage({
               })
 
               // Fire-and-forget welcome email — signup must not fail if mail fails.
+              const { sendWelcomeEmail, adminEmail } = await import("@/lib/email")
+              sendWelcomeEmail({ to: email, name }).catch((e) => console.error("welcome email", e))
+
+              // Notify the admin of the new signup (fire-and-forget).
               const { sendEmail } = await import("@/lib/email")
-              const { welcomeEmail } = await import("@/lib/email-templates")
-              const built = welcomeEmail({ name })
+              const { newSignupAdminNotification } = await import("@/lib/email-templates")
+              const adminNotice = newSignupAdminNotification({ name, email, role })
               sendEmail({
-                to: email,
-                subject: "Welcome to TicketPulse",
-                html: built.html,
-                text: built.text,
-              }).catch((e) => console.error("welcome email", e))
+                to: adminEmail,
+                subject: `New signup: ${email} (${role})`,
+                html: adminNotice.html,
+                text: adminNotice.text,
+              }).catch((e) => console.error("admin signup notification", e))
             }
 
             await signIn("credentials", {

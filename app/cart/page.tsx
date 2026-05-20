@@ -17,14 +17,16 @@ function groupByEvent(items: CartLine[]) {
 }
 
 function lineEmoji(line: CartLine) {
-  if (line.kind === "ticket") return line.emoji
-  if (line.kind === "merch") return "👕"
+  if (line.kind === "ticket")       return line.emoji
+  if (line.kind === "merch")        return "👕"
+  if (line.kind === "vendor_addon") return "🍽️"
   return "🚌"
 }
 
 function lineLabel(line: CartLine) {
-  if (line.kind === "ticket") return line.tierName
-  if (line.kind === "merch")  return line.size ? `${line.name} · ${line.size}` : line.name
+  if (line.kind === "ticket")       return line.tierName
+  if (line.kind === "merch")        return line.size ? `${line.name} · ${line.size}` : line.name
+  if (line.kind === "vendor_addon") return `${line.vendorName} · ${line.packageName}`
   return line.description
 }
 

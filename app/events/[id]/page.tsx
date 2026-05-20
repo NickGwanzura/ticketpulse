@@ -5,12 +5,14 @@ import TransportSection from "@/components/transport/TransportSection"
 import VendorSection from "@/components/vendors/VendorSection"
 import MediaSection from "@/components/media/MediaSection"
 import TicketSelector from "@/components/events/TicketSelector"
+import VenueMap from "@/components/events/VenueMap"
 import MobileBuyBar from "@/components/MobileBuyBar"
-import { formatCurrency, formatDate } from "@/lib/utils"
-import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, ticketTiers, users } from "@/db/schema"
-import { eq, or } from "drizzle-orm"
+import { events, ticketTiers, users, vendorListings, vendors } from "@/db/schema"
+import { eq, or, and } from "drizzle-orm"
+import { auth } from "@/auth"
+import { formatCurrency, formatDate } from "@/lib/utils"
+import type { VendorListing } from "@/types"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -44,6 +46,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       city: events.city,
       country: events.country,
       address: events.address,
+      lat: events.lat,
+      lng: events.lng,
       startsAt: events.startsAt,
       coverImage: events.coverImage,
       tags: events.tags,
@@ -73,12 +77,93 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     maxPerOrder: t.maxPerOrder ?? 10,
   }))
 
+  // ── Vendor listings (addons available to ticket buyers) ────────────
+  const vendorListingRows = await db
+    .select({
+      id: vendorListings.id,
+      eventId: vendorListings.eventId,
+      packageName: vendorListings.packageName,
+      packageDescription: vendorListings.packageDescription,
+      price: vendorListings.price,
+      currency: vendorListings.currency,
+      available: vendorListings.available,
+      booked: vendorListings.booked,
+      businessName: vendors.businessName,
+      category: vendors.category,
+      logo: vendors.logo,
+      verified: vendors.verified,
+      rating: vendors.rating,
+    })
+    .from(vendorListings)
+    .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
+    .where(and(
+      eq(vendorListings.eventId, row.id),
+      eq(vendorListings.available, true),
+    ))
+
+  const vendorListingsData: VendorListing[] = vendorListingRows.map((r) => ({
+    id: r.id,
+    eventId: r.eventId,
+    vendor: {
+      businessName: r.businessName ?? "Unknown",
+      category: (r.category ?? "other") as VendorListing["vendor"]["category"],
+      logo: r.logo,
+      verified: r.verified ?? false,
+      rating: r.rating ? Number(r.rating) : null,
+    },
+    packageName: r.packageName,
+    packageDescription: r.packageDescription,
+    price: Number(r.price),
+    currency: r.currency ?? "USD",
+    available: r.available,
+    booked: r.booked,
+  }))
+
   const emoji = CATEGORY_EMOJI[row.category.toLowerCase()] ?? "🎫"
   const baseCurrency = tiers[0]?.currency ?? "USD"
   const lowestPrice = tiers.length ? Math.min(...tiers.map((t) => t.price)) : null
 
+  // ── JSON-LD structured data (Schema.org Event) ────────────────────────────
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: row.title,
+    description: row.description ?? undefined,
+    startDate: row.startsAt.toISOString(),
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: row.venue,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: row.address ?? row.venue,
+        addressLocality: row.city,
+        addressCountry: row.country ?? "ZW",
+      },
+    },
+    image: row.coverImage ?? undefined,
+    organizer: row.organizerName
+      ? {
+          "@type": "Person",
+          name: row.organizerName,
+        }
+      : undefined,
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: baseCurrency,
+      lowPrice: lowestPrice,
+      availability: "https://schema.org/InStock",
+      url: `https://ticketpulse.tech/events/${row.slug}`,
+    },
+  }
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="relative h-72 md:h-80 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center">
         <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
         <span className="text-8xl relative">{emoji}</span>
@@ -127,9 +212,19 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               )}
             </div>
 
+            {row.lat != null && row.lng != null && (
+              <VenueMap
+                lat={row.lat}
+                lng={row.lng}
+                venue={row.venue}
+                address={row.address}
+                city={row.city}
+              />
+            )}
+
             <MerchSection items={[]} eventTitle={row.title} />
             <TransportSection routes={[]} />
-            <VendorSection listings={[]} isOrganizer={isOrganizer} />
+            <VendorSection listings={vendorListingsData} eventId={row.id} eventSlug={row.slug} eventTitle={row.title} isOrganizer={isOrganizer} />
             <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
 

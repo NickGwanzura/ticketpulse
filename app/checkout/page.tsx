@@ -114,18 +114,18 @@ export default function CheckoutPage() {
     setSubmitError(null)
     setSubmitting(true)
 
-    // Group ticket lines by event — guest checkout creates one order per event.
-    // For v1 we require all tickets in the cart to be for the same event; if
-    // the cart spans multiple events the buyer needs to check out per event.
+    // All items must be for the same event.
+    const eventLines = items.filter((i) => i.kind === "ticket" || i.kind === "vendor_addon")
     const ticketLines = items.filter((i) => i.kind === "ticket")
+    const vendorAddonLines = items.filter((i) => i.kind === "vendor_addon")
     if (ticketLines.length === 0) {
       setSubmitError("Your cart has no tickets. Add a ticket to continue.")
       setSubmitting(false)
       return
     }
-    const slugs = new Set(ticketLines.map((i) => i.eventSlug))
+    const slugs = new Set(eventLines.map((i) => i.eventSlug))
     if (slugs.size > 1) {
-      setSubmitError("You have tickets for multiple events. Please check out one event at a time.")
+      setSubmitError("You have items for multiple events. Please check out one event at a time.")
       setSubmitting(false)
       return
     }
@@ -140,7 +140,10 @@ export default function CheckoutPage() {
           phone: form.phone,
           paymentMethod: form.payment,
           eventSlug: ticketLines[0].eventSlug,
-          items: ticketLines.map((l) => ({ tierId: l.tierId, quantity: l.qty })),
+          items: [
+            ...ticketLines.map((l) => ({ kind: "ticket" as const, tierId: l.tierId, quantity: l.qty })),
+            ...vendorAddonLines.map((l) => ({ kind: "vendor_addon" as const, listingId: l.listingId, quantity: l.qty })),
+          ],
         }),
       })
       if (!res.ok) {
@@ -354,7 +357,10 @@ export default function CheckoutPage() {
                   <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-line-2 mt-2" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold tracking-tight text-ink line-clamp-1">
-                      {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.description}
+                      {line.kind === "ticket" ? line.tierName
+                        : line.kind === "merch" ? line.name
+                        : line.kind === "vendor_addon" ? `${line.vendorName} · ${line.packageName}`
+                        : line.description}
                     </p>
                     <p className="text-ink-3 line-clamp-1">{line.eventTitle} · ×{line.qty}</p>
                   </div>

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next"
-import { Google_Sans } from "next/font/google"
 import { headers } from "next/headers"
 import "./globals.css"
 import Providers from "@/components/layout/Providers"
@@ -18,13 +17,6 @@ const NAV_CATEGORY_EMOJI: Record<string, string> = {
   exhibition: "🏢",
   expedition: "⛰️",
 }
-
-const googleSans = Google_Sans({
-  subsets: ["latin"],
-  variable: "--font-google-sans",
-  display: "swap",
-  axes: ["GRAD", "opsz"],
-})
 
 export const metadata: Metadata = {
   title: "TicketPulse. Every event. One ticket.",
@@ -54,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" className={googleSans.variable}>
+    <html lang="en">
       <body className="font-sans bg-paper text-ink antialiased">
         <Providers>
           {!bare && <TopBar />}

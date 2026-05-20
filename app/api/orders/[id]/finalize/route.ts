@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers } from "@/db/schema"
-import { sendOrderConfirmationEmail } from "@/lib/email"
+import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
+import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
+import { saleNotificationEmail } from "@/lib/email-templates"
 
 type Params = { id: string }
 
@@ -52,8 +53,22 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
   // Fire the branded ticket confirmation email. Failures here shouldn't
   // block the user from seeing their order — log and continue.
+  let ev: { title: string; startsAt: Date; venue: string | null; organizerId: string } | null = null
+  let saleLines: { label: string; qty: number; amount: string }[] = []
   try {
-    const [event] = await db.select().from(events).where(eq(events.id, order.eventId)).limit(1)
+    const [event] = await db
+      .select({
+        title: events.title,
+        startsAt: events.startsAt,
+        venue: events.venue,
+        organizerId: events.organizerId,
+      })
+      .from(events)
+      .where(eq(events.id, order.eventId))
+      .limit(1)
+
+    ev = event ?? null
+
     const items = await db
       .select({
         qty: orderItems.quantity,
@@ -70,21 +85,22 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       qty: i.qty,
       amount: `${i.total} ${order.currency ?? "USD"}`,
     }))
+    saleLines = lines
 
     await sendOrderConfirmationEmail({
       to: session.user.email,
       buyerName: order.guestName ?? session.user.name,
       orderId: id,
-      eventTitle: event?.title ?? "your event",
-      eventDate: event?.startsAt
-        ? new Date(event.startsAt).toLocaleDateString("en-GB", {
+      eventTitle: ev?.title ?? "your event",
+      eventDate: ev?.startsAt
+        ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
             weekday: "long",
             day: "numeric",
             month: "long",
             year: "numeric",
           })
         : "TBA",
-      eventVenue: event?.venue ?? undefined,
+      eventVenue: ev?.venue ?? undefined,
       lines,
       total: order.totalAmount,
       currency: order.currency ?? "USD",
@@ -92,6 +108,59 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     })
   } catch (err) {
     console.error("[finalize] failed to send order confirmation:", err)
+  }
+
+  // ── Notify the event organiser about the sale ─────────────────────────────
+  if (ev) {
+    try {
+      const [org] = await db
+        .select({ name: users.name, email: users.email })
+        .from(users)
+        .where(eq(users.id, ev.organizerId))
+        .limit(1)
+
+      if (org?.email) {
+        const { html, text } = saleNotificationEmail({
+          role: "organizer",
+          eventTitle: ev.title,
+          buyerName: order.guestName ?? session.user.name ?? "A buyer",
+          orderId: id,
+          items: saleLines,
+          total: String(order.totalAmount),
+          currency: order.currency ?? "USD",
+          organizerName: org.name,
+        })
+        await sendEmail({
+          to: org.email,
+          subject: `🎟️ New ticket sale — ${ev.title}`,
+          html,
+          text,
+        })
+      }
+    } catch (err) {
+      console.error("[finalize] failed to notify organiser:", err)
+    }
+
+    // ── Notify the platform admin about the sale ──────────────────────────────
+    try {
+      const { html, text } = saleNotificationEmail({
+        role: "admin",
+        eventTitle: ev.title,
+        buyerName: order.guestName ?? session.user.name ?? "A buyer",
+        orderId: id,
+        items: saleLines,
+        total: String(order.totalAmount),
+        currency: order.currency ?? "USD",
+      })
+      await sendEmail({
+        to: adminEmail,
+        subject: `🎟️ Sale alert — ${ev.title}`,
+        html,
+        text,
+      })
+    } catch (err) {
+      console.error("[finalize] failed to notify admin about sale:", err)
+    }
   }
 
   return NextResponse.redirect(`${origin}/orders/${id}?welcome=1`)

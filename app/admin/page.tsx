@@ -1,21 +1,23 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import {
   ArrowUpRight, ArrowDownRight,
-  AlertCircle, CalendarCheck, LayoutList,
+  AlertCircle, CalendarCheck, LayoutList, CreditCard, ShoppingCart,
 } from "lucide-react"
+import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
+
+import { auth } from "@/auth"
+import { db } from "@/db"
+import { events, orders, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
+import { publishEventAction, verifyUserEmailAction } from "@/app/admin/actions"
 
 type KPI = { label: string; value: number; currency: string | null; delta: number; up: boolean; spark: readonly number[] }
 type Activity = { kind: string; icon: React.ElementType; iconColor: string; iconBg: string; who: string; msg: string; when: string }
 type TopEvent = { title: string; organizer: string; sold: number; capacity: number; revenue: number; currency: string }
-type Pending = { kind: string; title: string; detail: string; primary: string }
-
-const KPIS: KPI[] = []
-const ACTIVITY: Activity[] = []
-const TOP_EVENTS: TopEvent[] = []
-const PENDING: Pending[] = []
+type Pending = { kind: string; title: string; detail: string; primary: string; action: (id: string) => Promise<void>; id: string }
 
 function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
   const w = 120, h = 36, pad = 2
@@ -41,7 +43,173 @@ function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
   )
 }
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    redirect("/auth/signin?callbackUrl=/admin")
+  }
+
+  // ── KPIs ────────────────────────────────────────────────────────────────
+
+  const [revenueRow] = await db
+    .select({
+      gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(eq(orders.status, "paid"))
+
+  const [activeEventsRow] = await db
+    .select({
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(events)
+    .where(eq(events.status, "published"))
+
+  const [newUsersThisMonth] = await db
+    .select({
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(users)
+    .where(
+      gte(users.createdAt, new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+    )
+
+  const grossVolume = Number(revenueRow?.gross ?? 0)
+  const activeEvents = activeEventsRow?.count ?? 0
+  const newUsers = newUsersThisMonth?.count ?? 0
+
+  const KPIS: KPI[] = [
+    { label: "Gross volume", value: grossVolume, currency: "USD", delta: 0, up: true, spark: [0, 0, 0, 0] },
+    { label: "Net revenue", value: grossVolume, currency: "USD", delta: 0, up: true, spark: [0, 0, 0, 0] },
+    { label: "Active events", value: activeEvents, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
+    { label: "New users (month)", value: newUsers, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
+  ]
+
+  // ── Recent orders (activity) ────────────────────────────────────────────
+
+  const recentOrders = await db
+    .select({
+      id: orders.id,
+      totalAmount: orders.totalAmount,
+      currency: orders.currency,
+      status: orders.status,
+      createdAt: orders.createdAt,
+      contactName: orders.guestName,
+    })
+    .from(orders)
+    .orderBy(desc(orders.createdAt))
+    .limit(20)
+
+  const ACTIVITY: Activity[] = recentOrders.map((o) => ({
+    kind: "order",
+    icon: o.status === "paid" ? CreditCard : ShoppingCart,
+    iconColor: o.status === "paid" ? "text-emerald-700" : "text-ink-2",
+    iconBg: o.status === "paid" ? "bg-emerald-50" : "bg-paper-2",
+    who: o.contactName ?? "Someone",
+    msg: o.status === "paid"
+      ? `paid ${formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}`
+      : `placed order ${o.id?.slice(0, 8)}… (${o.status})`,
+    when: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—",
+  }))
+
+  // ── Top events ──────────────────────────────────────────────────────────
+
+  const topEventRows = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      organizerName: users.name,
+      organizerEmail: users.email,
+    })
+    .from(events)
+    .leftJoin(users, eq(events.organizerId, users.id))
+    .where(eq(events.status, "published"))
+    .orderBy(desc(events.createdAt))
+    .limit(10)
+
+  const eventIds = topEventRows.map((e) => e.id)
+
+  // Get revenue per event
+  const eventRevenue = eventIds.length > 0
+    ? await db
+        .select({
+          eventId: orders.eventId,
+          revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+          currency: orders.currency,
+        })
+        .from(orders)
+        .where(and(eq(orders.status, "paid"), inArray(orders.eventId, eventIds)))
+        .groupBy(orders.eventId, orders.currency)
+    : []
+
+  const revMap = new Map<string, { revenue: number; currency: string }>()
+  for (const r of eventRevenue) {
+    if (!r.eventId) continue
+    const amount = Number(r.revenue ?? 0)
+    const cur = r.currency ?? "USD"
+    const existing = revMap.get(r.eventId)
+    if (!existing || amount > existing.revenue) {
+      revMap.set(r.eventId, { revenue: amount, currency: cur })
+    }
+  }
+
+  const TOP_EVENTS: TopEvent[] = topEventRows.map((e) => {
+    const rev = revMap.get(e.id)
+    return {
+      title: e.title,
+      organizer: e.organizerName ?? e.organizerEmail ?? "—",
+      sold: 0,
+      capacity: 0,
+      revenue: rev?.revenue ?? 0,
+      currency: rev?.currency ?? "USD",
+    }
+  })
+
+  // ── Pending review ─────────────────────────────────────────────────────
+
+  const draftEvents = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      organizerName: users.name,
+      organizerEmail: users.email,
+    })
+    .from(events)
+    .leftJoin(users, eq(events.organizerId, users.id))
+    .where(eq(events.status, "draft"))
+    .orderBy(desc(events.createdAt))
+    .limit(10)
+
+  const unverifiedUsers = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    })
+    .from(users)
+    .where(sql`${users.emailVerified} IS NULL`)
+    .orderBy(desc(users.createdAt))
+    .limit(10)
+
+  const PENDING: Pending[] = [
+    ...draftEvents.map((e) => ({
+      kind: "Draft event",
+      title: e.title,
+      detail: `by ${e.organizerName ?? e.organizerEmail ?? "—"}`,
+      primary: "Publish",
+      action: publishEventAction,
+      id: e.id,
+    })),
+    ...unverifiedUsers.map((u) => ({
+      kind: "Unverified user",
+      title: u.name ?? "—",
+      detail: u.email ?? "—",
+      primary: "Verify email",
+      action: verifyUserEmailAction,
+      id: u.id,
+    })),
+  ]
+
   return (
     <div className="tp-fade-up">
       <PageHeader
@@ -89,7 +257,7 @@ export default function AdminOverviewPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 tp-fade-up-2">
           <div className="lg:col-span-3 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Recent activity</h2>
+              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Recent orders</h2>
               <Link href="/admin/orders" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 View all <ArrowUpRight size={12} />
               </Link>
@@ -116,8 +284,8 @@ export default function AdminOverviewPage() {
             ) : (
               <EmptyState
                 icon={LayoutList}
-                title="No activity yet"
-                body="Platform events, signups, orders, payouts, and refunds will appear here."
+                title="No orders yet"
+                body="Orders and payments will appear here."
                 variant="inline"
               />
             )}
@@ -125,41 +293,32 @@ export default function AdminOverviewPage() {
 
           <div className="lg:col-span-2 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Top events this week</h2>
+              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Published events</h2>
               <Link href="/admin/events" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 Manage <ArrowUpRight size={12} />
               </Link>
             </div>
             {TOP_EVENTS.length > 0 ? (
               <ul className="divide-y divide-line">
-                {TOP_EVENTS.map((e) => {
-                  const pct = Math.round((e.sold / e.capacity) * 100)
-                  return (
-                    <li key={e.title} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
-                      <div className="flex items-start justify-between gap-3 mb-1.5">
-                        <div className="min-w-0">
-                          <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                          <p className="text-[11.5px] text-ink-3 mt-0.5">{e.organizer}</p>
-                        </div>
-                        <p className="text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
-                          {formatCurrency(e.revenue, e.currency)}
-                        </p>
+                {TOP_EVENTS.map((e) => (
+                  <li key={e.title} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
+                    <div className="flex items-start justify-between gap-3 mb-1.5">
+                      <div className="min-w-0">
+                        <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
+                        <p className="text-[11.5px] text-ink-3 mt-0.5">{e.organizer}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1 bg-paper-2 rounded-full overflow-hidden">
-                          <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{e.sold}/{e.capacity}</span>
-                      </div>
-                    </li>
-                  )
-                })}
+                      <p className="text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
+                        {e.revenue > 0 ? formatCurrency(e.revenue, e.currency) : "—"}
+                      </p>
+                    </div>
+                  </li>
+                ))}
               </ul>
             ) : (
               <EmptyState
                 icon={CalendarCheck}
-                title="No events this week"
-                body="Published events with ticket sales will appear here."
+                title="No published events"
+                body="Published events will appear here."
                 variant="inline"
               />
             )}
@@ -191,12 +350,14 @@ export default function AdminOverviewPage() {
                     <p className="text-[12.5px] text-ink-2">{p.detail}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button className="rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors">
-                      Reject
-                    </button>
-                    <button className="rounded-lg bg-navy text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-navy/20 hover:bg-navy-700 transition-colors">
-                      {p.primary}
-                    </button>
+                    <form action={p.action.bind(null, p.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-navy text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-navy/20 hover:bg-navy-700 transition-colors"
+                      >
+                        {p.primary}
+                      </button>
+                    </form>
                   </div>
                 </li>
               ))}

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = PostSchema.safeParse(await req.json())
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input", issues: parsed.error.issues }, { status: 400 })
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 })
   }
   const { eventId, name, description, packPrice, currency, isPublic } = parsed.data
 

@@ -1,10 +1,23 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, vendorListings, vendors } from "@/db/schema"
 import { startOrderVerification } from "@/lib/order-verification"
 import { PESEPAY_METHODS, getPesepay, pesepayUrls } from "@/lib/pesepay"
+import { checkoutLimiter } from "@/lib/rate-limit"
+
+const TicketItem = z.object({
+  kind: z.literal("ticket"),
+  tierId: z.string().uuid(),
+  quantity: z.number().int().positive().max(50),
+})
+
+const VendorAddonItem = z.object({
+  kind: z.literal("vendor_addon"),
+  listingId: z.string().uuid(),
+  quantity: z.number().int().positive().max(10),
+})
 
 const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
@@ -13,17 +26,21 @@ const Body = z.object({
   paymentMethod: z.enum(["ecocash", "card", "paynow", "usd", "omari"]),
   eventSlug: z.string().min(1).max(160),
   items: z
-    .array(
-      z.object({
-        tierId: z.string().uuid(),
-        quantity: z.number().int().positive().max(50),
-      }),
-    )
+    .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))
     .min(1)
-    .max(20),
+    .max(30),
 })
 
 export async function POST(req: Request) {
+  // Rate limit: 10 requests per minute per IP
+  const rl = checkoutLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+    })
+  }
+
   let parsed: z.infer<typeof Body>
   try {
     parsed = Body.parse(await req.json())
@@ -37,29 +54,78 @@ export async function POST(req: Request) {
   const [event] = await db.select().from(events).where(eq(events.slug, parsed.eventSlug)).limit(1)
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 })
 
-  // Pull tier prices server-side so the client can't dictate amounts.
+  // ── Resolve ticket tier prices server-side ──────────────────────────
+  const ticketItems = parsed.items.filter((i): i is typeof i & { kind: "ticket" } => i.kind === "ticket")
+  const vendorAddonItems = parsed.items.filter((i): i is typeof i & { kind: "vendor_addon" } => i.kind === "vendor_addon")
+
   const tiers = await db
     .select()
     .from(ticketTiers)
     .where(eq(ticketTiers.eventId, event.id))
+  const tierById = new Map(tiers.map((t) => [t.id, t]))
 
-  const byId = new Map(tiers.map((t) => [t.id, t]))
-  for (const item of parsed.items) {
-    if (!byId.has(item.tierId)) {
-      return NextResponse.json({ error: "Tier not in event" }, { status: 400 })
+  for (const item of ticketItems) {
+    if (!tierById.has(item.tierId)) {
+      return NextResponse.json({ error: `Tier ${item.tierId} not in event` }, { status: 400 })
     }
   }
 
-  // Compute total. Mixed currencies aren't supported in v1 — bail early.
-  const currencies = new Set(parsed.items.map((i) => byId.get(i.tierId)!.currency ?? "USD"))
-  if (currencies.size > 1) {
+  // ── Resolve vendor addon prices server-side ─────────────────────────
+  let vendorAddonPrices: Map<string, { price: number; currency: string; packageName: string; vendorName: string }> = new Map()
+  if (vendorAddonItems.length > 0) {
+    const listingRows = await db
+      .select({
+        id: vendorListings.id,
+        price: vendorListings.price,
+        currency: vendorListings.currency,
+        packageName: vendorListings.packageName,
+        businessName: vendors.businessName,
+      })
+      .from(vendorListings)
+      .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
+      .where(inArray(vendorListings.id, vendorAddonItems.map((i) => i.listingId)))
+
+    for (const r of listingRows) {
+      vendorAddonPrices.set(r.id, {
+        price: Number(r.price),
+        currency: r.currency ?? "USD",
+        packageName: r.packageName,
+        vendorName: r.businessName ?? "Vendor",
+      })
+    }
+
+    for (const item of vendorAddonItems) {
+      if (!vendorAddonPrices.has(item.listingId)) {
+        return NextResponse.json({ error: `Vendor addon ${item.listingId} not found` }, { status: 400 })
+      }
+    }
+  }
+
+  // ── Compute total & currency ────────────────────────────────────────
+  const allCurrencies = new Set<string>()
+  for (const item of ticketItems) {
+    const t = tierById.get(item.tierId)!
+    allCurrencies.add(t.currency ?? "USD")
+  }
+  for (const item of vendorAddonItems) {
+    const v = vendorAddonPrices.get(item.listingId)!
+    allCurrencies.add(v.currency)
+  }
+
+  if (allCurrencies.size > 1) {
     return NextResponse.json({ error: "Mixed-currency cart not supported yet" }, { status: 400 })
   }
-  const currency = [...currencies][0] ?? "USD"
-  const total = parsed.items.reduce((sum, i) => {
-    const t = byId.get(i.tierId)!
-    return sum + Number(t.price) * i.quantity
-  }, 0)
+  const currency = [...allCurrencies][0] ?? "USD"
+
+  let total = 0
+  for (const item of ticketItems) {
+    const t = tierById.get(item.tierId)!
+    total += Number(t.price) * item.quantity
+  }
+  for (const item of vendorAddonItems) {
+    const v = vendorAddonPrices.get(item.listingId)!
+    total += v.price * item.quantity
+  }
 
   const method = PESEPAY_METHODS[parsed.paymentMethod]
   if (!method) {
@@ -86,20 +152,41 @@ export async function POST(req: Request) {
     })
     .returning({ id: orders.id })
 
-  await db.insert(orderItems).values(
-    parsed.items.map((i) => {
-      const t = byId.get(i.tierId)!
-      const unit = Number(t.price)
-      return {
-        orderId: order.id,
-        tierId: i.tierId,
-        type: "ticket",
-        quantity: i.quantity,
-        unitPrice: unit.toFixed(2),
-        total: (unit * i.quantity).toFixed(2),
-      }
-    }),
-  )
+  // ── Insert order items (tickets + vendor addons) ────────────────────
+  const orderItemValues: {
+    orderId: string
+    tierId?: string
+    type: string
+    quantity: number
+    unitPrice: string
+    total: string
+  }[] = []
+
+  for (const item of ticketItems) {
+    const t = tierById.get(item.tierId)!
+    const unit = Number(t.price)
+    orderItemValues.push({
+      orderId: order.id,
+      tierId: item.tierId,
+      type: "ticket",
+      quantity: item.quantity,
+      unitPrice: unit.toFixed(2),
+      total: (unit * item.quantity).toFixed(2),
+    })
+  }
+
+  for (const item of vendorAddonItems) {
+    const v = vendorAddonPrices.get(item.listingId)!
+    orderItemValues.push({
+      orderId: order.id,
+      type: "vendor_addon",
+      quantity: item.quantity,
+      unitPrice: v.price.toFixed(2),
+      total: (v.price * item.quantity).toFixed(2),
+    })
+  }
+
+  await db.insert(orderItems).values(orderItemValues)
 
   const origin = new URL(req.url).origin
 

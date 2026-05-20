@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { users, passwordResetTokens } from "@/db/schema"
 import { generateResetToken } from "@/lib/password-reset"
 import { sendPasswordResetEmail } from "@/lib/email"
+import { authLimiter } from "@/lib/rate-limit"
 
 // Security invariant: respond identically whether or not the email maps to a
 // user. Same status, same body, same approximate latency — leaking account
@@ -20,6 +21,15 @@ const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse-production.up.railway.app"
 
 export async function POST(req: Request) {
+  // Rate limit: 5 requests per minute per IP
+  const rl = authLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+    })
+  }
+
   const start = Date.now()
   const ok = () => NextResponse.json({ ok: true })
   const floor = async () => {

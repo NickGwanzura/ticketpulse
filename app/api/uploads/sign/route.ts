@@ -17,6 +17,7 @@ import {
   ALLOWED_IMAGE_MIME,
   type UploadKind,
 } from "@/lib/upload-limits"
+import { uploadLimiter } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
 
@@ -43,6 +44,15 @@ function bad(message: string, status: number, extra?: Record<string, unknown>) {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 60 requests per minute per IP
+  const rl = uploadLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+    })
+  }
+
   // Auth
   const session = await auth()
   if (!session?.user?.id) {
@@ -65,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
   const parsed = Body.safeParse(raw)
   if (!parsed.success) {
-    return bad("Invalid input", 400, { issues: parsed.error.issues })
+    return bad("Invalid input", 400)
   }
   const { kind, contentType, contentLength, vendorId, eventId } = parsed.data
 

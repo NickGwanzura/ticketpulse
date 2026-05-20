@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { users, passwordResetTokens } from "@/db/schema"
 import { hashResetToken } from "@/lib/password-reset"
 import { hashPassword } from "@/lib/password"
+import { authLimiter } from "@/lib/rate-limit"
 
 // Security invariants: tokens are single-use (usedAt gate), expiry-bounded,
 // and the consume + password-update happen in one transaction so a token row
@@ -17,6 +18,15 @@ const Body = z.object({
 const GENERIC_ERROR = { error: "Invalid or expired link." }
 
 export async function POST(req: Request) {
+  // Rate limit: 5 requests per minute per IP
+  const rl = authLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+    })
+  }
+
   let parsed: z.infer<typeof Body>
   try {
     parsed = Body.parse(await req.json())

@@ -13,7 +13,11 @@ import {
 } from "@/db/schema"
 import { verifyPassword } from "@/lib/password"
 import { authConfig } from "@/auth.config"
-import { sendMagicLinkEmail, sendPurchaseVerificationEmail } from "@/lib/email"
+import {
+  sendMagicLinkEmail,
+  sendPurchaseVerificationEmail,
+  sendWelcomeEmail,
+} from "@/lib/email"
 import { orders, events } from "@/db/schema"
 
 // DrizzleAdapter introspects `db` at construction time, so we only
@@ -31,6 +35,56 @@ const adapter = process.env.DATABASE_URL
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   adapter,
+  callbacks: {
+    // Preserve callbacks from auth.config.ts (jwt, session) and add signIn.
+    ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      // Send a welcome email when a user signs up via an OAuth or email
+      // provider (Google, magic link).  Credentials signups are handled
+      // directly in the server action (app/auth/signup/page.tsx).
+      if (
+        account &&
+        account.provider !== "credentials" &&
+        user.email
+      ) {
+        try {
+          const [row] = await db
+            .select({ createdAt: users.createdAt })
+            .from(users)
+            .where(eq(users.email, user.email))
+            .limit(1)
+
+          // If the user row was created in the last 60 seconds this is a
+          // brand-new signup, not a returning user signing in again.
+          if (
+            row?.createdAt &&
+            Date.now() - new Date(row.createdAt).getTime() < 60_000
+          ) {
+            await sendWelcomeEmail({ to: user.email, name: user.name })
+
+            // Notify the admin about the new signup (fire-and-forget).
+            const { sendEmail, adminEmail } = await import("@/lib/email")
+            const { newSignupAdminNotification } = await import("@/lib/email-templates")
+            const notice = newSignupAdminNotification({
+              name: user.name ?? null,
+              email: user.email,
+              role: (user as { role?: string }).role ?? "attendee",
+            })
+            sendEmail({
+              to: adminEmail,
+              subject: `New signup: ${user.email} (${(user as { role?: string }).role ?? "attendee"})`,
+              html: notice.html,
+              text: notice.text,
+            }).catch((e) => console.error("[auth] admin signup notification", e))
+          }
+        } catch (e) {
+          console.error("[auth] welcome email / admin notification", e)
+          // Sign-in must not fail if the email send fails.
+        }
+      }
+      return true
+    },
+  },
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   CalendarCheck, FileText, XCircle, PackageCheck,
-  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff,
 } from "lucide-react"
 import { desc, eq, sql } from "drizzle-orm"
 
@@ -12,6 +12,7 @@ import { events, ticketTiers, orders, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
+import { publishEventAction } from "@/app/admin/actions"
 
 type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
 
@@ -227,6 +228,21 @@ export default async function AdminEventsPage({
                           </td>
                           <td className="px-3 py-3.5">
                             <div className="flex items-center justify-end gap-1">
+                              <form
+                                action={publishEventAction.bind(null, e.id)}
+                              >
+                                <button
+                                  type="submit"
+                                  aria-label={status === "published" ? "Unpublish" : "Publish"}
+                                  className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                                    status === "published"
+                                      ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                      : "text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
+                                  }`}
+                                >
+                                  {status === "published" ? <EyeOff size={14} /> : <Send size={14} />}
+                                </button>
+                              </form>
                               <Link
                                 href={`/events/${e.slug}`}
                                 aria-label="View public page"
@@ -303,6 +319,19 @@ export default async function AdminEventsPage({
                         <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{sold}/{capacity}</span>
                       </div>
                       <div className="flex items-center gap-2 text-[12px]">
+                        <form action={publishEventAction.bind(null, e.id)}>
+                          <button
+                            type="submit"
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors ${
+                              status === "published"
+                                ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            }`}
+                          >
+                            {status === "published" ? <EyeOff size={12} /> : <Send size={12} />}
+                            {status === "published" ? "Unpublish" : "Publish"}
+                          </button>
+                        </form>
                         <Link href={`/organizer/events/${e.id}/edit`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <Pencil size={12} /> Edit
                         </Link>
