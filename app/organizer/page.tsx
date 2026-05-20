@@ -48,6 +48,7 @@ type ActivityItem = {
 }
 
 type SalesByEvent = {
+  id: string
   title: string
   revenue: number
 }
@@ -457,7 +458,7 @@ export default async function OrganizerPage() {
                   const maxSales = Math.max(...SALES_BY_EVENT.map((s) => s.revenue))
                   const pct = Math.round((e.revenue / maxSales) * 100)
                   return (
-                    <div key={e.title}>
+                    <div key={e.id}>
                       <div className="flex justify-between items-baseline mb-1.5">
                         <p className="text-[13px] font-medium text-ink truncate max-w-[180px]">{e.title}</p>
                         <span className="text-[13px] font-bold text-ink tabular-nums shrink-0 ml-3">{formatCurrency(e.revenue, "USD")}</span>

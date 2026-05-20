@@ -19,6 +19,7 @@ const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; ac
 }
 
 interface HeroTicket {
+  slug: string
   title: string
   venue: string
   date: Date
@@ -59,6 +60,7 @@ function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
     }
     const placement = HERO_PLACEMENTS[i]
     return {
+      slug: event.slug,
       title: event.title,
       venue: `${event.venue} · ${event.city}`,
       date: event.startsAt,
@@ -324,7 +326,7 @@ export default async function Home() {
                   {/* Mobile/tablet: stack horizontally with snap */}
                   <div className="lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-5 px-5 scrollbar-none">
                     {heroTickets.map((t) => (
-                      <div key={t.title} className="snap-center shrink-0 w-[280px]">
+                      <div key={t.slug} className="snap-center shrink-0 w-[280px]">
                         <HeroTicketCard ticket={t} />
                       </div>
                     ))}
@@ -333,7 +335,7 @@ export default async function Home() {
                   {/* Desktop: absolute floating */}
                   <div className="hidden lg:block relative h-full">
                     {heroTickets.map((t, i) => (
-                      <HeroTicketCard key={t.title} ticket={t} index={i} />
+                      <HeroTicketCard key={t.slug} ticket={t} index={i} />
                     ))}
                   </div>
                 </>

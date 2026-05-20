@@ -16,7 +16,7 @@ import { publishEventAction, verifyUserEmailAction } from "@/app/admin/actions"
 
 type KPI = { label: string; value: number; currency: string | null; delta: number; up: boolean; spark: readonly number[] }
 type Activity = { kind: string; icon: React.ElementType; iconColor: string; iconBg: string; who: string; msg: string; when: string }
-type TopEvent = { title: string; organizer: string; sold: number; capacity: number; revenue: number; currency: string }
+type TopEvent = { id: string; title: string; organizer: string; sold: number; capacity: number; revenue: number; currency: string }
 type Pending = { kind: string; title: string; detail: string; primary: string; action: (id: string) => Promise<void>; id: string }
 
 function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
@@ -156,6 +156,7 @@ export default async function AdminOverviewPage() {
   const TOP_EVENTS: TopEvent[] = topEventRows.map((e) => {
     const rev = revMap.get(e.id)
     return {
+      id: e.id,
       title: e.title,
       organizer: e.organizerName ?? e.organizerEmail ?? "—",
       sold: 0,
@@ -301,7 +302,7 @@ export default async function AdminOverviewPage() {
             {TOP_EVENTS.length > 0 ? (
               <ul className="divide-y divide-line">
                 {TOP_EVENTS.map((e) => (
-                  <li key={e.title} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
+                  <li key={e.id} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
                     <div className="flex items-start justify-between gap-3 mb-1.5">
                       <div className="min-w-0">
                         <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
