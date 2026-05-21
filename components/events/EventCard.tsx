@@ -118,15 +118,6 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
   return { label: `In ${Math.round(diffDays / 30)} months`, kind: "far" }
 }
 
-function pseudoStat(seed: string) {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0
-  const going = 80 + Math.abs(h % 880)
-  const capacity = going + 100 + Math.abs((h >> 4) % 1200)
-  const trending = (h & 7) > 4
-  return { going, capacity, trending }
-}
-
 export default function EventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, featured, lowestPrice, currency = "USD", status,

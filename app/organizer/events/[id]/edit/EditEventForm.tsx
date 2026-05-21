@@ -2,10 +2,11 @@
 
 import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
-import { Save, Trash2 } from "lucide-react"
+import { AlertCircle, MapPin, Save, Trash2 } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import ImageUploader from "@/components/ui/ImageUploader"
+import VenueMap from "@/components/events/VenueMap"
 import { updateEventAction, deleteEventAction, type UpdateEventState } from "./actions"
 
 const INITIAL: UpdateEventState = { ok: true }
@@ -35,7 +36,12 @@ const STATUSES = [
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
-  return <p className="mt-1 text-[12px] text-rose-600">{message}</p>
+  return (
+    <p className="mt-1 text-[12px] text-rose-600 flex items-center gap-1" role="alert">
+      <AlertCircle size={11} className="shrink-0" />
+      {message}
+    </p>
+  )
 }
 
 function inputCls(hasError?: boolean) {
@@ -77,6 +83,8 @@ type Props = {
     city: string
     country: string | null
     address: string | null
+    lat: string | null
+    lng: string | null
     startsAt: Date
     endsAt: Date | null
     coverImage: string | null
@@ -92,6 +100,10 @@ function toLocalInputValue(d: Date | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function ReqMark() {
+  return <span className="text-rose-500 ml-0.5" aria-label="required">*</span>
+}
+
 export default function EditEventForm({ event, showCreatedToast }: Props) {
   const [state, formAction] = useActionState(updateEventAction, INITIAL)
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
@@ -100,7 +112,7 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
   return (
     <div className="space-y-8">
       {showCreatedToast && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
           Draft created. Add a cover image and the rest of your details below.
         </div>
       )}
@@ -109,12 +121,13 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
         <input type="hidden" name="id" value={event.id} />
 
         {state.error && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700 flex items-center gap-2" role="alert">
+            <AlertCircle size={14} className="shrink-0" />
             {state.error}
           </div>
         )}
         {state.ok && state.message && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
             {state.message}
           </div>
         )}
@@ -132,13 +145,13 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="md:col-span-2">
-            <label htmlFor="title" className="block text-[13px] font-medium text-ink mb-1.5">Title</label>
+            <label htmlFor="title" className="block text-[13px] font-medium text-ink mb-1.5">Title<ReqMark /></label>
             <input id="title" name="title" type="text" required maxLength={160} defaultValue={event.title} className={inputCls(!!errs.title)} />
             <FieldError message={errs.title} />
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-[13px] font-medium text-ink mb-1.5">Category</label>
+            <label htmlFor="category" className="block text-[13px] font-medium text-ink mb-1.5">Category<ReqMark /></label>
             <select id="category" name="category" required defaultValue={event.category} className={inputCls(!!errs.category)}>
               {!CATEGORIES.includes(event.category) && (
                 <option value={event.category}>{event.category}</option>
@@ -161,14 +174,19 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
             <textarea id="description" name="description" rows={4} maxLength={4000} defaultValue={event.description ?? ""} className={inputCls()} />
           </div>
 
+          {/* Location */}
+          <div className="md:col-span-2 mt-2">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Location</p>
+          </div>
+
           <div>
-            <label htmlFor="venue" className="block text-[13px] font-medium text-ink mb-1.5">Venue</label>
+            <label htmlFor="venue" className="block text-[13px] font-medium text-ink mb-1.5">Venue<ReqMark /></label>
             <input id="venue" name="venue" type="text" required maxLength={160} defaultValue={event.venue} className={inputCls(!!errs.venue)} />
             <FieldError message={errs.venue} />
           </div>
 
           <div>
-            <label htmlFor="city" className="block text-[13px] font-medium text-ink mb-1.5">City</label>
+            <label htmlFor="city" className="block text-[13px] font-medium text-ink mb-1.5">City<ReqMark /></label>
             <input id="city" name="city" type="text" required maxLength={80} defaultValue={event.city} className={inputCls(!!errs.city)} />
             <FieldError message={errs.city} />
           </div>
@@ -183,9 +201,26 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
             <label htmlFor="address" className="block text-[13px] font-medium text-ink mb-1.5">Address</label>
             <input id="address" name="address" type="text" maxLength={240} defaultValue={event.address ?? ""} className={inputCls()} />
           </div>
-  
+
+          {event.lat && event.lng && (
+            <div className="md:col-span-2">
+              <VenueMap
+                lat={event.lat}
+                lng={event.lng}
+                venue={event.venue}
+                address={event.address}
+                city={event.city}
+              />
+            </div>
+          )}
+
+          {/* Date & Time */}
+          <div className="md:col-span-2 mt-2">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Date & Time</p>
+          </div>
+
           <div>
-            <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at</label>
+            <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at<ReqMark /></label>
             <input id="startsAt" name="startsAt" type="datetime-local" required defaultValue={toLocalInputValue(event.startsAt)} className={inputCls(!!errs.startsAt)} />
             <FieldError message={errs.startsAt} />
           </div>
@@ -209,7 +244,7 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
       </form>
 
       <div className="border-t border-line pt-6">
-        <p className="text-[13px] font-semibold text-ink mb-1.5">Danger zone</p>
+        <h3 className="text-[13px] font-semibold text-ink mb-1.5">Danger zone</h3>
         <p className="text-[12.5px] text-ink-3 mb-3">Deleting this event removes its galleries, photos, and merch links. Sold tickets are kept for accounting.</p>
         <form
           action={deleteEventAction}

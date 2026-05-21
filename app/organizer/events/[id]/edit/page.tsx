@@ -140,6 +140,8 @@ export default async function EditEventPage({
               city: row.city,
               country: row.country,
               address: row.address,
+              lat: row.lat,
+              lng: row.lng,
               startsAt: row.startsAt,
               endsAt: row.endsAt,
               coverImage: row.coverImage,
