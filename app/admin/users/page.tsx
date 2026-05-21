@@ -1,17 +1,18 @@
 import { redirect } from "next/navigation"
 import {
   Search, UserCheck, ShieldCheck, Store, User, ShieldAlert, Users,
-  BadgeCheck, BadgeX, MailCheck, MailX,
+  BadgeCheck, BadgeX, MailCheck, MailX, Percent,
 } from "lucide-react"
 import { desc, eq } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { users } from "@/db/schema"
+import { users, userRoleEnum } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import InviteUserDialog from "./_components/InviteUserDialog"
-import { verifyUserEmailAction, unverifyUserEmailAction } from "@/app/admin/actions"
+import { verifyUserEmailAction, unverifyUserEmailAction, updateCommissionRateAction } from "@/app/admin/actions"
+import CommissionRateInput from "./_components/CommissionRateInput"
 
 type Role = "attendee" | "organizer" | "vendor" | "admin"
 
@@ -59,6 +60,7 @@ export default async function AdminUsersPage() {
       email: users.email,
       role: users.role,
       emailVerified: users.emailVerified,
+      commissionRate: users.commissionRate,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -143,6 +145,7 @@ export default async function AdminUsersPage() {
                       <th className="text-left px-5 py-3 font-semibold">User</th>
                       <th className="text-left px-3 py-3 font-semibold">Role</th>
                       <th className="text-left px-3 py-3 font-semibold">Email verified</th>
+                      <th className="text-left px-3 py-3 font-semibold">Commission</th>
                       <th className="text-left px-3 py-3 font-semibold">Joined</th>
                       <th className="px-3 py-3" />
                     </tr>
@@ -175,6 +178,13 @@ export default async function AdminUsersPage() {
                             <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-ink-3">
                               <BadgeX size={13} /> Unverified
                             </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3.5">
+                          {u.role === "organizer" ? (
+                            <CommissionRateInput userId={u.id} rate={u.commissionRate} />
+                          ) : (
+                            <span className="text-[12px] text-ink-3">—</span>
                           )}
                         </td>
                         <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
@@ -236,6 +246,11 @@ export default async function AdminUsersPage() {
                         </span>
                       )}
                     </div>
+                    {u.role === "organizer" && (
+                      <div className="mb-3">
+                        <CommissionRateInput userId={u.id} rate={u.commissionRate} />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       {u.emailVerified ? (
                         <form action={unverifyUserEmailAction.bind(null, u.id)}>

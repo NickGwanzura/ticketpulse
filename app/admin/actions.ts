@@ -137,3 +137,25 @@ export async function unverifyUserEmailAction(userId: string) {
   revalidatePath("/admin/users")
   revalidatePath("/admin")
 }
+
+/**
+ * Update an organiser's commission rate (percentage).
+ * Only admins can call this.
+ */
+export async function updateCommissionRateAction(userId: string, rate: number) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  // Clamp to 0–100, round to 2 decimals
+  const clamped = Math.min(100, Math.max(0, Math.round(rate * 100) / 100))
+
+  await db
+    .update(users)
+    .set({ commissionRate: String(clamped) })
+    .where(eq(users.id, userId))
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+}

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets, users } from "@/db/schema"
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
 
@@ -50,6 +50,61 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       updatedAt: new Date(),
     })
     .where(eq(orders.id, id))
+
+  // ── Create individual ticket records with QR codes ─────────────────────────
+  // Each ticket-type order item produces one record per quantity.
+  // QR codes use the DB UUID format so they can be looked up server-side.
+  try {
+    const itemsWithIds = await db
+      .select({
+        id: orderItems.id,
+        tierId: orderItems.tierId,
+        quantity: orderItems.quantity,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, id))
+
+    const ticketValues: {
+      tierId: string
+      eventId: string
+      orderId: string
+      userId: string | null
+      status: "sold"
+      qrCode: string
+    }[] = []
+
+    for (const item of itemsWithIds) {
+      if (!item.tierId) continue
+      for (let i = 0; i < item.quantity; i++) {
+        ticketValues.push({
+          tierId: item.tierId,
+          eventId: order.eventId,
+          orderId: id,
+          userId: session.user.id,
+          status: "sold",
+          qrCode: `${id}-${item.id}-${i}`,
+        })
+      }
+    }
+
+    if (ticketValues.length > 0) {
+      await db.insert(tickets).values(ticketValues)
+
+      // Update sold quantities for each tier
+      const tierCounts = new Map<string, number>()
+      for (const t of ticketValues) {
+        tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+      }
+      for (const [tierId, count] of tierCounts) {
+        await db
+          .update(ticketTiers)
+          .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+          .where(eq(ticketTiers.id, tierId))
+      }
+    }
+  } catch (err) {
+    console.error("[finalize] failed to create ticket records:", err)
+  }
 
   // Fire the branded ticket confirmation email. Failures here shouldn't
   // block the user from seeing their order — log and continue.

@@ -6,6 +6,7 @@ import TopBar from "@/components/layout/TopBar"
 import Navbar, { type NavbarFeaturedItem } from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
 import CookiesNotice from "@/components/CookiesNotice"
+import PwaRegister from "@/components/PwaRegister"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
 
@@ -21,12 +22,22 @@ const NAV_CATEGORY_EMOJI: Record<string, string> = {
 export const metadata: Metadata = {
   title: "TicketPulse. Every event. One ticket.",
   description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+  manifest: "/manifest",
+  appleWebApp: {
+    capable: true,
+    title: "TicketPulse",
+    statusBarStyle: "black-translucent",
+  },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#0a2540",
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -55,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}
         </Providers>
+        {!bare && <PwaRegister />}
       </body>
     </html>
   )

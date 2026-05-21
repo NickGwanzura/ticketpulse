@@ -1,10 +1,16 @@
 "use client"
-import { useEffect, useState, use } from "react"
+
+import { useEffect, useState, use, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
-import { formatDate, formatDateShort } from "@/lib/utils"
-import { ArrowLeft, Printer, Download, Calendar, MapPin, ShieldCheck } from "lucide-react"
-import QrCode from "@/components/QrCode"
+import { formatDate } from "@/lib/utils"
+import {
+  ArrowLeft, Download, Calendar, MapPin, ShieldCheck, Ticket,
+  Smartphone, DownloadCloud, Loader2,
+} from "lucide-react"
+import QRCode from "qrcode"
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function ticketCode(orderId: string, lineKey: string, idx: number) {
   return `${orderId}-${lineKey}-${idx + 1}`
@@ -14,41 +20,149 @@ function shortCode(orderId: string, idx: number) {
   return `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`
 }
 
+// ─── QR code SVG generator ───────────────────────────────────────────────────
+
+async function qrDataUrl(value: string): Promise<string> {
+  try {
+    return await QRCode.toDataURL(value, {
+      width: 400,
+      margin: 1,
+      color: { dark: "#0a2540", light: "#ffffff" },
+    })
+  } catch {
+    return ""
+  }
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function PrintTicketsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
-  const [autoPrintQueued, setAutoPrintQueued] = useState(false)
+  const [qrUrls, setQrUrls] = useState<Record<string, string>>({})
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
+  const [downloadAll, setDownloadAll] = useState(false)
+  const ticketRefs = useRef<(HTMLElement | null)[]>([])
 
   useEffect(() => {
     if (!ready) return
     queueMicrotask(() => setOrder(getOrder(id)))
   }, [ready, id, getOrder])
 
+  // Generate real QR code data URLs for each ticket
   useEffect(() => {
     if (!order) return
-    if (autoPrintQueued) return
-    const search = typeof window !== "undefined" ? window.location.search : ""
-    if (!search.includes("auto=1")) return
-    queueMicrotask(() => setAutoPrintQueued(true))
-    const t = setTimeout(() => window.print(), 500)
-    return () => clearTimeout(t)
-  }, [order, autoPrintQueued])
+    const tickets = order.items.filter((i) => i.kind === "ticket")
+    const flat = tickets.flatMap((line) =>
+      line.kind === "ticket"
+        ? Array.from({ length: line.qty }).map((_, i) => ({ line, i }))
+        : []
+    )
+    const generate = async () => {
+      const map: Record<string, string> = {}
+      for (let idx = 0; idx < flat.length; idx++) {
+        const { line, i } = flat[idx]
+        const code = ticketCode(order.id, line.key, i)
+        map[`${idx}`] = await qrDataUrl(code)
+      }
+      setQrUrls(map)
+    }
+    generate()
+  }, [order])
+
+  // ── Download single ticket as PDF ──────────────────────────────────────────
+
+  const downloadTicketPdf = useCallback(async (idx: number) => {
+    setDownloadingIndex(idx)
+    try {
+      const { default: jsPDF } = await import("jspdf")
+      const { default: html2canvas } = await import("html2canvas")
+
+      const el = ticketRefs.current[idx]
+      if (!el) return
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        logging: false,
+        useCORS: true,
+      })
+
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+      const pdfW = pdf.internal.pageSize.getWidth()
+      const pdfH = (canvas.height * pdfW) / canvas.width
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH)
+      pdf.save(`ticket-${shortCode(order!.id, idx)}.pdf`)
+    } catch (err) {
+      console.error("PDF download failed:", err)
+      // Fallback to browser print
+      window.print()
+    } finally {
+      setDownloadingIndex(null)
+    }
+  }, [order])
+
+  // ── Download all tickets as single PDF ─────────────────────────────────────
+
+  const downloadAllPdf = useCallback(async () => {
+    setDownloadAll(true)
+    try {
+      const { default: jsPDF } = await import("jspdf")
+      const { default: html2canvas } = await import("html2canvas")
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+      const tickets = order!.items.filter((i) => i.kind === "ticket")
+      const flat = tickets.flatMap((line) =>
+        line.kind === "ticket"
+          ? Array.from({ length: line.qty }).map((_, i) => ({ line, i }))
+          : []
+      )
+
+      for (let idx = 0; idx < flat.length; idx++) {
+        const el = ticketRefs.current[idx]
+        if (!el) continue
+
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          logging: false,
+          useCORS: true,
+        })
+
+        const imgData = canvas.toDataURL("image/png")
+        const pdfW = pdf.internal.pageSize.getWidth()
+        const pdfH = (canvas.height * pdfW) / canvas.width
+
+        if (idx > 0) pdf.addPage()
+        pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH)
+      }
+
+      pdf.save(`${order!.id.slice(0, 8)}-tickets.pdf`)
+    } catch (err) {
+      console.error("PDF download all failed:", err)
+      window.print()
+    } finally {
+      setDownloadAll(false)
+    }
+  }, [order])
 
   if (!ready) {
     return (
-      <main className="min-h-screen bg-paper-2 px-5 py-20">
-        <div className="h-8 w-40 bg-paper-3 rounded animate-pulse mx-auto" />
+      <main className="min-h-screen bg-[#f4f7fa] px-5 py-20">
+        <div className="h-8 w-40 bg-white/60 rounded animate-pulse mx-auto" />
       </main>
     )
   }
 
   if (!order) {
     return (
-      <main className="min-h-screen bg-paper-2 px-5 py-20 text-center">
-        <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
-        <p className="mt-2 text-[14.5px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
-        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-navy-700 transition">
+      <main className="min-h-screen bg-[#f4f7fa] px-5 py-20 text-center">
+        <h1 className="text-[26px] font-bold tracking-tight text-[#0a2540]">Order not found</h1>
+        <p className="mt-2 text-[14px] text-[#5a6d7c]">No order with id <span className="font-mono">{id}</span>.</p>
+        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0a2540] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1a3550] transition">
           <ArrowLeft size={14} /> All orders
         </Link>
       </main>
@@ -62,24 +176,18 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
       : []
   )
 
+  const allQrReady = flat.length > 0 && flat.every((_, i) => qrUrls[`${i}`])
+
   return (
-    <main className="bg-paper-2 min-h-screen">
-      {/* Hide global Navbar + Footer on screen and on paper. The print page owns its frame. */}
+    <main className="bg-[#f4f7fa] min-h-screen">
       <style>{`
-        body > div > nav,
-        body > div > footer,
-        body > nav,
-        body > footer { display: none !important; }
-        @page { size: A4; margin: 12mm; }
+        @page { size: A4; margin: 0; }
         @media print {
-          html, body { background: #fff !important; }
+          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
           .tp-no-print { display: none !important; }
           .tp-print-page {
             page-break-after: always;
             break-after: page;
-            box-shadow: none !important;
-            border: none !important;
-            background: #fff !important;
           }
           .tp-print-page:last-child {
             page-break-after: auto;
@@ -88,159 +196,194 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
         }
       `}</style>
 
-      {/* Toolbar (screen-only) */}
-      <div className="tp-no-print sticky top-0 z-30 bg-paper/95 backdrop-blur border-b border-line">
-        <div className="max-w-5xl mx-auto px-5 md:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
+      {/* ── Toolbar ──────────────────────────────────────────────────────── */}
+      <div className="tp-no-print sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#e2e8f0]">
+        <div className="max-w-5xl mx-auto px-5 md:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
               href={`/orders/${order.id}`}
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5a6d7c] hover:text-[#0a2540] transition-colors"
             >
-              <ArrowLeft size={14} /> Back to order
+              <ArrowLeft size={14} /> Back
             </Link>
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-ink-3">
-              <ShieldCheck size={12} className="text-emerald-600" /> Verified TicketPulse ticket · {flat.length} {flat.length === 1 ? "page" : "pages"}
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] text-[#5a6d7c]">
+              <ShieldCheck size={12} className="text-emerald-600" /> {flat.length} {flat.length === 1 ? "ticket" : "tickets"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
+              onClick={downloadAllPdf}
+              disabled={!allQrReady || downloadAll}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0a2540] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1a3550] disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              <Printer size={14} /> Print
+              {downloadAll ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <DownloadCloud size={14} />
+              )}
+              {downloadAll ? "Generating…" : "Download all as PDF"}
             </button>
             <button
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-medium text-[#0a2540] hover:border-[#cbd5e1] transition-colors"
             >
-              <Download size={14} /> Save as PDF
+              <Download size={14} /> Print
             </button>
           </div>
         </div>
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pb-3 -mt-1">
-          <p className="text-[11.5px] text-ink-3">
-            In the print dialog, choose <span className="font-semibold text-ink">Save as PDF</span> as the destination to download. Each ticket prints on its own page.
-          </p>
-        </div>
       </div>
 
-      {/* Tickets */}
-      <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6 print:space-y-0 print:max-w-none print:px-0 print:py-0">
+      {/* ── Tickets ──────────────────────────────────────────────────────── */}
+      <div className="max-w-[210mm] mx-auto px-4 md:px-8 py-8 md:py-10 space-y-6 print:space-y-0 print:max-w-none print:px-0 print:py-0">
         {flat.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-line bg-paper p-8 text-center text-sm text-ink-2">
+          <div className="rounded-2xl border border-dashed border-[#e2e8f0] bg-white p-8 text-center text-sm text-[#5a6d7c]">
             No ticketable items in this order.
           </div>
         )}
+
         {flat.map(({ line, i }, idx) => {
           if (line.kind !== "ticket") return null
           const code = ticketCode(order.id, line.key, i)
           const human = shortCode(order.id, idx)
+          const qr = qrUrls[`${idx}`]
+
           return (
             <article
               key={`${line.key}-${i}`}
-              className="tp-print-page relative rounded-3xl border border-line bg-paper overflow-hidden shadow-[0_24px_60px_-32px_rgba(10,37,64,0.18)] print:rounded-none print:shadow-none print:border-0"
+              ref={(el) => { ticketRefs.current[idx] = el }}
+              className="tp-print-page relative bg-white rounded-3xl border border-[#e2e8f0] overflow-hidden shadow-[0_20px_60px_-20px_rgba(10,37,64,0.15)] print:rounded-none print:shadow-none print:border-0"
             >
-              {/* Top stripe */}
-              <div className="h-2 bg-gradient-to-r from-navy via-blue to-navy" aria-hidden />
+              {/* ── Gradient top bar ─────────────────────────────────────── */}
+              <div className="h-1.5 bg-gradient-to-r from-[#0a2540] via-[#2563eb] to-[#0a2540]" aria-hidden />
 
-              {/* Header band */}
-              <div className="flex items-center justify-between px-7 md:px-9 pt-6">
+              {/* ── Header ───────────────────────────────────────────────── */}
+              <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-navy text-white text-[11px] font-bold tracking-tight">TP</span>
-                  <div className="leading-tight">
-                    <p className="text-[12.5px] font-semibold tracking-tight text-ink">TicketPulse</p>
-                    <p className="text-[10.5px] text-ink-3">ticketpulse.co</p>
+                  <div className="w-9 h-9 rounded-lg bg-[#0a2540] flex items-center justify-center">
+                    <Ticket size={16} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold tracking-tight text-[#0a2540]">TicketPulse</p>
+                    <p className="text-[9.5px] text-[#8a9caa]">Verified digital ticket</p>
                   </div>
                 </div>
-                <div className="text-right leading-tight">
-                  <p className="text-[10px] font-semibold tracking-[0.18em] text-ink-3 uppercase">Ticket</p>
-                  <p className="text-[12px] font-mono text-ink tabular-nums">{human}</p>
+                <div className="text-right">
+                  <p className="text-[9px] font-semibold tracking-[0.2em] text-[#8a9caa] uppercase">Ticket</p>
+                  <p className="text-[12px] font-mono text-[#0a2540] tabular-nums tracking-tight">{human}</p>
                 </div>
               </div>
 
-              {/* Main body */}
-              <div className="px-7 md:px-9 pt-5 pb-6 grid grid-cols-1 md:grid-cols-[1.3fr_auto_1fr] gap-5 md:gap-7 items-stretch">
-                {/* Left: details */}
+              {/* ── Divider ──────────────────────────────────────────────── */}
+              <div className="mx-6 md:mx-8 border-t border-dashed border-[#e2e8f0]" />
+
+              {/* ── Body ─────────────────────────────────────────────────── */}
+              <div className="px-6 md:px-8 py-5 grid grid-cols-1 md:grid-cols-[1.4fr_auto_1fr] gap-5 items-stretch">
+                {/* Left: event info */}
                 <div className="min-w-0">
-                  <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
+                  {/* Tier badge */}
+                  <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold text-blue-700 mb-3">
                     {line.tierName}
-                  </p>
-                  <h2 className="text-[24px] md:text-[28px] font-bold tracking-tight leading-[1.1] text-ink">
+                  </span>
+
+                  {/* Event title */}
+                  <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight leading-[1.15] text-[#0a2540]">
                     {line.eventTitle}
                   </h2>
 
-                  <dl className="mt-5 space-y-2.5 text-[13px] text-ink-2">
+                  {/* Details */}
+                  <dl className="mt-4 space-y-3">
                     <div className="flex items-start gap-2.5">
-                      <Calendar size={14} className="text-ink-3 mt-0.5 shrink-0" />
+                      <Calendar size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
                       <div>
-                        <dt className="text-[10px] font-semibold tracking-wider text-ink-3 uppercase">Issued</dt>
-                        <dd className="text-ink">{formatDate(order.createdAt)}</dd>
+                        <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Issued</dt>
+                        <dd className="text-[12.5px] text-[#0a2540] font-medium">{formatDate(order.createdAt)}</dd>
                       </div>
                     </div>
                     <div className="flex items-start gap-2.5">
-                      <MapPin size={14} className="text-ink-3 mt-0.5 shrink-0" />
+                      <MapPin size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
                       <div>
-                        <dt className="text-[10px] font-semibold tracking-wider text-ink-3 uppercase">Holder</dt>
-                        <dd className="text-ink">{order.contact.name || order.contact.email}</dd>
+                        <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Holder</dt>
+                        <dd className="text-[12.5px] text-[#0a2540] font-medium">{order.contact.name || order.contact.email}</dd>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Smartphone size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
+                      <div>
+                        <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Payment</dt>
+                        <dd className="text-[12.5px] text-[#0a2540] font-medium">{order.payment.method.toUpperCase()}</dd>
                       </div>
                     </div>
                   </dl>
 
-                  <div className="mt-5 grid grid-cols-3 gap-3 text-[11px]">
+                  {/* Meta grid */}
+                  <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5">
                     <div>
-                      <p className="text-ink-3 mb-0.5">Order</p>
-                      <p className="font-mono text-ink tabular-nums">{order.id}</p>
+                      <p className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Order</p>
+                      <p className="text-[11px] font-mono text-[#0a2540] tabular-nums">{order.id}</p>
                     </div>
                     <div>
-                      <p className="text-ink-3 mb-0.5">Seat</p>
-                      <p className="font-semibold text-ink">{i + 1} of {line.qty}</p>
-                    </div>
-                    <div>
-                      <p className="text-ink-3 mb-0.5">Issued</p>
-                      <p className="font-semibold text-ink">{formatDateShort(order.createdAt)}</p>
+                      <p className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Seat</p>
+                      <p className="text-[11px] font-semibold text-[#0a2540]">{i + 1} of {line.qty}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Middle: perforation */}
+                {/* Middle: perforation (desktop only) */}
                 <div className="hidden md:flex relative items-center justify-center" aria-hidden>
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-paper-2 ring-1 ring-line" />
-                  <span className="w-px h-full border-l-2 border-dashed border-line" />
-                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-paper-2 ring-1 ring-line" />
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#f4f7fa] ring-1 ring-[#e2e8f0]" />
+                  <span className="w-px h-full border-l-2 border-dashed border-[#e2e8f0]" />
+                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#f4f7fa] ring-1 ring-[#e2e8f0]" />
                 </div>
 
-                {/* Right: QR + scan code */}
-                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl bg-paper-2 ring-1 ring-line p-5 print:bg-white print:ring-0">
-                  <p className="text-[10px] font-semibold tracking-[0.18em] text-ink-3 uppercase">Scan at gate</p>
-                  <QrCode value={code} size={170} className="rounded-xl ring-1 ring-line bg-white" />
-                  <p className="text-[10px] font-mono text-ink-3 tabular-nums break-all text-center max-w-[170px]">
+                {/* Right: real QR code */}
+                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl bg-[#f8fafc] ring-1 ring-[#e2e8f0] p-5 print:bg-white print:ring-0">
+                  <p className="text-[9px] font-semibold tracking-[0.2em] text-[#8a9caa] uppercase">Scan at gate</p>
+                  {qr ? (
+                    <img
+                      src={qr}
+                      alt={`QR code for ${code}`}
+                      className="w-[160px] h-[160px] rounded-xl ring-1 ring-[#e2e8f0] bg-white"
+                    />
+                  ) : (
+                    <div className="w-[160px] h-[160px] rounded-xl bg-[#e2e8f0] animate-pulse flex items-center justify-center">
+                      <Loader2 size={20} className="text-[#8a9caa] animate-spin" />
+                    </div>
+                  )}
+                  <p className="text-[8.5px] font-mono text-[#8a9caa] tabular-nums break-all text-center max-w-[160px] leading-relaxed">
                     {code}
                   </p>
                 </div>
               </div>
 
-              {/* Footer strip */}
-              <div className="border-t border-dashed border-line px-7 md:px-9 py-3.5 flex flex-wrap items-center justify-between gap-2 bg-paper-2/50 print:bg-white">
-                <p className="text-[10.5px] text-ink-3 inline-flex items-center gap-1.5">
-                  <ShieldCheck size={11} className="text-emerald-600" />
-                  Verified by TicketPulse. Scanned at the gate by our reader app. Valid for one entry only.
+              {/* ── Per-ticket download button (screen only) ─────────────── */}
+              {qr && (
+                <div className="tp-no-print px-6 md:px-8 pb-5">
+                  <button
+                    onClick={() => downloadTicketPdf(idx)}
+                    disabled={downloadingIndex === idx}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] px-4 py-2.5 text-[12px] font-medium text-[#0a2540] hover:bg-[#f1f5f9] disabled:opacity-50 transition"
+                  >
+                    {downloadingIndex === idx ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Download size={13} />
+                    )}
+                    {downloadingIndex === idx ? "Generating PDF…" : "Download this ticket as PDF"}
+                  </button>
+                </div>
+              )}
+
+              {/* ── Footer ───────────────────────────────────────────────── */}
+              <div className="border-t border-dashed border-[#e2e8f0] px-6 md:px-8 py-3 flex flex-wrap items-center justify-between gap-2 bg-[#f8fafc]/70 print:bg-white">
+                <p className="text-[9px] text-[#8a9caa] inline-flex items-center gap-1.5">
+                  <ShieldCheck size={10} className="text-emerald-600" />
+                  Verified by TicketPulse. One entry only. Valid with photo ID.
                 </p>
-                <p className="text-[10px] font-mono text-ink-3 tabular-nums">{human}</p>
+                <p className="text-[9px] font-mono text-[#8a9caa] tabular-nums">{human}</p>
               </div>
             </article>
           )
         })}
-
-        {/* Tail card (screen-only) */}
-        <div className="tp-no-print rounded-2xl border border-line bg-paper p-5 flex items-start gap-3">
-          <ShieldCheck size={16} className="text-emerald-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[13.5px] font-semibold text-ink">End-to-end on TicketPulse</p>
-            <p className="text-[12.5px] text-ink-2 mt-0.5 leading-relaxed">
-              We issue the ticket, you walk in. Our gate-scanner app reads the QR on this PDF, your phone, or printed page and checks you in instantly. No third-party scanners, no cross-platform fees.
-            </p>
-          </div>
-        </div>
       </div>
     </main>
   )
