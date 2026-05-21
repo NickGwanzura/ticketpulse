@@ -273,6 +273,18 @@ export default function NewEventForm() {
           </button>
         </div>
 
+        <div className="md:col-span-2">
+          <label htmlFor="googleMapsUrl" className="block text-[13px] font-medium text-ink mb-1.5">Google Maps link <span className="text-ink-3 font-normal">(optional)</span></label>
+          <input
+            id="googleMapsUrl"
+            name="googleMapsUrl"
+            type="url"
+            placeholder="https://maps.google.com/?q=..."
+            className={inputCls()}
+          />
+          <p className="mt-1 text-[11.5px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
+        </div>
+
         <div>
           <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at</label>
           <input

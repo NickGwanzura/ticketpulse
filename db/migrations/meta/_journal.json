@@ -50,6 +50,13 @@
       "when": 1779385607330,
       "tag": "0006_add_cancelled_status",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779391375530,
+      "tag": "0007_add_google_maps_url",
+      "breakpoints": true
     }
   ]
 }

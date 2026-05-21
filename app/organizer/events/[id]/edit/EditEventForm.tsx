@@ -90,6 +90,7 @@ type Props = {
     endsAt: Date | null
     coverImage: string | null
     tags: string[] | null
+    googleMapsUrl: string | null
   }
   showCreatedToast?: boolean
 }
@@ -389,6 +390,20 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
           </div>
 
           {/* Date & Time */}
+          {/* Google Maps URL */}
+          <div className="md:col-span-2">
+            <label htmlFor="googleMapsUrl" className="block text-[13px] font-medium text-ink mb-1.5">Google Maps link <span className="text-ink-3 font-normal">(optional)</span></label>
+            <input
+              id="googleMapsUrl"
+              name="googleMapsUrl"
+              type="url"
+              placeholder="https://maps.google.com/?q=..."
+              defaultValue={event.googleMapsUrl ?? ""}
+              className={inputCls()}
+            />
+            <p className="mt-1 text-[11.5px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
+          </div>
+
           <div className="md:col-span-2 mt-2">
             <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Date & Time</p>
           </div>

@@ -74,6 +74,7 @@ export default async function EditEventPage({
               endsAt: row.endsAt,
               coverImage: row.coverImage,
               tags: row.tags ?? [],
+              googleMapsUrl: row.googleMapsUrl,
             }}
             showCreatedToast={sp.created === "1"}
           />

@@ -11,16 +11,17 @@ import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug } from "@/lib/slug"
 
 const CreateSchema = z.object({
-  title:       z.string().trim().min(1, "Title is required").max(160),
-  category:    z.string().trim().min(1, "Category is required").max(60),
-  venue:       z.string().trim().min(1, "Venue is required").max(160),
-  city:        z.string().trim().min(1, "City is required").max(80),
-  country:     z.string().trim().min(1).max(80).default("Zimbabwe"),
-  address:     z.string().trim().max(240).optional(),
-  description: z.string().trim().max(4000).optional(),
-  startsAt:    z.string().min(1, "Start date and time required"),
-  endsAt:      z.string().optional(),
-  tags:        z.string().optional(),
+  title:         z.string().trim().min(1, "Title is required").max(160),
+  category:      z.string().trim().min(1, "Category is required").max(60),
+  venue:         z.string().trim().min(1, "Venue is required").max(160),
+  city:          z.string().trim().min(1, "City is required").max(80),
+  country:       z.string().trim().min(1).max(80).default("Zimbabwe"),
+  address:       z.string().trim().max(240).optional(),
+  description:   z.string().trim().max(4000).optional(),
+  startsAt:      z.string().min(1, "Start date and time required"),
+  endsAt:        z.string().optional(),
+  tags:          z.string().optional(),
+  googleMapsUrl: z.string().trim().url("Must be a valid URL").max(500).optional().or(z.literal("")),
 })
 
 export type CreateEventState = {
@@ -49,16 +50,17 @@ export async function createEventAction(
   }
 
   const raw = {
-    title:       formData.get("title")?.toString() ?? "",
-    category:    formData.get("category")?.toString() ?? "",
-    venue:       formData.get("venue")?.toString() ?? "",
-    city:        formData.get("city")?.toString() ?? "",
-    country:     formData.get("country")?.toString() || "Zimbabwe",
-    address:     formData.get("address")?.toString() ?? undefined,
-    description: formData.get("description")?.toString() ?? undefined,
-    startsAt:    formData.get("startsAt")?.toString() ?? "",
-    endsAt:      formData.get("endsAt")?.toString() ?? undefined,
-    tags:        formData.get("tags")?.toString() ?? undefined,
+    title:         formData.get("title")?.toString() ?? "",
+    category:      formData.get("category")?.toString() ?? "",
+    venue:         formData.get("venue")?.toString() ?? "",
+    city:          formData.get("city")?.toString() ?? "",
+    country:       formData.get("country")?.toString() || "Zimbabwe",
+    address:       formData.get("address")?.toString() ?? undefined,
+    description:   formData.get("description")?.toString() ?? undefined,
+    startsAt:      formData.get("startsAt")?.toString() ?? "",
+    endsAt:        formData.get("endsAt")?.toString() ?? undefined,
+    tags:          formData.get("tags")?.toString() ?? undefined,
+    googleMapsUrl: formData.get("googleMapsUrl")?.toString() ?? undefined,
   }
 
   const parsed = CreateSchema.safeParse(raw)
@@ -104,21 +106,22 @@ export async function createEventAction(
   const [created] = await db
     .insert(events)
     .values({
-      organizerId:  session.user.id,
-      title:        data.title,
+      organizerId:   session.user.id,
+      title:         data.title,
       slug,
-      description:  data.description || null,
-      category:     data.category,
-      status:       "draft",
-      venue:        data.venue,
-      city:         data.city,
-      country:      data.country,
-      address:      data.address || null,
-      lat:          lat?.toString() ?? null,
-      lng:          lng?.toString() ?? null,
+      description:   data.description || null,
+      category:      data.category,
+      status:        "draft",
+      venue:         data.venue,
+      city:          data.city,
+      country:       data.country,
+      address:       data.address || null,
+      lat:           lat?.toString() ?? null,
+      lng:           lng?.toString() ?? null,
       startsAt,
       endsAt,
-      tags:         tagList,
+      tags:          tagList,
+      googleMapsUrl: data.googleMapsUrl || null,
     })
     .returning({ id: events.id })
 

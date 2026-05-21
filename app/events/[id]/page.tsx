@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { Calendar, MapPin, Users, Share2, Heart } from "lucide-react"
+import { Calendar, MapPin, Users, Share2, Heart, Clock } from "lucide-react"
 import MerchSection from "@/components/merch/MerchSection"
 import TransportSection from "@/components/transport/TransportSection"
 import VendorSection from "@/components/vendors/VendorSection"
@@ -49,8 +49,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       lat: events.lat,
       lng: events.lng,
       startsAt: events.startsAt,
+      endsAt: events.endsAt,
       coverImage: events.coverImage,
       tags: events.tags,
+      googleMapsUrl: events.googleMapsUrl,
       organizerName: users.name,
       organizerImage: users.image,
     })
@@ -158,6 +160,25 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     },
   }
 
+  // Format time range for display
+  const timeDisplay = (() => {
+    const start = row.startsAt
+    const end = row.endsAt
+    if (!end) return formatDate(start)
+    // Same day: "Wed 21 May 2026, 14:00 – 18:00"
+    const isSameDay =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth() &&
+      start.getDate() === end.getDate()
+    if (isSameDay) {
+      const datePart = formatDate(start, { dateStyle: "medium" })
+      const startTime = formatDate(start, { timeStyle: "short" })
+      const endTime = formatDate(end, { timeStyle: "short" })
+      return `${datePart}, ${startTime} – ${endTime}`
+    }
+    return `${formatDate(start)} – ${formatDate(end)}`
+  })()
+
   return (
     <div>
       <script
@@ -165,15 +186,35 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="max-w-7xl mx-auto px-5 md:px-8 pt-10 pb-28 lg:pb-10">
+      {/* ── Hero banner ── */}
+      {row.coverImage ? (
+        <div className="relative w-full h-[40vh] md:h-[55vh] overflow-hidden bg-ink">
+          <img
+            src={row.coverImage}
+            alt=""
+            className="w-full h-full object-contain bg-ink"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        </div>
+      ) : (
+        <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
+          <span className="text-8xl relative">{emoji}</span>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-5 md:px-8 pb-28 lg:pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-12">
             {/* ── Title & meta ── */}
-            <div>
+            <div className="-mt-6 relative z-10">
               <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">{row.category}</p>
               <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink mb-5">{row.title}</h1>
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-ink-2 mb-6">
-                <span className="flex items-center gap-2"><Calendar size={14} className="text-ink-3" />{formatDate(row.startsAt)}</span>
+                <span className="flex items-center gap-2"><Calendar size={14} className="text-ink-3" />{timeDisplay}</span>
+                {row.endsAt && (
+                  <span className="flex items-center gap-2"><Clock size={14} className="text-ink-3" />Ends {formatDate(row.endsAt, { dateStyle: "medium", timeStyle: "short" })}</span>
+                )}
                 <span className="flex items-center gap-2"><MapPin size={14} className="text-ink-3" />{row.venue}, {row.city}</span>
                 {row.organizerName && (
                   <span className="flex items-center gap-2"><Users size={14} className="text-ink-3" />Organized by {row.organizerName}</span>
@@ -197,22 +238,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </button>
               </div>
             </div>
-
-            {/* ── Cover image (under title, before other details) ── */}
-            {row.coverImage ? (
-              <div className="relative w-full aspect-video md:aspect-[21/9] rounded-2xl overflow-hidden shadow-sm">
-                <img
-                  src={row.coverImage}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-full h-48 md:h-56 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 rounded-2xl flex items-center justify-center overflow-hidden relative">
-                <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
-                <span className="text-8xl relative">{emoji}</span>
-              </div>
-            )}
 
             {/* ── Description & tags ── */}
             <div>
@@ -239,6 +264,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 address={row.address}
                 city={row.city}
                 country={row.country}
+                googleMapsUrl={row.googleMapsUrl}
               />
             )}
 

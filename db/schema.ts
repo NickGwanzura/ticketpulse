@@ -163,6 +163,7 @@ export const events = pgTable("events", {
   startsAt: timestamp("starts_at").notNull(),
   endsAt: timestamp("ends_at"),
   coverImage: text("cover_image"),
+  googleMapsUrl: text("google_maps_url"),
   tags: json("tags").$type<string[]>().default([]),
   featured: boolean("featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
