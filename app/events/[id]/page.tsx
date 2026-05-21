@@ -230,6 +230,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 venue={row.venue}
                 address={row.address}
                 city={row.city}
+                country={row.country}
               />
             )}
 

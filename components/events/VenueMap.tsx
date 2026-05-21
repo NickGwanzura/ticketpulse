@@ -8,13 +8,14 @@ interface VenueMapProps {
   venue: string
   address?: string | null
   city?: string | null
+  country?: string | null
 }
 
 /**
  * Interactive venue map using an OpenStreetMap embed iframe.
  * Zero external dependencies — works with any lat/lng pair.
  */
-export default function VenueMap({ lat, lng, venue, address, city }: VenueMapProps) {
+export default function VenueMap({ lat, lng, venue, address, city, country }: VenueMapProps) {
   const latNum = typeof lat === "string" ? parseFloat(lat) : lat
   const lngNum = typeof lng === "string" ? parseFloat(lng) : lng
 
@@ -27,17 +28,17 @@ export default function VenueMap({ lat, lng, venue, address, city }: VenueMapPro
   const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${latNum},${lngNum}`
   const linkUrl = `https://www.openstreetmap.org/?mlat=${latNum}&mlng=${lngNum}#map=15/${latNum}/${lngNum}`
 
-  const locationStr = [address, city].filter(Boolean).join(", ")
+  const fullAddress = [venue, address, city, country].filter(Boolean).join(", ")
 
   return (
     <section>
       <h3 className="text-[13px] font-semibold text-ink-2 mb-3 flex items-center gap-2">
         <MapPin size={14} className="text-ink-3" />
-        Venue
+        Venue location
       </h3>
 
-      <div className="rounded-xl border border-line overflow-hidden bg-paper-2">
-        <div className="relative w-full h-56 md:h-64">
+      <div className="rounded-xl border border-line overflow-hidden bg-paper shadow-sm">
+        <div className="relative w-full h-56 md:h-72">
           <iframe
             title={`Map showing ${venue}`}
             width="100%"
@@ -54,21 +55,26 @@ export default function VenueMap({ lat, lng, venue, address, city }: VenueMapPro
           />
         </div>
 
-        <div className="px-4 py-3 border-t border-line flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-ink truncate">{venue}</p>
-            {locationStr && (
-              <p className="text-[13px] text-ink-3 truncate">{locationStr}</p>
-            )}
+        <div className="px-4 py-3.5 border-t border-line space-y-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">{venue}</p>
+              {fullAddress && (
+                <p className="text-[12.5px] text-ink-3 mt-0.5 leading-snug">{fullAddress}</p>
+              )}
+            </div>
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 text-[11px] font-semibold text-blue hover:text-blue/80 transition-colors whitespace-nowrap tracking-tight"
+            >
+              Open in Maps &rarr;
+            </a>
           </div>
-          <a
-            href={linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 text-[12px] font-medium text-blue hover:text-blue/80 transition-colors whitespace-nowrap"
-          >
-            Open in Maps &rarr;
-          </a>
+          <p className="text-[10px] text-ink-3/60 tracking-tight">
+            {latNum.toFixed(5)}, {lngNum.toFixed(5)}
+          </p>
         </div>
       </div>
     </section>

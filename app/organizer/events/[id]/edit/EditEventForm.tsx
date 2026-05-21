@@ -120,6 +120,10 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
   const [liveLat, setLiveLat] = useState<string | null>(event.lat)
   const [liveLng, setLiveLng] = useState<string | null>(event.lng)
   const [geocoding, setGeocoding] = useState(false)
+  const [geocodeNotFound, setGeocodeNotFound] = useState(false)
+
+  // Build the search query string for display
+  const searchQuery = [venue, address, city, country].filter(Boolean).join(", ")
 
   // Debounce geocoding: call Nominatim 600 ms after the user stops typing
   const geocodeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -128,6 +132,7 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
     if (!venue || !city) {
       setLiveLat(null)
       setLiveLng(null)
+      setGeocodeNotFound(false)
       return
     }
 
@@ -135,9 +140,11 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
 
     geocodeTimer.current = setTimeout(async () => {
       setGeocoding(true)
+      setGeocodeNotFound(false)
       const result = await geocodeFromLocation(venue, city, country, address)
       setLiveLat(result.lat?.toString() ?? null)
       setLiveLng(result.lng?.toString() ?? null)
+      setGeocodeNotFound(result.lat === null || result.lng === null)
       setGeocoding(false)
     }, 600)
 
@@ -248,18 +255,30 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
               <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
                 <Loader2 size={20} className="mx-auto mb-2 text-ink-3 animate-spin" />
                 <p className="text-[13px] font-medium text-ink-2">Locating venue…</p>
+                <p className="text-[11px] text-ink-3 mt-1 truncate max-w-xs mx-auto">{searchQuery}</p>
               </div>
             )}
-            {!geocoding && liveLat && liveLng ? (
+            {!geocoding && liveLat && liveLng && (
               <VenueMap
                 lat={liveLat}
                 lng={liveLng}
                 venue={venue}
                 address={address}
                 city={city}
+                country={country}
               />
-            ) : null}
-            {!geocoding && !liveLat && !liveLng && (
+            )}
+            {!geocoding && geocodeNotFound && !liveLat && !liveLng && (
+              <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/50 px-4 py-5 text-center">
+                <MapPin size={20} className="mx-auto mb-2 text-ink-3" />
+                <p className="text-[13px] font-medium text-ink-2">Location not found</p>
+                <p className="text-[11px] text-ink-3 mt-1 truncate max-w-xs mx-auto">{searchQuery}</p>
+                <p className="text-[11px] text-ink-3 mt-0.5">
+                  Try a more specific venue name or address.
+                </p>
+              </div>
+            )}
+            {!geocoding && !geocodeNotFound && !liveLat && !liveLng && (
               <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
                 <MapPin size={20} className="mx-auto mb-2 text-ink-3" />
                 <p className="text-[13px] font-medium text-ink-2">Venue map</p>
