@@ -22,6 +22,13 @@
       "when": 1778435975850,
       "tag": "0002_public_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779329425614,
+      "tag": "0003_nebulous_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

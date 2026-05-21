@@ -115,8 +115,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     packageDescription: r.packageDescription,
     price: Number(r.price),
     currency: r.currency ?? "USD",
-    available: r.available,
-    booked: r.booked,
+    available: r.available ?? false,
+    booked: r.booked ?? false,
   }))
 
   const emoji = CATEGORY_EMOJI[row.category.toLowerCase()] ?? "🎫"

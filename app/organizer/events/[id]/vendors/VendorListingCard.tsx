@@ -10,7 +10,8 @@ import {
   updateVendorListingAction,
   type VendorListingFormState,
 } from "./actions"
-import { useActionState, useFormStatus } from "react-dom"
+import { useFormStatus } from "react-dom"
+import { useActionState } from "react"
 import Button from "@/components/ui/Button"
 
 const CURRENCIES = ["USD", "ZWL", "ZAR"]

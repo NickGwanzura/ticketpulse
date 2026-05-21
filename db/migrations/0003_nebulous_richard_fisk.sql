@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "commission_rate" numeric(5, 2) DEFAULT '8.00';

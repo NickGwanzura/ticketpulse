@@ -218,7 +218,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 <li key={line.key} className="flex items-baseline justify-between gap-3 text-[13px]">
                   <div className="min-w-0">
                     <p className="font-medium text-ink line-clamp-1">
-                      {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.description}
+                      {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.kind === "shuttle" ? line.description : line.packageName}
                     </p>
                     <p className="text-ink-3 text-[12px]">×{line.qty}</p>
                   </div>

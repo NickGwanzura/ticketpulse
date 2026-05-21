@@ -7,6 +7,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events } from "@/db/schema"
+import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug } from "@/lib/slug"
 
 const CreateSchema = z.object({
@@ -92,6 +93,14 @@ export async function createEventAction(
 
   const slug = await generateUniqueSlug(data.title)
 
+  // Auto-geocode from the venue/address/city/country
+  const { lat, lng } = await geocodeFromLocation(
+    data.venue,
+    data.city,
+    data.country,
+    data.address,
+  )
+
   const [created] = await db
     .insert(events)
     .values({
@@ -105,6 +114,8 @@ export async function createEventAction(
       city:         data.city,
       country:      data.country,
       address:      data.address || null,
+      lat:          lat?.toString() ?? null,
+      lng:          lng?.toString() ?? null,
       startsAt,
       endsAt,
       tags:         tagList,

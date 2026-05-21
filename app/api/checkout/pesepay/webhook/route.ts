@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       const [claimed] = await tx
         .update(orders)
         .set({
-          status: "verifying",
+          status: "awaiting_verification",
           updatedAt: new Date(),
         })
         .where(
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     }
 
     if (!check.paid) {
-      log.info("pesepay webhook — not yet paid", { reference, status: check.status })
+      log.info("pesepay webhook — not yet paid", { reference, paid: check.paid, message: check.message })
       // Revert — the webhook may arrive again once payment clears
       await db
         .update(orders)

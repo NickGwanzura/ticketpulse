@@ -183,7 +183,7 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
             <label htmlFor="address" className="block text-[13px] font-medium text-ink mb-1.5">Address</label>
             <input id="address" name="address" type="text" maxLength={240} defaultValue={event.address ?? ""} className={inputCls()} />
           </div>
-
+  
           <div>
             <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at</label>
             <input id="startsAt" name="startsAt" type="datetime-local" required defaultValue={toLocalInputValue(event.startsAt)} className={inputCls(!!errs.startsAt)} />

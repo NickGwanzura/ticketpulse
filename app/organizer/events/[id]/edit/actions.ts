@@ -8,6 +8,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, eventStatusEnum } from "@/db/schema"
+import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug, slugify } from "@/lib/slug"
 
 const STATUS_VALUES = eventStatusEnum.enumValues
@@ -110,6 +111,14 @@ export async function updateEventAction(
     }
   }
 
+  // Auto-geocode from the venue/address/city/country
+  const { lat, lng } = await geocodeFromLocation(
+    data.venue,
+    data.city,
+    data.country,
+    data.address,
+  )
+
   const tagList = data.tags
     ? data.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10)
     : []
@@ -132,9 +141,11 @@ export async function updateEventAction(
       country:     data.country,
       address:     data.address || null,
       description: data.description || null,
+      lat:         lat?.toString() ?? null,
+      lng:         lng?.toString() ?? null,
       startsAt,
       endsAt,
-      tags:        tagList,
+      tags:         tagList,
       coverImage:  data.coverImage || null,
       updatedAt:   new Date(),
     })
