@@ -202,7 +202,7 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
             <input id="address" name="address" type="text" maxLength={240} defaultValue={event.address ?? ""} className={inputCls()} />
           </div>
 
-          {event.lat && event.lng && (
+          {event.lat && event.lng ? (
             <div className="md:col-span-2">
               <VenueMap
                 lat={event.lat}
@@ -211,6 +211,16 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
                 address={event.address}
                 city={event.city}
               />
+            </div>
+          ) : (
+            <div className="md:col-span-2">
+              <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
+                <MapPin size={20} className="mx-auto mb-2 text-ink-3" />
+                <p className="text-[13px] font-medium text-ink-2">Venue map</p>
+                <p className="text-[12px] text-ink-3 mt-0.5">
+                  Save the event to preview the venue location on a map.
+                </p>
+              </div>
             </div>
           )}
 

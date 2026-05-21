@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, ImageIcon, ShoppingBag, ExternalLink, Ticket, Store, Activity, Mail, Tag, Users, UserPlus, QrCode } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import { db } from "@/db"
 import { events } from "@/db/schema"
@@ -46,78 +46,6 @@ export default async function EditEventPage({
         eyebrow="Organizer"
         title={row.title || "Untitled event"}
         subtitle="Edit the basics, upload a cover image, and manage gallery and merch."
-        actions={
-          <>
-            <Link
-              href={`/organizer/events/${id}/tiers`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <Ticket size={15} /> Tickets
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/gallery`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <ImageIcon size={15} /> Photo gallery
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/merch`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <ShoppingBag size={15} /> Merch
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/vendors`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <Store size={15} /> Vendors
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/live`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <Activity size={15} /> Live
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/email`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <Mail size={15} /> Email
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/promos`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <Tag size={15} /> Promos
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/organisers`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <UserPlus size={15} /> Organisers
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/staff`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <QrCode size={15} /> Staff
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/attendees`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <Users size={15} /> Attendees
-            </Link>
-            {row.status === "published" && (
-              <Link
-                href={`/events/${row.slug}`}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
-              >
-                View live <ExternalLink size={13} />
-              </Link>
-            )}
-          </>
-        }
       />
 
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-4">
