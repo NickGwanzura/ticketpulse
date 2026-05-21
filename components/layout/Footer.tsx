@@ -20,6 +20,13 @@ function IconInstagram(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+function IconWhatsApp(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={14} height={14} {...props}>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.66-2.059-.174-.297-.018-.458.153-.606.134-.133.298-.347.446-.527.145-.18.198-.299.297-.497.097-.198.058-.414-.015-.559-.074-.15-.68-1.627-1.11-2.579-.37-.7-.768-.688-1.06-.688-.258-.014-.546-.016-.845.016-.3.031-.752.244-1.14.952-.285.534-.855 1.676-.855 2.765 0 1.089.603 2.07.912 2.486.176.22 2.492 3.193 5.828 4.002.62.186 1.223.306 1.768.426.96.212 1.828.17 2.497-.075.696-.252 1.588-.94 1.808-1.553.22-.613.22-1.287.151-1.415-.07-.127-.285-.2-.573-.32zM12.014 2.38h.002c5.8 0 10.508 4.706 10.508 10.505 0 2.555-.913 4.886-2.418 6.686l1.33 4.258-4.426-1.173a10.497 10.497 0 0 1-4.994 1.247c-5.799 0-10.508-4.71-10.508-10.508 0-5.798 4.709-10.505 10.508-10.505z"/>
+    </svg>
+  )
+}
 function IconFacebook(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" width={14} height={14} {...props}>
@@ -77,6 +84,7 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
 ]
 
 const SOCIALS: { label: string; href: string; Icon: (p: React.SVGProps<SVGSVGElement>) => React.ReactElement }[] = [
+  { label: "WhatsApp",  href: "https://wa.me/263777816368",        Icon: IconWhatsApp },
   { label: "X",         href: "https://twitter.com/ticketpulse",   Icon: IconX },
   { label: "Instagram", href: "https://instagram.com/ticketpulse", Icon: IconInstagram },
   { label: "Facebook",  href: "https://facebook.com/ticketpulse",  Icon: IconFacebook },

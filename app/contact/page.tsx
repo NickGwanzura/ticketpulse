@@ -4,7 +4,7 @@ import { Mail, MessageSquare, MapPin, Phone, Clock, Sparkles, ArrowRight } from 
 const CHANNELS = [
   { icon: MessageSquare, title: "Live chat",     body: "Mon to Fri, 8:00 to 18:00 CAT", value: "Open chat",         href: "#chat" },
   { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "hello@ticketpulse.co.zw", href: "mailto:hello@ticketpulse.co.zw" },
-  { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 77 000 0000",  href: "https://wa.me/26377" },
+  { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 777 816 368",  href: "https://wa.me/263777816368" },
 ]
 
 const TOPICS = [

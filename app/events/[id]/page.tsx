@@ -164,41 +164,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className={`relative h-72 md:h-80 ${row.coverImage ? "" : "bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50"} flex items-center justify-center overflow-hidden`}>
-        {row.coverImage ? (
-          <>
-            <img
-              src={row.coverImage}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
-          </>
-        ) : (
-          <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
-        )}
-        {!row.coverImage && <span className="text-8xl relative">{emoji}</span>}
-        <div className="absolute top-5 right-5 flex gap-2">
-          <button
-            type="button"
-            aria-label="Share event"
-            className="border border-line bg-paper/80 backdrop-blur text-ink-2 rounded-lg p-3 hover:text-ink hover:border-line-2 transition-colors"
-          >
-            <Share2 size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="Save to favourites"
-            className="border border-line bg-paper/80 backdrop-blur text-ink-2 rounded-lg p-3 hover:text-rose-600 hover:border-line-2 transition-colors"
-          >
-            <Heart size={16} />
-          </button>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 pt-10 pb-28 lg:pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-12">
+            {/* ── Title & meta ── */}
             <div>
               <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">{row.category}</p>
               <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink mb-5">{row.title}</h1>
@@ -209,6 +179,43 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   <span className="flex items-center gap-2"><Users size={14} className="text-ink-3" />Organized by {row.organizerName}</span>
                 )}
               </div>
+              {/* Share / Save */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  aria-label="Share event"
+                  className="border border-line bg-paper text-ink-2 rounded-lg p-2.5 hover:text-ink hover:border-line-2 transition-colors"
+                >
+                  <Share2 size={15} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Save to favourites"
+                  className="border border-line bg-paper text-ink-2 rounded-lg p-2.5 hover:text-rose-600 hover:border-line-2 transition-colors"
+                >
+                  <Heart size={15} />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Cover image (under title, before other details) ── */}
+            {row.coverImage ? (
+              <div className="relative w-full aspect-video md:aspect-[21/9] rounded-2xl overflow-hidden shadow-sm">
+                <img
+                  src={row.coverImage}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-48 md:h-56 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 rounded-2xl flex items-center justify-center overflow-hidden relative">
+                <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
+                <span className="text-8xl relative">{emoji}</span>
+              </div>
+            )}
+
+            {/* ── Description & tags ── */}
+            <div>
               {row.description && (
                 <p className="text-ink-2 leading-relaxed text-[15px]">{row.description}</p>
               )}
@@ -223,6 +230,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               )}
             </div>
 
+            {/* ── Venue map ── */}
             {row.lat != null && row.lng != null && (
               <VenueMap
                 lat={row.lat}

@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
-import { AlertCircle, MapPin, Save, Trash2, Loader2 } from "lucide-react"
+import { AlertCircle, MapPin, Save, Trash2, Loader2, Sparkles } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import ImageUploader from "@/components/ui/ImageUploader"
@@ -110,6 +110,74 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
   const errs = state.fieldErrors ?? {}
 
+  const [genDesc, setGenDesc] = useState(false)
+  const [genLoc, setGenLoc] = useState(false)
+
+  async function handleGenerateDesc() {
+    const title = (document.getElementById("title") as HTMLInputElement | null)?.value ?? event.title
+    const category = (document.getElementById("category") as HTMLSelectElement | null)?.value ?? event.category
+    const venueEl = document.getElementById("venue") as HTMLInputElement | null
+    const cityEl = document.getElementById("city") as HTMLInputElement | null
+    const venue = venueEl?.value ?? event.venue
+    const city = cityEl?.value ?? event.city
+    const tags = (document.getElementById("tags") as HTMLInputElement | null)?.value ?? ""
+
+    if (!title || !category || !venue || !city) {
+      alert("Title, category, venue, and city are required.")
+      return
+    }
+
+    setGenDesc(true)
+    try {
+      const res = await fetch("/api/ai/description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, category, venue, city, tags }),
+      })
+      const data = await res.json()
+      if (data.description) {
+        const el = document.getElementById("description") as HTMLTextAreaElement | null
+        if (el) el.value = data.description
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setGenDesc(false)
+    }
+  }
+
+  async function handleSuggestLocation() {
+    const venueEl = document.getElementById("venue") as HTMLInputElement | null
+    const cityEl = document.getElementById("city") as HTMLInputElement | null
+    const venue = venueEl?.value ?? event.venue
+    const city = cityEl?.value ?? event.city
+
+    if (!venue || !city) {
+      alert("Venue and city are required.")
+      return
+    }
+
+    setGenLoc(true)
+    try {
+      const res = await fetch("/api/ai/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ venue, city }),
+      })
+      const data = await res.json()
+      if (data.country) {
+        setCountry(data.country)
+      }
+      if (data.address) {
+        setAddress(data.address)
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setGenLoc(false)
+    }
+  }
+
   // Location fields (controlled for live geocoding preview)
   const [venue, setVenue] = useState(event.venue)
   const [city, setCity] = useState(event.city)
@@ -214,7 +282,22 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="description" className="block text-[13px] font-medium text-ink mb-1.5">Description</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="description" className="block text-[13px] font-medium text-ink">Description</label>
+              <button
+                type="button"
+                onClick={handleGenerateDesc}
+                disabled={genDesc}
+                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+              >
+                {genDesc ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                {genDesc ? "Generating…" : "Generate with AI"}
+              </button>
+            </div>
             <textarea id="description" name="description" rows={4} maxLength={4000} defaultValue={event.description ?? ""} className={inputCls()} />
           </div>
 
@@ -244,6 +327,22 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
           <div>
             <label htmlFor="address" className="block text-[13px] font-medium text-ink mb-1.5">Address</label>
             <input id="address" name="address" type="text" maxLength={240} value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls()} />
+          </div>
+
+          <div className="md:col-span-2">
+            <button
+              type="button"
+              onClick={handleSuggestLocation}
+              disabled={genLoc}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+            >
+              {genLoc ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <MapPin size={13} />
+              )}
+              {genLoc ? "Looking up location…" : "Suggest country & address from venue"}
+            </button>
           </div>
 
           {/* Hidden lat/lng so the form can forward them on save too */}

@@ -1,9 +1,9 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useState } from "react"
 import { useFormStatus } from "react-dom"
 import Link from "next/link"
-import { ArrowLeft, ImageIcon, Save } from "lucide-react"
+import { ArrowLeft, ImageIcon, Save, Sparkles, Loader2, MapPin } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import { createEventAction, type CreateEventState } from "./actions"
@@ -53,8 +53,76 @@ export default function NewEventForm() {
   const [state, formAction] = useActionState(createEventAction, INITIAL)
   const errs = state.fieldErrors ?? {}
 
+  const [genDesc, setGenDesc] = useState(false)
+  const [genLoc, setGenLoc] = useState(false)
+
+  async function handleGenerateDesc(form: HTMLFormElement) {
+    const fd = new FormData(form)
+    const title = fd.get("title")?.toString() ?? ""
+    const category = fd.get("category")?.toString() ?? ""
+    const venue = fd.get("venue")?.toString() ?? ""
+    const city = fd.get("city")?.toString() ?? ""
+    const tags = fd.get("tags")?.toString()
+
+    if (!title || !category || !venue || !city) {
+      alert("Fill in title, category, venue, and city first.")
+      return
+    }
+
+    setGenDesc(true)
+    try {
+      const res = await fetch("/api/ai/description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, category, venue, city, tags }),
+      })
+      const data = await res.json()
+      if (data.description) {
+        const el = document.getElementById("description") as HTMLTextAreaElement | null
+        if (el) el.value = data.description
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setGenDesc(false)
+    }
+  }
+
+  async function handleSuggestLocation(form: HTMLFormElement) {
+    const fd = new FormData(form)
+    const venue = fd.get("venue")?.toString() ?? ""
+    const city = fd.get("city")?.toString() ?? ""
+
+    if (!venue || !city) {
+      alert("Fill in venue and city first.")
+      return
+    }
+
+    setGenLoc(true)
+    try {
+      const res = await fetch("/api/ai/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ venue, city }),
+      })
+      const data = await res.json()
+      if (data.country) {
+        const el = document.getElementById("country") as HTMLInputElement | null
+        if (el) el.value = data.country
+      }
+      if (data.address) {
+        const el = document.getElementById("address") as HTMLInputElement | null
+        if (el) el.value = data.address
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setGenLoc(false)
+    }
+  }
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form id="new-event-form" action={formAction} className="space-y-6">
       {state.error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
           {state.error}
@@ -104,7 +172,25 @@ export default function NewEventForm() {
         </div>
 
         <div className="md:col-span-2">
-          <label htmlFor="description" className="block text-[13px] font-medium text-ink mb-1.5">Description</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label htmlFor="description" className="block text-[13px] font-medium text-ink">Description</label>
+            <button
+              type="button"
+              onClick={() => {
+                const form = document.getElementById("new-event-form") as HTMLFormElement | null
+                if (form) handleGenerateDesc(form)
+              }}
+              disabled={genDesc}
+              className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+            >
+              {genDesc ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Sparkles size={12} />
+              )}
+              {genDesc ? "Generating…" : "Generate with AI"}
+            </button>
+          </div>
           <textarea
             id="description"
             name="description"
@@ -166,6 +252,25 @@ export default function NewEventForm() {
             placeholder="Street, suburb"
             className={inputCls()}
           />
+        </div>
+
+        <div className="md:col-span-2">
+          <button
+            type="button"
+            onClick={() => {
+              const form = document.getElementById("new-event-form") as HTMLFormElement | null
+              if (form) handleSuggestLocation(form)
+            }}
+            disabled={genLoc}
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+          >
+            {genLoc ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <MapPin size={13} />
+            )}
+            {genLoc ? "Looking up location…" : "Suggest country & address from venue"}
+          </button>
         </div>
 
         <div>
