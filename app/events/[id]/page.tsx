@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation"
-import { Calendar, MapPin, Users, Share2, Heart, Clock } from "lucide-react"
+import { Calendar, MapPin, Users, Heart, Clock } from "lucide-react"
 import MerchSection from "@/components/merch/MerchSection"
 import TransportSection from "@/components/transport/TransportSection"
 import VendorSection from "@/components/vendors/VendorSection"
 import MediaSection from "@/components/media/MediaSection"
 import TicketSelector from "@/components/events/TicketSelector"
 import VenueMap from "@/components/events/VenueMap"
+import ShareEventButton from "@/components/events/ShareEventButton"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import { db } from "@/db"
 import { events, ticketTiers, users, vendorListings, vendors } from "@/db/schema"
@@ -222,13 +223,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </div>
               {/* Share / Save */}
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  aria-label="Share event"
-                  className="border border-line bg-paper text-ink-2 rounded-lg p-2.5 hover:text-ink hover:border-line-2 transition-colors"
-                >
-                  <Share2 size={15} />
-                </button>
+                <ShareEventButton eventTitle={row.title} eventDescription={row.description} />
                 <button
                   type="button"
                   aria-label="Save to favourites"
