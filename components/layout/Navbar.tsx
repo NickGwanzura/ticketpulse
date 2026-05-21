@@ -218,7 +218,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               {profileOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
-                  <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border border-line bg-paper shadow-lg shadow-ink/10">
+                  <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-xl border border-line bg-paper shadow-lg shadow-ink/10 animate-[tp-fade-up_0.2s_cubic-bezier(0.16,1,0.3,1)_both]">
                     <div className="px-4 py-3 border-b border-line">
                       <p className="text-sm font-semibold text-ink truncate">{session.user.name ?? "Account"}</p>
                       <p className="text-xs text-ink-3 truncate">{session.user.email}</p>

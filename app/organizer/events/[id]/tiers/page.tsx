@@ -112,6 +112,7 @@ export default async function TiersPage({
               <TierCard
                 key={t.id}
                 eventId={id}
+                eventTitle={event.title}
                 tier={{
                   id: t.id,
                   name: t.name,

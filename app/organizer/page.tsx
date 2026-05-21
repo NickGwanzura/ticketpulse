@@ -1,16 +1,17 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, or, inArray } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
-  MoreHorizontal, ScanLine, LayoutList, ShoppingCart,
+  ScanLine, LayoutList, ShoppingCart,
+  Activity, Mail, Tag, ExternalLink,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events } from "@/db/schema"
+import { events, eventOrganisers } from "@/db/schema"
 
 type EventRow = {
   id: string
@@ -158,7 +159,25 @@ function RevenueChart({ data }: { data: number[] }) {
 export default async function OrganizerPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer")
-  if (session.user.role !== "organizer" && session.user.role !== "admin") redirect("/dashboard")
+
+  // Check if user is an invited organiser for any event
+  const invitedEventIds = await db
+    .select({ eventId: eventOrganisers.eventId })
+    .from(eventOrganisers)
+    .where(eq(eventOrganisers.userId, session.user.id))
+
+  const isInvitedOrganiser = invitedEventIds.length > 0
+
+  // Allow access if: organizer role, admin role, or invited organiser for at least one event
+  if (session.user.role !== "organizer" && session.user.role !== "admin" && !isInvitedOrganiser) {
+    redirect("/dashboard")
+  }
+
+  // Build where condition: events owned by user OR events where user is invited organiser
+  const ownedIds = invitedEventIds.map((r) => r.eventId)
+  const whereClause = ownedIds.length > 0
+    ? or(eq(events.organizerId, session.user.id), inArray(events.id, ownedIds))
+    : eq(events.organizerId, session.user.id)
 
   const rows = await db
     .select({
@@ -171,7 +190,7 @@ export default async function OrganizerPage() {
       status: events.status,
     })
     .from(events)
-    .where(eq(events.organizerId, session.user.id))
+    .where(whereClause)
     .orderBy(desc(events.startsAt))
     .limit(50)
 
@@ -239,10 +258,12 @@ export default async function OrganizerPage() {
           ).map(({ l, v, i: Icon, pos }) => {
             const spark = KPI_SPARKLINES[l] ?? []
             return (
-              <div key={l} className="rounded-2xl border border-line bg-paper p-5 flex flex-col justify-between min-h-[120px] tp-lift">
+              <div key={l} className="tp-card-accent rounded-2xl border border-line bg-paper p-5 flex flex-col justify-between min-h-[120px] tp-lift">
                 <div>
                   <div className="flex items-center gap-2 mb-2.5">
-                    <Icon size={14} className="text-ink-3" />
+                    <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-paper-2 ring-1 ring-line">
+                      <Icon size={13} className="text-ink-2" />
+                    </span>
                     <span className="text-[11.5px] text-ink-3">{l}</span>
                   </div>
                   <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
@@ -319,16 +340,32 @@ export default async function OrganizerPage() {
                 {/* Mobile cards */}
                 <div className="md:hidden divide-y divide-line">
                   {ORGANIZER_EVENTS.map((e) => (
-                    <Link key={e.id} href={`/organizer/events/${e.id}/edit`} className="block p-5 hover:bg-paper-2 transition-colors">
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status] ?? STATUS_STYLE.draft}`}>
-                          {e.status}
-                        </span>
-                        <ArrowUpRight size={14} className="text-ink-3" />
+                    <div key={e.id} className="p-5 hover:bg-paper-2 transition-colors">
+                      <Link href={`/organizer/events/${e.id}/edit`} className="block">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status] ?? STATUS_STYLE.draft}`}>
+                            {e.status}
+                          </span>
+                          <ArrowUpRight size={14} className="text-ink-3" />
+                        </div>
+                        <p className="text-[14.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
+                        <p className="text-[12.5px] text-ink-2 mt-0.5">{e.venue}</p>
+                      </Link>
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line">
+                        <Link href={`/organizer/events/${e.id}/live`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
+                          <Activity size={13} /> Live
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/attendees`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
+                          <Users size={13} /> Attendees
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/promos`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
+                          <Tag size={13} /> Promos
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/email`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
+                          <Mail size={13} /> Email
+                        </Link>
                       </div>
-                      <p className="text-[14.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                      <p className="text-[12.5px] text-ink-2 mt-0.5">{e.venue}</p>
-                    </Link>
+                    </div>
                   ))}
                 </div>
 
@@ -348,7 +385,7 @@ export default async function OrganizerPage() {
                     {ORGANIZER_EVENTS.map((e) => {
                       const pct = e.capacity > 0 ? Math.round((e.sold / e.capacity) * 100) : 0
                       return (
-                        <tr key={e.id} className="hover:bg-paper-2 transition-colors">
+                        <tr key={e.id} className="tp-row-accent hover:bg-paper-2 transition-colors">
                           <td className="px-6 py-4 max-w-xs">
                             <Link href={`/organizer/events/${e.id}/edit`} className="block">
                               <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
@@ -371,12 +408,36 @@ export default async function OrganizerPage() {
                             {formatCurrency(e.revenue, e.currency)}
                           </td>
                           <td className="px-3 py-4 text-right">
-                            <Link
-                              href={`/organizer/events/${e.id}/edit`}
-                              className="inline-flex items-center justify-center text-ink-3 hover:text-ink p-1.5 rounded-md hover:bg-paper-2"
-                            >
-                              <MoreHorizontal size={15} />
-                            </Link>
+                            <div className="inline-flex items-center gap-1">
+                              <Link
+                                href={`/organizer/events/${e.id}/live`}
+                                className="inline-flex items-center justify-center text-ink-3 hover:text-navy p-1.5 rounded-md hover:bg-navy/5"
+                                title="Live dashboard"
+                              >
+                                <Activity size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/attendees`}
+                                className="inline-flex items-center justify-center text-ink-3 hover:text-navy p-1.5 rounded-md hover:bg-navy/5"
+                                title="Attendees"
+                              >
+                                <Users size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/promos`}
+                                className="inline-flex items-center justify-center text-ink-3 hover:text-navy p-1.5 rounded-md hover:bg-navy/5"
+                                title="Promo codes"
+                              >
+                                <Tag size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/email`}
+                                className="inline-flex items-center justify-center text-ink-3 hover:text-navy p-1.5 rounded-md hover:bg-navy/5"
+                                title="Email attendees"
+                              >
+                                <Mail size={14} />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -604,6 +665,9 @@ export default async function OrganizerPage() {
             {[
               { title: "Set up payouts", body: "Add EcoCash or bank to receive payouts.",   href: "/payouts" },
               { title: "Browse vendors", body: "Find catering, sound, security and more.",  href: "/vendors" },
+              { title: "Live dashboard", body: "Real-time check-in tracking and entry stats.", href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/live` : "#" },
+              { title: "Promo codes", body: "Create discount codes to boost ticket sales.",  href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/promos` : "#" },
+              { title: "Attendee list", body: "View and export your full attendee roster.",  href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/attendees` : "#" },
               { title: "Read the guide", body: "Selling tips for first-time organizers.",    href: "/help" },
             ].map(({ title, body, href }) => (
               <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 tp-lift">

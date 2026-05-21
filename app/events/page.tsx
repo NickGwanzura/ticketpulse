@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Search } from "lucide-react"
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
-import { and, asc, eq, ilike, inArray, or } from "drizzle-orm"
+import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm"
 
 const CATEGORIES = ["All", "Concerts", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
@@ -54,16 +54,27 @@ export default async function EventsPage({
 
   // Fetch lowest tier price per event in one query
   const eventIds = rows.map((r) => r.id)
-  const priceRows = eventIds.length
-    ? await db
-        .select({
-          eventId: ticketTiers.eventId,
-          price: ticketTiers.price,
-          currency: ticketTiers.currency,
-        })
-        .from(ticketTiers)
-        .where(inArray(ticketTiers.eventId, eventIds))
-    : []
+  const [priceRows, tierAggRows] = eventIds.length
+    ? await Promise.all([
+        db
+          .select({
+            eventId: ticketTiers.eventId,
+            price: ticketTiers.price,
+            currency: ticketTiers.currency,
+          })
+          .from(ticketTiers)
+          .where(inArray(ticketTiers.eventId, eventIds)),
+        db
+          .select({
+            eventId: ticketTiers.eventId,
+            totalSold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
+            totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
+          })
+          .from(ticketTiers)
+          .where(inArray(ticketTiers.eventId, eventIds))
+          .groupBy(ticketTiers.eventId),
+      ])
+    : [[], []]
 
   const lowestByEvent = new Map<string, { price: number; currency: string }>()
   for (const t of priceRows) {
@@ -73,8 +84,14 @@ export default async function EventsPage({
     if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
   }
 
+  const aggByEvent = new Map<string, { sold: number; total: number }>()
+  for (const a of tierAggRows) {
+    aggByEvent.set(a.eventId, { sold: Number(a.totalSold), total: Number(a.totalCapacity) })
+  }
+
   const eventCards = rows.map((r) => {
     const low = lowestByEvent.get(r.id)
+    const agg = aggByEvent.get(r.id)
     return {
       id: r.id,
       slug: r.slug,
@@ -88,6 +105,8 @@ export default async function EventsPage({
       lowestPrice: low?.price ?? null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",
+      soldQuantity: agg?.sold ?? 0,
+      totalQuantity: agg?.total ?? 0,
     }
   })
 

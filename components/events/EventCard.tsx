@@ -15,6 +15,8 @@ interface EventCardProps {
   lowestPrice?: number | null
   currency?: string
   status?: string
+  soldQuantity?: number
+  totalQuantity?: number
 }
 
 interface CategoryVisual {
@@ -101,16 +103,19 @@ const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
 }
 
 function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" } | null {
-  const now = Date.now()
-  const ms = date.getTime() - now
-  if (ms < 0) return null
-  const days = Math.round(ms / 86_400_000)
-  if (days === 0) return { label: "Today", kind: "soon" }
-  if (days === 1) return { label: "Tomorrow", kind: "soon" }
-  if (days <= 7)  return { label: `In ${days} days`, kind: "soon" }
-  if (days <= 30) return { label: `In ${days} days`, kind: "near" }
-  if (days <= 90) return { label: `In ${Math.round(days / 7)} weeks`, kind: "far" }
-  return { label: `In ${Math.round(days / 30)} months`, kind: "far" }
+  const now = new Date()
+  const event = new Date(date)
+  // Compare calendar days to avoid rounding errors
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const eventDay = new Date(event.getFullYear(), event.getMonth(), event.getDate())
+  const diffDays = Math.round((eventDay.getTime() - today.getTime()) / 86_400_000)
+  if (diffDays < 0) return null
+  if (diffDays === 0) return { label: "Today", kind: "soon" }
+  if (diffDays === 1) return { label: "Tomorrow", kind: "soon" }
+  if (diffDays <= 7)  return { label: `In ${diffDays} days`, kind: "soon" }
+  if (diffDays <= 30) return { label: `In ${diffDays} days`, kind: "near" }
+  if (diffDays <= 90) return { label: `In ${Math.round(diffDays / 7)} weeks`, kind: "far" }
+  return { label: `In ${Math.round(diffDays / 30)} months`, kind: "far" }
 }
 
 function pseudoStat(seed: string) {
@@ -124,7 +129,8 @@ function pseudoStat(seed: string) {
 
 export default function EventCard({
   slug, title, category, venue, city, startsAt,
-  featured, lowestPrice, currency = "USD", status,
+  coverImage, featured, lowestPrice, currency = "USD", status,
+  soldQuantity, totalQuantity,
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
     gradient: "from-slate-100 to-slate-50",
@@ -136,8 +142,9 @@ export default function EventCard({
 
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
-  const stats = pseudoStat(slug)
-  const pct = Math.min(100, Math.round((stats.going / stats.capacity) * 100))
+  const going = soldQuantity ?? 0
+  const capacity = totalQuantity ?? 0
+  const pct = capacity > 0 ? Math.min(100, Math.round((going / capacity) * 100)) : 0
   const soldOut = status === "sold_out" || pct >= 100
 
   return (
@@ -146,25 +153,46 @@ export default function EventCard({
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-line-2 hover:shadow-[0_24px_60px_-20px_rgba(10,37,64,0.22)]"
     >
       {/* Category header */}
-      <div className={`relative h-44 bg-gradient-to-br ${visual.gradient} overflow-hidden`}>
-        {/* Decorative pattern */}
-        {visual.pattern}
+      <div className={`relative h-44 overflow-hidden ${coverImage ? "bg-navy" : `bg-gradient-to-br ${visual.gradient}`}`}>
+        {coverImage ? (
+          <>
+            {/* Cover image */}
+            <img
+              src={coverImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            {/* Dark overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/10" />
+            {/* Hover shine */}
+            <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            {/* Category label */}
+            <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[9.5px] font-semibold tracking-wide px-2.5 py-1 rounded-full ring-1 ring-white/20`}>
+              {visual.emoji} {category}
+            </span>
+          </>
+        ) : (
+          <>
+            {/* Decorative pattern */}
+            {visual.pattern}
 
-        {/* Light wash */}
-        <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_25%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
+            {/* Light wash */}
+            <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_25%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
 
-        {/* Soft accent orb */}
-        <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/40 blur-2xl pointer-events-none" />
+            {/* Soft accent orb */}
+            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/40 blur-2xl pointer-events-none" />
 
-        {/* Hover shine */}
-        <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            {/* Hover shine */}
+            <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-        {/* Emoji */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[60px] leading-none drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
-            {visual.emoji}
-          </span>
-        </div>
+            {/* Emoji */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[60px] leading-none drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+                {visual.emoji}
+              </span>
+            </div>
+          </>
+        )}
 
         {/* Top-left: status */}
         {featured && !soldOut && (
@@ -198,7 +226,7 @@ export default function EventCard({
         )}
 
         {/* Bottom strip, date band */}
-        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-paper/40 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
       </div>
 
       {/* Body */}
@@ -221,18 +249,13 @@ export default function EventCard({
         </div>
 
         {/* Capacity / going strip */}
-        {!soldOut && status === "published" && (
+        {!soldOut && status === "published" && capacity > 0 && (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1.5">
               <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
                 <Users size={11} className="text-ink-3" />
-                <span><span className="font-semibold text-ink">{stats.going.toLocaleString()}</span> going</span>
+                <span><span className="font-semibold text-ink">{going.toLocaleString()}</span> going</span>
               </span>
-              {stats.trending && (
-                <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-rose-700">
-                  <Flame size={10} /> Trending
-                </span>
-              )}
             </div>
             <div className="h-1 bg-paper-2 rounded-full overflow-hidden ring-1 ring-line">
               <div

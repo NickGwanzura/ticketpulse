@@ -27,6 +27,27 @@ export default function PageHeader({
   return (
     <div className={cn("relative overflow-hidden border-b border-line", className)}>
       <div className="absolute inset-0 -z-10 tp-header-bg" aria-hidden />
+      {/* Subtle animated accent arc in the top-right */}
+      <svg
+        className="absolute -top-6 -right-6 -z-10 w-36 h-36 opacity-30 hidden md:block"
+        viewBox="0 0 100 100"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id="headerArc" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#0570DE" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#0570DE" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M10 80 Q 30 25, 80 10"
+          fill="none"
+          stroke="url(#headerArc)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeDasharray="2 4"
+        />
+      </svg>
       <div
         className={cn(
           WIDTHS[width],

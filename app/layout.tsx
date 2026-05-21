@@ -9,6 +9,7 @@ import CookiesNotice from "@/components/CookiesNotice"
 import PwaRegister from "@/components/PwaRegister"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
+import { clashDisplay, generalSans } from "@/lib/fonts"
 
 const NAV_CATEGORY_EMOJI: Record<string, string> = {
   concert: "🎵",
@@ -57,8 +58,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en">
-      <body className="font-sans bg-paper text-ink antialiased">
+    <html lang="en" className={`${clashDisplay.variable} ${generalSans.variable}`}>
+      <body className="font-body bg-paper text-ink antialiased">
         <Providers>
           {!bare && <TopBar />}
           {!bare && <Navbar featured={featured} />}

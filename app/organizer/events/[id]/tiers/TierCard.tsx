@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Pencil, X, Trash2, Ticket } from "lucide-react"
+import { Pencil, X, Trash2, Ticket, Eye } from "lucide-react"
 
 import TierForm from "./TierForm"
 import { deleteTierAction } from "./actions"
 import { formatCurrency } from "@/lib/utils"
+import SampleTicket from "@/components/SampleTicket"
 
 type Tier = {
   id: string
@@ -31,8 +32,17 @@ function formatWindow(start: Date | null, end: Date | null): string | null {
   return `Until ${fmt(end!)}`
 }
 
-export default function TierCard({ eventId, tier }: { eventId: string; tier: Tier }) {
+export default function TierCard({
+  eventId,
+  eventTitle,
+  tier,
+}: {
+  eventId: string
+  eventTitle: string
+  tier: Tier
+}) {
   const [editing, setEditing] = useState(false)
+  const [showingSample, setShowingSample] = useState(false)
   const price = Number.parseFloat(tier.price) || 0
   const sold = tier.soldQuantity ?? 0
   const total = tier.totalQuantity
@@ -65,7 +75,7 @@ export default function TierCard({ eventId, tier }: { eventId: string; tier: Tie
             <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
           </div>
           <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
-            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold ·{" "}
+            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
             <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
           </p>
         </div>
@@ -83,6 +93,14 @@ export default function TierCard({ eventId, tier }: { eventId: string; tier: Tie
             className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
           >
             {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowingSample((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-blue-200 hover:text-blue-700"
+          >
+            {showingSample ? <><X size={12} /> Close</> : <><Eye size={12} /> Test ticket</>}
           </button>
 
           <form
@@ -128,6 +146,21 @@ export default function TierCard({ eventId, tier }: { eventId: string; tier: Tie
             onDone={() => setEditing(false)}
           />
         </div>
+      )}
+
+      {showingSample && (
+        <SampleTicket
+          eventId={eventId}
+          eventTitle={eventTitle}
+          tier={{
+            id: tier.id,
+            name: tier.name,
+            description: tier.description,
+            price: tier.price,
+            currency: tier.currency,
+          }}
+          onClose={() => setShowingSample(false)}
+        />
       )}
     </div>
   )

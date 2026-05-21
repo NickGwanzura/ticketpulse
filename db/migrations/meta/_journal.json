@@ -29,6 +29,27 @@
       "when": 1779329425614,
       "tag": "0003_nebulous_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779340304922,
+      "tag": "0004_abandoned_shotgun",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779385488538,
+      "tag": "0005_organiser_collaboration",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779385607330,
+      "tag": "0006_add_cancelled_status",
+      "breakpoints": true
     }
   ]
 }

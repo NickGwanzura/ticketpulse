@@ -1,12 +1,14 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import jsQR from "jsqr"
 import Link from "next/link"
 import {
   ScanLine, Camera, CameraOff, CheckCircle2, AlertTriangle, Ticket,
-  RotateCcw, ArrowLeft, ShieldCheck, Wifi, WifiOff, Trash2,
+  RotateCcw, ArrowLeft, ShieldCheck, Wifi, WifiOff, Trash2, User,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import { useCart } from "@/lib/cart-context"
+import { markTicketScannedAction, type ScanResult } from "./actions"
 
 const CHECKINS_KEY = "tp_checkins"
 
@@ -19,6 +21,8 @@ interface CheckinRecord {
   eventTitle?: string
   tierName?: string
   holder?: string
+  isStaffTicket?: boolean
+  staffRole?: string
 }
 
 interface BarcodeDetectorLike {
@@ -94,7 +98,7 @@ export default function OrganizerScanPage() {
     return { valid, dupes, unknown, total: recent.length }
   }, [recent])
 
-  const recordCheckin = useCallback((rawCode: string) => {
+  const recordCheckin = useCallback(async (rawCode: string) => {
     const code = rawCode.trim()
     if (!code) return
     const now = Date.now()
@@ -102,22 +106,49 @@ export default function OrganizerScanPage() {
     if (last && last.code === code && now - last.at < 1500) return
     lastSeenRef.current = { code, at: now }
 
-    const parsed = parseTicketCode(code)
     let status: CheckinStatus = "unknown"
     let eventTitle: string | undefined
     let tierName: string | undefined
     let holder: string | undefined
+    let isStaffTicket: boolean | undefined
+    let staffRole: string | undefined
 
-    if (parsed) {
-      const order = ready ? getOrder(parsed.orderId) : null
-      if (order) {
-        const ticket = order.items.find((it) => it.kind === "ticket" && it.key === parsed.lineKey)
-        if (ticket && ticket.kind === "ticket" && parsed.idx < ticket.qty) {
-          eventTitle = ticket.eventTitle
-          tierName = ticket.tierName
-          holder = order.contact.name || order.contact.email
-          const dup = recentRef.current.find((r) => r.code === code && r.status === "valid")
-          status = dup ? "duplicate" : "valid"
+    // Test ticket codes (SampleTicket generates `TEST-{tierId.slice(-6)}`)
+    if (/^TEST-/i.test(code)) {
+      const dup = recentRef.current.find((r) => r.code === code && r.status === "valid")
+      status = dup ? "duplicate" : "valid"
+      eventTitle = "🧪 Sample ticket"
+      tierName = "Test QR code — not valid for entry"
+    } else {
+      const parsed = parseTicketCode(code)
+      if (parsed) {
+        const order = ready ? getOrder(parsed.orderId) : null
+        if (order) {
+          const ticket = order.items.find((it) => it.kind === "ticket" && it.key === parsed.lineKey)
+          if (ticket && ticket.kind === "ticket" && parsed.idx < ticket.qty) {
+            eventTitle = ticket.eventTitle
+            tierName = ticket.tierName
+            holder = order.contact.name || order.contact.email
+            const dup = recentRef.current.find((r) => r.code === code && r.status === "valid")
+            status = dup ? "duplicate" : "valid"
+          }
+        }
+      }
+
+      // Fallback to server lookup for codes not matched locally (e.g. staff tickets)
+      if (status === "unknown" && navigator.onLine) {
+        try {
+          const result: ScanResult = await markTicketScannedAction(code)
+          if (result.ok) {
+            status = result.status === "duplicate" ? "duplicate" : "valid"
+            eventTitle = result.ticket?.eventTitle
+            tierName = result.ticket?.tierName
+            holder = result.ticket?.holder
+            isStaffTicket = result.ticket?.isStaffTicket
+            staffRole = result.ticket?.staffRole
+          }
+        } catch {
+          // Server lookup failed — keep as "unknown"
         }
       }
     }
@@ -129,6 +160,8 @@ export default function OrganizerScanPage() {
       eventTitle,
       tierName,
       holder,
+      isStaffTicket,
+      staffRole,
     }
     setLatest(rec)
     setRecent((prev) => {
@@ -154,11 +187,12 @@ export default function OrganizerScanPage() {
 
   const startCamera = useCallback(async () => {
     if (typeof window === "undefined") return
-    if (!window.BarcodeDetector) {
-      setCameraState("unsupported")
-      return
+    const hasDetector = !!window.BarcodeDetector
+    if (!hasDetector) {
+      setCameraState("starting")
+    } else {
+      setCameraState("starting")
     }
-    setCameraState("starting")
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -169,19 +203,40 @@ export default function OrganizerScanPage() {
         videoRef.current.srcObject = stream
         await videoRef.current.play().catch(() => {})
       }
-      detectorRef.current = new window.BarcodeDetector({ formats: ["qr_code"] })
+
+      if (hasDetector) {
+        const BarcodeDetectorCtor = window.BarcodeDetector!
+        detectorRef.current = new BarcodeDetectorCtor({ formats: ["qr_code"] })
+      }
+
       setCameraState("running")
+
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
 
       const tick = async () => {
         const video = videoRef.current
-        const detector = detectorRef.current
-        if (!video || !detector) return
-        if (video.readyState >= 2) {
+        if (!video || video.readyState < 2) {
+          rafRef.current = requestAnimationFrame(tick)
+          return
+        }
+
+        if (hasDetector && detectorRef.current) {
+          // Native BarcodeDetector path
           try {
-            const codes = await detector.detect(video)
+            const codes = await detectorRef.current.detect(video)
             if (codes.length) recordCheckin(codes[0].rawValue)
           } catch {}
+        } else if (ctx) {
+          // jsQR fallback path — capture video frame to canvas and decode
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          ctx.drawImage(video, 0, 0)
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          const code = jsQR(imageData.data, imageData.width, imageData.height)
+          if (code) recordCheckin(code.data)
         }
+
         rafRef.current = requestAnimationFrame(tick)
       }
       rafRef.current = requestAnimationFrame(tick)
@@ -206,7 +261,7 @@ export default function OrganizerScanPage() {
     setLatest(null)
   }
 
-  const cameraSupported = typeof window !== "undefined" && !!window.BarcodeDetector
+  const cameraSupported = typeof window !== "undefined" && (!!window.BarcodeDetector || typeof jsQR !== "undefined")
 
   return (
     <div className="tp-fade-up">
@@ -316,8 +371,8 @@ export default function OrganizerScanPage() {
               {cameraState === "unsupported" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white/90 gap-2 px-6 text-center">
                   <AlertTriangle size={26} />
-                  <p className="text-[14px] font-medium">QR scanner not supported in this browser</p>
-                  <p className="text-[12px] text-white/70 max-w-sm">Use Chrome on Android or Safari 17+ on iOS, or enter the code manually below.</p>
+                  <p className="text-[14px] font-medium">Camera not available</p>
+                  <p className="text-[12px] text-white/70 max-w-sm">Grant camera permission or use the manual entry field below.</p>
                 </div>
               )}
             </div>
@@ -343,34 +398,68 @@ export default function OrganizerScanPage() {
           {/* Latest + log */}
           <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
             {/* Latest result */}
-            <div className={`rounded-2xl border p-5 ${
+            <div className={`tp-slide-up rounded-2xl border p-5 ${
               !latest ? "border-line bg-paper" :
-              latest.status === "valid" ? "border-emerald-200 bg-emerald-50/60" :
-              latest.status === "duplicate" ? "border-amber-200 bg-amber-50/60" :
-              "border-rose-200 bg-rose-50/60"
+              latest.status === "valid" ? "border-emerald-200 bg-emerald-50/60 ring-1 ring-emerald-200/40" :
+              latest.status === "duplicate" ? "border-amber-200 bg-amber-50/60 ring-1 ring-amber-200/40" :
+              "border-rose-200 bg-rose-50/60 ring-1 ring-rose-200/40"
             }`}>
               {!latest ? (
-                <>
+                <div className="tp-fade-up">
                   <p className="text-[13px] font-semibold text-ink mb-1">Awaiting first scan</p>
                   <p className="text-[12.5px] text-ink-2">Hold a QR code in front of the camera, or enter a code manually.</p>
-                </>
+                </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 mb-2">
-                    {latest.status === "valid" ? (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase text-emerald-700"><CheckCircle2 size={13} /> Admit one</span>
-                    ) : latest.status === "duplicate" ? (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase text-amber-700"><RotateCcw size={13} /> Already scanned</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase text-rose-700"><AlertTriangle size={13} /> Not recognized</span>
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ring-1 ${
+                      latest.status === "valid"
+                        ? "bg-emerald-100 text-emerald-700 ring-emerald-300/50"
+                        : latest.status === "duplicate"
+                        ? "bg-amber-100 text-amber-700 ring-amber-300/50"
+                        : "bg-rose-100 text-rose-700 ring-rose-300/50"
+                    }`}>
+                      {latest.status === "valid" ? <CheckCircle2 size={11} /> : latest.status === "duplicate" ? <RotateCcw size={11} /> : <AlertTriangle size={11} />}
+                      {latest.status === "valid" ? "Admit one" : latest.status === "duplicate" ? "Already scanned" : "Not recognized"}
+                    </span>
+                    {latest.isStaffTicket && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[10.5px] font-semibold text-purple-700">
+                        <User size={11} /> Staff
+                      </span>
                     )}
                   </div>
-                  <p className="text-[16px] font-semibold tracking-tight text-ink line-clamp-2">
-                    {latest.eventTitle ?? "Unknown ticket"}
-                  </p>
-                  {latest.tierName && <p className="text-[12.5px] text-ink-2 mt-0.5">{latest.tierName}</p>}
-                  {latest.holder && <p className="text-[12.5px] text-ink-2 mt-0.5">Holder: <span className="font-medium text-ink">{latest.holder}</span></p>}
-                  <p className="mt-3 text-[10.5px] font-mono text-ink-3 tabular-nums break-all">{latest.code}</p>
+
+                  {latest.isStaffTicket ? (
+                    <>
+                      <p className="text-[16px] font-semibold tracking-tight text-ink line-clamp-2">
+                        {latest.eventTitle ?? "Unknown event"}
+                      </p>
+                      <div className="mt-2 flex items-center gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-3.5 py-2.5 transition-all">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                          <User size={16} />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-semibold text-ink">{latest.holder ?? "Staff member"}</p>
+                          <p className="text-[12px] text-ink-2 capitalize">{latest.staffRole?.replace(/_/g, " ") ?? "Staff"}</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[16px] font-semibold tracking-tight text-ink line-clamp-2">
+                        {latest.eventTitle ?? "Unknown ticket"}
+                      </p>
+                      {latest.tierName && <p className="text-[12.5px] text-ink-2 mt-0.5">{latest.tierName}</p>}
+                      {latest.holder && <p className="text-[12.5px] text-ink-2 mt-0.5">Holder: <span className="font-medium text-ink">{latest.holder}</span></p>}
+                    </>
+                  )}
+
+                  {/* Subtle progress bar — visual indicator of freshness */}
+                  <span className="mt-3 block h-px w-full bg-line overflow-hidden rounded-full" aria-hidden>
+                    <span className="block h-px bg-blue/40 rounded-full" style={{ animation: "tp-progress 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both" }} />
+                  </span>
+
+                  <p className="mt-2 text-[10.5px] font-mono text-ink-3 tabular-nums break-all">{latest.code}</p>
                 </>
               )}
             </div>
@@ -400,8 +489,13 @@ export default function OrganizerScanPage() {
                           {r.status === "valid" ? "✓" : r.status === "duplicate" ? "↻" : "!"}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-ink truncate">
+                          <p className="text-[13px] font-medium text-ink truncate flex items-center gap-1.5">
                             {r.eventTitle ?? "Unknown ticket"}
+                            {r.isStaffTicket && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[9px] font-semibold text-purple-700 shrink-0">
+                                Staff
+                              </span>
+                            )}
                           </p>
                           <p className="text-[10.5px] font-mono text-ink-3 truncate">{r.code}</p>
                         </div>

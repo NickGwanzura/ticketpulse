@@ -10,6 +10,7 @@ import {
   json,
   primaryKey,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 
@@ -29,6 +30,7 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
   "sold",
   "used",
   "refunded",
+  "cancelled",
 ])
 
 export const orderStatusEnum = pgEnum("order_status", [
@@ -57,11 +59,33 @@ export const vendorCategoryEnum = pgEnum("vendor_category", [
   "other",
 ])
 
+export const promoCodeTypeEnum = pgEnum("promo_code_type", [
+  "percent",
+  "fixed",
+])
+
 export const userRoleEnum = pgEnum("user_role", [
   "attendee",
   "organizer",
   "vendor",
   "admin",
+])
+
+export const inviteStatusEnum = pgEnum("invite_status", [
+  "pending",
+  "accepted",
+  "declined",
+  "expired",
+])
+
+export const staffRoleEnum = pgEnum("staff_role", [
+  "security",
+  "usher",
+  "dj_sound",
+  "bar_staff",
+  "vip_host",
+  "media",
+  "other",
 ])
 
 // ─── Auth.js required tables ─────────────────────────────────────────────────
@@ -174,11 +198,35 @@ export const tickets = pgTable("tickets", {
   status: ticketStatusEnum("status").default("available"),
   qrCode: text("qr_code").unique(),
   scannedAt: timestamp("scanned_at"),
+  // Staff ticket fields
+  isStaffTicket: boolean("is_staff_ticket").default(false),
+  staffRole: staffRoleEnum("staff_role"),
+  staffName: text("staff_name"),
+  staffPhone: text("staff_phone"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("tickets_event_id_idx").on(table.eventId),
   index("tickets_user_id_idx").on(table.userId),
   index("tickets_order_id_idx").on(table.orderId),
+  index("tickets_staff_event_idx").on(table.eventId, table.isStaffTicket),
+])
+
+// ─── Promo codes ──────────────────────────────────────────────────────────────
+
+export const promoCodes = pgTable("promo_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  type: promoCodeTypeEnum("type").notNull(),
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  maxUses: integer("max_uses").default(0),
+  usedCount: integer("used_count").default(0),
+  minPurchaseAmount: decimal("min_purchase_amount", { precision: 10, scale: 2 }).default("0"),
+  expiresAt: timestamp("expires_at"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("promo_codes_code_event_idx").on(table.code, table.eventId),
 ])
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
@@ -382,23 +430,70 @@ export const vendorListings = pgTable("vendor_listings", {
   index("vendor_listings_vendor_id_idx").on(table.vendorId),
 ])
 
+// ─── Collaborators: Event Organisers ──────────────────────────────────────────
+
+export const eventOrganisers = pgTable("event_organisers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  invitedBy: text("invited_by").notNull().references(() => users.id),
+  role: text("role").default("editor"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("event_organisers_event_user_idx").on(table.eventId, table.userId),
+  index("event_organisers_event_id_idx").on(table.eventId),
+  index("event_organisers_user_id_idx").on(table.userId),
+])
+
+export const organiserInvites = pgTable("organiser_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  invitedBy: text("invited_by").notNull().references(() => users.id),
+  email: text("email").notNull(),
+  role: text("role").default("editor"),
+  token: text("token").notNull().unique(),
+  status: inviteStatusEnum("status").default("pending"),
+  acceptedAt: timestamp("accepted_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("organiser_invites_event_id_idx").on(table.eventId),
+  index("organiser_invites_token_idx").on(table.token),
+  uniqueIndex("organiser_invites_event_email_idx").on(table.eventId, table.email),
+])
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
   organizer: one(users, { fields: [events.organizerId], references: [users.id] }),
   ticketTiers: many(ticketTiers),
+  promoCodes: many(promoCodes),
   tickets: many(tickets),
   orders: many(orders),
   merch: many(merchItems),
   galleries: many(eventGalleries),
   shuttleRoutes: many(shuttleRoutes),
   vendorListings: many(vendorListings),
+  eventOrganisers: many(eventOrganisers),
+  organiserInvites: many(organiserInvites),
 }))
 
 export const usersRelations = relations(users, ({ many }) => ({
   orders: many(orders),
   organizedEvents: many(events),
   transportBookings: many(transportBookings),
+  invitedOrganisers: many(eventOrganisers),
+}))
+
+export const eventOrganisersRelations = relations(eventOrganisers, ({ one }) => ({
+  event: one(events, { fields: [eventOrganisers.eventId], references: [events.id] }),
+  user: one(users, { fields: [eventOrganisers.userId], references: [users.id] }),
+  inviter: one(users, { fields: [eventOrganisers.invitedBy], references: [users.id] }),
+}))
+
+export const organiserInvitesRelations = relations(organiserInvites, ({ one }) => ({
+  event: one(events, { fields: [organiserInvites.eventId], references: [events.id] }),
+  inviter: one(users, { fields: [organiserInvites.invitedBy], references: [users.id] }),
 }))
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -409,6 +504,12 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
 
 export const ticketTiersRelations = relations(ticketTiers, ({ one }) => ({
   event: one(events, { fields: [ticketTiers.eventId], references: [events.id] }),
+}))
+
+export const ticketsRelations = relations(tickets, ({ one }) => ({
+  event: one(events, { fields: [tickets.eventId], references: [events.id] }),
+  tier: one(ticketTiers, { fields: [tickets.tierId], references: [ticketTiers.id] }),
+  order: one(orders, { fields: [tickets.orderId], references: [orders.id] }),
 }))
 
 export const shuttleRoutesRelations = relations(shuttleRoutes, ({ one, many }) => ({

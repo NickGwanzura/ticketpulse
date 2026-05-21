@@ -164,9 +164,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="relative h-72 md:h-80 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center">
-        <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
-        <span className="text-8xl relative">{emoji}</span>
+      <div className={`relative h-72 md:h-80 ${row.coverImage ? "" : "bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50"} flex items-center justify-center overflow-hidden`}>
+        {row.coverImage ? (
+          <>
+            <img
+              src={row.coverImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
+          </>
+        ) : (
+          <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
+        )}
+        {!row.coverImage && <span className="text-8xl relative">{emoji}</span>}
         <div className="absolute top-5 right-5 flex gap-2">
           <button
             type="button"

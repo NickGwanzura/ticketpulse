@@ -1,6 +1,7 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
 import { Check, User, CalendarCog, Store, Mail, Lock, ArrowRight } from "lucide-react"
+import PasswordInput from "@/components/PasswordInput"
 
 const ROLES = [
   { value: "attendee",  label: "Attendee",  body: "Buy tickets, book shuttles, grab merch and photo packs.",   icon: User },
@@ -32,7 +33,7 @@ export default async function SignUpPage({
             TicketPulse
           </Link>
           <h1 className="mt-6 text-[24px] md:text-[28px] font-bold tracking-tight text-ink">Create your account</h1>
-          <p className="text-[14px] text-ink-2 mt-1.5">Free forever for attendees. Pay-as-you-sell for organizers.</p>
+          <p className="text-[14px] text-ink mt-1.5">Free forever for attendees. Pay-as-you-sell for organizers.</p>
         </div>
 
         <form
@@ -85,15 +86,15 @@ export default async function SignUpPage({
               redirectTo: role === "organizer" ? "/organizer" : role === "vendor" ? "/vendors/apply" : "/dashboard",
             })
           }}
-          className="rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04] space-y-5"
+          className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
         >
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-2.5">I&apos;m signing up as</p>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I'm signing up as</p>
             <div className="grid grid-cols-3 gap-2">
               {ROLES.map(({ value, label, icon: Icon }) => (
                 <label
                   key={value}
-                  className="relative cursor-pointer rounded-xl border border-line bg-paper p-3 text-center hover:border-line-2 transition-colors has-[:checked]:border-navy has-[:checked]:bg-blue-soft has-[:checked]:ring-1 has-[:checked]:ring-navy/15"
+                  className="relative cursor-pointer rounded-xl border border-line-2 bg-paper p-3 text-center hover:border-line-2 transition-colors has-[:checked]:border-navy has-[:checked]:bg-blue-soft has-[:checked]:ring-1 has-[:checked]:ring-navy/15"
                 >
                   <input
                     type="radio"
@@ -110,24 +111,24 @@ export default async function SignUpPage({
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Full name</label>
+            <label className="block text-[13px] font-medium text-ink mb-2">Full name</label>
             <div className="relative">
-              <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
+              <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-2" />
               <input
                 type="text"
                 name="name"
                 required
                 autoComplete="name"
                 placeholder="Tendai Moyo"
-                className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email address</label>
+            <label className="block text-[13px] font-medium text-ink mb-2">Email address</label>
             <div className="relative">
-              <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
+              <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-2" />
               <input
                 type="email"
                 name="email"
@@ -135,35 +136,27 @@ export default async function SignUpPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
-                className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Password</label>
-            <div className="relative">
-              <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
-              <input
-                type="password"
-                name="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                placeholder="At least 8 characters"
-                className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
-              />
-            </div>
+            <label className="block text-[13px] font-medium text-ink mb-2">Password</label>
+            <PasswordInput
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+            />
           </div>
 
           <button
             type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold text-sm py-3 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20"
+            className="w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-md shadow-navy/25"
           >
-            Create account <ArrowRight size={14} />
+            Create account <ArrowRight size={15} />
           </button>
 
-          <p className="text-[11.5px] text-ink-3 text-center leading-relaxed">
+          <p className="text-[12px] text-ink-2 text-center leading-relaxed">
             By continuing you agree to the{" "}
             <Link href="/legal/terms" className="text-navy font-semibold hover:underline">Terms</Link>{" "}
             and{" "}
@@ -172,9 +165,9 @@ export default async function SignUpPage({
         </form>
 
         <div className="my-5 flex items-center gap-3">
-          <div className="flex-1 h-px bg-line" />
-          <span className="text-[11px] font-medium text-ink-3 uppercase tracking-widest">or</span>
-          <div className="flex-1 h-px bg-line" />
+          <div className="flex-1 h-px bg-line-2" />
+          <span className="text-[11px] font-semibold text-ink-2 uppercase tracking-widest">or</span>
+          <div className="flex-1 h-px bg-line-2" />
         </div>
 
         <form
@@ -185,7 +178,7 @@ export default async function SignUpPage({
         >
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-3 border border-line bg-paper text-ink font-medium text-sm py-3 rounded-xl hover:bg-paper-2 hover:border-line-2 transition-colors"
+            className="w-full flex items-center justify-center gap-3 border border-line-2 bg-paper text-ink font-medium text-[14px] py-3.5 rounded-xl hover:bg-paper-2 hover:border-line-2 transition-colors"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -197,7 +190,7 @@ export default async function SignUpPage({
           </button>
         </form>
 
-        <p className="text-center text-xs text-ink-3 mt-6">
+        <p className="text-center text-[13px] text-ink-2 mt-6">
           Already have an account?{" "}
           <Link href="/auth/signin" className="font-semibold text-navy hover:underline">Sign in</Link>
         </p>

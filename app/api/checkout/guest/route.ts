@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { eq, inArray } from "drizzle-orm"
+import { eq, and, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, vendorListings, vendors } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes } from "@/db/schema"
 import { startOrderVerification } from "@/lib/order-verification"
 import { PESEPAY_METHODS, getPesepay, pesepayUrls } from "@/lib/pesepay"
 import { checkoutLimiter } from "@/lib/rate-limit"
@@ -23,12 +23,13 @@ const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
   phone: z.string().min(3).max(40).trim(),
-  paymentMethod: z.enum(["ecocash", "card", "paynow", "usd", "omari"]),
+  paymentMethod: z.enum(["ecocash", "card", "omari"]),
   eventSlug: z.string().min(1).max(160),
   items: z
     .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))
     .min(1)
     .max(30),
+  promoCode: z.string().max(40).optional(),
 })
 
 export async function POST(req: Request) {
@@ -127,6 +128,40 @@ export async function POST(req: Request) {
     total += v.price * item.quantity
   }
 
+  // ── Apply promo code (if provided) ───────────────────────────────────
+  let appliedPromo: { code: string; type: string; value: string; discount: number } | null = null
+  if (parsed.promoCode) {
+    const code = parsed.promoCode.toUpperCase()
+    const [promo] = await db
+      .select()
+      .from(promoCodes)
+      .where(and(eq(promoCodes.code, code), eq(promoCodes.eventId, event.id)))
+      .limit(1)
+
+    if (promo && promo.active) {
+      const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date()
+      const isMaxed = (promo.maxUses ?? 0) > 0 && (promo.usedCount ?? 0) >= (promo.maxUses ?? 0)
+      const meetsMin = !promo.minPurchaseAmount || Number(promo.minPurchaseAmount) <= 0 || total >= Number(promo.minPurchaseAmount)
+
+      if (!isExpired && !isMaxed && meetsMin) {
+        let discount = 0
+        if (promo.type === "percent") {
+          discount = Math.round(total * (Number(promo.value) / 100) * 100) / 100
+        } else {
+          discount = Math.min(Number(promo.value), total)
+        }
+        total = Math.max(0, Math.round((total - discount) * 100) / 100)
+        appliedPromo = { code: promo.code, type: promo.type, value: promo.value.toString(), discount }
+
+        // Increment used count
+        await db
+          .update(promoCodes)
+          .set({ usedCount: sql<number>`${promoCodes.usedCount} + 1` })
+          .where(eq(promoCodes.id, promo.id))
+      }
+    }
+  }
+
   const method = PESEPAY_METHODS[parsed.paymentMethod]
   if (!method) {
     return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 })
@@ -146,6 +181,7 @@ export async function POST(req: Request) {
       totalAmount: total.toFixed(2),
       currency,
       paymentMethod: parsed.paymentMethod,
+      metadata: appliedPromo ? { promo: appliedPromo } : undefined,
       guestEmail: parsed.email,
       guestName: parsed.name,
       guestPhone: parsed.phone,

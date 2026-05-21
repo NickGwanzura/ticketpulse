@@ -29,6 +29,7 @@ interface HeroTicket {
   gradient: string
   accent: string
   badge: { label: string; color: string }
+  coverImage?: string | null
   rotate?: string
   placement?: string
   z?: string
@@ -69,6 +70,7 @@ function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
       emoji: visual.emoji,
       gradient: visual.gradient,
       accent: visual.accent,
+      coverImage: event.coverImage,
       badge: event.status === "sold_out"
         ? { label: "SOLD OUT", color: "bg-rose-600 text-white" }
         : { label: "ON SALE", color: "bg-emerald-600 text-white" },
@@ -111,9 +113,20 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: num
       style={{ animationDelay: FADE_DELAY[index] ?? "0ms" }}
       className={`tp-fade-up relative lg:absolute ${ticket.placement ?? ""} ${ticket.rotate ?? ""} ${ticket.z ?? ""} w-full max-w-[280px] rounded-2xl border border-line bg-paper shadow-[0_24px_60px_-24px_rgba(10,37,64,0.25)] overflow-hidden transition-transform duration-500 hover:rotate-0 hover:scale-[1.02] hover:z-40`}
     >
-      <div className={`relative h-24 bg-gradient-to-br ${ticket.gradient} flex items-center justify-center`}>
-        <div className="absolute inset-0 [background:radial-gradient(400px_circle_at_30%_20%,rgba(255,255,255,0.65),transparent_60%)]" />
-        <span className="text-3xl relative">{ticket.emoji}</span>
+      <div className={`relative h-24 overflow-hidden ${ticket.coverImage ? "" : `bg-gradient-to-br ${ticket.gradient}`} flex items-center justify-center`}>
+        {ticket.coverImage ? (
+          <>
+            <img
+              src={ticket.coverImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+          </>
+        ) : (
+          <div className="absolute inset-0 [background:radial-gradient(400px_circle_at_30%_20%,rgba(255,255,255,0.65),transparent_60%)]" />
+        )}
+        {!ticket.coverImage && <span className="text-3xl relative">{ticket.emoji}</span>}
         <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 ${ticket.badge.color} text-[9.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full`}>
           {ticket.badge.label}
         </span>
@@ -383,12 +396,12 @@ export default async function Home() {
             <p className="mt-3 text-[15px] text-ink-2">The calendar is filling up fast. <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.</p>
           </div>
 
-          <div className={featuredEvents.length === 1 ? "max-w-md mx-auto" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6"}>
+          <div className={featuredEvents.length === 1 ? "max-w-md mx-auto" : "columns-1 sm:columns-2 lg:columns-3 gap-5 md:gap-6 space-y-5 md:space-y-6"}>
             {featuredEvents.map((e, i) => (
               <div
                 key={e.id}
                 style={{ animationDelay: `${i * 90}ms` }}
-                className="tp-fade-up"
+                className="tp-fade-up break-inside-avoid"
               >
                 <EventCard {...e} />
               </div>

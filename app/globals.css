@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Chirp", "TwitterChirp", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Font families — CSS variables set by next/font/local in layout.tsx */
+  --font-heading: "Clash Display", "system-ui", sans-serif;
+  --font-body: "General Sans", "system-ui", sans-serif;
+  --font-sans: var(--font-body);
 
   --color-paper: #ffffff;
   --color-paper-2: #f6f9fc;
@@ -50,14 +53,26 @@ body {
 /* Tap targets — buttons should never be smaller than 40px on touch screens. */
 @media (hover: none) and (pointer: coarse) {
   button, [role="button"], a.button {
-    min-height: 40px;
+    min-height: 44px;
+    min-width: 44px;
   }
+  /* Increase spacing between tappable items on mobile */
+  .gap-2 { gap: 0.625rem; }
+  .gap-3 { gap: 0.875rem; }
 }
 
-/* Better default focus ring for keyboard users. */
+/* Define scrollbar-width for consistent scrollbar sizing across browsers. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/* Better default focus ring for keyboard users — uses box-shadow for
+   rounded-corner-friendly glow instead of outline. This means the ring
+   follows the element's border-radius naturally. */
 :focus-visible {
-  outline: 2px solid var(--color-blue);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-blue), 0 0 0 4px rgba(5, 112, 222, 0.15);
   border-radius: 6px;
 }
 
@@ -68,8 +83,178 @@ button, a, input, select, textarea, [role="button"] {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Custom select arrow — replaces the native one with a clean chevron. */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  padding-right: 36px;
+}
+select:hover {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23425466' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* Disabled state pattern — subtle diagonal cross-hatch overlay to make
+   disabled controls visually distinct from enabled ones without relying
+   purely on opacity. */
+input:disabled, select:disabled, textarea:disabled, button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(10, 37, 64, 0.02) 4px,
+    rgba(10, 37, 64, 0.02) 8px
+  );
+}
+
 /* Number-tabular look on prices, counts, dates. */
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* ─── Typography scale utilities ─────────────────────────────────────────── */
+
+/* Hero title — Clash Display Bold */
+.tp-heading-hero {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 42px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+@media (min-width: 768px) {
+  .tp-heading-hero {
+    font-size: 64px;
+    line-height: 1.02;
+  }
+}
+
+/* Section heading — Clash Display Semibold */
+.tp-heading-section {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 768px) {
+  .tp-heading-section {
+    font-size: 32px;
+  }
+}
+
+/* Card / sub-section title — Clash Display Medium */
+.tp-heading-card {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+@media (min-width: 768px) {
+  .tp-heading-card {
+    font-size: 22px;
+  }
+}
+
+/* Modal / panel heading — Clash Display Medium */
+.tp-heading-panel {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+@media (min-width: 768px) {
+  .tp-heading-panel {
+    font-size: 20px;
+  }
+}
+
+/* Body text — General Sans Regular */
+.tp-body {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+@media (min-width: 768px) {
+  .tp-body {
+    font-size: 16px;
+  }
+}
+
+/* Small label / meta — General Sans Medium */
+.tp-label {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+/* Button text — General Sans Semibold with letter-spacing */
+.tp-button {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13.5px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+@media (min-width: 768px) {
+  .tp-button {
+    font-size: 14px;
+  }
+}
+
+/* Caption / footnote — General Sans Regular */
+.tp-caption {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+/* Dashboard stat value — General Sans Bold */
+.tp-stat {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 768px) {
+  .tp-stat {
+    font-size: 28px;
+  }
+}
+
+/* Monospace code — General Sans Medium (mono-esque spacing via tabular-nums) */
+.tp-mono {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Link text — General Sans Medium, underline on hover */
+.tp-link {
+  font-family: var(--font-body);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-navy) 25%, transparent);
+  text-underline-offset: 2.5px;
+  transition: text-decoration-color 150ms ease;
+}
+.tp-link:hover {
+  text-decoration-color: var(--color-navy);
+}
 
 /* Respect users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) {
@@ -144,16 +329,37 @@ html { scroll-padding-top: 5rem; }
   .tp-reveal { animation: tp-fade-up 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 }
 
-/* Lift-on-hover for cards. */
+/* Lift-on-hover for cards — premium version with subtle y-translation
+   and a multi-layered shadow that feels like the card is physically rising. */
 .tp-lift {
-  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1),
               border-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .tp-lift:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px -16px rgba(10, 37, 64, 0.18), 0 2px 6px -3px rgba(10, 37, 64, 0.06);
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 24px -16px rgba(10, 37, 64, 0.22),
+    0 4px 8px -4px rgba(10, 37, 64, 0.08),
+    0 0 0 1px var(--color-line-2);
   border-color: var(--color-line-2);
+}
+
+/* Active-press for cards and buttons — subtle inward push. */
+.tp-press:active {
+  transform: scale(0.99) translateY(0);
+  box-shadow: 0 2px 8px -6px rgba(10, 37, 64, 0.15);
+}
+
+/* Subtle blue-glow ring for focused or active interactive cards. */
+.tp-glow-ring {
+  transition: box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 200ms ease;
+}
+.tp-glow-ring:focus-visible,
+.tp-glow-ring:hover {
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 3px rgba(5, 112, 222, 0.12);
 }
 
 /* Animated progress fill — apply origin-left so transform: scaleX animates
@@ -163,16 +369,111 @@ html { scroll-padding-top: 5rem; }
   animation: tp-progress-fill 720ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-/* Shimmer skeleton background — applied to a div with paper-2 base. */
+/* Progress bar fill animation — width animate from 0 to target percentage. */
+@keyframes tp-progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* Shimmer skeleton background — applied to a div with paper-2 base.
+   Smoother gradient with a wider spread for a more premium shimmer. */
 .tp-skeleton {
   background-image: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(10, 37, 64, 0.05) 50%,
+    rgba(10, 37, 64, 0.04) 30%,
+    rgba(10, 37, 64, 0.07) 50%,
+    rgba(10, 37, 64, 0.04) 70%,
     transparent 100%
   );
-  background-size: 200% 100%;
-  animation: tp-shimmer 1.6s ease-in-out infinite;
+  background-size: 240% 100%;
+  animation: tp-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Soft pulse glow — for active indicators, live dots, scan feedback. */
+@keyframes tp-glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(5, 112, 222, 0.15); }
+  50%      { box-shadow: 0 0 14px 4px rgba(5, 112, 222, 0.25); }
+}
+.tp-glow-pulse {
+  animation: tp-glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* Premium card with subtle inner border accent and soft shadow. */
+.tp-card-accent {
+  position: relative;
+}
+.tp-card-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--color-blue);
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tp-card-accent:hover::before {
+  transform: scaleY(1);
+}
+
+/* Table row accent bar — left border highlight on row hover. */
+.tp-row-accent {
+  position: relative;
+}
+.tp-row-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.5px;
+  border-radius: 0 1.5px 1.5px 0;
+  background: var(--color-navy);
+  background-image: linear-gradient(180deg, var(--color-navy) 0%, var(--color-navy-600) 100%);
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tp-row-accent:hover::before {
+  transform: scaleY(1);
+}
+
+/* Smooth height transition for expanding/collapsing panels. */
+@supports (interpolate-size: allow-keywords) {
+  .tp-expand {
+    interpolate-size: allow-keywords;
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size 260ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 200ms ease;
+  }
+  .tp-expand.open {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+/* Scan success flash — for a full-screen white flash effect on QR detect. */
+@keyframes tp-flash {
+  0%   { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+.tp-scan-flash {
+  animation: tp-flash 180ms ease-out forwards;
+}
+
+/* Result card slide-in — used by scanner latest-result panel. */
+@keyframes tp-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tp-slide-up {
+  animation: tp-slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Standard subtle dashboard-header gradient — used as a -z-10 backdrop

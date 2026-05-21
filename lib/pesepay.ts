@@ -23,11 +23,6 @@ export const PESEPAY_METHODS: Record<string, PesepayMethod> = {
   omari:   { code: "PZW216", flow: "seamless", phoneField: "customerPhoneNumber" },
   // Card — redirect to PesePay's hosted page (avoids PCI scope here).
   card:    { code: null, flow: "redirect" },
-  // Paynow is not a PesePay method; treat as redirect for now (PesePay's
-  // hosted page lets the buyer pick any supported instrument).
-  paynow:  { code: null, flow: "redirect" },
-  // Pay-at-venue — never touches PesePay.
-  usd:     { code: null, flow: "offline" },
 }
 
 export function getPesepay(): Pesepay {

@@ -1,10 +1,10 @@
-import { Search, DollarSign, Receipt, RefreshCw, TrendingUp, Smartphone, CreditCard, Building2, Banknote, ShoppingCart } from "lucide-react"
+import { Search, DollarSign, Receipt, RefreshCw, TrendingUp, Smartphone, CreditCard, ShoppingCart } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 type Status = "paid" | "pending" | "refunded"
-type Method = "EcoCash" | "Card" | "Bank" | "USD cash"
+type Method = "EcoCash" | "Card"
 
 type Order = {
   id: string
@@ -28,8 +28,6 @@ const STATUS_STYLE: Record<Status, string> = {
 const METHOD_ICON: Record<Method, { Icon: typeof Smartphone; color: string }> = {
   "EcoCash":  { Icon: Smartphone, color: "text-emerald-700" },
   "Card":     { Icon: CreditCard, color: "text-blue" },
-  "Bank":     { Icon: Building2,  color: "text-sky-700" },
-  "USD cash": { Icon: Banknote,   color: "text-amber-700" },
 }
 
 const FILTER_PILLS = ["All", "Paid", "Pending", "Refunded"]

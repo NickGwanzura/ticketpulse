@@ -15,6 +15,8 @@ export interface FeaturedEvent {
   lowestPrice: number | null
   currency: string
   status: string
+  soldQuantity: number
+  totalQuantity: number
 }
 
 /**
@@ -48,14 +50,25 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
   if (rows.length === 0) return []
 
   const eventIds = rows.map((r) => r.id)
-  const priceRows = await db
-    .select({
-      eventId: ticketTiers.eventId,
-      price: ticketTiers.price,
-      currency: ticketTiers.currency,
-    })
-    .from(ticketTiers)
-    .where(inArray(ticketTiers.eventId, eventIds))
+  const [priceRows, tierAggRows] = await Promise.all([
+    db
+      .select({
+        eventId: ticketTiers.eventId,
+        price: ticketTiers.price,
+        currency: ticketTiers.currency,
+      })
+      .from(ticketTiers)
+      .where(inArray(ticketTiers.eventId, eventIds)),
+    db
+      .select({
+        eventId: ticketTiers.eventId,
+        totalSold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
+        totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
+      })
+      .from(ticketTiers)
+      .where(inArray(ticketTiers.eventId, eventIds))
+      .groupBy(ticketTiers.eventId),
+  ])
 
   const lowestByEvent = new Map<string, { price: number; currency: string }>()
   for (const t of priceRows) {
@@ -65,8 +78,14 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
     if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
   }
 
+  const aggByEvent = new Map<string, { sold: number; total: number }>()
+  for (const a of tierAggRows) {
+    aggByEvent.set(a.eventId, { sold: Number(a.totalSold), total: Number(a.totalCapacity) })
+  }
+
   return rows.map((r) => {
     const low = lowestByEvent.get(r.id)
+    const agg = aggByEvent.get(r.id)
     return {
       id: r.id,
       slug: r.slug,
@@ -80,6 +99,8 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       lowestPrice: low?.price ?? null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",
+      soldQuantity: agg?.sold ?? 0,
+      totalQuantity: agg?.total ?? 0,
     }
   })
 }

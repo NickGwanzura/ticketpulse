@@ -421,6 +421,69 @@ ${escape(message)}
   return { html, text: textLines.join("\n") }
 }
 
+// ─── Organiser invite ────────────────────────────────────────────────────
+
+export function organiserInviteEmail(opts: {
+  inviterName: string
+  eventTitle: string
+  inviteUrl: string
+  email: string
+  expiresInHours?: number
+}): { html: string; text: string } {
+  const { inviterName, eventTitle, inviteUrl, email, expiresInHours = 72 } = opts
+
+  const heading = `You are invited to organise ${eventTitle}`
+  const body = `
+    <p style="margin:0 0 14px;">
+      <strong style="color:${BRAND.ink};">${escape(inviterName)}</strong> has invited you to help organise
+      <strong style="color:${BRAND.ink};">${escape(eventTitle)}</strong> on TicketPulse.
+    </p>
+    <p style="margin:0 0 14px;">
+      As an invited organiser, you will be able to:
+    </p>
+    <ul style="margin:0 0 14px;padding-left:20px;font-size:14px;line-height:1.6;color:${BRAND.ink2};">
+      <li>View event details and ticket sales</li>
+      <li>Check in guests at the gate</li>
+      <li>View the attendee list</li>
+      <li>Generate staff tickets</li>
+    </ul>
+    <p style="margin:0 0 14px;font-size:13px;color:${BRAND.ink3};">
+      This invitation was sent to <strong>${escape(email)}</strong>.
+      It expires in ${expiresInHours} hours.
+    </p>
+    <p style="margin:0 0 14px;font-size:13px;color:${BRAND.ink3};">
+      If you do not have a TicketPulse account yet, clicking the button below
+      will let you create one and accept the invitation.
+    </p>`
+
+  const html = layout({
+    preheader: `${inviterName} invited you to organise ${eventTitle} on TicketPulse.`,
+    heading,
+    body,
+    cta: { label: "Accept invitation", href: inviteUrl },
+  })
+
+  const text = [
+    heading,
+    "",
+    `${inviterName} has invited you to help organise ${eventTitle} on TicketPulse.`,
+    "",
+    "As an invited organiser, you will be able to:",
+    "- View event details and ticket sales",
+    "- Check in guests at the gate",
+    "- View the attendee list",
+    "- Generate staff tickets",
+    "",
+    `Accept invitation: ${inviteUrl}`,
+    "",
+    `This invitation was sent to ${email} and expires in ${expiresInHours} hours.`,
+    "",
+    "TicketPulse",
+  ].join("\n")
+
+  return { html, text }
+}
+
 // ─── Magic-link (used by next-auth Resend provider) ──────────────────────────
 
 export function magicLinkEmail(opts: { url: string; host: string }): {
@@ -622,6 +685,184 @@ export function eventPublishedNotificationEmail(opts: {
     `View event: ${eventUrl}`,
     "",
     "TicketPulse",
+  ].join("\n")
+
+  return { html, text }
+}
+
+// ─── Product announcement ──────────────────────────────────────────────────────
+
+export function announcementEmail(opts: {
+  name?: string | null
+}): { html: string; text: string } {
+  const first = opts.name?.split(" ")[0]?.trim()
+  const greeting = first ? `Hey ${first},` : "Hi there,"
+  const appUrl = APP_URL
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${escape(greeting)}
+    </p>
+    <p style="margin:0 0 14px;">
+      We have been shipping. Here is what is new on TicketPulse.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="margin:16px 0 8px;padding:18px;border:1px solid ${BRAND.line};border-radius:14px;background:${BRAND.paper2};">
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">📲</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">Install as an app</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Add TicketPulse to your home screen for a native-like experience. Offline-ready, full-screen, no browser chrome.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">🔑</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">Sign in with Google</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">One tap to sign in. No password needed.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">👁️</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};;">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">Show / hide password</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">See what you type on mobile sign-in. Fewer typos, less frustration.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">🎟️</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">PDF tickets & QR codes</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Download and print your tickets with real QR codes. One-click PDF download for all tickets in your order.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">📱</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">Better on mobile</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Bigger text, clearer forms, faster checkout — everything just works better on your phone.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:16px 0 0;font-size:13px;color:${BRAND.ink3};">
+      Tap the button below to browse events and see for yourself.
+    </p>`
+
+  const html = layout({
+    preheader: "Install as an app, sign in with Google, PDF tickets, and more.",
+    heading: "New on TicketPulse",
+    body,
+    cta: { label: "Browse events", href: `${appUrl}/events` },
+  })
+
+  const text = [
+    "New on TicketPulse",
+    "",
+    `${greeting}`,
+    "",
+    "We've been shipping. Here's what's new:",
+    "",
+    "📲 Install as an app — Add TicketPulse to your home screen for a native-like experience.",
+    "🔑 Sign in with Google — One tap to sign in. No password needed.",
+    "👁️ Show / hide password — See what you type on mobile sign-in.",
+    "🎟️ PDF tickets & QR codes — Download and print your tickets with real QR codes.",
+    "📱 Better on mobile — Bigger text, clearer forms, faster checkout.",
+    "",
+    `Browse events: ${appUrl}/events`,
+    "",
+    "TicketPulse",
+  ].join("\n")
+
+  return { html, text }
+}
+
+/**
+ * Template for event organisers to send custom email messages to their
+ * attendees. Supports {name} and {event} placeholders in the body.
+ */
+export function eventEmailTemplate(opts: {
+  recipientName?: string | null
+  eventTitle: string
+  subject: string
+  message: string
+}): { html: string; text: string } {
+  const first = opts.recipientName?.split(" ")[0]?.trim()
+  const greeting = first ? `Hi ${escape(first)},` : "Hi there,"
+  const bodyHtml = opts.message
+    .replace(/\n/g, "<br>")
+    .replace(/\{name\}/g, escape(first ?? "there"))
+    .replace(/\{event\}/g, escape(opts.eventTitle))
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${escape(greeting)}
+    </p>
+    <div style="margin:0 0 14px;font-size:14px;line-height:1.7;color:${BRAND.ink2};">
+      ${bodyHtml}
+    </div>
+    <hr style="border:0;border-top:1px solid ${BRAND.line};margin:24px 0 16px;">
+    <p style="margin:0 0 0;font-size:13px;color:${BRAND.ink3};">
+      You are receiving this email because you purchased tickets for
+      <strong style="color:${BRAND.ink};">${escape(opts.eventTitle)}</strong>
+      on <a href="${APP_URL}" style="color:${BRAND.blue};text-decoration:underline;">TicketPulse</a>.
+    </p>`
+
+  const html = layout({
+    preheader: opts.subject,
+    heading: escape(opts.subject),
+    body,
+  })
+
+  const text = [
+    opts.subject,
+    "",
+    greeting,
+    "",
+    opts.message.replace(/\{name\}/g, first ?? "there").replace(/\{event\}/g, opts.eventTitle),
+    "",
+    `---`,
+    `You are receiving this email because you purchased tickets for ${opts.eventTitle} on TicketPulse.`,
+    APP_URL,
   ].join("\n")
 
   return { html, text }

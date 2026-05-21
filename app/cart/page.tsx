@@ -3,9 +3,10 @@ import Link from "next/link"
 import { useCart, type CartLine } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"
 import {
-  ArrowLeft, ArrowRight, Minus, Plus, Trash2, ShieldCheck, Sparkles,
+  ArrowLeft, ArrowRight, Minus, Plus, Trash2, ShieldCheck, Sparkles, Pencil,
 } from "lucide-react"
 import EmptyTickets from "@/components/EmptyTickets"
+import { useState, useRef, useEffect } from "react"
 
 function groupByEvent(items: CartLine[]) {
   const map: Record<string, { eventSlug: string; eventTitle: string; lines: CartLine[] }> = {}
@@ -28,6 +29,59 @@ function lineLabel(line: CartLine) {
   if (line.kind === "merch")        return line.size ? `${line.name} · ${line.size}` : line.name
   if (line.kind === "vendor_addon") return `${line.vendorName} · ${line.packageName}`
   return line.description
+}
+
+function EditableQty({ value, min, max, onChange }: {
+  value: number
+  min: number
+  max?: number
+  onChange: (v: number) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(String(value))
+  const ref = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) ref.current?.select()
+  }, [editing])
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value))
+  }, [value, editing])
+
+  const commit = () => {
+    const parsed = Math.max(min, Math.min(max ?? 999, parseInt(draft, 10) || min))
+    onChange(parsed)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={ref}
+        type="number"
+        min={min}
+        max={max}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false) }}
+        className="w-14 h-8 text-center text-sm font-semibold text-ink border border-navy rounded-md bg-paper outline-none tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        autoFocus
+      />
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group relative inline-flex items-center justify-center w-7 h-8 cursor-text"
+      title="Click to edit quantity"
+    >
+      <span className="text-sm font-semibold text-ink tabular-nums">{value}</span>
+      <Pencil size={10} className="absolute -right-2.5 -top-1 text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
+  )
 }
 
 export default function CartPage() {
@@ -128,7 +182,11 @@ export default function CartPage() {
                         >
                           <Minus size={13} />
                         </button>
-                        <span className="text-sm font-semibold w-7 text-center text-ink tabular-nums">{line.qty}</span>
+                        <EditableQty
+                          value={line.qty}
+                          min={1}
+                          onChange={(v) => updateQty(line.key, v)}
+                        />
                         <button
                           onClick={() => updateQty(line.key, line.qty + 1)}
                           aria-label="Increase"
@@ -212,7 +270,7 @@ export default function CartPage() {
             <div className="mt-5 pt-5 border-t border-line">
               <p className="text-[10px] font-semibold tracking-widest text-ink-3 uppercase mb-2">Accepted payments</p>
               <div className="flex gap-1.5 flex-wrap">
-                {["EcoCash", "USD", "ZAR", "Paynow", "Card"].map((m) => (
+                {["EcoCash", "ZAR", "Card"].map((m) => (
                   <span key={m} className="text-[10.5px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-1 rounded-md">
                     {m}
                   </span>

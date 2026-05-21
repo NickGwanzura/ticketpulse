@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useCart } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"
 import {
-  ArrowLeft, ArrowRight, Lock, Smartphone, CreditCard, Banknote, Check, Mail, User, Phone, Loader2, X,
+  ArrowLeft, ArrowRight, Lock, Smartphone, CreditCard, Check, Mail, User, Phone, Loader2, X, Tag, Percent,
 } from "lucide-react"
 import CheckoutSteps from "@/components/CheckoutSteps"
 
@@ -20,8 +20,6 @@ const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money 
 const PAYMENT_METHODS = [
   { value: "ecocash", label: "EcoCash",   body: "Mobile money. Instant.",        icon: Smartphone },
   { value: "card",    label: "Card",      body: "Visa, Mastercard, AmEx.",        icon: CreditCard },
-  { value: "paynow",  label: "Paynow",    body: "Online bank transfer.",          icon: Banknote },
-  { value: "usd",     label: "USD cash",  body: "Pay at venue. Reserve seat.",    icon: Banknote },
 ]
 
 export default function CheckoutPage() {
@@ -37,6 +35,10 @@ export default function CheckoutPage() {
     phone: "",
     payment: "ecocash",
   })
+  const [promoInput, setPromoInput] = useState("")
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: "percent" | "fixed"; value: number; discount: number } | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [promoLoading, setPromoLoading] = useState(false)
 
   // Drives the "Check your phone" overlay for seamless mobile-money payments.
   // Each tick asks our server to consult PesePay; once status flips to
@@ -131,20 +133,24 @@ export default function CheckoutPage() {
     }
 
     try {
+      const body: Record<string, unknown> = {
+        email: form.email,
+        name: form.name,
+        phone: form.phone,
+        paymentMethod: form.payment,
+        eventSlug: ticketLines[0].eventSlug,
+        items: [
+          ...ticketLines.map((l) => ({ kind: "ticket" as const, tierId: l.tierId, quantity: l.qty })),
+          ...vendorAddonLines.map((l) => ({ kind: "vendor_addon" as const, listingId: l.listingId, quantity: l.qty })),
+        ],
+      }
+      if (appliedPromo) {
+        body.promoCode = appliedPromo.code
+      }
       const res = await fetch("/api/checkout/guest", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: form.email,
-          name: form.name,
-          phone: form.phone,
-          paymentMethod: form.payment,
-          eventSlug: ticketLines[0].eventSlug,
-          items: [
-            ...ticketLines.map((l) => ({ kind: "ticket" as const, tierId: l.tierId, quantity: l.qty })),
-            ...vendorAddonLines.map((l) => ({ kind: "vendor_addon" as const, listingId: l.listingId, quantity: l.qty })),
-          ],
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
@@ -371,15 +377,101 @@ export default function CheckoutPage() {
               ))}
             </ul>
 
-            <div className="space-y-2 py-4 border-t border-line">
-              {Object.entries(totalsByCurrency).map(([cur, total]) => (
-                <div key={cur} className="flex items-baseline justify-between">
-                  <span className="text-[13px] text-ink-2">Subtotal · {cur}</span>
-                  <span className="text-[16px] font-bold tracking-tight text-ink">
-                    {formatCurrency(total, cur)}
-                  </span>
+            {/* Promo code */}
+            <div className="py-4 border-t border-line">
+              {appliedPromo ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-700">
+                      <Tag size={13} /> {appliedPromo.code}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setAppliedPromo(null); setPromoInput(""); setPromoError(null) }}
+                      className="text-[12px] text-ink-3 hover:text-red-500 transition"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex items-baseline justify-between text-[13px]">
+                    <span className="text-ink-3">Discount</span>
+                    <span className="font-semibold text-emerald-600">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoInput}
+                      onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                      placeholder="Promo code"
+                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue"
+                    />
+                    <button
+                      type="button"
+                      disabled={promoLoading || !promoInput.trim()}
+                      onClick={async () => {
+                        const code = promoInput.trim().toUpperCase()
+                        if (!code) return
+                        setPromoLoading(true)
+                        setPromoError(null)
+                        try {
+                          // Get event slug from first ticket item
+                          const ticketItem = items.find(i => i.kind === "ticket")
+                          if (!ticketItem) return
+                          const res = await fetch(`/api/checkout/validate-promo?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}&code=${encodeURIComponent(code)}`)
+                          const data = await res.json()
+                          if (data.valid) {
+                            const ev = Object.values(totalsByCurrency)[0] ?? 0
+                            let discount = 0
+                            const val = Number(data.value)
+                            if (data.type === "percent") {
+                              discount = Math.round(ev * (val / 100) * 100) / 100
+                            } else {
+                              discount = Math.min(val, ev)
+                            }
+                            setAppliedPromo({ code: data.code, type: data.type, value: val, discount })
+                            setPromoInput("")
+                          } else {
+                            setPromoError(data.error ?? "Invalid promo code")
+                          }
+                        } catch {
+                          setPromoError("Failed to validate promo code")
+                        } finally {
+                          setPromoLoading(false)
+                        }
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition disabled:opacity-70"
+                    >
+                      {promoLoading ? <Loader2 size={13} className="animate-spin" /> : <Percent size={13} />}
+                      Apply
+                    </button>
+                  </div>
+                  {promoError && (
+                    <p className="text-[11.5px] text-red-500">{promoError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pb-4 border-t border-line pt-4">
+              {Object.entries(totalsByCurrency).map(([cur, total]) => {
+                const finalTotal = appliedPromo ? Math.max(0, total - appliedPromo.discount) : total
+                return (
+                  <div key={cur} className="flex items-baseline justify-between">
+                    <span className="text-[13px] text-ink-2">Total · {cur}</span>
+                    <span className="text-[18px] font-bold tracking-tight text-ink">
+                      {formatCurrency(finalTotal, cur)}
+                    </span>
+                  </div>
+                )
+              })}
+              {appliedPromo && (
+                <p className="text-[11px] text-ink-3 text-right">
+                  Original: {formatCurrency(Object.values(totalsByCurrency)[0] ?? 0, Object.keys(totalsByCurrency)[0] || "USD")}
+                </p>
+              )}
             </div>
 
             <button

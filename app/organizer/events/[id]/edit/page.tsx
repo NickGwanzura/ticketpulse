@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, ImageIcon, ShoppingBag, ExternalLink, Ticket, Store } from "lucide-react"
+import { ArrowLeft, ImageIcon, ShoppingBag, ExternalLink, Ticket, Store, Activity, Mail, Tag, Users, UserPlus, QrCode } from "lucide-react"
 
 import { db } from "@/db"
 import { events } from "@/db/schema"
@@ -71,6 +71,42 @@ export default async function EditEventPage({
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
             >
               <Store size={15} /> Vendors
+            </Link>
+            <Link
+              href={`/organizer/events/${id}/live`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <Activity size={15} /> Live
+            </Link>
+            <Link
+              href={`/organizer/events/${id}/email`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <Mail size={15} /> Email
+            </Link>
+            <Link
+              href={`/organizer/events/${id}/promos`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <Tag size={15} /> Promos
+            </Link>
+            <Link
+              href={`/organizer/events/${id}/organisers`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <UserPlus size={15} /> Organisers
+            </Link>
+            <Link
+              href={`/organizer/events/${id}/staff`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <QrCode size={15} /> Staff
+            </Link>
+            <Link
+              href={`/organizer/events/${id}/attendees`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            >
+              <Users size={15} /> Attendees
             </Link>
             {row.status === "published" && (
               <Link

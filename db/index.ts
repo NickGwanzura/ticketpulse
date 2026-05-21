@@ -1,8 +1,11 @@
-import { neon } from "@neondatabase/serverless"
-import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http"
+import { Pool, neonConfig } from "@neondatabase/serverless"
+import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless"
 import * as schema from "./schema"
 
-type DBType = NeonHttpDatabase<typeof schema>
+type DBType = NeonDatabase<typeof schema>
+
+// Configure WebSocket for Neon. Node 18+ has global WebSocket.
+neonConfig.webSocketConstructor = WebSocket
 
 // Eager init when DATABASE_URL is present so libraries like
 // @auth/drizzle-adapter that introspect the db at construction
@@ -11,8 +14,10 @@ type DBType = NeonHttpDatabase<typeof schema>
 // back to a Proxy that throws on first real use.
 const url = process.env.DATABASE_URL
 
-export const db: DBType = url
-  ? drizzle(neon(url), { schema })
+const pool = url ? new Pool({ connectionString: url }) : null
+
+export const db: DBType = pool
+  ? drizzle(pool, { schema })
   : (new Proxy({} as DBType, {
       get() {
         throw new Error(
