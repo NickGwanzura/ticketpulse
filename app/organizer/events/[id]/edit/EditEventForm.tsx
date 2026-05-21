@@ -1,12 +1,13 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
-import { AlertCircle, MapPin, Save, Trash2 } from "lucide-react"
+import { AlertCircle, MapPin, Save, Trash2, Loader2 } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import ImageUploader from "@/components/ui/ImageUploader"
 import VenueMap from "@/components/events/VenueMap"
+import { geocodeFromLocation } from "@/lib/geocode"
 import { updateEventAction, deleteEventAction, type UpdateEventState } from "./actions"
 
 const INITIAL: UpdateEventState = { ok: true }
@@ -109,6 +110,42 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
   const errs = state.fieldErrors ?? {}
 
+  // Location fields (controlled for live geocoding preview)
+  const [venue, setVenue] = useState(event.venue)
+  const [city, setCity] = useState(event.city)
+  const [country, setCountry] = useState(event.country ?? "Zimbabwe")
+  const [address, setAddress] = useState(event.address ?? "")
+
+  // Live-geocoded coordinates (from client-side Nominatim call)
+  const [liveLat, setLiveLat] = useState<string | null>(event.lat)
+  const [liveLng, setLiveLng] = useState<string | null>(event.lng)
+  const [geocoding, setGeocoding] = useState(false)
+
+  // Debounce geocoding: call Nominatim 600 ms after the user stops typing
+  const geocodeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  useEffect(() => {
+    if (!venue || !city) {
+      setLiveLat(null)
+      setLiveLng(null)
+      return
+    }
+
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
+
+    geocodeTimer.current = setTimeout(async () => {
+      setGeocoding(true)
+      const result = await geocodeFromLocation(venue, city, country, address)
+      setLiveLat(result.lat?.toString() ?? null)
+      setLiveLng(result.lng?.toString() ?? null)
+      setGeocoding(false)
+    }, 600)
+
+    return () => {
+      if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
+    }
+  }, [venue, city, country, address])
+
   return (
     <div className="space-y-8">
       {showCreatedToast && (
@@ -181,48 +218,57 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
 
           <div>
             <label htmlFor="venue" className="block text-[13px] font-medium text-ink mb-1.5">Venue<ReqMark /></label>
-            <input id="venue" name="venue" type="text" required maxLength={160} defaultValue={event.venue} className={inputCls(!!errs.venue)} />
+            <input id="venue" name="venue" type="text" required maxLength={160} value={venue} onChange={(e) => setVenue(e.target.value)} className={inputCls(!!errs.venue)} />
             <FieldError message={errs.venue} />
           </div>
 
           <div>
             <label htmlFor="city" className="block text-[13px] font-medium text-ink mb-1.5">City<ReqMark /></label>
-            <input id="city" name="city" type="text" required maxLength={80} defaultValue={event.city} className={inputCls(!!errs.city)} />
+            <input id="city" name="city" type="text" required maxLength={80} value={city} onChange={(e) => setCity(e.target.value)} className={inputCls(!!errs.city)} />
             <FieldError message={errs.city} />
           </div>
 
           <div>
             <label htmlFor="country" className="block text-[13px] font-medium text-ink mb-1.5">Country</label>
-            <input id="country" name="country" type="text" maxLength={80} defaultValue={event.country ?? "Zimbabwe"} className={inputCls(!!errs.country)} />
+            <input id="country" name="country" type="text" maxLength={80} value={country} onChange={(e) => setCountry(e.target.value)} className={inputCls(!!errs.country)} />
             <FieldError message={errs.country} />
           </div>
 
           <div>
             <label htmlFor="address" className="block text-[13px] font-medium text-ink mb-1.5">Address</label>
-            <input id="address" name="address" type="text" maxLength={240} defaultValue={event.address ?? ""} className={inputCls()} />
+            <input id="address" name="address" type="text" maxLength={240} value={address} onChange={(e) => setAddress(e.target.value)} className={inputCls()} />
           </div>
 
-          {event.lat && event.lng ? (
-            <div className="md:col-span-2">
+          {/* Hidden lat/lng so the form can forward them on save too */}
+          <input type="hidden" name="lat" value={liveLat ?? ""} />
+          <input type="hidden" name="lng" value={liveLng ?? ""} />
+
+          <div className="md:col-span-2">
+            {geocoding && (
+              <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
+                <Loader2 size={20} className="mx-auto mb-2 text-ink-3 animate-spin" />
+                <p className="text-[13px] font-medium text-ink-2">Locating venue…</p>
+              </div>
+            )}
+            {!geocoding && liveLat && liveLng ? (
               <VenueMap
-                lat={event.lat}
-                lng={event.lng}
-                venue={event.venue}
-                address={event.address}
-                city={event.city}
+                lat={liveLat}
+                lng={liveLng}
+                venue={venue}
+                address={address}
+                city={city}
               />
-            </div>
-          ) : (
-            <div className="md:col-span-2">
+            ) : null}
+            {!geocoding && !liveLat && !liveLng && (
               <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
                 <MapPin size={20} className="mx-auto mb-2 text-ink-3" />
                 <p className="text-[13px] font-medium text-ink-2">Venue map</p>
                 <p className="text-[12px] text-ink-3 mt-0.5">
-                  Save the event to preview the venue location on a map.
+                  Enter a venue and city to see the location on a map.
                 </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Date & Time */}
           <div className="md:col-span-2 mt-2">

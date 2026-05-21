@@ -27,6 +27,8 @@ const UpdateSchema = z.object({
   endsAt:      z.string().optional(),
   tags:        z.string().optional(),
   coverImage:  z.string().url().optional().or(z.literal("")),
+  lat:         z.string().optional(),
+  lng:         z.string().optional(),
 })
 
 export type UpdateEventState = {
@@ -77,6 +79,8 @@ export async function updateEventAction(
     endsAt:      formData.get("endsAt")?.toString() ?? undefined,
     tags:        formData.get("tags")?.toString() ?? undefined,
     coverImage:  formData.get("coverImage")?.toString() ?? "",
+    lat:         formData.get("lat")?.toString() ?? undefined,
+    lng:         formData.get("lng")?.toString() ?? undefined,
   }
 
   const parsed = UpdateSchema.safeParse(raw)
@@ -111,13 +115,17 @@ export async function updateEventAction(
     }
   }
 
-  // Auto-geocode from the venue/address/city/country
-  const { lat, lng } = await geocodeFromLocation(
-    data.venue,
-    data.city,
-    data.country,
-    data.address,
-  )
+  // Resolve lat/lng — prefer client-provided (live-geocoded), fall back to server geocode
+  let lat: string | null
+  let lng: string | null
+  if (data.lat && data.lng && !isNaN(parseFloat(data.lat)) && !isNaN(parseFloat(data.lng))) {
+    lat = data.lat
+    lng = data.lng
+  } else {
+    const result = await geocodeFromLocation(data.venue, data.city, data.country, data.address)
+    lat = result.lat?.toString() ?? null
+    lng = result.lng?.toString() ?? null
+  }
 
   const tagList = data.tags
     ? data.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10)
