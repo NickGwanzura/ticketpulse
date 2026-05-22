@@ -867,3 +867,192 @@ export function eventEmailTemplate(opts: {
 
   return { html, text }
 }
+
+// ─── GROQ AI announcement ──────────────────────────────────────────────────────
+
+export function groqAiAnnouncementEmail(opts: {
+  name?: string | null
+}): { html: string; text: string } {
+  const first = opts.name?.split(" ")[0]?.trim()
+  const greeting = first ? `Hey ${first},` : "Hi there,"
+  const appUrl = APP_URL
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${escape(greeting)}
+    </p>
+    <p style="margin:0 0 14px;">
+      We have just shipped a major upgrade — <strong style="color:${BRAND.ink};">AI-powered tools</strong>
+      across the TicketPulse platform powered by GROQ&rsquo;s Llama 3.3-70B model.
+      Here is what is now available.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="margin:16px 0 8px;padding:18px;border:1px solid ${BRAND.line};border-radius:14px;background:${BRAND.paper2};">
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">✍️</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Event Description</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Generate compelling event descriptions instantly. Just pick a title, category, and venue — AI writes the rest.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">📍</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Location Suggestions</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Enter a venue name and city — AI fills in the country and address automatically.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">🏷️</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Tag Suggestions</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Smart tag recommendations based on your event title and description. Click to add.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">💰</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Pricing Suggestions</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Get a suggested price range with reasoning based on your event type, category, and location.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">📱</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Social Post Generator</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Generate Twitter/X, Facebook, or Instagram posts for your event. Copy and post in one click.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">📧</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Email Copilot</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Draft professional attendee emails with AI. Choose a purpose or write custom instructions — AI generates subject and body.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">📊</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Sales Insights</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Get actionable sales tips for each event on your organizer dashboard. One click, instant insight.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:0;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">🛡️</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">AI Content Moderation (Admin)</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Admins can now check draft event content for guidelines compliance before approving.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+    </table>
+    <p style="margin:16px 0 0;font-size:13px;color:${BRAND.ink3};">
+      All AI features are powered by GROQ&rsquo;s Llama 3.3-70B — fast, free, and running at blazing speed.
+    </p>
+    <p style="margin:6px 0 0;font-size:13px;color:${BRAND.ink3};">
+      Head to your dashboard to try them out.
+    </p>`
+
+  const html = layout({
+    preheader: "New AI-powered tools: descriptions, pricing, social posts, email copilot, and more.",
+    heading: "🚀 AI is here on TicketPulse",
+    body,
+    cta: { label: "Go to dashboard", href: `${appUrl}/dashboard` },
+  })
+
+  const text = [
+    "🚀 AI is here on TicketPulse",
+    "",
+    `${greeting}`,
+    "",
+    "We've just shipped AI-powered tools across the platform, powered by GROQ's Llama 3.3-70B:",
+    "",
+    "✍️ AI Event Description — Generate event descriptions instantly.",
+    "📍 AI Location Suggestions — Auto-fill country and address from venue name.",
+    "🏷️ AI Tag Suggestions — Smart tags based on your event.",
+    "💰 AI Pricing Suggestions — Get suggested price ranges with reasoning.",
+    "📱 AI Social Post Generator — Create Twitter/X, Facebook, or Instagram posts.",
+    "📧 AI Email Copilot — Draft professional attendee emails with AI.",
+    "📊 AI Sales Insights — Actionable tips on your organizer dashboard.",
+    "🛡️ AI Content Moderation — For admins reviewing draft events.",
+    "",
+    "Head to your dashboard to try them out:",
+    `${appUrl}/dashboard`,
+    "",
+    "TicketPulse",
+  ].join("\n")
+
+  return { html, text }
+}
