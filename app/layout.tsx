@@ -7,6 +7,7 @@ import Navbar, { type NavbarFeaturedItem } from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
 import CookiesNotice from "@/components/CookiesNotice"
 import PwaRegister from "@/components/PwaRegister"
+import WhatsAppWidget from "@/components/launch/WhatsAppWidget"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
 import { clashDisplay, generalSans } from "@/lib/fonts"
@@ -85,6 +86,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className={bare ? "" : "min-h-[calc(100vh-4rem)]"}>{children}</div>
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}
+          {!bare && <WhatsAppWidget phone="263777816368" label="Support" />}
         </Providers>
         {!bare && <PwaRegister />}
       </body>
