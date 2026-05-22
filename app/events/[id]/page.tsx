@@ -332,7 +332,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 pt-10 lg:pt-0">
             <TicketSelector
               eventSlug={row.slug}
               eventTitle={row.title}
