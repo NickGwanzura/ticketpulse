@@ -232,7 +232,6 @@ export default function Footer() {
                   <circle fill="#8DD32F" cx="242.85" cy="160.38" r="5.08"/>
                 </svg>
               </span>
-              TicketPulse
             </Link>
             <p className="mt-5 text-[14px] leading-relaxed text-white/65 max-w-xs">
               Zimbabwe&apos;s ticketing platform. Sell, deliver, scan: one stack, built in Harare and live since May 2026.

@@ -128,16 +128,6 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               <circle fill="#8DD32F" cx="242.85" cy="160.38" r="5.08"/>
             </svg>
           </span>
-          <span className="leading-none">
-            TicketPulse
-            <span className="hidden lg:inline-flex items-center ml-2 align-middle text-[9.5px] font-semibold tracking-[0.16em] text-green-700 uppercase">
-              <span className="relative flex w-1.5 h-1.5 mr-1.5">
-                <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-70" />
-                <span className="relative block w-1.5 h-1.5 rounded-full bg-green-500" />
-              </span>
-              Live
-            </span>
-          </span>
         </Link>
 
         {/* Desktop nav with mega menu */}
