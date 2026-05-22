@@ -2,13 +2,16 @@
 
 import { useActionState, useState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
-import { AlertCircle, MapPin, Save, Trash2, Loader2, Sparkles } from "lucide-react"
+import Link from "next/link"
+import { AlertCircle, MapPin, Save, Trash2, Loader2, Sparkles, Ticket } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import ImageUploader from "@/components/ui/ImageUploader"
 import VenueMap from "@/components/events/VenueMap"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { updateEventAction, deleteEventAction, type UpdateEventState } from "./actions"
+import { deleteTierAction } from "../tiers/actions"
+import { formatCurrency } from "@/lib/utils"
 import AiModerateButton from "@/components/ai/AiModerateButton"
 import AiTagSuggest from "@/components/ai/AiTagSuggest"
 import AiSocialButton from "@/components/ai/AiSocialButton"
@@ -77,6 +80,16 @@ function DeleteButton() {
   )
 }
 
+type TierSummary = {
+  id: string
+  name: string
+  price: string
+  currency: string | null
+  totalQuantity: number
+  soldQuantity: number | null
+  description: string | null
+}
+
 type Props = {
   event: {
     id: string
@@ -96,6 +109,7 @@ type Props = {
     tags: string[] | null
     googleMapsUrl: string | null
   }
+  tiers: TierSummary[]
   showCreatedToast?: boolean
 }
 
@@ -110,7 +124,7 @@ function ReqMark() {
   return <span className="text-rose-500 ml-0.5" aria-label="required">*</span>
 }
 
-export default function EditEventForm({ event, showCreatedToast }: Props) {
+export default function EditEventForm({ event, tiers, showCreatedToast }: Props) {
   const [state, formAction] = useActionState(updateEventAction, INITIAL)
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
   const errs = state.fieldErrors ?? {}
@@ -474,6 +488,82 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
           <SubmitButton />
         </div>
       </form>
+
+      {/* Ticket types */}
+      <div className="border-t border-line pt-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-[13px] font-semibold text-ink">Ticket types</h3>
+            <p className="text-[12.5px] text-ink-3 mt-0.5">
+              {tiers.length} tier{tiers.length !== 1 ? "s" : ""} created
+            </p>
+          </div>
+          <Link
+            href={`/organizer/events/${event.id}/tiers`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2 text-[12.5px] font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+          >
+            <Ticket size={13} /> Manage tiers
+          </Link>
+        </div>
+
+        {tiers.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-6 text-center">
+            <Ticket size={24} className="mx-auto mb-2 text-ink-3" />
+            <p className="text-[13px] font-medium text-ink-2">No ticket types yet</p>
+            <p className="text-[12px] text-ink-3 mt-1">
+              <Link href={`/organizer/events/${event.id}/tiers`} className="text-blue hover:underline">
+                Create at least one tier
+              </Link>{" "}
+              so people can buy tickets.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tiers.map((t) => {
+              const sold = t.soldQuantity ?? 0
+              const price = Number.parseFloat(t.price) || 0
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-paper p-3"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-soft text-navy shrink-0">
+                    <Ticket size={13} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-ink truncate">{t.name}</p>
+                    <p className="text-[12px] text-ink-3">
+                      {formatCurrency(price, t.currency ?? "USD")} · {t.totalQuantity.toLocaleString()} capacity · {sold.toLocaleString()} sold
+                    </p>
+                  </div>
+                  <form
+                    action={deleteTierAction}
+                    onSubmit={(e) => {
+                      if (sold > 0) {
+                        e.preventDefault()
+                        alert("This tier has sold tickets and can't be deleted. Set its sales end date instead.")
+                        return
+                      }
+                      if (!confirm(`Delete "${t.name}"?`)) e.preventDefault()
+                    }}
+                  >
+                    <input type="hidden" name="tierId" value={t.id} />
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <button
+                      type="submit"
+                      title={sold > 0 ? "Can't delete — has sales" : "Delete tier"}
+                      disabled={sold > 0}
+                      className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </form>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="border-t border-line pt-6">
         <h3 className="text-[13px] font-semibold text-ink mb-1.5">Danger zone</h3>

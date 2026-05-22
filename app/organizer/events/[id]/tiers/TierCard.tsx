@@ -70,15 +70,17 @@ export default function TierCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-1.5 bg-paper-2 rounded-full overflow-hidden">
-            <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+        {sold >= 100 && (
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-1.5 bg-paper-2 rounded-full overflow-hidden">
+              <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
+              <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
+              <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
+            </p>
           </div>
-          <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
-            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
-            <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
-          </p>
-        </div>
+        )}
 
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-3 mb-4">
           <span>Capacity {total.toLocaleString()}</span>

@@ -1,11 +1,11 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
-import { eq } from "drizzle-orm"
+import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Ticket } from "lucide-react"
 
 import { db } from "@/db"
-import { events } from "@/db/schema"
+import { events, ticketTiers } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EditEventForm from "./EditEventForm"
 
@@ -39,6 +39,20 @@ export default async function EditEventPage({
   if (row.organizerId !== session.user.id && session.user.role !== "admin") {
     redirect("/organizer")
   }
+
+  const tiers = await db
+    .select({
+      id: ticketTiers.id,
+      name: ticketTiers.name,
+      price: ticketTiers.price,
+      currency: ticketTiers.currency,
+      totalQuantity: ticketTiers.totalQuantity,
+      soldQuantity: ticketTiers.soldQuantity,
+      description: ticketTiers.description,
+    })
+    .from(ticketTiers)
+    .where(eq(ticketTiers.eventId, id))
+    .orderBy(asc(ticketTiers.createdAt))
 
   return (
     <div className="tp-fade-up">
@@ -76,6 +90,7 @@ export default async function EditEventPage({
               tags: row.tags ?? [],
               googleMapsUrl: row.googleMapsUrl,
             }}
+            tiers={tiers}
             showCreatedToast={sp.created === "1"}
           />
         </div>
