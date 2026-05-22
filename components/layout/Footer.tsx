@@ -210,7 +210,7 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label="TicketPulse home">
               <span className="relative inline-flex items-center justify-center transition-transform hover:scale-105">
-                <img src="/ticketpulse-logo-white.svg" alt="TicketPulse" className="h-10 w-auto" />
+                <img src="/ticketpulse-logo-white.svg" alt="TicketPulse" className="h-12 w-auto" />
               </span>
             </Link>
             <p className="mt-5 text-[14px] leading-relaxed text-white/65 max-w-xs">
