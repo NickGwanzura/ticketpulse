@@ -13,6 +13,7 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import ResendButton from "@/app/admin/_components/ResendButton"
+import CancelOrderButton from "@/app/admin/_components/CancelOrderButton"
 
 const STATUS_STYLE: Record<string, string> = {
   paid:                   "bg-emerald-50 text-emerald-700",
@@ -347,6 +348,10 @@ export default async function AdminTicketsPage({
                               >
                                 <ExternalLink size={14} />
                               </Link>
+                              <CancelOrderButton
+                                orderId={o.id}
+                                variant="desktop"
+                              />
                             </div>
                           </td>
                         </tr>
@@ -421,6 +426,10 @@ export default async function AdminTicketsPage({
                           <ExternalLink size={12} />
                           View
                         </Link>
+                        <CancelOrderButton
+                          orderId={o.id}
+                          variant="mobile"
+                        />
                       </div>
                     </li>
                   )

@@ -1,11 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq } from "drizzle-orm"
+import { eq, inArray, sql } from "drizzle-orm"
 
 import { auth, signIn } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets, users } from "@/db/schema"
 import {
   sendEmail,
   adminEmail,
@@ -269,5 +269,65 @@ export async function updateCommissionRateAction(userId: string, rate: number) {
     .where(eq(users.id, userId))
 
   revalidatePath("/admin/users")
+  revalidatePath("/admin")
+}
+
+/**
+ * Cancel an order and mark all its tickets as cancelled.
+ * Only admins can call this. Restores ticket tier inventory by decrementing
+ * soldQuantity for each affected tier.
+ */
+export async function cancelOrderTicketsAction(orderId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [order] = await db
+    .select({ id: orders.id, status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) throw new Error("Order not found")
+  if (order.status === "cancelled" || order.status === "refunded") {
+    throw new Error("Order is already cancelled or refunded")
+  }
+
+  // Update the order status
+  await db
+    .update(orders)
+    .set({ status: "cancelled", updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+
+  // Find all ticket records tied to this order and mark them as cancelled
+  const orderTickets = await db
+    .select({ id: tickets.id, tierId: tickets.tierId })
+    .from(tickets)
+    .where(eq(tickets.orderId, orderId))
+
+  if (orderTickets.length > 0) {
+    const ticketIds = orderTickets.map((t) => t.id)
+    const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
+
+    await db
+      .update(tickets)
+      .set({ status: "cancelled" })
+      .where(inArray(tickets.id, ticketIds))
+
+    // Restore inventory for each affected tier
+    for (const tierId of tierIds) {
+      const cancelledCount = orderTickets.filter((t) => t.tierId === tierId).length
+      await db
+        .update(ticketTiers)
+        .set({
+          soldQuantity: sql`${ticketTiers.soldQuantity} - ${cancelledCount}`,
+        })
+        .where(eq(ticketTiers.id, tierId))
+    }
+  }
+
+  revalidatePath("/admin/tickets")
+  revalidatePath("/admin/orders")
   revalidatePath("/admin")
 }
