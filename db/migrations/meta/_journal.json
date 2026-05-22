@@ -57,6 +57,13 @@
       "when": 1779391375530,
       "tag": "0007_add_google_maps_url",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779465476840,
+      "tag": "0008_huge_loki",
+      "breakpoints": true
     }
   ]
 }

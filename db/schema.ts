@@ -340,6 +340,14 @@ export const photoDownloads = pgTable("photo_downloads", {
   downloadedAt: timestamp("downloaded_at").defaultNow(),
 })
 
+// ─── Waitlist ─────────────────────────────────────────────────────────────────
+
+export const eventWaitlist = pgTable("event_waitlist", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+})
+
 // ─── TIER 1: Transport and Shuttle Bookings ───────────────────────────────────
 
 export const transportOperators = pgTable("transport_operators", {
