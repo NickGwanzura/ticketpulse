@@ -71,7 +71,15 @@ export type TierFormState = {
 
 function parseDateTimeLocal(value?: string): Date | null {
   if (!value) return null
-  const d = new Date(value)
+  // <input type="datetime-local"> emits "YYYY-MM-DDTHH:MM" (no timezone).
+  // We treat this as Africa/Harare (CAT, UTC+2) since that's the app's timezone.
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (!m) return null
+  const [_, year, month, day, hour, minute] = m
+  // CAT is UTC+2. Zimbabwe does not observe DST.
+  const catOffsetMs = 2 * 60 * 60 * 1000
+  const utcMs = Date.UTC(+year, +month - 1, +day, +hour, +minute) - catOffsetMs
+  const d = new Date(utcMs)
   return Number.isNaN(d.getTime()) ? null : d
 }
 
