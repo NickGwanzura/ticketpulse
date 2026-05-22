@@ -2,6 +2,7 @@ import { ArrowUpRight, MapPin, CreditCard, TrendingUp, BarChart2, Users, PieChar
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
+import AiNarrativeSummary from "@/components/ai/AiNarrativeSummary"
 
 type SubStat = { label: string; value: string; delta: number; up: boolean }
 type SalesMixItem = { label: string; revenue: number; pct: number }
@@ -118,6 +119,18 @@ export default function AdminAnalyticsPage() {
               variant="inline"
             />
           )}
+        </div>
+
+        {/* AI Narrative Summary */}
+        <div className="tp-fade-up-2">
+          <AiNarrativeSummary
+            totalRevenue={total}
+            eventCount={0}
+            organizerCount={0}
+            topCity="N/A"
+            topCategory="N/A"
+            paymentMethods={[]}
+          />
         </div>
 
         {/* 3-col grid */}

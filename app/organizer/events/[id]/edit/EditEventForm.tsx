@@ -9,6 +9,10 @@ import ImageUploader from "@/components/ui/ImageUploader"
 import VenueMap from "@/components/events/VenueMap"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { updateEventAction, deleteEventAction, type UpdateEventState } from "./actions"
+import AiModerateButton from "@/components/ai/AiModerateButton"
+import AiTagSuggest from "@/components/ai/AiTagSuggest"
+import AiSocialButton from "@/components/ai/AiSocialButton"
+import AiPricingButton from "@/components/ai/AiPricingButton"
 
 const INITIAL: UpdateEventState = { ok: true }
 
@@ -113,6 +117,7 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
 
   const [genDesc, setGenDesc] = useState(false)
   const [genLoc, setGenLoc] = useState(false)
+  const [tags, setTags] = useState<string[]>(event.tags ?? [])
 
   async function handleGenerateDesc() {
     const title = (document.getElementById("title") as HTMLInputElement | null)?.value ?? event.title
@@ -285,19 +290,26 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
           <div className="md:col-span-2">
             <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="description" className="block text-[13px] font-medium text-ink">Description</label>
-              <button
-                type="button"
-                onClick={handleGenerateDesc}
-                disabled={genDesc}
-                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
-              >
-                {genDesc ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <Sparkles size={12} />
-                )}
-                {genDesc ? "Generating…" : "Generate with AI"}
-              </button>
+              <div className="flex items-center gap-3">
+                <AiModerateButton
+                  title={event.title}
+                  description={event.description ?? ""}
+                  category={event.category}
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateDesc}
+                  disabled={genDesc}
+                  className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+                >
+                  {genDesc ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={12} />
+                  )}
+                  {genDesc ? "Generating…" : "Generate with AI"}
+                </button>
+              </div>
             </div>
             <textarea id="description" name="description" rows={4} maxLength={4000} defaultValue={event.description ?? ""} className={inputCls()} />
           </div>
@@ -422,8 +434,39 @@ export default function EditEventForm({ event, showCreatedToast }: Props) {
 
           <div className="md:col-span-2">
             <label htmlFor="tags" className="block text-[13px] font-medium text-ink mb-1.5">Tags</label>
-            <input id="tags" name="tags" type="text" defaultValue={(event.tags ?? []).join(", ")} className={inputCls()} placeholder="afrobeat, outdoor, family" />
-            <p className="mt-1 text-[11.5px] text-ink-3">Comma-separated. Up to 10.</p>
+            <input id="tags" name="tags" type="hidden" value={tags.join(", ")} />
+            <AiTagSuggest
+              title={event.title}
+              description={event.description ?? ""}
+              category={event.category}
+              existingTags={tags}
+              onTagsChange={setTags}
+            />
+            <p className="mt-1 text-[11.5px] text-ink-3">Up to 10. AI-suggested tags appear below.</p>
+          </div>
+
+          {/* AI Tools */}
+          <div className="md:col-span-2 mt-2">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">AI Tools</p>
+          </div>
+
+          <div className="md:col-span-2 space-y-3">
+            <AiSocialButton
+              eventTitle={event.title}
+              category={event.category}
+              eventDate={event.startsAt.toLocaleDateString()}
+              venue={event.venue}
+              city={event.city}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <AiPricingButton
+              eventTitle={event.title}
+              category={event.category}
+              venue={event.venue}
+              city={event.city}
+            />
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowLeft, Send, MailCheck } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import { sendBulkEmailAction, sendTestEmailAction, type EmailFormState } from "./actions"
+import AiEmailCopilot from "@/components/ai/AiEmailCopilot"
 
 function inputCls(hasError?: boolean) {
   return [
@@ -22,6 +23,8 @@ export default function EmailPage() {
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
   const [recipientCount, setRecipientCount] = useState<number | null>(null)
+  const [eventTitle, setEventTitle] = useState("your event")
+  const [eventDate, setEventDate] = useState("")
 
   const [bulkState, bulkAction, bulkPending] = useActionState<EmailFormState, FormData>(
     sendBulkEmailAction.bind(null, eventId),
@@ -33,9 +36,26 @@ export default function EmailPage() {
     FormData
   >(sendTestEmailAction.bind(null, eventId), undefined)
 
-  // Fetch recipient count on mount
+  // Fetch recipient count and event details on mount
   useEffect(() => {
     fetch(`/api/events/${eventId}/attendees/export`, { method: "HEAD" })
+      .catch(() => {})
+    // Fetch event title for AI copilot
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const ev = data.find((e: { id: string }) => e.id === eventId)
+          if (ev) {
+            setEventTitle(ev.title ?? "your event")
+            if (ev.startsAt) {
+              setEventDate(new Date(ev.startsAt).toLocaleDateString("en-US", {
+                month: "long", day: "numeric", year: "numeric",
+              }))
+            }
+          }
+        }
+      })
       .catch(() => {})
   }, [eventId])
 
@@ -57,7 +77,17 @@ export default function EmailPage() {
         }
       />
 
-      <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-10">
+      <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
+        {/* AI Email Copilot */}
+        <AiEmailCopilot
+          eventTitle={eventTitle}
+          eventDate={eventDate}
+          onGenerated={(data) => {
+            setSubject(data.subject)
+            setMessage(data.body)
+          }}
+        />
+
         <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 space-y-6">
           <div className="space-y-1">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Compose message</h2>

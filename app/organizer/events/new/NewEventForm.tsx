@@ -7,6 +7,10 @@ import { ArrowLeft, ImageIcon, Save, Sparkles, Loader2, MapPin } from "lucide-re
 
 import Button from "@/components/ui/Button"
 import { createEventAction, type CreateEventState } from "./actions"
+import AiModerateButton from "@/components/ai/AiModerateButton"
+import AiTagSuggest from "@/components/ai/AiTagSuggest"
+import AiSocialButton from "@/components/ai/AiSocialButton"
+import AiPricingButton from "@/components/ai/AiPricingButton"
 
 const INITIAL: CreateEventState = { ok: true }
 
@@ -55,6 +59,7 @@ export default function NewEventForm() {
 
   const [genDesc, setGenDesc] = useState(false)
   const [genLoc, setGenLoc] = useState(false)
+  const [tags, setTags] = useState<string[]>([])
 
   async function handleGenerateDesc(form: HTMLFormElement) {
     const fd = new FormData(form)
@@ -161,35 +166,39 @@ export default function NewEventForm() {
 
         <div>
           <label htmlFor="tags" className="block text-[13px] font-medium text-ink mb-1.5">Tags</label>
-          <input
-            id="tags"
-            name="tags"
-            type="text"
-            placeholder="afrobeat, outdoor, family"
-            className={inputCls()}
+          <input id="tags" name="tags" type="hidden" value={tags.join(", ")} />
+          <AiTagSuggest
+            title=""
+            description=""
+            category=""
+            existingTags={tags}
+            onTagsChange={setTags}
           />
-          <p className="mt-1 text-[11.5px] text-ink-3">Comma-separated. Up to 10.</p>
+          <p className="mt-1 text-[11.5px] text-ink-3">Up to 10. AI-suggested tags appear below.</p>
         </div>
 
         <div className="md:col-span-2">
           <div className="flex items-center justify-between mb-1.5">
             <label htmlFor="description" className="block text-[13px] font-medium text-ink">Description</label>
-            <button
-              type="button"
-              onClick={() => {
-                const form = document.getElementById("new-event-form") as HTMLFormElement | null
-                if (form) handleGenerateDesc(form)
-              }}
-              disabled={genDesc}
-              className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
-            >
-              {genDesc ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Sparkles size={12} />
-              )}
-              {genDesc ? "Generating…" : "Generate with AI"}
-            </button>
+            <div className="flex items-center gap-3">
+              <AiModerateButton title="" description="" category="" />
+              <button
+                type="button"
+                onClick={() => {
+                  const form = document.getElementById("new-event-form") as HTMLFormElement | null
+                  if (form) handleGenerateDesc(form)
+                }}
+                disabled={genDesc}
+                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+              >
+                {genDesc ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                {genDesc ? "Generating…" : "Generate with AI"}
+              </button>
+            </div>
           </div>
           <textarea
             id="description"
@@ -306,6 +315,30 @@ export default function NewEventForm() {
             className={inputCls(!!errs.endsAt)}
           />
           <FieldError message={errs.endsAt} />
+        </div>
+
+        {/* AI Tools */}
+        <div className="md:col-span-2 mt-2">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">AI Tools</p>
+        </div>
+
+        <div className="md:col-span-2 space-y-3">
+          <AiSocialButton
+            eventTitle=""
+            category=""
+            eventDate=""
+            venue=""
+            city=""
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <AiPricingButton
+            eventTitle=""
+            category=""
+            venue=""
+            city=""
+          />
         </div>
       </div>
 

@@ -13,11 +13,13 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { publishEventAction, verifyUserEmailAction } from "@/app/admin/actions"
+import AiBriefCard from "@/components/ai/AiBriefCard"
+import AiModerateButton from "@/components/ai/AiModerateButton"
 
 type KPI = { label: string; value: number; currency: string | null; delta: number; up: boolean; spark: readonly number[] }
 type Activity = { kind: string; icon: React.ElementType; iconColor: string; iconBg: string; who: string; msg: string; when: string }
 type TopEvent = { id: string; title: string; organizer: string; sold: number; capacity: number; revenue: number; currency: string }
-type Pending = { kind: string; title: string; detail: string; primary: string; action: (id: string) => Promise<void>; id: string }
+type Pending = { kind: string; title: string; detail: string; primary: string; action: (id: string) => Promise<void>; id: string; description: string; category: string }
 
 function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
   const w = 120, h = 36, pad = 2
@@ -48,6 +50,15 @@ export default async function AdminOverviewPage() {
   if (!session?.user || session.user.role !== "admin") {
     redirect("/auth/signin?callbackUrl=/admin")
   }
+
+  // ── Total organizers (for AI brief) ─────────────────────────────────────
+
+  const [orgCountRow] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(users)
+    .where(eq(users.role, "organizer"))
+
+  const totalOrganizers = orgCountRow?.count ?? 0
 
   // ── KPIs ────────────────────────────────────────────────────────────────
 
@@ -84,6 +95,33 @@ export default async function AdminOverviewPage() {
     { label: "Active events", value: activeEvents, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
     { label: "New users (month)", value: newUsers, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
   ]
+
+  // ── Top category & city (for AI brief) ──────────────────────────────────
+
+  const [topCatRow] = await db
+    .select({
+      category: events.category,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(events)
+    .where(eq(events.status, "published"))
+    .groupBy(events.category)
+    .orderBy(sql`COUNT(*) DESC`)
+    .limit(1)
+
+  const [topCityRow] = await db
+    .select({
+      city: events.city,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(events)
+    .where(eq(events.status, "published"))
+    .groupBy(events.city)
+    .orderBy(sql`COUNT(*) DESC`)
+    .limit(1)
+
+  const topCategory = topCatRow?.category ?? "N/A"
+  const topCity = topCityRow?.city ?? "N/A"
 
   // ── Recent orders (activity) ────────────────────────────────────────────
 
@@ -172,6 +210,8 @@ export default async function AdminOverviewPage() {
     .select({
       id: events.id,
       title: events.title,
+      description: events.description,
+      category: events.category,
       organizerName: users.name,
       organizerEmail: users.email,
     })
@@ -200,6 +240,8 @@ export default async function AdminOverviewPage() {
       primary: "Publish",
       action: publishEventAction,
       id: e.id,
+      description: e.description ?? "",
+      category: e.category ?? "",
     })),
     ...unverifiedUsers.map((u) => ({
       kind: "Unverified user",
@@ -208,6 +250,8 @@ export default async function AdminOverviewPage() {
       primary: "Verify email",
       action: verifyUserEmailAction,
       id: u.id,
+      description: "",
+      category: "",
     })),
   ]
 
@@ -252,6 +296,17 @@ export default async function AdminOverviewPage() {
               ))}
             </>
           )}
+        </div>
+
+        {/* AI Platform Brief */}
+        <div className="max-w-md tp-fade-up-1">
+          <AiBriefCard
+            activeEvents={activeEvents}
+            totalOrganizers={totalOrganizers}
+            totalRevenue={grossVolume}
+            topCategory={topCategory}
+            topCity={topCity}
+          />
         </div>
 
         {/* Activity + Top events */}
@@ -349,6 +404,11 @@ export default async function AdminOverviewPage() {
                       <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{p.title}</p>
                     </div>
                     <p className="text-[12.5px] text-ink-2">{p.detail}</p>
+                    {p.kind === "Draft event" && p.description && (
+                      <div className="mt-2">
+                        <AiModerateButton title={p.title} description={p.description} category={p.category} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <form action={p.action.bind(null, p.id)}>

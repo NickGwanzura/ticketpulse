@@ -12,6 +12,7 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
 import { events, eventOrganisers } from "@/db/schema"
+import AiInsightCard from "@/components/ai/AiInsightCard"
 
 type EventRow = {
   id: string
@@ -19,6 +20,7 @@ type EventRow = {
   title: string
   category: string
   venue: string
+  city: string
   startsAt: Date
   status: string
   sold: number
@@ -202,6 +204,7 @@ export default async function OrganizerPage() {
     title: r.title,
     category: r.category,
     venue: r.venue,
+    city: r.city,
     startsAt: r.startsAt,
     status: r.status ?? "draft",
     sold: 0,
@@ -450,6 +453,18 @@ export default async function OrganizerPage() {
 
           {/* Side column */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
+
+            {/* AI Sales Insight (for first published event, or general) */}
+            {ORGANIZER_EVENTS.length > 0 && (
+              <AiInsightCard
+                eventTitle={ORGANIZER_EVENTS[0].title}
+                sold={ORGANIZER_EVENTS[0].sold}
+                capacity={ORGANIZER_EVENTS[0].capacity}
+                daysRemaining={Math.max(0, Math.ceil((new Date(ORGANIZER_EVENTS[0].startsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}
+                category={ORGANIZER_EVENTS[0].category}
+                city={ORGANIZER_EVENTS[0].city}
+              />
+            )}
 
             {/* Upcoming payout */}
             <div className="rounded-2xl border border-line bg-paper p-5">
