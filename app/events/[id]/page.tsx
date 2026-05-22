@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { Calendar, MapPin, Users, Heart, Clock } from "lucide-react"
+import { Calendar, MapPin, Users, Heart } from "lucide-react"
 import MerchSection from "@/components/merch/MerchSection"
 import TransportSection from "@/components/transport/TransportSection"
 import VendorSection from "@/components/vendors/VendorSection"
@@ -189,33 +189,36 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       {/* ── Hero banner ── */}
       {row.coverImage ? (
-        <div className="relative w-full h-[40vh] md:h-[55vh] overflow-hidden bg-ink">
+        <div className="relative w-full h-[38vh] md:h-[50vh] overflow-hidden bg-ink">
           <img
             src={row.coverImage}
             alt=""
-            className="w-full h-full object-contain bg-ink"
+            className="w-full h-full object-cover bg-ink"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase mb-2">{row.category}</p>
+            <h1 className="text-[28px] md:text-[42px] font-bold tracking-tight leading-tight text-white max-w-3xl">{row.title}</h1>
+          </div>
         </div>
       ) : (
         <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
-          <span className="text-8xl relative">{emoji}</span>
+          <div className="text-center">
+            <span className="text-7xl block mb-3">{emoji}</span>
+            <h1 className="text-[24px] md:text-[36px] font-bold tracking-tight text-ink px-4">{row.title}</h1>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mt-2">{row.category}</p>
+          </div>
         </div>
       )}
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 pb-28 lg:pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-12">
-            {/* ── Title & meta ── */}
-            <div className="-mt-6 relative z-10">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">{row.category}</p>
-              <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink mb-5">{row.title}</h1>
+            {/* ── Meta & actions ── */}
+            <div>
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-ink-2 mb-6">
                 <span className="flex items-center gap-2"><Calendar size={14} className="text-ink-3" />{timeDisplay}</span>
-                {row.endsAt && (
-                  <span className="flex items-center gap-2"><Clock size={14} className="text-ink-3" />Ends {formatDate(row.endsAt, { dateStyle: "medium", timeStyle: "short" })}</span>
-                )}
                 <span className="flex items-center gap-2"><MapPin size={14} className="text-ink-3" />{row.venue}, {row.city}</span>
                 {row.organizerName && (
                   <span className="flex items-center gap-2"><Users size={14} className="text-ink-3" />Organized by {row.organizerName}</span>
@@ -251,7 +254,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             </div>
 
             {/* ── Venue map ── */}
-            {row.lat != null && row.lng != null && (
+            {(row.lat ?? row.lng ?? row.googleMapsUrl) && (
               <VenueMap
                 lat={row.lat}
                 lng={row.lng}

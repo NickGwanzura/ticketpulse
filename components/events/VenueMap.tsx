@@ -3,8 +3,8 @@
 import { MapPin, ExternalLink, Navigation } from "lucide-react"
 
 interface VenueMapProps {
-  lat: number | string
-  lng: number | string
+  lat?: number | string | null
+  lng?: number | string | null
   venue: string
   address?: string | null
   city?: string | null
@@ -12,26 +12,48 @@ interface VenueMapProps {
   googleMapsUrl?: string | null
 }
 
+function hasValidCoords(lat: unknown, lng: unknown): lat is number | string {
+  if (lat == null || lng == null) return false
+  const n1 = typeof lat === "string" ? parseFloat(lat) : (lat as number)
+  const n2 = typeof lng === "string" ? parseFloat(lng) : (lng as number)
+  return !isNaN(n1) && !isNaN(n2)
+}
+
 /**
  * Interactive venue map using an OpenStreetMap embed iframe.
- * Also provides Google Maps and OpenStreetMap links for directions.
+ * Falls back to a venue-address card with Google Maps link when coordinates are missing.
  */
 export default function VenueMap({ lat, lng, venue, address, city, country, googleMapsUrl }: VenueMapProps) {
-  const latNum = typeof lat === "string" ? parseFloat(lat) : lat
-  const lngNum = typeof lng === "string" ? parseFloat(lng) : lng
-
-  if (isNaN(latNum) || isNaN(lngNum)) return null
-
-  // Build a bounding box ~0.02° around the point (roughly 2 km)
-  const padding = 0.02
-  const bbox = `${lngNum - padding},${latNum - padding},${lngNum + padding},${latNum + padding}`
-
-  const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${latNum},${lngNum}`
-  const osmLink = `https://www.openstreetmap.org/?mlat=${latNum}&mlng=${lngNum}#map=15/${latNum}/${lngNum}`
-  const googleMapsLink = googleMapsUrl || `https://www.google.com/maps?q=${latNum},${lngNum}`
-  const googleDirectionsLink = `https://www.google.com/maps/dir/?api=1&destination=${latNum},${lngNum}`
-
   const fullAddress = [venue, address, city, country].filter(Boolean).join(", ")
+  const hasCoords = hasValidCoords(lat, lng)
+
+  const latNum = hasCoords
+    ? (typeof lat === "string" ? parseFloat(lat) : (lat as number))
+    : 0
+  const lngNum = hasCoords
+    ? (typeof lng === "string" ? parseFloat(lng) : (lng as number))
+    : 0
+
+  // Build links (use googleMapsUrl if provided, otherwise auto-generate)
+  const googleMapsLink =
+    googleMapsUrl ||
+    (hasCoords ? `https://www.google.com/maps?q=${latNum},${lngNum}` : null)
+  const googleDirectionsLink = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${latNum},${lngNum}`
+    : null
+
+  const osmLink = hasCoords
+    ? `https://www.openstreetmap.org/?mlat=${latNum}&mlng=${lngNum}#map=15/${latNum}/${lngNum}`
+    : null
+
+  // Embed iframe URL (only when coordinates are valid)
+  const padding = 0.02
+  const bbox = hasCoords
+    ? `${lngNum - padding},${latNum - padding},${lngNum + padding},${latNum + padding}`
+    : null
+  const embedUrl = bbox
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${latNum},${lngNum}`
+    : null
 
   return (
     <section>
@@ -41,22 +63,36 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
       </h3>
 
       <div className="rounded-xl border border-line overflow-hidden bg-paper shadow-sm">
-        <div className="relative w-full h-56 md:h-72">
-          <iframe
-            title={`Map showing ${venue}`}
-            width="100%"
-            height="100%"
-            frameBorder={0}
-            scrolling="no"
-            marginHeight={0}
-            marginWidth={0}
-            src={embedUrl}
-            className="absolute inset-0"
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
+        {/* Map embed — only when coordinates are available */}
+        {embedUrl && (
+          <div className="relative w-full h-56 md:h-72">
+            <iframe
+              title={`Map showing ${venue}`}
+              width="100%"
+              height="100%"
+              frameBorder={0}
+              scrolling="no"
+              marginHeight={0}
+              marginWidth={0}
+              src={embedUrl}
+              className="absolute inset-0"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        )}
+
+        {/* Fallback banner when no coordinates but venue is known */}
+        {!embedUrl && fullAddress && (
+          <div className="relative w-full h-40 md:h-48 bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 flex items-center justify-center">
+            <div className="text-center px-6">
+              <MapPin size={32} className="mx-auto mb-2 text-blue-300" />
+              <p className="text-sm font-medium text-ink-2">{venue}</p>
+              <p className="text-[12px] text-ink-3 mt-0.5">{fullAddress}</p>
+            </div>
+          </div>
+        )}
 
         <div className="px-4 py-3.5 border-t border-line space-y-1">
           <div className="min-w-0">
@@ -67,38 +103,46 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
           </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <a
-              href={googleMapsLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue hover:text-blue/80 transition-colors tracking-tight rounded-lg border border-blue/20 bg-blue-soft/40 px-2.5 py-1.5"
-            >
-              <MapPin size={12} />
-              Open in Google Maps
-            </a>
-            <a
-              href={googleDirectionsLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 transition-colors tracking-tight rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5"
-            >
-              <Navigation size={12} />
-              Get Directions
-            </a>
-            <a
-              href={osmLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-3 hover:text-ink transition-colors tracking-tight"
-            >
-              <ExternalLink size={11} />
-              OpenStreetMap
-            </a>
+            {googleMapsLink && (
+              <a
+                href={googleMapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue hover:text-blue/80 transition-colors tracking-tight rounded-lg border border-blue/20 bg-blue-soft/40 px-2.5 py-1.5"
+              >
+                <MapPin size={12} />
+                Open in Google Maps
+              </a>
+            )}
+            {googleDirectionsLink && (
+              <a
+                href={googleDirectionsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 transition-colors tracking-tight rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5"
+              >
+                <Navigation size={12} />
+                Get Directions
+              </a>
+            )}
+            {osmLink && (
+              <a
+                href={osmLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-3 hover:text-ink transition-colors tracking-tight"
+              >
+                <ExternalLink size={11} />
+                OpenStreetMap
+              </a>
+            )}
           </div>
 
-          <p className="text-[10px] text-ink-3/60 tracking-tight">
-            {latNum.toFixed(5)}, {lngNum.toFixed(5)}
-          </p>
+          {hasCoords && (
+            <p className="text-[10px] text-ink-3/60 tracking-tight">
+              {latNum.toFixed(5)}, {lngNum.toFixed(5)}
+            </p>
+          )}
         </div>
       </div>
     </section>
