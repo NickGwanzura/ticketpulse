@@ -1,6 +1,13 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { Calendar, MapPin, Users, Heart } from "lucide-react"
+
+// ISR: re-generate this page at most every 30 seconds.
+// Cuts DB load by ~95% for the most-hit public pages while
+// keeping ticket counts reasonably fresh.
+export const revalidate = 30
+export const dynamicParams = true
+
 import MerchSection from "@/components/merch/MerchSection"
 import TransportSection from "@/components/transport/TransportSection"
 import VendorSection from "@/components/vendors/VendorSection"

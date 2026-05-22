@@ -10,6 +10,12 @@ export const metadata: Metadata = {
     canonical: "/events",
   },
 }
+
+// ISR: re-generate every 60 seconds.
+// The events list changes when organisers publish new events or
+// update ticket counts — once a minute is fresh enough.
+export const revalidate = 60
+
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
 import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm"

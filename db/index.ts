@@ -14,7 +14,10 @@ neonConfig.webSocketConstructor = WebSocket
 // back to a Proxy that throws on first real use.
 const url = process.env.DATABASE_URL
 
-const pool = url ? new Pool({ connectionString: url }) : null
+// Allow a modest pool of connections. The Neon serverless driver
+// defaults to 1, which serialises all DB queries — bumping to 10
+// lets concurrent page renders and API calls run in parallel.
+const pool = url ? new Pool({ connectionString: url, max: 10 }) : null
 
 export const db: DBType = pool
   ? drizzle(pool, { schema })

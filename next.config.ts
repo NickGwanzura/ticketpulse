@@ -39,6 +39,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Static assets (fonts, images, icons) — cache aggressively
+        source: "/:path*((?:fonts|icons|images)/.*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
