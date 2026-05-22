@@ -303,7 +303,7 @@ export default function Footer() {
         className="relative max-w-7xl mx-auto px-6 md:px-8 select-none pointer-events-none"
       >
         <div className="overflow-hidden">
-          <p className="font-bold tracking-[-0.045em] leading-none text-[clamp(64px,16vw,260px)] bg-gradient-to-b from-white/[0.10] to-white/[0.02] bg-clip-text text-transparent whitespace-nowrap">
+          <p className="font-bold tracking-[-0.045em] leading-none text-[clamp(48px,14vw,220px)] bg-gradient-to-b from-white/[0.10] to-white/[0.02] bg-clip-text text-transparent text-center">
             TicketPulse
           </p>
         </div>
