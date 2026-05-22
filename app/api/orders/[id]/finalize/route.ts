@@ -142,6 +142,9 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     }))
     saleLines = lines
 
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+
     await sendOrderConfirmationEmail({
       to: session.user.email,
       buyerName: order.guestName ?? session.user.name,
@@ -159,7 +162,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       lines,
       total: order.totalAmount,
       currency: order.currency ?? "USD",
-      ticketUrl: `${origin}/orders/${id}`,
+      ticketUrl: `${appUrl}/orders/${id}`,
     })
   } catch (err) {
     console.error("[finalize] failed to send order confirmation:", err)

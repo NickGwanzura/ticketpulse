@@ -13,7 +13,7 @@ import {
 } from "@react-email/components"
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse-production.up.railway.app"
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
 
 export const BRAND = {
   ink: "#0B1220",
