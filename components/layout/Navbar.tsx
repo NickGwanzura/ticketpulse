@@ -98,15 +98,15 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
         />
       )}
 
-      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center gap-6">
+      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center gap-3 md:gap-6">
         {/* Brand */}
         <Link
           href="/"
           className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
           aria-label="TicketPulse home"
         >
-          <span className="relative inline-flex items-center justify-center transition-transform group-hover:scale-105">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="w-36 h-36 md:w-40 md:h-40" />
+          <span className="relative inline-flex items-center justify-center p-1.5 -m-1.5 transition-transform group-hover:scale-105">
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="w-28 h-28 md:w-40 md:h-40" />
           </span>
         </Link>
 

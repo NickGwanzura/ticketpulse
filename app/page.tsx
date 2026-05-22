@@ -267,7 +267,7 @@ export default async function Home() {
 
         {/* Layer 8: floating sparkles */}
         <div className="absolute top-[18%] left-[44%] -z-10 w-1.5 h-1.5 rounded-full bg-green-500/70 shadow-[0_0_18px_4px_rgba(5,112,222,0.4)] animate-pulse" aria-hidden />
-        <div className="absolute top-[58%] left-[12%] -z-10 w-1 h-1 rounded-full bg-green-500/70 shadow-[0_0_12px_3px_rgba(141,211,47,0.3)] animate-pulse [animation-delay:1.2s]" aria-hidden />
+        <div className="absolute top-[58%] left-[12%] -z-10 w-1 h-1 rounded-full bg-green-500/70 shadow-[0_0_12px_3px_rgba(19,17,50,0.25)] animate-pulse [animation-delay:1.2s]" aria-hidden />
         <div className="absolute top-[35%] right-[6%] -z-10 w-1 h-1 rounded-full bg-amber-400/80 shadow-[0_0_10px_3px_rgba(245,158,11,0.3)] animate-pulse [animation-delay:2.4s] hidden md:block" aria-hidden />
 
         {/* Layer 9: bottom curve fade */}
