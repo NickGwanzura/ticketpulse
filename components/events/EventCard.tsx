@@ -239,8 +239,8 @@ export default function EventCard({
           </div>
         </div>
 
-        {/* Capacity / going strip */}
-        {!soldOut && status === "published" && capacity > 0 && (
+        {/* Capacity / going strip — hidden when 0 going so it doesn't scare people off */}
+        {!soldOut && status === "published" && capacity > 0 && going > 0 && (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1.5">
               <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
