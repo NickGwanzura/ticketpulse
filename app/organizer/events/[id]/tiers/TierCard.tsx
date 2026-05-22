@@ -35,20 +35,26 @@ function formatWindow(start: Date | null, end: Date | null): string | null {
 export default function TierCard({
   eventId,
   eventTitle,
+  eventStatus,
   tier,
 }: {
   eventId: string
   eventTitle: string
+  eventStatus: string | null
   tier: Tier
 }) {
   const [editing, setEditing] = useState(false)
   const [showingSample, setShowingSample] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const price = Number.parseFloat(tier.price) || 0
   const sold = tier.soldQuantity ?? 0
   const total = tier.totalQuantity
   const remaining = Math.max(0, total - sold)
   const pct = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0
   const windowLabel = formatWindow(tier.salesStart, tier.salesEnd)
+
+  const isFinished = eventStatus === "completed" || eventStatus === "cancelled"
+  const canDelete = sold === 0 || isFinished
 
   return (
     <div className="rounded-2xl border border-line bg-paper overflow-hidden">
@@ -105,28 +111,52 @@ export default function TierCard({
             {showingSample ? <><X size={12} /> Close</> : <><Eye size={12} /> Test ticket</>}
           </button>
 
-          <form
-            action={deleteTierAction}
-            onSubmit={(e) => {
-              if (sold > 0) {
-                e.preventDefault()
-                alert("This tier has sold tickets and can't be deleted. Set its sales end date instead.")
-                return
-              }
-              if (!confirm(`Delete "${tier.name}"?`)) e.preventDefault()
-            }}
-          >
-            <input type="hidden" name="tierId" value={tier.id} />
-            <input type="hidden" name="eventId" value={eventId} />
+          {deleteConfirm ? (
+            <div className="inline-flex items-center gap-1">
+              <span className="text-[10.5px] text-rose-700 font-medium whitespace-nowrap">
+                {sold > 0 && isFinished ? "Event finished — delete?" : "Delete tier?"}
+              </span>
+              <form action={deleteTierAction}>
+                <input type="hidden" name="tierId" value={tier.id} />
+                <input type="hidden" name="eventId" value={eventId} />
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-700 transition-colors"
+                >
+                  Yes
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
+              >
+                No
+              </button>
+            </div>
+          ) : (
             <button
-              type="submit"
-              title={sold > 0 ? "Can't delete — has sales" : "Delete tier"}
-              disabled={sold > 0}
-              className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-ink-2 disabled:hover:border-line"
+              type="button"
+              onClick={() => {
+                if (canDelete) {
+                  setDeleteConfirm(true)
+                } else {
+                  alert("This tier has sold tickets and can't be deleted while the event is active. Mark the event as completed or cancelled first, or set its sales end date in the past.")
+                }
+              }}
+              title={
+                !canDelete
+                  ? "Can't delete - has active sales"
+                  : isFinished && sold > 0
+                    ? "Delete this tier (event is finished)"
+                    : "Delete tier"
+              }
+              disabled={!canDelete}
+              className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-ink-2 disabled:hover:border-line transition-colors"
             >
               <Trash2 size={13} />
             </button>
-          </form>
+          )}
         </div>
       </div>
 

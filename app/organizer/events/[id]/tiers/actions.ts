@@ -185,9 +185,18 @@ export async function deleteTierAction(formData: FormData): Promise<void> {
   const guard = await requireTierOwnership(tierId)
   if (!guard.ok) redirect(guard.redirectTo)
 
-  // Block deletion if any tickets have been sold — keep accounting intact.
+  // Check if the event is finished — if so, allow deletion even with sales
+  const [event] = await db
+    .select({ status: events.status })
+    .from(events)
+    .where(eq(events.id, eventId))
+    .limit(1)
+
+  const isFinished = event?.status === "completed" || event?.status === "cancelled"
+
+  // Block deletion if any tickets have been sold and the event is still active.
   // Organizers can lower capacity / set salesEnd to take it off sale instead.
-  if ((guard.tier.soldQuantity ?? 0) > 0) {
+  if (!isFinished && (guard.tier.soldQuantity ?? 0) > 0) {
     redirect(`/organizer/events/${eventId}/tiers?error=tier_has_sales`)
   }
 

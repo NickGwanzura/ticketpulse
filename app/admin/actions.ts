@@ -331,3 +331,62 @@ export async function cancelOrderTicketsAction(orderId: string) {
   revalidatePath("/admin/orders")
   revalidatePath("/admin")
 }
+
+/**
+ * Cancel individual tickets directly (not through an order).
+ * Used for staff tickets, test tickets, or tickets without an order.
+ * Only admins can call this. Restores ticket tier inventory.
+ */
+export async function cancelTicketsAction(ticketIds: string[]) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  // Fetch the tickets to cancel
+  const targetTickets = await db
+    .select({ id: tickets.id, tierId: tickets.tierId, status: tickets.status })
+    .from(tickets)
+    .where(inArray(tickets.id, ticketIds))
+
+  if (targetTickets.length === 0) {
+    throw new Error("No tickets found")
+  }
+
+  // Separate already-cancelled/refunded tickets
+  const alreadyDone = targetTickets.filter(
+    (t) => t.status === "cancelled" || t.status === "refunded",
+  )
+  const toCancel = targetTickets.filter(
+    (t) => t.status !== "cancelled" && t.status !== "refunded",
+  )
+
+  if (toCancel.length === 0) {
+    throw new Error("All selected tickets are already cancelled or refunded")
+  }
+
+  // Mark tickets as cancelled
+  const toCancelIds = toCancel.map((t) => t.id)
+  await db
+    .update(tickets)
+    .set({ status: "cancelled" })
+    .where(inArray(tickets.id, toCancelIds))
+
+  // Restore inventory for each affected tier
+  const tierCounts = new Map<string, number>()
+  for (const t of toCancel) {
+    if (t.tierId) {
+      tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+    }
+  }
+  for (const [tierId, count] of tierCounts) {
+    await db
+      .update(ticketTiers)
+      .set({ soldQuantity: sql`${ticketTiers.soldQuantity} - ${count}` })
+      .where(eq(ticketTiers.id, tierId))
+  }
+
+  revalidatePath("/admin/tickets")
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin")
+}

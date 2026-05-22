@@ -31,7 +31,12 @@ export default async function TiersPage({
   if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/tiers`)
 
   const [event] = await db
-    .select({ id: events.id, title: events.title, organizerId: events.organizerId })
+    .select({
+      id: events.id,
+      title: events.title,
+      organizerId: events.organizerId,
+      status: events.status,
+    })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
@@ -113,6 +118,7 @@ export default async function TiersPage({
                 key={t.id}
                 eventId={id}
                 eventTitle={event.title}
+                eventStatus={event.status}
                 tier={{
                   id: t.id,
                   name: t.name,

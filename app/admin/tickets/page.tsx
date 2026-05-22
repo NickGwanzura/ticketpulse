@@ -8,12 +8,13 @@ import { desc, eq, or, like, and, inArray } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events, orderItems, ticketTiers } from "@/db/schema"
+import { orders, events, orderItems, ticketTiers, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import ResendButton from "@/app/admin/_components/ResendButton"
 import CancelOrderButton from "@/app/admin/_components/CancelOrderButton"
+import CancelTicketButton from "@/app/admin/_components/CancelTicketButton"
 
 const STATUS_STYLE: Record<string, string> = {
   paid:                   "bg-emerald-50 text-emerald-700",
@@ -53,11 +54,6 @@ export default async function AdminTicketsPage({
 
   // ── Build WHERE clause ──────────────────────────────────────────────────
   const conditions: ReturnType<typeof and>[] = []
-
-  // Only show orders that have tickets (paid or awaiting verification)
-  conditions.push(
-    or(eq(orders.status, "paid"), eq(orders.status, "awaiting_verification")),
-  )
 
   if (query) {
     conditions.push(
@@ -130,6 +126,35 @@ export default async function AdminTicketsPage({
 
   const customerName = (row: (typeof orderRows)[number]) =>
     row.guestName ?? row.guestEmail?.split("@")[0] ?? "—"
+
+  // ── Fetch individual tickets (staff tickets, tickets without orders) ───
+  const cancellableStatuses = new Set(["available", "reserved", "sold", "used"])
+  const rawTickets = !query
+    ? await db
+        .select({
+          id: tickets.id,
+          status: tickets.status,
+          isStaffTicket: tickets.isStaffTicket,
+          staffRole: tickets.staffRole,
+          staffName: tickets.staffName,
+          tierName: ticketTiers.name,
+          eventId: tickets.eventId,
+          createdAt: tickets.createdAt,
+        })
+        .from(tickets)
+        .leftJoin(ticketTiers, eq(tickets.tierId, ticketTiers.id))
+        .where(eventFilter ? eq(tickets.eventId, eventFilter) : undefined)
+        .orderBy(desc(tickets.createdAt))
+        .limit(500)
+    : []
+
+  // Group tickets by event ID for display
+  const ticketsByEvent = new Map<string, typeof rawTickets>()
+  for (const t of rawTickets) {
+    const arr = ticketsByEvent.get(t.eventId) ?? []
+    arr.push(t)
+    ticketsByEvent.set(t.eventId, arr)
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
@@ -348,10 +373,12 @@ export default async function AdminTicketsPage({
                               >
                                 <ExternalLink size={14} />
                               </Link>
-                              <CancelOrderButton
-                                orderId={o.id}
-                                variant="desktop"
-                              />
+                              {o.status !== "cancelled" && o.status !== "refunded" && (
+                                <CancelOrderButton
+                                  orderId={o.id}
+                                  variant="desktop"
+                                />
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -426,10 +453,12 @@ export default async function AdminTicketsPage({
                           <ExternalLink size={12} />
                           View
                         </Link>
-                        <CancelOrderButton
-                          orderId={o.id}
-                          variant="mobile"
-                        />
+                        {o.status !== "cancelled" && o.status !== "refunded" && (
+                          <CancelOrderButton
+                            orderId={o.id}
+                            variant="mobile"
+                          />
+                        )}
                       </div>
                     </li>
                   )
@@ -439,11 +468,11 @@ export default async function AdminTicketsPage({
           ) : (
             <EmptyState
               icon={Ticket}
-              title={query || eventFilter ? "No matching tickets" : "No tickets issued yet"}
+              title={query || eventFilter ? "No matching tickets" : "No orders yet"}
               body={
                 query || eventFilter
                   ? "No orders match the current filters. Try a different search or event."
-                  : "Paid orders with tickets will appear here once customers complete checkout."
+                  : "Orders with tickets will appear here once customers check out."
               }
               variant="inline"
             />
@@ -469,6 +498,88 @@ export default async function AdminTicketsPage({
               Clear filters
             </Link>
           </p>
+        )}
+
+        {/* ── Individual tickets (staff tickets, tickets without orders) ── */}
+        {!query && ticketsByEvent.size > 0 && (
+          <>
+            <h2 className="text-[11.5px] font-semibold tracking-widest text-ink-3 uppercase tp-fade-up-3 mt-10 mb-4 px-1">
+              All tickets by event
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 tp-fade-up-3">
+              {allEvents
+                .filter((ev) => ticketsByEvent.has(ev.id))
+                .map((ev) => {
+                  const eventTickets = ticketsByEvent.get(ev.id)!
+                  const activeCount = eventTickets.filter((t) =>
+                    cancellableStatuses.has(t.status ?? ""),
+                  ).length
+
+                  return (
+                    <div
+                      key={ev.id}
+                      className="rounded-2xl border border-line bg-paper overflow-hidden tp-lift"
+                    >
+                      <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+                        <span className="text-[12.5px] font-semibold text-ink truncate">
+                          {ev.title}
+                        </span>
+                        <span className="text-[10.5px] text-ink-3 font-medium tabular-nums shrink-0 ml-2">
+                          {eventTickets.length} ticket{eventTickets.length !== 1 ? "s" : ""}
+                          {activeCount > 0 && (
+                            <> · <span className="text-rose-600">{activeCount} active</span></>
+                          )}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-line max-h-[320px] overflow-y-auto">
+                        {eventTickets.map((t) => {
+                          const badge = t.isStaffTicket
+                            ? "bg-violet-50 text-violet-700"
+                            : STATUS_STYLE[t.status ?? ""] ?? "bg-paper-2 text-ink-3"
+                          const label = t.isStaffTicket
+                            ? (t.staffRole ?? "Staff")
+                            : (STATUS_LABEL[t.status ?? ""] ?? t.status ?? "—")
+                          return (
+                            <div
+                              key={t.id}
+                              className="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-paper-2 transition-colors"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-mono text-ink-3 truncate" title={t.id}>
+                                    #{t.id.slice(0, 8)}
+                                  </span>
+                                  {t.tierName && (
+                                    <span className="text-[11.5px] font-medium text-ink truncate">
+                                      {t.tierName}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span
+                                    className={`inline-block text-[9.5px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-full ${badge}`}
+                                  >
+                                    {label}
+                                  </span>
+                                  {t.staffName && (
+                                    <span className="text-[10.5px] text-ink-3 truncate">
+                                      {t.staffName}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {cancellableStatuses.has(t.status ?? "") && (
+                                <CancelTicketButton ticketId={t.id} variant="desktop" />
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </>
         )}
       </div>
     </div>
