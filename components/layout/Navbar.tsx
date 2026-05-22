@@ -105,7 +105,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
           aria-label="TicketPulse home"
         >
-          <span className="relative inline-flex items-center justify-center p-1.5 -m-1.5 transition-transform group-hover:scale-105">
+          <span className="relative inline-flex items-center justify-center p-1.5 md:p-3 -m-1.5 md:-m-3 transition-transform group-hover:scale-105">
             <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="w-28 h-28 md:w-40 md:h-40" />
           </span>
         </Link>
