@@ -187,34 +187,32 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* ── Hero banner ── */}
+      {/* ── Hero banner (cover image only, no title overlay) ── */}
       {row.coverImage ? (
-        <div className="relative w-full h-[38vh] md:h-[50vh] overflow-hidden bg-ink">
+        <div className="relative w-full h-[32vh] md:h-[44vh] overflow-hidden bg-ink">
           <img
             src={row.coverImage}
             alt=""
             className="w-full h-full object-cover bg-ink"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase mb-2">{row.category}</p>
-            <h1 className="text-[28px] md:text-[42px] font-bold tracking-tight leading-tight text-white max-w-3xl">{row.title}</h1>
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
       ) : (
-        <div className="relative w-full h-48 md:h-64 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center overflow-hidden">
+        <div className="relative w-full h-40 md:h-52 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
-          <div className="text-center">
-            <span className="text-7xl block mb-3">{emoji}</span>
-            <h1 className="text-[24px] md:text-[36px] font-bold tracking-tight text-ink px-4">{row.title}</h1>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mt-2">{row.category}</p>
-          </div>
+          <span className="text-7xl">{emoji}</span>
         </div>
       )}
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 pb-28 lg:pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-12">
+            {/* ── Category & title ── */}
+            <div className="pt-6 md:pt-8">
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">{row.category}</p>
+              <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">{row.title}</h1>
+            </div>
+
             {/* ── Meta & actions ── */}
             <div>
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-ink-2 mb-6">
