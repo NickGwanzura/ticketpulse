@@ -80,10 +80,15 @@ export default async function AdminOrdersPage({
       totalAmount: orders.totalAmount,
       currency: orders.currency,
       paymentMethod: orders.paymentMethod,
+      paymentRef: orders.paymentRef,
       guestEmail: orders.guestEmail,
       guestName: orders.guestName,
+      guestPhone: orders.guestPhone,
       paidAt: orders.paidAt,
       createdAt: orders.createdAt,
+      verificationSentAt: orders.verificationSentAt,
+      verificationExpires: orders.verificationExpires,
+      verifiedAt: orders.verifiedAt,
       eventTitle: events.title,
       eventSlug: events.slug,
     })
@@ -250,10 +255,16 @@ export default async function AdminOrdersPage({
                             #{o.id.slice(0, 8)}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5 max-w-[160px]">
+                        <td className="px-3 py-3.5 max-w-[180px]">
                           <p className="text-[12.5px] text-ink truncate">{customerName(o)}</p>
                           {o.guestEmail && (
                             <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
+                          )}
+                          {o.guestPhone && (
+                            <p className="text-[11px] text-ink-3 truncate">{o.guestPhone}</p>
+                          )}
+                          {!o.guestPhone && !o.guestEmail && (
+                            <p className="text-[11px] text-ink-3">No contact info</p>
                           )}
                         </td>
                         <td className="px-3 py-3.5 max-w-[200px]">
@@ -263,23 +274,56 @@ export default async function AdminOrdersPage({
                         </td>
                         <td className="px-3 py-3.5">
                           {o.paymentMethod ? (
-                            <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2">
-                              <Smartphone size={12} className="text-emerald-700" />
-                              {o.paymentMethod}
-                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2">
+                                <Smartphone size={12} className="text-emerald-700" />
+                                {o.paymentMethod}
+                              </span>
+                              {o.paymentRef && (
+                                <span className="text-[10px] font-mono text-ink-3 truncate max-w-[140px]" title={o.paymentRef}>
+                                  Ref: {o.paymentRef.slice(0, 20)}
+                                </span>
+                              )}
+                            </div>
                           ) : (
-                            <span className="text-[12px] text-ink-3">—</span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[12px] text-ink-3 italic">Not selected</span>
+                              {o.status === "pending" && o.createdAt && (
+                                <span className="text-[10px] text-amber-600 font-medium">
+                                  {(Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 < 60
+                                    ? `${Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60)}m ago`
+                                    : `${Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago`}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-3 py-3.5">
-                          <span
-                            className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
-                          >
-                            {STATUS_LABEL[o.status ?? ""] ?? o.status}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`inline-block w-fit text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
+                            >
+                              {STATUS_LABEL[o.status ?? ""] ?? o.status}
+                            </span>
+                            {o.status === "awaiting_verification" && o.verificationSentAt && (
+                              <span className="text-[10px] text-blue-600 font-medium">
+                                Verification sent {formatDateShort(o.verificationSentAt)}
+                              </span>
+                            )}
+                            {o.status === "awaiting_verification" && !o.verificationSentAt && (
+                              <span className="text-[10px] text-amber-600 font-medium">Not yet verified</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
-                          {o.createdAt ? formatDateShort(o.createdAt) : "—"}
+                          <div className="flex flex-col">
+                            <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
+                            {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
+                              <span className="text-[10px] text-ink-3">
+                                {Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-3.5 text-right">
                           <span className="text-[13.5px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
@@ -352,9 +396,20 @@ export default async function AdminOrdersPage({
                       </div>
                     </div>
                     {o.guestEmail && (
-                      <p className="text-[11px] text-ink-3 truncate mb-2">{o.guestEmail}</p>
+                      <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                     )}
-                    <div className="flex items-center justify-between text-[11.5px] text-ink-3">
+                    {o.guestPhone && (
+                      <p className="text-[11px] text-ink-3 truncate">{o.guestPhone}</p>
+                    )}
+                    {/* Verification detail for awaiting_verification */}
+                    {o.status === "awaiting_verification" && (
+                      <p className="text-[10.5px] text-blue-600 font-medium mt-1">
+                        {o.verificationSentAt
+                          ? `Verification sent ${formatDateShort(o.verificationSentAt)}`
+                          : "Not yet verified"}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between text-[11.5px] text-ink-3 mt-2">
                       <span className="inline-flex items-center gap-1.5">
                         {o.paymentMethod ? (
                           <>
@@ -362,9 +417,22 @@ export default async function AdminOrdersPage({
                             {o.paymentMethod}
                           </>
                         ) : (
-                          "—"
+                          <span className="italic text-ink-3">No payment method</span>
                         )}
-                      </span>                         <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
+                        {o.paymentRef && (
+                          <span className="text-[10px] font-mono text-ink-3 ml-1" title={o.paymentRef}>
+                            #{o.paymentRef.slice(0, 8)}
+                          </span>
+                        )}
+                      </span>
+                      <div className="text-right">
+                        <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
+                        {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
+                          <p className="text-[10px] text-ink-3">
+                            {Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       {(o.status === "paid" || o.status === "awaiting_verification") && (

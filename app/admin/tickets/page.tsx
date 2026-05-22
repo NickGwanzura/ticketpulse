@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Search, Ticket, ShoppingCart, ExternalLink, Download,
-  ChevronDown, Calendar, Mail,
+  ChevronDown, Calendar, Mail, Smartphone,
 } from "lucide-react"
 import { desc, eq, or, like, and, inArray } from "drizzle-orm"
 
@@ -79,10 +79,15 @@ export default async function AdminTicketsPage({
       totalAmount: orders.totalAmount,
       currency: orders.currency,
       paymentMethod: orders.paymentMethod,
+      paymentRef: orders.paymentRef,
       guestEmail: orders.guestEmail,
       guestName: orders.guestName,
+      guestPhone: orders.guestPhone,
       paidAt: orders.paidAt,
       createdAt: orders.createdAt,
+      verificationSentAt: orders.verificationSentAt,
+      verificationExpires: orders.verificationExpires,
+      verifiedAt: orders.verifiedAt,
       eventId: orders.eventId,
       eventTitle: events.title,
       eventSlug: events.slug,
@@ -309,10 +314,16 @@ export default async function AdminTicketsPage({
                               #{o.id.slice(0, 8)}
                             </span>
                           </td>
-                          <td className="px-3 py-3.5 max-w-[160px]">
+                          <td className="px-3 py-3.5 max-w-[180px]">
                             <p className="text-[12.5px] text-ink truncate">{customerName(o)}</p>
                             {o.guestEmail && (
                               <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
+                            )}
+                            {o.guestPhone && (
+                              <p className="text-[11px] text-ink-3 truncate">{o.guestPhone}</p>
+                            )}
+                            {!o.guestPhone && !o.guestEmail && (
+                              <p className="text-[11px] text-ink-3">No contact info</p>
                             )}
                           </td>
                           <td className="px-3 py-3.5 max-w-[200px]">
@@ -334,14 +345,31 @@ export default async function AdminTicketsPage({
                             </div>
                           </td>
                           <td className="px-3 py-3.5">
-                            <span
-                              className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
-                            >
-                              {STATUS_LABEL[o.status ?? ""] ?? o.status}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span
+                                className={`inline-block w-fit text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
+                              >
+                                {STATUS_LABEL[o.status ?? ""] ?? o.status}
+                              </span>
+                              {o.status === "awaiting_verification" && o.verificationSentAt && (
+                                <span className="text-[10px] text-blue-600 font-medium">
+                                  Verification sent {formatDateShort(o.verificationSentAt)}
+                                </span>
+                              )}
+                              {o.status === "awaiting_verification" && !o.verificationSentAt && (
+                                <span className="text-[10px] text-amber-600 font-medium">Not yet verified</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
-                            {o.createdAt ? formatDateShort(o.createdAt) : "—"}
+                            <div className="flex flex-col">
+                              <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
+                              {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
+                                <span className="text-[10px] text-ink-3">
+                                  {Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-3.5 text-right">
                             <span className="text-[13.5px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
@@ -427,8 +455,44 @@ export default async function AdminTicketsPage({
                         </div>
                       </div>
                       {o.guestEmail && (
-                        <p className="text-[11px] text-ink-3 truncate mb-2">{o.guestEmail}</p>
+                        <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                       )}
+                      {o.guestPhone && (
+                        <p className="text-[11px] text-ink-3 truncate">{o.guestPhone}</p>
+                      )}
+                      {/* Verification detail for awaiting_verification */}
+                      {o.status === "awaiting_verification" && (
+                        <p className="text-[10.5px] text-blue-600 font-medium mt-1">
+                          {o.verificationSentAt
+                            ? `Verification sent ${formatDateShort(o.verificationSentAt)}`
+                            : "Not yet verified"}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1.5 text-[11px] text-ink-3 mt-2">
+                        <span className="inline-flex items-center gap-1">
+                          {o.paymentMethod ? (
+                            <>
+                              <Smartphone size={11} className="text-emerald-700" />
+                              {o.paymentMethod}
+                            </>
+                          ) : (
+                            <span className="italic">No payment method</span>
+                          )}
+                          {o.paymentRef && (
+                            <span className="font-mono text-[10px] text-ink-3 ml-1" title={o.paymentRef}>
+                              #{o.paymentRef.slice(0, 8)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="ml-auto">
+                          {o.createdAt ? formatDateShort(o.createdAt) : "—"}
+                          {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
+                            <span className="ml-1 text-[10px] text-ink-3">
+                              ({Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago)
+                            </span>
+                          )}
+                        </span>
+                      </div>
                       <div className="mt-3 flex items-center gap-2">
                         <ResendButton
                           orderId={o.id}
