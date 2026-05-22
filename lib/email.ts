@@ -11,7 +11,7 @@ import ResetPasswordEmail from "@/emails/reset-password"
 // TODO: verify the `ticketpulse.tech` sending domain in Resend before
 // going live, otherwise outbound mail will be rejected.
 const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
-const ADMIN = process.env.ADMIN_EMAIL ?? "team@ticketpulse.tech"
+const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.tech"
 
 let _resend: Resend | null = null
 function client(): Resend | null {

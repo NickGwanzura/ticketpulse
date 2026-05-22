@@ -94,6 +94,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       apiKey: process.env.AUTH_RESEND_KEY,
       from: "TicketPulse <no-reply@ticketpulse.tech>",
       async sendVerificationRequest({ identifier: email, url }) {
+        // ── Fix the magic-link URL ────────────────────────────────────────
+        // NextAuth constructs the URL from AUTH_URL (or request headers). If
+        // AUTH_URL isn't set or is wrong (e.g. localhost), the email link will
+        // point to the wrong host. We override the origin with the public URL.
+        const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech").replace(/\/+$/, "")
+        const parsed = new URL(url)
+        if (parsed.origin !== appUrl) {
+          url = url.replace(parsed.origin, appUrl)
+        }
         const host = new URL(url).host
 
         // Inspect the embedded callbackUrl to decide which branded template
