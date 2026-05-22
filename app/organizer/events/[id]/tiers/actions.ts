@@ -2,12 +2,12 @@
 
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import { eq } from "drizzle-orm"
+import { eq, inArray, sql } from "drizzle-orm"
 import { z } from "zod"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, ticketTiers } from "@/db/schema"
+import { events, ticketTiers, tickets } from "@/db/schema"
 
 async function requireEventOwnership(eventId: string) {
   const session = await auth()
@@ -185,21 +185,22 @@ export async function deleteTierAction(formData: FormData): Promise<void> {
   const guard = await requireTierOwnership(tierId)
   if (!guard.ok) redirect(guard.redirectTo)
 
-  // Check if the event is finished — if so, allow deletion even with sales
-  const [event] = await db
-    .select({ status: events.status })
-    .from(events)
-    .where(eq(events.id, eventId))
-    .limit(1)
+  // Cancel any tickets associated with this tier first, then delete the tier.
+  const tierTickets = await db
+    .select({ id: tickets.id })
+    .from(tickets)
+    .where(eq(tickets.tierId, tierId))
 
-  const isFinished = event?.status === "completed" || event?.status === "cancelled"
-
-  // Block deletion if any tickets have been sold and the event is still active.
-  // Organizers can lower capacity / set salesEnd to take it off sale instead.
-  if (!isFinished && (guard.tier.soldQuantity ?? 0) > 0) {
-    redirect(`/organizer/events/${eventId}/tiers?error=tier_has_sales`)
+  if (tierTickets.length > 0) {
+    const ticketIds = tierTickets.map((t) => t.id)
+    // Cancel all non-cancelled, non-refunded tickets
+    await db
+      .update(tickets)
+      .set({ status: "cancelled" })
+      .where(inArray(tickets.id, ticketIds))
   }
 
+  // Delete the tier (cascading delete handles remaining references)
   await db.delete(ticketTiers).where(eq(ticketTiers.id, tierId))
   revalidatePath(`/organizer/events/${eventId}/tiers`)
 }

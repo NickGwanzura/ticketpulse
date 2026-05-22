@@ -96,11 +96,6 @@ export default async function TiersPage({
             Draft created. Add at least one ticket tier below so people can buy.
           </div>
         )}
-        {sp.error === "tier_has_sales" && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-            That tier already has sold tickets and can&apos;t be deleted. Set its sales end date in the past to take it off sale.
-          </div>
-        )}
 
         <NewTierPanel eventId={id} defaultOpen={tiers.length === 0} />
 
@@ -118,7 +113,7 @@ export default async function TiersPage({
                 key={t.id}
                 eventId={id}
                 eventTitle={event.title}
-                eventStatus={event.status}
+                
                 tier={{
                   id: t.id,
                   name: t.name,

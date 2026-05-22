@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/utils"
 import { publishEventAction, verifyUserEmailAction } from "@/app/admin/actions"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import AiModerateButton from "@/components/ai/AiModerateButton"
+import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
 
 type KPI = { label: string; value: number; currency: string | null; delta: number; up: boolean; spark: readonly number[] }
 type Activity = { kind: string; icon: React.ElementType; iconColor: string; iconBg: string; who: string; msg: string; when: string }
@@ -298,15 +299,20 @@ export default async function AdminOverviewPage() {
           )}
         </div>
 
-        {/* AI Platform Brief */}
-        <div className="max-w-md tp-fade-up-1">
-          <AiBriefCard
-            activeEvents={activeEvents}
-            totalOrganizers={totalOrganizers}
-            totalRevenue={grossVolume}
-            topCategory={topCategory}
-            topCity={topCity}
-          />
+        {/* Purchase journey funnel + AI Brief */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 tp-fade-up-1">
+          <div className="lg:col-span-3">
+            <PurchaseFunnel />
+          </div>
+          <div className="lg:col-span-2">
+            <AiBriefCard
+              activeEvents={activeEvents}
+              totalOrganizers={totalOrganizers}
+              totalRevenue={grossVolume}
+              topCategory={topCategory}
+              topCity={topCity}
+            />
+          </div>
         </div>
 
         {/* Activity + Top events */}

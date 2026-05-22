@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
 import { events, eventOrganisers } from "@/db/schema"
 import AiInsightCard from "@/components/ai/AiInsightCard"
+import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
 
 type EventRow = {
   id: string
@@ -320,6 +321,11 @@ export default async function OrganizerPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Purchase journey funnel */}
+        <div className="tp-fade-up-3">
+          <PurchaseFunnel eventIds={ORGANIZER_EVENTS.map((e) => e.id)} />
         </div>
 
         {/* Events table + side column */}

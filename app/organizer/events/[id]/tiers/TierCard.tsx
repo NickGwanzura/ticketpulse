@@ -35,12 +35,10 @@ function formatWindow(start: Date | null, end: Date | null): string | null {
 export default function TierCard({
   eventId,
   eventTitle,
-  eventStatus,
   tier,
 }: {
   eventId: string
   eventTitle: string
-  eventStatus: string | null
   tier: Tier
 }) {
   const [editing, setEditing] = useState(false)
@@ -52,9 +50,6 @@ export default function TierCard({
   const remaining = Math.max(0, total - sold)
   const pct = total > 0 ? Math.min(100, Math.round((sold / total) * 100)) : 0
   const windowLabel = formatWindow(tier.salesStart, tier.salesEnd)
-
-  const isFinished = eventStatus === "completed" || eventStatus === "cancelled"
-  const canDelete = sold === 0 || isFinished
 
   return (
     <div className="rounded-2xl border border-line bg-paper overflow-hidden">
@@ -114,7 +109,7 @@ export default function TierCard({
           {deleteConfirm ? (
             <div className="inline-flex items-center gap-1">
               <span className="text-[10.5px] text-rose-700 font-medium whitespace-nowrap">
-                {sold > 0 && isFinished ? "Event finished — delete?" : "Delete tier?"}
+                {sold > 0 ? "Also cancels sold tickets — delete?" : "Delete tier?"}
               </span>
               <form action={deleteTierAction}>
                 <input type="hidden" name="tierId" value={tier.id} />
@@ -137,22 +132,9 @@ export default function TierCard({
           ) : (
             <button
               type="button"
-              onClick={() => {
-                if (canDelete) {
-                  setDeleteConfirm(true)
-                } else {
-                  alert("This tier has sold tickets and can't be deleted while the event is active. Mark the event as completed or cancelled first, or set its sales end date in the past.")
-                }
-              }}
-              title={
-                !canDelete
-                  ? "Can't delete - has active sales"
-                  : isFinished && sold > 0
-                    ? "Delete this tier (event is finished)"
-                    : "Delete tier"
-              }
-              disabled={!canDelete}
-              className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-ink-2 disabled:hover:border-line transition-colors"
+              onClick={() => setDeleteConfirm(true)}
+              title="Delete tier"
+              className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 transition-colors"
             >
               <Trash2 size={13} />
             </button>
