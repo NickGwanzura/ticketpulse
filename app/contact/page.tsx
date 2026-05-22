@@ -23,7 +23,7 @@ export default function ContactPage() {
         <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-10 md:pb-14">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
+            <Sparkles size={13} className="text-green-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">Contact</span>
           </div>
           <h1 className="text-[36px] md:text-[56px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-2xl">
@@ -50,18 +50,18 @@ export default function ContactPage() {
               <div>
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Your name</label>
                 <input type="text" name="name" required placeholder="Tendai Moyo"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition" />
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition" />
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
                 <input type="email" name="email" required placeholder="you@example.com"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition" />
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition" />
               </div>
             </div>
 
             <div>
               <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Topic</label>
-              <select name="topic" required className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition">
+              <select name="topic" required className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition">
                 <option value="">Choose a topic…</option>
                 {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -70,7 +70,7 @@ export default function ContactPage() {
             <div>
               <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Message</label>
               <textarea name="message" rows={6} required placeholder="Tell us a bit more…"
-                className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition resize-none" />
+                className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition resize-none" />
             </div>
 
             <button type="submit"
@@ -86,8 +86,8 @@ export default function ContactPage() {
           {CHANNELS.map(({ icon: Icon, title, body, value, href }) => (
             <Link key={title} href={href} className="block rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all">
               <div className="flex items-start gap-3">
-                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 shrink-0">
-                  <Icon size={16} className="text-blue" />
+                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
+                  <Icon size={16} className="text-green-600" />
                 </span>
                 <div className="flex-1">
                   <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>

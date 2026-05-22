@@ -266,7 +266,7 @@ export default async function Home() {
         </svg>
 
         {/* Layer 8: floating sparkles */}
-        <div className="absolute top-[18%] left-[44%] -z-10 w-1.5 h-1.5 rounded-full bg-blue/70 shadow-[0_0_18px_4px_rgba(5,112,222,0.4)] animate-pulse" aria-hidden />
+        <div className="absolute top-[18%] left-[44%] -z-10 w-1.5 h-1.5 rounded-full bg-green-500/70 shadow-[0_0_18px_4px_rgba(5,112,222,0.4)] animate-pulse" aria-hidden />
         <div className="absolute top-[58%] left-[12%] -z-10 w-1 h-1 rounded-full bg-green-500/70 shadow-[0_0_12px_3px_rgba(141,211,47,0.3)] animate-pulse [animation-delay:1.2s]" aria-hidden />
         <div className="absolute top-[35%] right-[6%] -z-10 w-1 h-1 rounded-full bg-amber-400/80 shadow-[0_0_10px_3px_rgba(245,158,11,0.3)] animate-pulse [animation-delay:2.4s] hidden md:block" aria-hidden />
 
@@ -317,7 +317,7 @@ export default async function Home() {
                     name="q"
                     placeholder="Search events, venues, cities…"
                     aria-label="Search events"
-                    className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                    className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                   />
                 </div>
                 <button
@@ -338,8 +338,8 @@ export default async function Home() {
 
               {/* Launch credibility */}
               <div className="tp-fade-up-5 mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-2.5">
-                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 shrink-0">
-                  <ShieldCheck size={16} className="text-blue" />
+                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
+                  <ShieldCheck size={16} className="text-green-600" />
                 </span>
                 <div className="leading-tight">
                   <p className="text-[12.5px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
@@ -484,8 +484,8 @@ export default async function Home() {
               </span>
 
               <div className="relative flex items-center gap-3 mb-5">
-                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-blue-soft ring-1 ring-blue/15 group-hover:ring-blue/25 transition-colors">
-                  <Icon size={22} className="text-blue" />
+                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/15 group-hover:ring-blue/25 transition-colors">
+                  <Icon size={22} className="text-green-600" />
                 </span>
                 <span className="text-[10.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
               </div>
@@ -493,7 +493,7 @@ export default async function Home() {
               <h3 className="relative text-[19px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
               <p className="relative text-[14.5px] leading-relaxed text-ink-2">{body}</p>
 
-              <div className="pointer-events-none absolute -bottom-16 -right-12 w-40 h-40 rounded-full bg-blue/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden />
+              <div className="pointer-events-none absolute -bottom-16 -right-12 w-40 h-40 rounded-full bg-green-500/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden />
             </div>
           ))}
         </div>
@@ -501,7 +501,7 @@ export default async function Home() {
         {/* End-to-end strip */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {[
-            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-blue/15",   accent: "text-blue" },
+            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-green-500/15",   accent: "text-green-600" },
             { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-green-50 to-paper-2", ring: "ring-green-200/60", accent: "text-green-700" },
             { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
           ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (
@@ -540,7 +540,7 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto tp-reveal">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-14">
             {/* One restrained ambient detail: a soft blue glow in the top-right corner. */}
-            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" aria-hidden />
+            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" aria-hidden />
             <div
               className="absolute inset-0 opacity-[0.07] pointer-events-none"
               style={{

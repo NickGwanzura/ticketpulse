@@ -87,7 +87,7 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
         {!embedUrl && fullAddress && (
           <div className="relative w-full h-40 md:h-48 bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 flex items-center justify-center">
             <div className="text-center px-6">
-              <MapPin size={32} className="mx-auto mb-2 text-blue-300" />
+              <MapPin size={32} className="mx-auto mb-2 text-green-300" />
               <p className="text-sm font-medium text-ink-2">{venue}</p>
               <p className="text-[12px] text-ink-3 mt-0.5">{fullAddress}</p>
             </div>
@@ -108,7 +108,7 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
                 href={googleMapsLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue hover:text-blue/80 transition-colors tracking-tight rounded-lg border border-blue/20 bg-blue-soft/40 px-2.5 py-1.5"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue hover:text-green-600/80 transition-colors tracking-tight rounded-lg border border-green-500/20 bg-green-50/40 px-2.5 py-1.5"
               >
                 <MapPin size={12} />
                 Open in Google Maps

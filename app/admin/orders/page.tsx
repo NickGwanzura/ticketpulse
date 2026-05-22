@@ -19,7 +19,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 const STATUS_STYLE: Record<string, string> = {
   paid:                   "bg-green-50 text-green-700",
   pending:                "bg-amber-50 text-amber-700",
-  awaiting_verification:  "bg-blue-soft text-navy",
+  awaiting_verification:  "bg-green-50 text-navy",
   refunded:               "bg-rose-50 text-rose-700",
   cancelled:              "bg-paper-2 text-ink-3 ring-1 ring-line",
 }
@@ -132,8 +132,8 @@ export default async function AdminOrdersPage({
       label: "Completed",
       value: paidOrders.length.toLocaleString(),
       icon: TrendingUp,
-      tone: "text-blue",
-      bg: "bg-blue-soft",
+      tone: "text-green-600",
+      bg: "bg-green-50",
     },
     {
       label: "Pending / awaiting",
@@ -196,7 +196,7 @@ export default async function AdminOrdersPage({
               name="q"
               defaultValue={query}
               placeholder="Search by order #, email, or name…"
-              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
             />
             {statusFilter !== "all" && (
               <input type="hidden" name="status" value={statusFilter} />

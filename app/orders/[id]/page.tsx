@@ -46,8 +46,8 @@ function AwaitingVerification({ orderId }: { orderId: string }) {
   return (
     <div className="max-w-xl mx-auto px-5 md:px-8 py-16 md:py-24">
       <div className="rounded-3xl border border-line bg-paper p-8 md:p-10 shadow-sm shadow-ink/[0.04]">
-        <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-blue-soft ring-1 ring-blue/20 mb-5">
-          <MailCheck size={20} className="text-blue" />
+        <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/20 mb-5">
+          <MailCheck size={20} className="text-green-600" />
         </span>
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Almost there</p>
         <h1 className="text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.15] text-ink">

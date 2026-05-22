@@ -295,7 +295,7 @@ export default function ImageUploader(props: Props) {
               className={cn(
                 "relative group rounded-xl overflow-hidden border bg-paper",
                 ASPECT_CLASS[aspectRatio],
-                draggingIndex === i ? "border-blue ring-2 ring-blue/20 opacity-60" : "border-line",
+                draggingIndex === i ? "border-blue ring-2 ring-green-500/20 opacity-60" : "border-line",
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -410,9 +410,9 @@ export default function ImageUploader(props: Props) {
           }}
           className={cn(
             "flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-7 cursor-pointer text-center transition",
-            "hover:border-line-2 hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue/20",
+            "hover:border-line-2 hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-500/20",
             dragOver
-              ? "border-blue bg-blue/5"
+              ? "border-blue bg-green-500/5"
               : "border-line bg-paper",
           )}
         >

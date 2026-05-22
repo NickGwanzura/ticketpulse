@@ -66,8 +66,8 @@ export default function LiveDashboardClient({
           label="Tickets sold"
           value={String(stats.totalSold)}
           trendLabel={stats.totalCapacity > 0 ? `of ${stats.totalCapacity} capacity` : "No capacity set"}
-          iconBg="bg-blue-100"
-          iconColor="text-blue-700"
+          iconBg="bg-green-100"
+          iconColor="text-green-700"
         />
         <StatCard
           icon={Percent}

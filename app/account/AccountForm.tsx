@@ -81,7 +81,7 @@ export default function AccountForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={100}
-            className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+            className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ export default function AccountForm({
               onChange={(e) => setPhone(e.target.value)}
               maxLength={30}
               placeholder="+263 77…"
-              className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+              className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
             />
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function AccountForm({
             maxLength={500}
             rows={3}
             placeholder="Tell us a bit about yourself"
-            className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition resize-none"
+            className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition resize-none"
           />
         </div>
       </div>

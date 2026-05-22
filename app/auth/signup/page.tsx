@@ -100,7 +100,7 @@ export default async function SignUpPage({
               {ROLES.map(({ value, label, icon: Icon }) => (
                 <label
                   key={value}
-                  className="relative cursor-pointer rounded-xl border border-line-2 bg-paper p-3 text-center hover:border-line-2 transition-colors has-[:checked]:border-navy has-[:checked]:bg-blue-soft has-[:checked]:ring-1 has-[:checked]:ring-navy/15"
+                  className="relative cursor-pointer rounded-xl border border-line-2 bg-paper p-3 text-center hover:border-line-2 transition-colors has-[:checked]:border-navy has-[:checked]:bg-green-50 has-[:checked]:ring-1 has-[:checked]:ring-navy/15"
                 >
                   <input
                     type="radio"
@@ -126,7 +126,7 @@ export default async function SignUpPage({
                 required
                 autoComplete="name"
                 placeholder="Tendai Moyo"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
               />
             </div>
           </div>
@@ -142,7 +142,7 @@ export default async function SignUpPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
               />
             </div>
           </div>

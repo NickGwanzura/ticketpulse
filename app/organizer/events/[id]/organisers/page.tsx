@@ -175,7 +175,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
               {acceptedOrganisers.map((org) => (
                 <div key={org.id} className="px-5 py-4 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-blue-soft flex items-center justify-center shrink-0 overflow-hidden">
+                    <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center shrink-0 overflow-hidden">
                       {org.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={org.image} alt="" className="w-full h-full object-cover" />

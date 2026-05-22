@@ -14,7 +14,7 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
   const inputCls = (hasErr?: boolean) =>
     cn(
       "w-full rounded-lg border bg-paper px-3.5 py-2.5 text-[13px] text-ink placeholder:text-ink-3 transition",
-      "focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue",
+      "focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-green-500",
       hasErr ? "border-red-400" : "border-line",
     )
 

@@ -18,11 +18,11 @@ export default function VendorsApplyPage() {
               <span className="opacity-60">←</span> Back to vendors
             </Link>
             <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-5 shadow-sm shadow-ink/5">
-              <Sparkles size={13} className="text-blue" />
+              <Sparkles size={13} className="text-green-600" />
               <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">For vendors</span>
             </div>
             <h1 className="text-[34px] md:text-[48px] font-bold tracking-[-0.025em] leading-[1.05] text-ink">
-              List your service. <span className="text-blue">Get booked.</span>
+              List your service. <span className="text-green-600">Get booked.</span>
             </h1>
             <p className="mt-4 text-[15px] md:text-[16px] leading-relaxed text-ink-2 max-w-md">
               Join the marketplace organizers reach for first. Free to apply, we approve in 48 hours.
@@ -31,8 +31,8 @@ export default function VendorsApplyPage() {
             <ul className="mt-8 space-y-5">
               {PERKS.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="flex items-start gap-3.5">
-                  <span className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mt-0.5">
-                    <Icon size={16} className="text-blue" />
+                  <span className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mt-0.5">
+                    <Icon size={16} className="text-green-600" />
                   </span>
                   <div>
                     <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>
@@ -72,7 +72,7 @@ export default function VendorsApplyPage() {
                   type="text"
                   required
                   placeholder="e.g. Mama's Kitchen"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                 />
               </div>
 
@@ -80,7 +80,7 @@ export default function VendorsApplyPage() {
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Category</label>
                 <select
                   required
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                 >
                   <option value="">Choose a category…</option>
                   <option value="catering">Catering</option>
@@ -101,7 +101,7 @@ export default function VendorsApplyPage() {
                     type="text"
                     required
                     placeholder="Harare"
-                    className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                   />
                 </div>
                 <div>
@@ -110,7 +110,7 @@ export default function VendorsApplyPage() {
                     type="tel"
                     required
                     placeholder="+263 77…"
-                    className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                   />
                 </div>
               </div>
@@ -121,7 +121,7 @@ export default function VendorsApplyPage() {
                   type="email"
                   required
                   placeholder="hello@yourbusiness.co.zw"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                 />
               </div>
 
@@ -131,7 +131,7 @@ export default function VendorsApplyPage() {
                   rows={4}
                   required
                   placeholder="What do you offer, who are your past clients, what makes you the right pick?"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition resize-none"
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition resize-none"
                 />
               </div>
 
@@ -140,7 +140,7 @@ export default function VendorsApplyPage() {
                 <input
                   type="url"
                   placeholder="https://…"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                 />
               </div>
 

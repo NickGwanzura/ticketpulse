@@ -61,7 +61,7 @@ export default function EventWaitlist() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 disabled={status === "sending"}
-                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[13px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition disabled:opacity-60"
+                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[13px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition disabled:opacity-60"
               />
               <button
                 type="submit"

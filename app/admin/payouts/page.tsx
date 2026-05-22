@@ -79,10 +79,10 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         </div>
 
         {/* CTA banner */}
-        <div className="rounded-2xl border border-blue/15 bg-blue-soft/60 px-5 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 tp-fade-up-2">
+        <div className="rounded-2xl border border-green-500/15 bg-green-50/60 px-5 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 tp-fade-up-2">
           <div className="flex items-start gap-3">
             <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line shrink-0">
-              <Wallet size={15} className="text-blue" />
+              <Wallet size={15} className="text-green-600" />
             </span>
             <div>
               <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(0, "USD")} ready to send</p>

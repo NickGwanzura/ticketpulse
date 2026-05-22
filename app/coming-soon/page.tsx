@@ -135,7 +135,7 @@ export default async function ComingSoonPage({
             <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-70" />
             <span className="relative block w-1.5 h-1.5 rounded-full bg-green-500" />
           </span>
-          <Sparkles size={12} className="text-blue" />
+          <Sparkles size={12} className="text-green-600" />
           <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">
             Launching Soon
           </span>
@@ -163,8 +163,8 @@ export default async function ComingSoonPage({
               key={title}
               className="rounded-2xl border border-line bg-paper/70 backdrop-blur px-4 py-3.5 shadow-sm shadow-ink/[0.03]"
             >
-              <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-blue-soft ring-1 ring-blue/15 mb-2">
-                <Icon size={14} className="text-blue" />
+              <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-green-50 ring-1 ring-green-500/15 mb-2">
+                <Icon size={14} className="text-green-600" />
               </span>
               <p className="text-[13px] font-semibold tracking-tight text-ink">{title}</p>
               <p className="text-[11.5px] text-ink-2 mt-0.5 leading-snug">{body}</p>
@@ -190,7 +190,7 @@ export default async function ComingSoonPage({
               autoFocus
               placeholder="Access password"
               aria-invalid={showError}
-              className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition aria-[invalid=true]:border-rose-400 aria-[invalid=true]:ring-rose-100"
+              className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition aria-[invalid=true]:border-rose-400 aria-[invalid=true]:ring-rose-100"
             />
           </div>
           {showError && (

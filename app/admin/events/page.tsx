@@ -19,7 +19,7 @@ type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed
 const STATUS_STYLE: Record<EventStatus, string> = {
   published: "bg-green-50 text-green-700",
   draft:     "bg-paper-2 text-ink-2 ring-1 ring-line",
-  sold_out:  "bg-blue-soft text-navy",
+  sold_out:  "bg-green-50 text-navy",
   cancelled: "bg-rose-50 text-rose-700",
   completed: "bg-paper-2 text-ink-3 ring-1 ring-line",
 }
@@ -110,7 +110,7 @@ export default async function AdminEventsPage({
   const stats = [
     { label: "Live",      value: totals.published, icon: CalendarCheck, tone: "text-green-700", bg: "bg-green-50" },
     { label: "Drafts",    value: totals.draft,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
-    { label: "Sold out",  value: totals.sold_out,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-blue-soft" },
+    { label: "Sold out",  value: totals.sold_out,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-green-50" },
     { label: "Cancelled", value: totals.cancelled, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
   ]
 

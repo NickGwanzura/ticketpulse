@@ -70,8 +70,8 @@ export default async function AccountPage() {
             href="/vendors/dashboard"
             className="group mb-10 flex items-center gap-4 rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all"
           >
-            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15">
-              <Store size={16} className="text-blue" />
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
+              <Store size={16} className="text-green-600" />
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-semibold tracking-tight text-ink">Vendor dashboard</p>

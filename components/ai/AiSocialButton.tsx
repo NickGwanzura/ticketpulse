@@ -60,7 +60,7 @@ export default function AiSocialButton({
         <select
           value={platform}
           onChange={(e) => setPlatform(e.target.value as typeof platform)}
-          className="text-[11px] bg-paper border border-line rounded-lg px-2 py-1.5 text-ink-2 focus:outline-none focus:ring-2 focus:ring-blue/20"
+          className="text-[11px] bg-paper border border-line rounded-lg px-2 py-1.5 text-ink-2 focus:outline-none focus:ring-2 focus:ring-green-500/20"
         >
           {PLATFORMS.map((p) => (
             <option key={p.value} value={p.value}>{p.label}</option>
@@ -69,7 +69,7 @@ export default function AiSocialButton({
         <button
           onClick={generate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-blue hover:text-blue-700 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-blue hover:text-green-700 transition-colors disabled:opacity-50"
         >
           {loading ? (
             <Loader size={12} className="animate-spin" />

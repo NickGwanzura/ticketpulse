@@ -220,7 +220,7 @@ export default async function EventsPage({
                   name="q"
                   placeholder="Search events, venues, cities…"
                   defaultValue={query}
-                  className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                  className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                 />
               </div>
             </form>

@@ -49,7 +49,7 @@ export default async function VendorDashboardPage() {
                   {vendor.businessName}
                 </h1>
                 {vendor.verified && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-soft text-blue text-[11px] font-semibold px-2 py-0.5 tracking-tight">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-50 text-blue text-[11px] font-semibold px-2 py-0.5 tracking-tight">
                     <BadgeCheck size={12} strokeWidth={2.5} /> Verified
                   </span>
                 )}

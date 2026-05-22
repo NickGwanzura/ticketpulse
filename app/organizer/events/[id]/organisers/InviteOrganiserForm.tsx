@@ -35,7 +35,7 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
               type="email"
               required
               placeholder="colleague@example.com"
-              className="flex-1 rounded-xl border border-line bg-paper px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+              className="flex-1 rounded-xl border border-line bg-paper px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
             />
             <button
               type="submit"

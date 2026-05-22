@@ -30,7 +30,7 @@ export default function PayoutsPage() {
         <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-12 md:pb-16">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
+            <Sparkles size={13} className="text-green-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">Payouts</span>
           </div>
           <h1 className="text-[36px] md:text-[56px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
@@ -57,8 +57,8 @@ export default function PayoutsPage() {
               <span className="absolute top-5 right-5 text-[10px] font-semibold tracking-wide bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                 {chip}
               </span>
-              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                <Icon size={17} className="text-blue" />
+              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                <Icon size={17} className="text-green-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
               <p className="text-[13px] text-ink-2 mt-1.5 leading-relaxed">{body}</p>

@@ -113,7 +113,7 @@ function CheckoutSuccessInner() {
             <AnimatedCheck size={64} />
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-4 shadow-sm shadow-ink/5">
-            <Sparkles size={12} className="text-blue" />
+            <Sparkles size={12} className="text-green-600" />
             <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">Order confirmed</span>
           </div>
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
@@ -138,13 +138,13 @@ function CheckoutSuccessInner() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
             >
-              <CalendarPlus size={14} className="text-blue" /> Add to calendar
+              <CalendarPlus size={14} className="text-green-600" /> Add to calendar
             </a>
             <button
               onClick={shareOrder}
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
             >
-              <Share2 size={14} className="text-blue" /> Share
+              <Share2 size={14} className="text-green-600" /> Share
             </button>
           </div>
         </div>

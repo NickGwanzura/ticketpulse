@@ -29,7 +29,7 @@ export default function HelpPage() {
         <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-12 md:pb-16">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
+            <Sparkles size={13} className="text-green-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">Help center</span>
           </div>
           <h1 className="text-[36px] md:text-[56px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
@@ -45,7 +45,7 @@ export default function HelpPage() {
               type="text"
               name="q"
               placeholder="Search articles, e.g. 'transfer ticket'…"
-              className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+              className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
             />
           </form>
         </div>
@@ -62,8 +62,8 @@ export default function HelpPage() {
               href={href}
               className="rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all group"
             >
-              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                <Icon size={17} className="text-blue" />
+              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                <Icon size={17} className="text-green-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
               <p className="text-[12.5px] text-ink-2 mt-1">{body}</p>
@@ -87,8 +87,8 @@ export default function HelpPage() {
       {/* Contact strip */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-20 grid md:grid-cols-2 gap-4">
         <Link href="/contact" className="rounded-2xl border border-line bg-paper p-6 flex items-start gap-4 hover:border-line-2 hover:shadow-sm transition-all">
-          <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 shrink-0">
-            <MessageSquare size={17} className="text-blue" />
+          <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
+            <MessageSquare size={17} className="text-green-600" />
           </span>
           <div>
             <p className="text-[15px] font-semibold tracking-tight text-ink">Live chat</p>

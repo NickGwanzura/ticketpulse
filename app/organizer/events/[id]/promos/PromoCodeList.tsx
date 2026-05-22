@@ -61,10 +61,10 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
           <span
             className={cn(
               "shrink-0 w-9 h-9 rounded-xl flex items-center justify-center",
-              isInactive ? "bg-red-100" : "bg-blue/10",
+              isInactive ? "bg-red-100" : "bg-green-500/10",
             )}
           >
-            <Tag size={15} className={isInactive ? "text-red-500" : "text-blue"} />
+            <Tag size={15} className={isInactive ? "text-red-500" : "text-green-600"} />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">

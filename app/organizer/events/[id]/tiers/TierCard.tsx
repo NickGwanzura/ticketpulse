@@ -57,7 +57,7 @@ export default function TierCard({
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-blue-soft text-navy">
+              <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-green-50 text-navy">
                 <Ticket size={13} />
               </span>
               <p className="text-[15.5px] font-semibold text-ink truncate">{tier.name}</p>
@@ -101,7 +101,7 @@ export default function TierCard({
           <button
             type="button"
             onClick={() => setShowingSample((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-blue-200 hover:text-blue-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-green-200 hover:text-green-700"
           >
             {showingSample ? <><X size={12} /> Close</> : <><Eye size={12} /> Test ticket</>}
           </button>

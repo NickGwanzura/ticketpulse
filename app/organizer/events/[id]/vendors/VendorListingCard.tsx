@@ -188,7 +188,7 @@ export default function VendorListingCard({
                     name="packageName"
                     defaultValue={listing.packageName}
                     required
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -201,7 +201,7 @@ export default function VendorListingCard({
                       min="0"
                       defaultValue={listing.price}
                       required
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                     />
                   </div>
                   <div>
@@ -209,7 +209,7 @@ export default function VendorListingCard({
                     <select
                       name="currency"
                       defaultValue={listing.currency}
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -225,7 +225,7 @@ export default function VendorListingCard({
                   name="packageDescription"
                   rows={2}
                   defaultValue={listing.packageDescription ?? ""}
-                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15 resize-none"
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15 resize-none"
                 />
               </div>
 
@@ -237,7 +237,7 @@ export default function VendorListingCard({
                     type="number"
                     min="1"
                     defaultValue={listing.maxCapacity ?? ""}
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                   />
                 </div>
                 <div className="flex items-end pb-2">

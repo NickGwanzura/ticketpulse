@@ -311,7 +311,7 @@ export default function OrganizerScanPage() {
           <div className="col-span-12 lg:col-span-7 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink inline-flex items-center gap-2">
-                <ScanLine size={16} className="text-blue" /> Scanner
+                <ScanLine size={16} className="text-green-600" /> Scanner
               </h2>
               <div className="flex items-center gap-2">
                 {cameraState === "running" ? (
@@ -349,7 +349,7 @@ export default function OrganizerScanPage() {
                     <span className="absolute -top-px -right-px w-10 h-10 border-r-2 border-t-2 border-white/90 rounded-tr-md" />
                     <span className="absolute -bottom-px -left-px w-10 h-10 border-l-2 border-b-2 border-white/90 rounded-bl-md" />
                     <span className="absolute -bottom-px -right-px w-10 h-10 border-r-2 border-b-2 border-white/90 rounded-br-md" />
-                    <span className="absolute left-2 right-2 top-1/2 h-px bg-blue/80 shadow-[0_0_12px_2px_rgba(5,112,222,0.6)] animate-pulse" />
+                    <span className="absolute left-2 right-2 top-1/2 h-px bg-green-500/80 shadow-[0_0_12px_2px_rgba(5,112,222,0.6)] animate-pulse" />
                   </div>
                 </div>
               )}
@@ -357,7 +357,7 @@ export default function OrganizerScanPage() {
               {cameraState === "idle" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80 gap-3 px-6 text-center">
                   <Camera size={28} />
-                  <p className="text-[14px] font-medium text-white">Tap <span className="text-blue-300">Start camera</span> to begin scanning</p>
+                  <p className="text-[14px] font-medium text-white">Tap <span className="text-green-300">Start camera</span> to begin scanning</p>
                   <p className="text-[12px] text-white/60 max-w-sm">Allow camera access. Point the rear camera at any TicketPulse QR: printed PDF, phone, or wallet pass.</p>
                 </div>
               )}
@@ -384,7 +384,7 @@ export default function OrganizerScanPage() {
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
                 placeholder="Manual entry: paste or type ticket code (e.g. TP-XXXXX-...)"
-                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
               />
               <button
                 type="submit"
@@ -456,7 +456,7 @@ export default function OrganizerScanPage() {
 
                   {/* Subtle progress bar — visual indicator of freshness */}
                   <span className="mt-3 block h-px w-full bg-line overflow-hidden rounded-full" aria-hidden>
-                    <span className="block h-px bg-blue/40 rounded-full" style={{ animation: "tp-progress 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both" }} />
+                    <span className="block h-px bg-green-500/40 rounded-full" style={{ animation: "tp-progress 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both" }} />
                   </span>
 
                   <p className="mt-2 text-[10.5px] font-mono text-ink-3 tabular-nums break-all">{latest.code}</p>

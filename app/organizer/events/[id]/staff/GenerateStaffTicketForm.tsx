@@ -35,7 +35,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
               type="text"
               required
               placeholder="e.g. John Doe"
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
             />
             {state.fieldErrors?.staffName && (
               <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.staffName}</p>
@@ -48,7 +48,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
               name="staffRole"
               required
               defaultValue=""
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
             >
               <option value="" disabled>Select role</option>
               {STAFF_ROLES.map((role) => (
@@ -67,7 +67,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
               type="tel"
               required
               placeholder="e.g. +263 77 123 4567"
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
             />
             {state.fieldErrors?.staffPhone && (
               <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.staffPhone}</p>

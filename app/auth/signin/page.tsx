@@ -62,7 +62,7 @@ export default async function SignInPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
               />
             </div>
           </div>
@@ -127,7 +127,7 @@ export default async function SignInPage({
                 name="email"
                 required
                 placeholder="Send a magic link"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
               />
             </div>
             <button

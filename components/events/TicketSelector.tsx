@@ -103,7 +103,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                 soldOut
                   ? "border-line bg-paper-2 opacity-60"
                   : qty > 0
-                  ? "border-navy bg-blue-soft/40 ring-1 ring-navy/15"
+                  ? "border-navy bg-green-50/40 ring-1 ring-navy/15"
                   : "border-line bg-paper hover:border-line-2"
               }`}
             >

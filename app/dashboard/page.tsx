@@ -113,7 +113,7 @@ export default async function DashboardPage() {
                 <h2 className="text-[17px] font-bold tracking-tight text-ink leading-snug mb-2">
                   {FEATURED_TICKET.event}
                 </h2>
-                <span className="inline-block text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full bg-blue-soft text-blue mb-4">
+                <span className="inline-block text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full bg-green-50 text-blue mb-4">
                   {FEATURED_TICKET.tier}
                 </span>
 
@@ -287,10 +287,10 @@ export default async function DashboardPage() {
         </div>
 
         {/* Loyalty / referral strip */}
-        <div className="rounded-2xl bg-blue-soft border border-line px-5 md:px-8 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="rounded-2xl bg-green-50 border border-line px-5 md:px-8 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-9 h-9 rounded-full bg-white/70 border border-line flex items-center justify-center shrink-0">
-              <Star size={15} className="text-blue" />
+              <Star size={15} className="text-green-600" />
             </div>
             <div>
               <p className="text-[14px] font-semibold text-ink">You have 0 loyalty points</p>

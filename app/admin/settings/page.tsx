@@ -25,7 +25,7 @@ export default function AdminSettingsPage() {
                 id="platform-name"
                 type="text"
                 defaultValue="TicketPulse"
-                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
               />
             </div>
 
@@ -35,7 +35,7 @@ export default function AdminSettingsPage() {
                 id="support-email"
                 type="email"
                 defaultValue="support@ticketpulse.co.zw"
-                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
               />
             </div>
 
@@ -45,7 +45,7 @@ export default function AdminSettingsPage() {
                 <select
                   id="default-currency"
                   defaultValue="USD"
-                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
                 >
                   <option value="USD">USD</option>
                   <option value="ZWL">ZWL</option>
@@ -62,7 +62,7 @@ export default function AdminSettingsPage() {
                   step={0.1}
                   min={0}
                   max={100}
-                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
                 />
               </div>
             </div>

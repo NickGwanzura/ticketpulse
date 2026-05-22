@@ -247,11 +247,11 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
 
         {/* ── QR test hint ──────────────────────────────────────────────── */}
         {qrUrl && (
-          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[12.5px] text-blue-800 flex items-start gap-2.5">
+          <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[12.5px] text-green-800 flex items-start gap-2.5">
             <QrCode size={15} className="mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold mb-0.5">Scan to test</p>
-              <p className="text-blue-700">
+              <p className="text-green-700">
                 Open the scan page on your phone and point it at the QR code above. It encodes{" "}
                 <code className="text-[11px] bg-white/60 px-1 py-0.5 rounded font-mono">{testCode}</code>
                 — the same format real tickets use.

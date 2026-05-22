@@ -85,7 +85,7 @@ export default function TopBar() {
           href="/how-it-works"
           className="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[12px] font-semibold text-white/85 hover:text-white transition-colors group"
         >
-          <Sparkles size={11} className="text-blue-300 group-hover:text-blue-200 transition-colors" />
+          <Sparkles size={11} className="text-green-300 group-hover:text-green-200 transition-colors" />
           See how it works
           <span className="text-white/35 group-hover:text-white/60 transition-colors">→</span>
         </Link>

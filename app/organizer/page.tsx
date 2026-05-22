@@ -79,7 +79,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 const METHOD_STYLE: Record<string, string> = {
   EcoCash: "bg-green-50 text-green-700",
-  Card:    "bg-blue-soft text-blue",
+  Card:    "bg-green-50 text-blue",
   Bank:    "bg-paper-2 text-ink-2 ring-1 ring-line",
 }
 
@@ -671,7 +671,7 @@ export default async function OrganizerPage() {
               href="/organizer/scan"
               className="sm:col-span-3 rounded-2xl border border-navy/10 bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-5 tp-lift relative overflow-hidden"
             >
-              <span className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-blue/30 blur-3xl pointer-events-none" aria-hidden />
+              <span className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-green-500/30 blur-3xl pointer-events-none" aria-hidden />
               <div className="relative flex items-start gap-4">
                 <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 shrink-0">
                   <ScanLine size={18} className="text-white" />

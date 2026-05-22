@@ -117,11 +117,11 @@ export default function HowItWorksPage() {
         />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-24 pb-12 md:pb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
+            <Sparkles size={13} className="text-green-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">How it works</span>
           </div>
           <h1 className="text-[40px] md:text-[64px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
-            Tickets in three taps. <span className="text-blue">Sales in three steps.</span>
+            Tickets in three taps. <span className="text-green-600">Sales in three steps.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
             Buying a ticket, hosting an event, or selling a service: here&apos;s what happens, and how pre-sales fit in. Live and running since May 2026.
@@ -141,8 +141,8 @@ export default function HowItWorksPage() {
               <span className="absolute top-4 right-4 text-[11px] font-semibold tracking-[0.16em] text-ink-3">
                 0{i + 1}
               </span>
-              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                <Icon size={17} className="text-blue" />
+              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                <Icon size={17} className="text-green-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
               <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
@@ -151,10 +151,10 @@ export default function HowItWorksPage() {
         </ol>
 
         {/* Fast checkout callout */}
-        <div className="mt-8 rounded-2xl border border-blue/15 bg-gradient-to-br from-blue-soft to-paper p-6 md:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+        <div className="mt-8 rounded-2xl border border-green-500/15 bg-gradient-to-br from-blue-soft to-paper p-6 md:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div className="flex items-start gap-4">
-            <span className="inline-flex w-11 h-11 items-center justify-center rounded-xl bg-paper ring-1 ring-blue/20 shadow-sm shrink-0">
-              <Smartphone size={18} className="text-blue" />
+            <span className="inline-flex w-11 h-11 items-center justify-center rounded-xl bg-paper ring-1 ring-green-500/20 shadow-sm shrink-0">
+              <Smartphone size={18} className="text-green-600" />
             </span>
             <div>
               <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">Why no signup?</p>
@@ -191,8 +191,8 @@ export default function HowItWorksPage() {
                 <span className="absolute top-4 right-4 text-[11px] font-semibold tracking-[0.16em] text-ink-3">
                   0{i + 1}
                 </span>
-                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                  <Icon size={17} className="text-blue" />
+                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                  <Icon size={17} className="text-green-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
                 <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
@@ -214,8 +214,8 @@ export default function HowItWorksPage() {
           />
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue/20 bg-blue-soft px-3 py-1.5 mb-4">
-                <Clock3 size={13} className="text-blue" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-green-500/20 bg-green-50 px-3 py-1.5 mb-4">
+                <Clock3 size={13} className="text-green-600" />
                 <span className="text-[11px] font-semibold tracking-[0.16em] text-blue uppercase">Pre-sales</span>
               </div>
               <h2 className="text-[26px] md:text-[36px] font-bold tracking-tight leading-[1.1] text-ink">
@@ -243,8 +243,8 @@ export default function HowItWorksPage() {
             <ul className="space-y-3">
               {PRESALE_PERKS.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="flex gap-4 rounded-2xl border border-line bg-paper-2/60 p-5">
-                  <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 shrink-0">
-                    <Icon size={17} className="text-blue" />
+                  <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
+                    <Icon size={17} className="text-green-600" />
                   </span>
                   <div>
                     <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>
@@ -270,8 +270,8 @@ export default function HowItWorksPage() {
                 <span className="absolute top-4 right-4 text-[11px] font-semibold tracking-[0.16em] text-ink-3">
                   0{i + 1}
                 </span>
-                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                  <Icon size={17} className="text-blue" />
+                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                  <Icon size={17} className="text-green-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
                 <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
@@ -284,7 +284,7 @@ export default function HowItWorksPage() {
       {/* CTA */}
       <section className="px-5 md:px-8 py-16 md:py-24">
         <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-14 relative overflow-hidden">
-          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" />
+          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" />
           <div className="relative grid md:grid-cols-2 gap-6 items-center">
             <div>
               <h2 className="text-[28px] md:text-[40px] font-bold tracking-[-0.02em] leading-[1.05]">

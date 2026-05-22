@@ -28,7 +28,7 @@ export default function HelpVendorsPage() {
             <ArrowLeft size={13} /> All help topics
           </Link>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
+            <Sparkles size={13} className="text-green-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">For vendors</span>
           </div>
           <h1 className="text-[36px] md:text-[52px] font-bold tracking-[-0.025em] leading-[1.05] text-ink max-w-2xl">
@@ -67,8 +67,8 @@ export default function HelpVendorsPage() {
               { icon: ShieldCheck, title: "Dispute support",      body: "We mediate cancellations, scope changes, and rating disputes." },
             ].map(({ icon: Icon, title, body }) => (
               <div key={title} className="rounded-2xl border border-line bg-paper p-6">
-                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                  <Icon size={17} className="text-blue" />
+                <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                  <Icon size={17} className="text-green-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
                 <p className="text-[13.5px] text-ink-2 mt-1.5 leading-relaxed">{body}</p>
@@ -88,7 +88,7 @@ export default function HelpVendorsPage() {
       {/* CTA */}
       <section className="px-5 md:px-8 pb-20 md:pb-28">
         <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-12 relative overflow-hidden">
-          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" />
+          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" />
           <div className="relative grid md:grid-cols-2 gap-6 items-center">
             <div>
               <h2 className="text-[26px] md:text-[36px] font-bold tracking-[-0.02em] leading-[1.05]">

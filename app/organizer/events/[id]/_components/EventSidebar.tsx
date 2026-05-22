@@ -97,7 +97,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
             <Link
               href={`/events/${eventSlug}`}
               target="_blank"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-navy hover:bg-blue-soft transition-colors"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-navy hover:bg-green-50 transition-colors"
             >
               <ExternalLink size={15} className="text-navy shrink-0" />
               View live
@@ -122,7 +122,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
             <Link
               href={`/events/${eventSlug}`}
               target="_blank"
-              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-navy hover:bg-blue-soft transition-colors shrink-0"
+              className="ml-auto inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-navy hover:bg-green-50 transition-colors shrink-0"
             >
               <ExternalLink size={11} />
               Live

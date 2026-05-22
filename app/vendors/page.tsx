@@ -52,12 +52,12 @@ export default async function VendorsPage({
         />
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-10 md:pb-14">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-blue" />
+            <Sparkles size={13} className="text-green-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">Marketplace</span>
           </div>
 
           <h1 className="text-[36px] md:text-[60px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
-            Trusted vendors. <span className="text-blue">Booked direct.</span>
+            Trusted vendors. <span className="text-green-600">Booked direct.</span>
           </h1>
           <p className="mt-4 md:mt-5 text-[15px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
             Catering, photography, sound, security and more, verified by TicketPulse, rated by organizers across Zimbabwe.
@@ -91,7 +91,7 @@ export default async function VendorsPage({
               name="q"
               placeholder="Search vendors, cities, services…"
               defaultValue={query}
-              className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+              className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
             />
           </div>
           {activeCategory !== "all" && (
@@ -100,7 +100,7 @@ export default async function VendorsPage({
           <label
             className={`inline-flex items-center justify-center gap-2 h-12 rounded-xl border px-4 text-sm font-medium cursor-pointer transition-colors select-none ${
               verifiedOnly
-                ? "bg-blue-soft border-blue/30 text-blue"
+                ? "bg-green-50 border-green-500/30 text-blue"
                 : "bg-paper border-line text-ink-2 hover:text-ink hover:border-line-2"
             }`}
           >
@@ -111,7 +111,7 @@ export default async function VendorsPage({
               defaultChecked={verifiedOnly}
               className="sr-only"
             />
-            <ShieldCheck size={15} className={verifiedOnly ? "text-blue" : "text-green-600"} />
+            <ShieldCheck size={15} className={verifiedOnly ? "text-green-600" : "text-green-600"} />
             Verified only
           </label>
           <button
@@ -181,7 +181,7 @@ export default async function VendorsPage({
       <section className="px-5 md:px-8 pb-20 md:pb-24">
         <div className="max-w-7xl mx-auto">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-12">
-            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" />
+            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" />
             <div
               className="absolute inset-0 opacity-[0.07]"
               style={{

@@ -37,7 +37,7 @@ export default function AboutPage() {
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">About · Live since May 2026</span>
           </div>
           <h1 className="text-[40px] md:text-[64px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
-            Tickets that work, <span className="text-blue">where you live.</span>
+            Tickets that work, <span className="text-green-600">where you live.</span>
           </h1>
           <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
             We&apos;re a Zimbabwean ticketing platform, built in Harare for the way events actually run here: patchy data, four currencies, mobile money and a culture of last-minute decisions. We launched in May 2026 with one anchor event and a single belief: organizers and vendors deserve technology that respects them.
@@ -63,8 +63,8 @@ export default function AboutPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {VALUES.map(({ icon: Icon, title, body }) => (
             <div key={title} className="rounded-2xl border border-line bg-paper p-6 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-30px_rgba(10,37,64,0.18)] transition-all duration-300">
-              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">
-                <Icon size={17} className="text-blue" />
+              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                <Icon size={17} className="text-green-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
               <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
@@ -89,7 +89,7 @@ export default function AboutPage() {
                   <span className={`absolute left-0 top-2 w-3.5 h-3.5 rounded-full bg-paper border-2 ${isNow ? "border-green-500" : "border-navy"}`}>
                     {isNow && <span className="absolute inset-0 rounded-full bg-green-500/30 animate-ping" aria-hidden />}
                   </span>
-                  <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-1 ${isNow ? "text-green-700" : "text-blue"}`}>{m.year}</p>
+                  <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-1 ${isNow ? "text-green-700" : "text-green-600"}`}>{m.year}</p>
                   <p className="text-[16px] font-semibold tracking-tight text-ink">{m.title}</p>
                   <p className="text-[13.5px] text-ink-2 mt-1 leading-relaxed">{m.body}</p>
                 </li>
@@ -114,7 +114,7 @@ export default function AboutPage() {
       {/* CTA */}
       <section className="px-5 md:px-8 pb-20 md:pb-28">
         <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-14 relative overflow-hidden">
-          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-blue/30 blur-3xl pointer-events-none" />
+          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" />
           <div className="relative grid md:grid-cols-2 gap-6 items-center">
             <div>
               <h2 className="text-[28px] md:text-[40px] font-bold tracking-[-0.02em] leading-[1.05]">

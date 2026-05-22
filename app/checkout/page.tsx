@@ -259,7 +259,7 @@ export default function CheckoutPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Tendai Moyo"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                   />
                 </div>
               </div>
@@ -275,7 +275,7 @@ export default function CheckoutPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="you@example.com"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                   />
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function CheckoutPage() {
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="+263 77…"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
                   />
                 </div>
               </div>
@@ -311,7 +311,7 @@ export default function CheckoutPage() {
                   <label
                     key={value}
                     className={`relative cursor-pointer rounded-xl border p-4 transition-all ${
-                      checked ? "border-navy bg-blue-soft/40 ring-2 ring-navy/40" : "border-line bg-paper hover:border-line-2"
+                      checked ? "border-navy bg-green-50/40 ring-2 ring-navy/40" : "border-line bg-paper hover:border-line-2"
                     }`}
                   >
                     <input
@@ -411,7 +411,7 @@ export default function CheckoutPage() {
                       value={promoInput}
                       onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                       placeholder="Promo code"
-                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue"
+                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-green-500"
                     />
                     <button
                       type="button"
@@ -513,7 +513,7 @@ function PesepayWaitingOverlay({
           <X size={14} />
         </button>
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-soft text-navy">
+          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-navy">
             <Smartphone size={18} />
           </span>
           <div>

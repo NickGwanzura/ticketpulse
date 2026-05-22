@@ -26,7 +26,7 @@ function getStatusBadge(status: string | null) {
     case "used":
       return {
         label: "Used",
-        cls: "bg-blue-soft text-blue",
+        cls: "bg-green-50 text-blue",
         icon: Clock,
       }
     case "cancelled":

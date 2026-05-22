@@ -45,8 +45,8 @@ export default function CookiesNotice() {
         </button>
 
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15">
-            <Cookie size={16} className="text-blue" />
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
+            <Cookie size={16} className="text-green-600" />
           </span>
           <div className="min-w-0 pr-5">
             <p className="text-[14px] font-semibold tracking-tight text-ink">We use essential cookies</p>

@@ -105,8 +105,8 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
           aria-label="TicketPulse home"
         >
-          <span className="relative inline-flex w-7 h-7 items-center justify-center transition-transform group-hover:scale-105">
-            <svg viewBox="0 0 283.46 283.46" className="w-7 h-7" fill="none" aria-hidden="true">
+          <span className="relative inline-flex w-9 h-9 items-center justify-center transition-transform group-hover:scale-105">
+            <svg viewBox="0 0 283.46 283.46" className="w-9 h-9" fill="none" aria-hidden="true">
               <path d="M113.36,166.49c0.58,1.5,2.04,2.58,3.75,2.58h0.31C116.19,168.01,114.81,167.14,113.36,166.49z"/>
               <path fill="#0E1032" d="M138.28,103.34h-10.44v25.85h-8.76v-25.85h-9.63v-6.88h28.01L138.28,103.34z"/>
               <path fill="#0E1032" d="M145.5,102.66c-1.28,0-2.39-0.46-3.32-1.4c-0.93-0.93-1.4-2.04-1.4-3.32c0-1.32,0.46-2.45,1.4-3.39c0.93-0.95,2.04-1.42,3.32-1.42c1.32,0,2.45,0.47,3.39,1.42c0.95,0.95,1.42,2.08,1.42,3.39c0,1.28-0.47,2.39-1.42,3.32C147.94,102.2,146.81,102.66,145.5,102.66z M141.16,129.18v-23.34h8.76v23.34H141.16z"/>
@@ -340,7 +340,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                     </p>
                   )}
                 </div>
-                <div className="mt-3 rounded-xl bg-blue-soft/60 border border-blue/15 p-3.5">
+                <div className="mt-3 rounded-xl bg-green-50/60 border border-green-500/15 p-3.5">
                   <p className="text-[12px] font-semibold text-ink">For organizers</p>
                   <p className="text-[11.5px] text-ink-2 mt-0.5 leading-relaxed">Launch your event in minutes. Verified payouts and built-in shuttle, merch, photos.</p>
                   <Link href="/auth/signup?role=organizer" className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-navy hover:gap-1.5 transition-all">
@@ -397,9 +397,9 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
             </div>
 
             {/* Sell row */}
-            <Link href="/auth/signup?role=organizer" className="flex items-center gap-3 rounded-xl bg-blue-soft/60 border border-blue/15 p-4">
+            <Link href="/auth/signup?role=organizer" className="flex items-center gap-3 rounded-xl bg-green-50/60 border border-green-500/15 p-4">
               <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line">
-                <CalendarCog size={15} className="text-blue" />
+                <CalendarCog size={15} className="text-green-600" />
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-ink">Sell tickets</p>

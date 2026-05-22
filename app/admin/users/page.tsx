@@ -116,7 +116,7 @@ export default async function AdminUsersPage() {
             <input
               type="text"
               placeholder="Search by name or email"
-              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
             />
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">

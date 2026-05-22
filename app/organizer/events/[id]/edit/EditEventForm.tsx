@@ -58,7 +58,7 @@ function inputCls(hasError?: boolean) {
     "placeholder:text-ink-3 focus:outline-none focus:ring-4",
     hasError
       ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/15"
-      : "border-line focus:border-line-2 focus:ring-blue/15",
+      : "border-line focus:border-line-2 focus:ring-green-500/15",
   ].join(" ")
 }
 
@@ -314,7 +314,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
                   type="button"
                   onClick={handleGenerateDesc}
                   disabled={genDesc}
-                  className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-green-600/80 transition-colors disabled:opacity-50"
                 >
                   {genDesc ? (
                     <Loader2 size={12} className="animate-spin" />
@@ -361,7 +361,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               type="button"
               onClick={handleSuggestLocation}
               disabled={genLoc}
-              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-blue/80 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-green-600/80 transition-colors disabled:opacity-50"
             >
               {genLoc ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -527,7 +527,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
                   key={t.id}
                   className="flex items-center gap-3 rounded-xl border border-line bg-paper p-3"
                 >
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-soft text-navy shrink-0">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-navy shrink-0">
                     <Ticket size={13} />
                   </div>
                   <div className="min-w-0 flex-1">

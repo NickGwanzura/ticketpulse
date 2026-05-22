@@ -91,7 +91,7 @@ export default function AddVendorPanel({
                   placeholder="Search vendors by name, category or city…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                  className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                 />
               </div>
 
@@ -175,7 +175,7 @@ export default function AddVendorPanel({
                     name="packageName"
                     required
                     placeholder="e.g. Premium catering package"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                   />
                   {state.fieldErrors?.packageName && (
                     <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.packageName}</p>
@@ -190,7 +190,7 @@ export default function AddVendorPanel({
                     name="packageDescription"
                     rows={3}
                     placeholder="What's included? (optional)"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15 resize-none"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15 resize-none"
                   />
                 </div>
 
@@ -206,7 +206,7 @@ export default function AddVendorPanel({
                       min="0"
                       required
                       placeholder="0.00"
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                     />
                     {state.fieldErrors?.price && (
                       <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.price}</p>
@@ -219,7 +219,7 @@ export default function AddVendorPanel({
                     <select
                       name="currency"
                       defaultValue="USD"
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -237,7 +237,7 @@ export default function AddVendorPanel({
                     type="number"
                     min="1"
                     placeholder="Leave blank for unlimited"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-blue/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
                   />
                   <p className="mt-1 text-[11.5px] text-ink-3">
                     Maximum number of ticket buyers who can purchase this add-on.

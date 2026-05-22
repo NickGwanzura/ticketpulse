@@ -99,7 +99,7 @@ export default function AiTagSuggest({ title, description, category, existingTag
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
                   alreadyAdded
                     ? "bg-green-50 text-green-600 cursor-default"
-                    : "bg-blue-50 text-blue hover:bg-blue-100"
+                    : "bg-green-50 text-blue hover:bg-green-100"
                 }`}
               >
                 + {tag}

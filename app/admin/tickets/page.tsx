@@ -19,7 +19,7 @@ import CancelTicketButton from "@/app/admin/_components/CancelTicketButton"
 const STATUS_STYLE: Record<string, string> = {
   paid:                   "bg-green-50 text-green-700",
   pending:                "bg-amber-50 text-amber-700",
-  awaiting_verification:  "bg-blue-soft text-navy",
+  awaiting_verification:  "bg-green-50 text-navy",
   refunded:               "bg-rose-50 text-rose-700",
   cancelled:              "bg-paper-2 text-ink-3 ring-1 ring-line",
 }
@@ -186,7 +186,7 @@ export default async function AdminTicketsPage({
             </div>
           </div>
           <div className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">
-            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft">
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50">
               <ShoppingCart size={16} className="text-navy" />
             </span>
             <div>
@@ -236,7 +236,7 @@ export default async function AdminTicketsPage({
               name="q"
               defaultValue={query}
               placeholder="Search by order #, email, or name…"
-              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
             />
             {eventFilter && (
               <input type="hidden" name="event" value={eventFilter} />
@@ -249,7 +249,7 @@ export default async function AdminTicketsPage({
               <select
                 name="event"
                 defaultValue={eventFilter}
-                className="appearance-none w-full rounded-xl border border-line bg-paper pl-3.5 pr-9 py-2.5 text-[13px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-blue/10"
+                className="appearance-none w-full rounded-xl border border-line bg-paper pl-3.5 pr-9 py-2.5 text-[13px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
               >
                 <option value="">All events</option>
                 {allEvents.map((ev) => (

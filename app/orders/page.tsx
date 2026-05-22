@@ -41,7 +41,7 @@ export default function OrdersPage() {
           <div className="text-center py-8 md:py-14">
             <EmptyTickets />
             <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 text-[10.5px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm shadow-ink/5">
-              <Sparkles size={11} className="text-blue" /> No orders yet
+              <Sparkles size={11} className="text-green-600" /> No orders yet
             </p>
             <h2 className="mt-5 text-[24px] md:text-[28px] font-bold tracking-tight text-ink">Your tickets will live here.</h2>
             <p className="mt-3 text-[14.5px] text-ink-2 max-w-sm mx-auto">After your first checkout, every QR code, receipt, and refund is one tap away.</p>

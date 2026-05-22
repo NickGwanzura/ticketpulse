@@ -41,8 +41,8 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
   return (
     <section>
       <div className="flex items-center gap-3 mb-6">
-        <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15">
-          <UtensilsCrossed size={16} className="text-blue" />
+        <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
+          <UtensilsCrossed size={16} className="text-green-600" />
         </span>
         <div>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Vendors and Caterers</p>
@@ -69,7 +69,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                 <div
                   key={listing.id}
                   className={`rounded-2xl border bg-paper p-5 transition-colors ${
-                    inCart ? "border-blue/40 ring-2 ring-blue/15" : "border-line hover:border-line-2"
+                    inCart ? "border-blue/40 ring-2 ring-green-500/15" : "border-line hover:border-line-2"
                   }`}
                 >
                   <div className="flex items-start gap-3">

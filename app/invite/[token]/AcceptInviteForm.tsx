@@ -76,7 +76,7 @@ export default function AcceptInviteForm({
     <div className="max-w-md w-full">
       <div className="rounded-2xl border border-line bg-paper p-8 shadow-sm">
         <div className="text-center space-y-4 mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-blue-soft mx-auto flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-green-50 mx-auto flex items-center justify-center">
             <span className="text-2xl">🎫</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-ink">Event organiser invitation</h1>

@@ -14,7 +14,7 @@ import {
 function inputCls(hasError?: boolean) {
   return [
     "w-full rounded-xl border bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3",
-    "focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-blue transition",
+    "focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-green-500 transition",
     hasError ? "border-red-400" : "border-line",
   ].join(" ")
 }

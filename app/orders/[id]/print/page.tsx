@@ -310,7 +310,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
                   {/* Left: event info */}
                   <div className="flex-1 min-w-0 px-5 py-4">
                     {/* Tier badge */}
-                    <span className="inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-[9px] font-semibold text-blue-700 mb-2">
+                    <span className="inline-block rounded-full bg-green-50 px-2.5 py-0.5 text-[9px] font-semibold text-green-700 mb-2">
                       {line.tierName}
                     </span>
 

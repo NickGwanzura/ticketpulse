@@ -140,7 +140,7 @@ export default function InviteUserDialog() {
                     if (error) setError(null)
                   }}
                   autoFocus
-                  className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${error ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-blue focus:ring-blue/10"}`}
+                  className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${error ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-green-500/10"}`}
                 />
               </div>
 
@@ -154,7 +154,7 @@ export default function InviteUserDialog() {
                         type="button"
                         key={r.value}
                         onClick={() => setRole(r.value)}
-                        className={`text-left rounded-xl border px-3 py-2.5 transition ${active ? "border-blue bg-blue-soft" : "border-line bg-paper hover:bg-paper-2"}`}
+                        className={`text-left rounded-xl border px-3 py-2.5 transition ${active ? "border-blue bg-green-50" : "border-line bg-paper hover:bg-paper-2"}`}
                       >
                         <p className={`text-[12.5px] font-semibold tracking-tight ${active ? "text-navy" : "text-ink"}`}>
                           {r.label}
