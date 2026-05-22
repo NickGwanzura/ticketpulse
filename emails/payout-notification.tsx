@@ -32,7 +32,7 @@ export default function PayoutNotificationEmail({
   const first = organizerName?.split(" ")[0]?.trim()
   return (
     <EmailShell preview={`Payout sent: ${amount} ${currency} to ${destination}`}>
-      <EmailEyebrow tone="emerald">Payout sent</EmailEyebrow>
+      <EmailEyebrow tone="blue">Payout sent</EmailEyebrow>
       <EmailHeading>
         {first ? `${first}, your payout is on the way.` : "Your payout is on the way."}
       </EmailHeading>

@@ -25,7 +25,6 @@ export const BRAND = {
   blue: "#2D6CDF",
   blueSoft: "#EAF2FA",
   navy: "#0B1F4A",
-  emerald: "#8DD32F",
   url: APP_URL,
 } as const
 
@@ -62,10 +61,10 @@ export function EmailShell({ preview, children }: ShellProps) {
                 <tr>
                   <td style={{ verticalAlign: "middle", paddingRight: 10 }}>
                     <Img
-                      src={`${BRAND.url}/logo.svg`}
+                      src={`${BRAND.url}/ticketpulse-logo.svg`}
                       alt="TicketPulse"
-                      width={32}
-                      height={32}
+                      width={40}
+                      height={40}
                       style={{
                         display: "block",
                         outline: "none",
@@ -175,12 +174,11 @@ export function EmailButton({ href, children, variant = "primary" }: ButtonProps
 
 type EyebrowProps = {
   children: React.ReactNode
-  tone?: "blue" | "emerald" | "ink"
+  tone?: "blue" | "ink"
 }
 
 export function EmailEyebrow({ children, tone = "blue" }: EyebrowProps) {
-  const color =
-    tone === "emerald" ? BRAND.emerald : tone === "ink" ? BRAND.ink3 : BRAND.blue
+  const color = tone === "ink" ? BRAND.ink3 : BRAND.blue
   return (
     <Text
       style={{

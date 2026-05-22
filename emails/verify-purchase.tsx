@@ -25,7 +25,7 @@ export default function VerifyPurchaseEmail({
 }: Props) {
   return (
     <EmailShell preview={`Tap to confirm and receive your ${eventTitle} tickets`}>
-      <EmailEyebrow tone="emerald">One last step</EmailEyebrow>
+      <EmailEyebrow tone="blue">One last step</EmailEyebrow>
       <EmailHeading>Confirm to receive your tickets.</EmailHeading>
       <EmailParagraph>
         Your payment of <strong style={{ color: BRAND.ink }}>{amount} {currency}</strong> for <strong style={{ color: BRAND.ink }}>{eventTitle}</strong> went through. Click below to confirm this email is yours. We&apos;ll send your tickets instantly.

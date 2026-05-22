@@ -11,12 +11,11 @@ export default function OpenGraphImage() {
           width: "100%",
           height: "100%",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
           background:
-            "radial-gradient(120% 80% at 80% 10%, rgba(5,112,222,0.55) 0%, rgba(5,112,222,0) 60%), linear-gradient(135deg, #1a4f8c 0%, #0a2540 55%, #07182b 100%)",
+            "linear-gradient(135deg, #131132 0%, #0E1032 55%, #151232 100%)",
         }}
       >
         {/* Top highlight */}
@@ -32,47 +31,51 @@ export default function OpenGraphImage() {
           }}
         />
 
-        {/* Brand mark */}
+        {/* Logo */}
         <div
           style={{
             display: "flex",
-            color: "#ffffff",
-            fontSize: 160,
-            fontWeight: 800,
-            letterSpacing: "-0.06em",
-            lineHeight: 1,
+            alignItems: "center",
+            gap: 20,
             marginBottom: 16,
           }}
         >
-          TicketPulse
+          <svg
+            viewBox="0 0 283.46 283.46"
+            style={{ width: 80, height: 80 }}
+            fill="none"
+          >
+            <path fill="#909090" d="M124.27,165.85h-8.76v-32.73h13.77c2.5,0,4.77,0.44,6.81,1.32c2.04,0.88,3.66,2.21,4.86,3.99c1.2,1.78,1.8,3.94,1.8,6.47c0,2.5-0.64,4.61-1.93,6.33c-1.28,1.72-2.98,2.99-5.08,3.83c-2.1,0.83-4.39,1.25-6.86,1.25h-4.62V165.85z M128.99,140h-4.72v9.43h4.81c1.35,0,2.45-0.43,3.32-1.3s1.3-1.94,1.3-3.22c0-1.48-0.43-2.66-1.28-3.56C131.58,140.45,130.43,140,128.99,140z"/>
+            <path fill="#FFFFFF" d="M142.02,164.02c-1.05-2.02-2.06-4.03-3.02-6.08c-0.04,0.03-0.1,0.04-0.16,0.07c-2.5,0.98-5.24,1.5-8.12,1.53c1.39,3.01,2.87,5.99,4.41,8.96c0.47,0.54,0.38,2.36-0.27,2.54l-13.02,3.53c-1.15-2.17-2.65-4.03-4.43-5.51c-1.23-1.06-2.61-1.93-4.06-2.58c-3.53-1.62-7.55-2.04-11.47-1.05c-7.95,2.03-13.75,9.25-13.27,18.01l-15.66,3.99c-1.05-29.92-8.5-57.74-22.14-83.69c-0.26-1.02,0.24-2.81,0.97-2.99l14.34-3.72c3.79,7.92,12.05,11.6,19.8,9.62c7.86-2.02,13.24-9.45,12.59-18.31l14.39-3.72c0.09,2.34,0.21,4.68,0.38,7h8.19c-0.17-2.29-0.3-4.57-0.38-6.86c-0.21-5.61-5.89-9.43-11.06-8.05l-16.68,4.46c-3.04,0.82-3.86,3.96-3.19,6.67c1.19,4.87-1.79,9.68-6.19,10.86c-4.58,1.22-9.47-1.6-10.89-6.32c-1.01-3.31-3.59-4.93-6.94-3.99L49.6,92.96c-6.32,1.75-9.11,8.77-6.08,14.52c12.82,24.34,20.1,50.76,21.09,78.39c0.2,5.62,4.93,10.99,11.01,9.4l18.32-4.77c2.53-0.65,3.73-3.18,3.08-5.59c-1.41-5.18,1.96-10.29,6.73-11.45c5.35-1.32,10.04,1.67,11.58,7.01c0.6,2.09,3.21,3.48,5.25,2.92l16.71-4.54c2.92-0.79,5.21-3.79,5.95-5.98C144.35,169.65,143.51,166.86,142.02,164.02z"/>
+            <circle fill="#FFFFFF" cx="242.85" cy="160.38" r="5.08"/>
+          </svg>
+          <span
+            style={{
+              color: "#ffffff",
+              fontSize: 96,
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              lineHeight: 1,
+            }}
+          >
+            TicketPulse
+          </span>
         </div>
 
         {/* Tagline */}
         <div
           style={{
             display: "flex",
-            color: "rgba(255,255,255,0.7)",
-            fontSize: 36,
+            position: "absolute",
+            bottom: 80,
+            color: "rgba(255,255,255,0.6)",
+            fontSize: 28,
             fontWeight: 400,
-            letterSpacing: "0.02em",
+            letterSpacing: "0.04em",
           }}
         >
           Every event. One ticket.
         </div>
-
-        {/* Pulse dot */}
-        <div
-          style={{
-            position: "absolute",
-            right: 48,
-            bottom: 48,
-            width: 28,
-            height: 28,
-            borderRadius: 999,
-            background: "#8DD32F",
-            boxShadow: "0 0 0 8px rgba(141,211,47,0.25)",
-          }}
-        />
       </div>
     ),
     { ...size }

@@ -42,7 +42,7 @@ export default function OrderConfirmationEmail({
   const first = buyerName?.split(" ")[0]?.trim()
   return (
     <EmailShell preview={`You're going to ${eventTitle}. Tickets attached.`}>
-      <EmailEyebrow tone="emerald">Order confirmed</EmailEyebrow>
+      <EmailEyebrow tone="blue">Order confirmed</EmailEyebrow>
       <EmailHeading>
         {first ? `You're in, ${first}.` : "You're in."}
       </EmailHeading>
