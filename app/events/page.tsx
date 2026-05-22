@@ -1,6 +1,15 @@
+import type { Metadata } from "next"
 import EventCard from "@/components/events/EventCard"
 import Link from "next/link"
 import { Search } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Events",
+  description: "Browse upcoming events in Zimbabwe — concerts, marathons, film premieres, exhibitions, and more. Find your next experience on TicketPulse.",
+  alternates: {
+    canonical: "/events",
+  },
+}
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
 import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm"

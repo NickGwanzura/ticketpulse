@@ -21,7 +21,11 @@ const NAV_CATEGORY_EMOJI: Record<string, string> = {
 }
 
 export const metadata: Metadata = {
-  title: "TicketPulse. Every event. One ticket.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"),
+  title: {
+    default: "TicketPulse. Every event. One ticket.",
+    template: "%s | TicketPulse",
+  },
   description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
   manifest: "/manifest",
   appleWebApp: {
@@ -31,6 +35,21 @@ export const metadata: Metadata = {
   },
   other: {
     "apple-mobile-web-app-capable": "yes",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_ZW",
+    siteName: "TicketPulse",
+    title: "TicketPulse. Every event. One ticket.",
+    description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TicketPulse. Every event. One ticket.",
+    description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+  },
+  alternates: {
+    canonical: "/",
   },
 }
 

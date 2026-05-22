@@ -19,6 +19,7 @@ const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money 
 
 const PAYMENT_METHODS = [
   { value: "ecocash", label: "EcoCash",   body: "Mobile money. Instant.",        icon: Smartphone },
+  { value: "omari",   label: "Omari",     body: "Mobile money. Instant.",        icon: Smartphone },
   { value: "card",    label: "Card",      body: "Visa, Mastercard, AmEx.",        icon: CreditCard },
 ]
 

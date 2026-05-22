@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { Calendar, MapPin, Users, Heart } from "lucide-react"
 import MerchSection from "@/components/merch/MerchSection"
@@ -24,6 +25,59 @@ const CATEGORY_EMOJI: Record<string, string> = {
   film: "🎬",
   exhibition: "🏢",
   expedition: "⛰️",
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+
+  const where = UUID_RE.test(id)
+    ? or(eq(events.slug, id), eq(events.id, id))
+    : eq(events.slug, id)
+
+  const [row] = await db
+    .select({
+      title: events.title,
+      description: events.description,
+      slug: events.slug,
+      coverImage: events.coverImage,
+      startsAt: events.startsAt,
+      venue: events.venue,
+      city: events.city,
+    })
+    .from(events)
+    .where(where)
+    .limit(1)
+
+  if (!row) {
+    return { title: "Event not found" }
+  }
+
+  const title = `${row.title} — tickets, date, venue`
+  const description = row.description
+    ? row.description.length > 160
+      ? row.description.slice(0, 157) + "..."
+      : row.description
+    : `Get tickets for ${row.title} at ${row.venue}, ${row.city}. ${row.startsAt.toLocaleDateString("en-ZW", { dateStyle: "long" })}.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      images: row.coverImage ? [{ url: row.coverImage }] : undefined,
+    },
+    twitter: {
+      title,
+      description,
+      images: row.coverImage ? [{ url: row.coverImage }] : undefined,
+    },
+    alternates: {
+      canonical: `${baseUrl}/events/${row.slug}`,
+    },
+  }
 }
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -127,6 +181,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const lowestPrice = tiers.length ? Math.min(...tiers.map((t) => t.price)) : null
 
   // ── JSON-LD structured data (Schema.org Event) ────────────────────────────
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -157,7 +212,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       priceCurrency: baseCurrency,
       lowPrice: lowestPrice,
       availability: "https://schema.org/InStock",
-      url: `https://ticketpulse.tech/events/${row.slug}`,
+      url: `${siteUrl}/events/${row.slug}`,
     },
   }
 

@@ -1,4 +1,21 @@
+import type { Metadata } from "next"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "TicketPulse — Zimbabwe's event ticketing platform",
+  description: "Discover concerts, marathons, film premieres, exhibitions and more. Buy tickets, merch, shuttle passes, and photo packs — all in one place. TicketPulse.",
+  openGraph: {
+    title: "TicketPulse — Zimbabwe's event ticketing platform",
+    description: "Discover concerts, marathons, film premieres, exhibitions and more. Buy tickets, merch, shuttle passes, and photo packs — all in one place.",
+  },
+  twitter: {
+    title: "TicketPulse — Zimbabwe's event ticketing platform",
+    description: "Discover concerts, marathons, film premieres, exhibitions and more. Buy tickets, merch, shuttle passes, and photo packs — all in one place.",
+  },
+  alternates: {
+    canonical: "/",
+  },
+}
 import {
   ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
   Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,

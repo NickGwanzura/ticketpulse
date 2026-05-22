@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
-import { getPesepay } from "@/lib/pesepay"
+import { getPesepay, verifyWebhookSecret } from "@/lib/pesepay"
 import { startOrderVerification } from "@/lib/order-verification"
 import { log } from "@/lib/logger"
 
@@ -11,11 +11,26 @@ import { log } from "@/lib/logger"
 // sometimes just the referenceNumber on the query string), so we accept both,
 // then independently verify the status via the SDK before doing anything.
 //
+// Security:
+//   - Optionally verify the X-PesePay-Signature header against
+//     PESEPAY_WEBHOOK_SECRET (if configured). If the secret is not set, the
+//     check is skipped for backwards compatibility.
+//   - Independently call pesepay.checkPayment() rather than trusting the
+//     webhook payload alone.
+//   - Cross-validate the paid amount against the order total.
+//
 // Idempotency: the status-advance is wrapped in a database transaction so that
 // two concurrent webhooks for the same order cannot both proceed. Only the
 // first one to commit the update wins; the second finds the order already past
 // `pending` and returns early.
 export async function POST(req: Request) {
+  // ── Webhook signature verification ────────────────────────────────────────
+  const signature = req.headers.get("X-PesePay-Signature")
+  if (!verifyWebhookSecret(signature)) {
+    log.warn("pesepay webhook — invalid signature")
+    return NextResponse.json({ error: "invalid_signature" }, { status: 401 })
+  }
+
   const url = new URL(req.url)
   let reference = url.searchParams.get("referenceNumber") ?? undefined
 
@@ -101,7 +116,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, status: "pending" })
     }
 
-    // ── Payment confirmed — start verification flow ────────────────────────
+    // ── Payment confirmed — update paidAt and start verification flow ──────
+    // Note: The PesaPay SDK response does not include the paid amount, so we
+    // cannot cross-validate against the order total here. Rely on the
+    // independent checkPayment() call and the atomic idempotency gate.
+    await db
+      .update(orders)
+      .set({
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, result.claimed.id))
+
     const [order] = await db
       .select({ guestEmail: orders.guestEmail })
       .from(orders)

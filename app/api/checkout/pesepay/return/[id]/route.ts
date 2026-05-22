@@ -2,14 +2,11 @@ import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
-import { getPesepay } from "@/lib/pesepay"
+import { getPesepay, type OrderMetadata } from "@/lib/pesepay"
 import { startOrderVerification } from "@/lib/order-verification"
+import { log } from "@/lib/logger"
 
 type Params = { id: string }
-
-type OrderMetadata = {
-  pesepay?: { pollUrl?: string; reference?: string }
-}
 
 // Buyer lands here in the browser after completing PesePay's hosted checkout.
 // We check the payment status, transition the order if PesePay confirms, then
@@ -36,6 +33,12 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         : await pesepay.checkPayment(reference!)
 
       if (result.success && result.paid && order.guestEmail) {
+        // Mark paidAt before starting verification
+        await db
+          .update(orders)
+          .set({ paidAt: new Date(), updatedAt: new Date() })
+          .where(eq(orders.id, id))
+
         await startOrderVerification({
           orderId: id,
           email: order.guestEmail,

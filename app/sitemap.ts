@@ -1,9 +1,12 @@
 import type { MetadataRoute } from "next"
+import { db } from "@/db"
+import { events } from "@/db/schema"
+import { eq } from "drizzle-orm"
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
 
-  // Static routes — add more as the site grows.
+  // Static routes
   const staticRoutes = [
     { path: "",                    priority: 1.0, changeFrequency: "weekly" as const },
     { path: "/events",             priority: 0.9, changeFrequency: "daily"  as const },
@@ -20,10 +23,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/legal/cookies",      priority: 0.3, changeFrequency: "yearly" as const },
   ]
 
-  return staticRoutes.map((r) => ({
-    url: `${baseUrl}${r.path}`,
-    lastModified: new Date(),
-    changeFrequency: r.changeFrequency,
-    priority: r.priority,
+  // Dynamic event pages
+  const eventRows = await db
+    .select({ slug: events.slug, updatedAt: events.updatedAt })
+    .from(events)
+    .where(eq(events.status, "published"))
+
+  const eventRoutes = eventRows.map((e) => ({
+    url: `${baseUrl}/events/${e.slug}`,
+    lastModified: e.updatedAt ?? new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
   }))
+
+  return [
+    ...staticRoutes.map((r) => ({
+      url: `${baseUrl}${r.path}`,
+      lastModified: new Date(),
+      changeFrequency: r.changeFrequency,
+      priority: r.priority,
+    })),
+    ...eventRoutes,
+  ]
 }

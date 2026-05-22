@@ -20,7 +20,6 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/pwa-icon?size=512", sizes: "512x512", type: "image/png" },
       { src: "/pwa-icon?size=512", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
-    screenshots: [],
     prefer_related_applications: false,
   }
 }

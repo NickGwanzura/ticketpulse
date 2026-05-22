@@ -25,6 +25,27 @@ export const PESEPAY_METHODS: Record<string, PesepayMethod> = {
   card:    { code: null, flow: "redirect" },
 }
 
+/**
+ * Shape of the `metadata.pesepay` object stored on orders.
+ */
+export interface PesepayOrderMetadata {
+  pollUrl?: string
+  reference?: string
+}
+
+/**
+ * Shape of the top-level `metadata` JSON column for orders involving PesaPay.
+ */
+export interface OrderMetadata {
+  pesepay?: PesepayOrderMetadata
+  promo?: {
+    code: string
+    type: string
+    value: string
+    discount: number
+  }
+}
+
 export function getPesepay(): Pesepay {
   const integrationKey = process.env.PESEPAY_INTEGRATION_KEY
   const encryptionKey = process.env.PESEPAY_ENCRYPTION_KEY
@@ -32,6 +53,34 @@ export function getPesepay(): Pesepay {
     throw new Error("PESEPAY_INTEGRATION_KEY / PESEPAY_ENCRYPTION_KEY not set")
   }
   return new Pesepay(integrationKey, encryptionKey)
+}
+
+/**
+ * Optional webhook secret for verifying that incoming PesaPay webhook POSTs
+ * are genuinely from PesaPay. Set `PESEPAY_WEBHOOK_SECRET` in your environment;
+ * if unset, webhook verification is skipped (legacy behaviour).
+ *
+ * PesaPay sends the secret in the `X-PesePay-Signature` header. We compare
+ * against the configured value using a timing-safe comparison.
+ */
+export function verifyWebhookSecret(requestSignature: string | null): boolean {
+  const secret = process.env.PESEPAY_WEBHOOK_SECRET
+  if (!secret) {
+    // No secret configured — accept the webhook (backwards-compatible).
+    return true
+  }
+  if (!requestSignature) {
+    return false
+  }
+  // Constant-time comparison to prevent timing attacks.
+  if (requestSignature.length !== secret.length) {
+    return false
+  }
+  let mismatch = 0
+  for (let i = 0; i < requestSignature.length; i++) {
+    mismatch |= requestSignature.charCodeAt(i) ^ secret.charCodeAt(i)
+  }
+  return mismatch === 0
 }
 
 // resultUrl is the webhook PesePay POSTs to; returnUrl is where the buyer is
