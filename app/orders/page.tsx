@@ -47,7 +47,7 @@ export default function OrdersPage() {
             <p className="mt-3 text-[14.5px] text-ink-2 max-w-sm mx-auto">After your first checkout, every QR code, receipt, and refund is one tap away.</p>
             <Link
               href="/events"
-              className="mt-7 inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-navy-700 transition shadow-sm shadow-navy/20"
+              className="mt-7 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 transition shadow-sm shadow-green-600/20"
             >
               Browse events <ArrowRight size={14} />
             </Link>

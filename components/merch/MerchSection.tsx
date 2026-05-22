@@ -95,7 +95,7 @@ export default function MerchSection({ items, eventTitle }: MerchSectionProps) {
                     </div>
                     <button
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full bg-navy text-white text-xs font-semibold py-2 rounded-lg hover:bg-navy-700 transition-colors"
+                      className="w-full bg-green-600 text-white text-xs font-semibold py-2 rounded-lg hover:bg-green-700 transition-colors"
                     >
                       Add to order
                     </button>

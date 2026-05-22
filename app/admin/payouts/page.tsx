@@ -89,7 +89,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
               <p className="text-[12.5px] text-ink-2">No pending payouts. New requests will appear here.</p>
             </div>
           </div>
-          <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition-colors">
+          <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition-colors">
             <Send size={13} /> Process payouts
           </button>
         </div>

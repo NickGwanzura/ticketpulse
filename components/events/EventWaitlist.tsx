@@ -66,7 +66,7 @@ export default function EventWaitlist() {
               <button
                 type="submit"
                 disabled={status === "sending"}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-navy-700 transition disabled:opacity-60 shrink-0"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-green-700 transition disabled:opacity-60 shrink-0"
               >
                 {status === "sending" ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
                 Notify me

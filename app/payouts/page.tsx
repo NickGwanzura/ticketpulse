@@ -91,7 +91,7 @@ export default function PayoutsPage() {
         <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">Common payout questions.</h2>
         <FAQSection items={FAQ} />
         <div className="mt-10 flex flex-wrap gap-3">
-          <Link href="/auth/signup?role=organizer" className="inline-flex items-center gap-2 rounded-xl bg-navy text-white font-semibold px-5 py-3.5 text-sm hover:bg-navy-700 transition shadow-sm shadow-navy/20">
+          <Link href="/auth/signup?role=organizer" className="inline-flex items-center gap-2 rounded-xl bg-green-600 text-white font-semibold px-5 py-3.5 text-sm hover:bg-green-700 transition shadow-sm shadow-green-600/20">
             Start selling tickets <ArrowRight size={15} />
           </Link>
           <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper text-ink font-semibold px-5 py-3.5 text-sm hover:border-line-2 transition-colors">

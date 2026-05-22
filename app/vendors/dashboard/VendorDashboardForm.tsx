@@ -220,7 +220,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center justify-center rounded-xl bg-navy text-white text-sm font-semibold px-5 py-2.5 hover:bg-navy-700 transition-colors shadow-sm shadow-navy/20 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center rounded-xl bg-green-600 text-white text-sm font-semibold px-5 py-2.5 hover:bg-green-700 transition-colors shadow-sm shadow-green-600/20 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

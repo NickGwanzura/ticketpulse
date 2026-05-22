@@ -153,7 +153,7 @@ export default function VendorsApplyPage() {
 
               <button
                 type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold py-3.5 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20 text-sm mt-2"
+                className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm mt-2"
               >
                 Submit application <ArrowRight size={15} />
               </button>

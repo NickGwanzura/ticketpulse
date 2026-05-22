@@ -58,7 +58,7 @@ export default function CookiesNotice() {
               <button
                 type="button"
                 onClick={dismiss}
-                className="inline-flex items-center gap-1.5 rounded-full bg-navy text-white text-[12.5px] font-semibold tracking-tight px-4 py-2 hover:bg-navy-700 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-green-600 text-white text-[12.5px] font-semibold tracking-tight px-4 py-2 hover:bg-green-700 transition-colors"
               >
                 Got it
               </button>

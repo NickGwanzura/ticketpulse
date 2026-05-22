@@ -87,7 +87,7 @@ export default function AdminSettingsPage() {
             <button
               type="submit"
               disabled
-              className="inline-flex items-center justify-center rounded-xl bg-navy px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-navy/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center rounded-xl bg-green-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Save changes
             </button>

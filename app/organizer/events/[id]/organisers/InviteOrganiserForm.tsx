@@ -40,7 +40,7 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
             <button
               type="submit"
               disabled={pending}
-              className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
+              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
             >
               <Send size={14} />
               {pending ? "Sending..." : "Send invite"}

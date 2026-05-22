@@ -55,7 +55,7 @@ export default async function LogoutPage() {
           >
             <button
               type="submit"
-              className="w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold text-sm py-3 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20"
+              className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-sm py-3 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20"
             >
               <LogOut size={14} /> Sign out
             </button>

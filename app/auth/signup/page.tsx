@@ -157,7 +157,7 @@ export default async function SignUpPage({
 
           <button
             type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-md shadow-navy/25"
+            className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-md shadow-green-600/25"
           >
             Create account <ArrowRight size={15} />
           </button>

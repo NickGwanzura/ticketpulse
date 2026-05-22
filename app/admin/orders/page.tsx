@@ -343,7 +343,7 @@ export default async function AdminOrdersPage({
                               <Link
                                 href={`/orders/${o.id}/print`}
                                 target="_blank"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-navy-700 transition-colors"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-green-700 transition-colors"
                               >
                                 <Download size={12} />
                                 Tickets
@@ -446,7 +446,7 @@ export default async function AdminOrdersPage({
                         <Link
                           href={`/orders/${o.id}/print`}
                           target="_blank"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-[12px] font-semibold text-white hover:bg-navy-700 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-green-700 transition-colors"
                         >
                           <Download size={12} />
                           Download tickets

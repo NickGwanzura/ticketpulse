@@ -119,7 +119,7 @@ export default function CartPage() {
           Browse events, pick your tier, and they&apos;ll land here for one quick checkout.
         </p>
         <div className="mt-7 flex flex-wrap gap-2 justify-center">
-          <Link href="/events" className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition">
+          <Link href="/events" className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition">
             Browse events <ArrowRight size={14} />
           </Link>
           <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-sm font-medium text-ink hover:border-line-2 transition-colors">
@@ -251,7 +251,7 @@ export default function CartPage() {
 
             <Link
               href="/checkout"
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
+              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
             >
               Proceed to checkout <ArrowRight size={15} />
             </Link>
@@ -294,7 +294,7 @@ export default function CartPage() {
           </div>
           <Link
             href="/checkout"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-navy/20 active:scale-[0.99] transition shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 active:scale-[0.99] transition shrink-0"
           >
             Checkout <ArrowRight size={13} />
           </Link>

@@ -136,7 +136,7 @@ export default function PricingPage() {
                 href={t.cta.href}
                 className={`mt-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition ${
                   t.highlight
-                    ? "bg-navy text-white shadow-sm shadow-navy/20 hover:bg-navy-700"
+                    ? "bg-green-600 text-white shadow-sm shadow-green-600/20 hover:bg-green-700"
                     : "border border-line bg-paper text-ink hover:border-line-2"
                 }`}
               >

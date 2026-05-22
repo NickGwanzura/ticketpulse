@@ -322,7 +322,7 @@ export default async function Home() {
                 </div>
                 <button
                   type="submit"
-                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-6 text-[15px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition group"
+                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 text-[15px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition group"
                 >
                   Find tickets
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />

@@ -142,7 +142,7 @@ export default function AccountForm({
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-xl bg-navy text-white text-sm font-semibold px-4 py-2.5 hover:bg-navy-700 transition-colors shadow-sm shadow-navy/20 disabled:opacity-60"
+          className="rounded-xl bg-green-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-green-700 transition-colors shadow-sm shadow-green-600/20 disabled:opacity-60"
         >
           {isPending ? "Saving…" : "Save changes"}
         </button>

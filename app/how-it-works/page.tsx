@@ -168,7 +168,7 @@ export default function HowItWorksPage() {
           </div>
           <Link
             href="/events"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-navy px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition shrink-0"
           >
             Try it now <ArrowRight size={14} />
           </Link>
@@ -227,7 +227,7 @@ export default function HowItWorksPage() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/auth/signup?role=organizer"
-                  className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition group"
+                  className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition group"
                 >
                   Set up a pre-sale
                   <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />

@@ -182,7 +182,7 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
       <button
         type="submit"
         disabled={submitting}
-        className="w-full bg-navy text-white font-semibold py-3 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20 text-sm disabled:opacity-60 disabled:cursor-wait"
+        className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm disabled:opacity-60 disabled:cursor-wait"
       >
         {submitting ? "Sending..." : "Send enquiry"}
       </button>

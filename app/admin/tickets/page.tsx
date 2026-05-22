@@ -268,7 +268,7 @@ export default async function AdminTicketsPage({
             </div>
             <button
               type="submit"
-              className="rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
+              className="rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
             >
               Filter
             </button>
@@ -387,7 +387,7 @@ export default async function AdminTicketsPage({
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-navy-700 transition-colors"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-green-700 transition-colors"
                                 >
                                   <Download size={12} />
                                   Tickets
@@ -503,7 +503,7 @@ export default async function AdminTicketsPage({
                           <Link
                             href={`/orders/${o.id}/print`}
                             target="_blank"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-[12px] font-semibold text-white hover:bg-navy-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-green-700 transition-colors"
                           >
                             <Download size={12} />
                             Tickets

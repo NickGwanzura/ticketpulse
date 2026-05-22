@@ -68,7 +68,7 @@ export default function AiEmailCopilot({ eventTitle, eventDate, onGenerated }: P
         <button
           onClick={generate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue text-white px-3 py-1.5 text-[12px] font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 text-white px-3 py-1.5 text-[12px] font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
         >
           {loading ? (
             <Loader size={12} className="animate-spin" />

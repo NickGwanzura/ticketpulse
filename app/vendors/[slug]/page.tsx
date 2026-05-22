@@ -82,7 +82,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               </Link>
               <Link
                 href="#packages"
-                className="inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
               >
                 Get a quote <ArrowUpRight size={14} />
               </Link>
@@ -161,7 +161,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                         <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
                           {formatCurrency(pkg.price, pkg.currency)}
                         </p>
-                        <button className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg bg-navy text-white text-sm font-semibold px-4 py-2.5 hover:bg-navy-700 transition-colors w-full md:w-auto">
+                        <button className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-green-700 transition-colors w-full md:w-auto">
                           Request <ArrowUpRight size={13} />
                         </button>
                       </div>

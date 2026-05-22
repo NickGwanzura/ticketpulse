@@ -187,7 +187,7 @@ export default function EventCard({
 
         {/* Top-left: status */}
         {featured && !soldOut && (
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-navy text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full shadow-sm shadow-navy/20">
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-navy text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full shadow-sm shadow-green-600/20">
             <span className="w-1 h-1 rounded-full bg-white" /> FEATURED
           </span>
         )}

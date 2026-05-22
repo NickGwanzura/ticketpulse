@@ -122,7 +122,7 @@ export default async function ComingSoonPage({
       <div className="relative w-full max-w-2xl mx-auto text-center">
         {/* Brand */}
         <div className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">
-          <span className="relative inline-flex w-8 h-8 items-center justify-center rounded-lg bg-navy shadow-sm shadow-navy/30">
+          <span className="relative inline-flex w-8 h-8 items-center justify-center rounded-lg bg-navy shadow-sm shadow-green-600/30">
             <span className="block w-2 h-2 rounded-full bg-white" />
             <span className="absolute inset-0 rounded-lg ring-1 ring-white/20" aria-hidden />
           </span>
@@ -200,7 +200,7 @@ export default async function ComingSoonPage({
           )}
           <button
             type="submit"
-            className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-semibold text-sm py-3 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20"
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-sm py-3 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20"
           >
             Unlock preview <ArrowRight size={14} />
           </button>

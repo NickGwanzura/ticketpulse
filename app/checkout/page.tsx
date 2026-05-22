@@ -103,7 +103,7 @@ export default function CheckoutPage() {
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Nothing to check out yet</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">Add tickets to your cart first.</p>
-        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition">
+        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition">
           Browse events <ArrowRight size={14} />
         </Link>
       </div>
@@ -350,7 +350,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition disabled:opacity-90"
+            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90"
           >
             {submitting ? <><Loader2 size={14} className="animate-spin" /> Processing payment…</> : <><Lock size={14} /> Place order</>}
           </button>
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
                           setPromoLoading(false)
                         }
                       }}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition disabled:opacity-70"
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-70"
                     >
                       {promoLoading ? <Loader2 size={13} className="animate-spin" /> : <Percent size={13} />}
                       Apply
@@ -482,7 +482,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
+              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
             >
               {submitting ? <><Loader2 size={14} className="animate-spin" /> Processing payment…</> : <><Lock size={14} /> Place order</>}
             </button>

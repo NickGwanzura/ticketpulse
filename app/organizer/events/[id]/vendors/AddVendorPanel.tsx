@@ -73,7 +73,7 @@ export default function AddVendorPanel({
             setSelectedVendor(null)
             setSearch("")
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-navy-700 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-green-700 transition"
         >
           {open ? <><X size={13} /> Close</> : <><Plus size={13} /> Add vendor</>}
         </button>

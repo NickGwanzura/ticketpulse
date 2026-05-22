@@ -325,7 +325,7 @@ export default function OrganizerScanPage() {
                   <button
                     onClick={startCamera}
                     disabled={!cameraSupported || cameraState === "starting"}
-                    className="inline-flex items-center gap-2 rounded-xl bg-navy px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     <Camera size={13} /> {cameraState === "starting" ? "Starting…" : "Start camera"}
                   </button>
@@ -388,7 +388,7 @@ export default function OrganizerScanPage() {
               />
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 text-sm font-semibold text-white hover:bg-navy-700 transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 transition"
               >
                 Verify
               </button>

@@ -73,7 +73,7 @@ export default async function InvitePage({
           {invite.status === "accepted" && (
             <a
               href={`/organizer`}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
             >
               Go to dashboard
             </a>

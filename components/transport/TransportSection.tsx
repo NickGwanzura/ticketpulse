@@ -101,7 +101,7 @@ export default function TransportSection({ routes }: TransportSectionProps) {
                       Total: {formatCurrency(route.pricePerSeat * seatCount, route.currency)}
                     </span>
                   </div>
-                  <button className="bg-navy text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-navy-700 transition-colors">
+                  <button className="bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
                     Confirm booking
                   </button>
                   <button onClick={() => setBooking(null)} className="text-xs text-ink-3 hover:text-ink-2">

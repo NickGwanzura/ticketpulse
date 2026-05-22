@@ -170,7 +170,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
       <button
         onClick={checkout}
         disabled={lineCount === 0}
-        className="w-full bg-navy text-white font-semibold py-3.5 rounded-xl hover:bg-navy-700 active:scale-[0.99] transition shadow-sm shadow-navy/20 text-sm mb-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-navy"
+        className="w-full bg-green-600 text-white font-semibold py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm mb-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-600"
       >
         {lineCount === 0 ? "Choose tickets" : `Checkout · ${hasMixedCurrencies ? "Mixed" : formatCurrency(total, baseCurrency)}`}
       </button>

@@ -74,7 +74,7 @@ function AwaitingVerification({ orderId }: { orderId: string }) {
           </button>
           <Link
             href="/events"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
           >
             Browse more events
           </Link>
@@ -162,7 +162,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
         <p className="mt-1 text-[13px] text-ink-3">If you just purchased, check your email — it may take a moment to appear here.</p>
-        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-navy-700 transition">
+        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">
           <ArrowLeft size={14} /> All orders
         </Link>
       </div>
@@ -196,7 +196,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </Link>
               <Link
                 href={`/orders/${order.id}/print?auto=1`}
-                className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
               >
                 <Download size={14} /> Save as PDF
               </Link>
@@ -296,7 +296,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   type="button"
                   onClick={resendTickets}
                   disabled={resendingTickets}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 disabled:opacity-60 transition"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-60 transition"
                 >
                   {resendingTickets ? (
                     <Loader2 size={14} className="animate-spin" />

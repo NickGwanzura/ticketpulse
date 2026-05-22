@@ -124,7 +124,7 @@ export default async function AdminEventsPage({
         actions={
           <Link
             href="/organizer/events/new"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
           >
             <Plus size={14} /> Create event
           </Link>

@@ -105,7 +105,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                       </div>
 
                       {isOrganizer && (
-                        <button className="mt-2 text-[11px] bg-navy text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-navy-700 transition-colors">
+                        <button className="mt-2 text-[11px] bg-green-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
                           Book slot
                         </button>
                       )}
@@ -113,7 +113,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                       {!isOrganizer && !inCart && (
                         <button
                           onClick={() => handleAdd(listing)}
-                          className="mt-2 inline-flex items-center gap-1 text-[11px] bg-navy text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-navy-700 active:scale-[0.97] transition"
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] bg-green-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 active:scale-[0.97] transition"
                         >
                           <Plus size={11} /> Add to cart
                         </button>

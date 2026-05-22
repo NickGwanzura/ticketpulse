@@ -103,7 +103,7 @@ export default async function AccountPage() {
           <div className="rounded-2xl border border-line bg-paper p-6">
             <p className="text-sm font-semibold text-ink mb-1">No payment methods yet</p>
             <p className="text-[13px] text-ink-2 mb-5">Add EcoCash or a card to skip checkout next time.</p>
-            <button className="rounded-xl bg-navy text-white text-sm font-semibold px-4 py-2.5 hover:bg-navy-700 transition-colors">
+            <button className="rounded-xl bg-green-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-green-700 transition-colors">
               Add a method
             </button>
           </div>

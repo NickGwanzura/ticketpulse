@@ -420,7 +420,7 @@ export default async function AdminOverviewPage() {
                     <form action={p.action.bind(null, p.id)}>
                       <button
                         type="submit"
-                        className="rounded-lg bg-navy text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-navy/20 hover:bg-navy-700 transition-colors"
+                        className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-green-600/20 hover:bg-green-700 transition-colors"
                       >
                         {p.primary}
                       </button>

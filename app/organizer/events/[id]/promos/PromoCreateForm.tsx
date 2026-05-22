@@ -141,7 +141,7 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-lg bg-navy px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 active:scale-[0.99] transition disabled:opacity-70"
+          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-70"
         >
           {pending ? "Creating…" : "Create promo code"}
         </button>

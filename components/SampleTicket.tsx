@@ -105,7 +105,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
             <button
               onClick={downloadPdf}
               disabled={!qrUrl || downloading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-navy/90 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               {downloading ? (
                 <Loader2 size={13} className="animate-spin" />

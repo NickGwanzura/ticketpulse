@@ -430,7 +430,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                   <Link href="/dashboard" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
                     <LayoutDashboard size={15} /> Dashboard
                   </Link>
-                  <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white">
+                  <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white">
                     <LogOut size={15} /> Sign out
                   </button>
                 </div>
@@ -439,7 +439,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                   <Link href="/auth/signin" className="flex items-center justify-center rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
                     Sign in
                   </Link>
-                  <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white">
+                  <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white">
                     Get tickets <ArrowRight size={13} />
                   </Link>
                 </div>
