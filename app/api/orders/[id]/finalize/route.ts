@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, tickets, users } from "@/db/schema"
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
+import { sendText, formatChatId } from "@/lib/whatsapp"
 
 type Params = { id: string }
 
@@ -168,11 +169,23 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     console.error("[finalize] failed to send order confirmation:", err)
   }
 
+  // ── WhatsApp ticket notification (non-blocking) ───────────────────────────
+  if (order.guestPhone) {
+    const origin = new URL(req.url).origin
+    fetch(`${origin}/api/whatsapp/send-ticket`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: id }),
+    }).catch((err) =>
+      console.error("[finalize] failed to send WhatsApp ticket:", err),
+    )
+  }
+
   // ── Notify the event organiser about the sale ─────────────────────────────
   if (ev) {
     try {
       const [org] = await db
-        .select({ name: users.name, email: users.email })
+        .select({ name: users.name, email: users.email, phone: users.phone })
         .from(users)
         .where(eq(users.id, ev.organizerId))
         .limit(1)
@@ -194,6 +207,29 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           html,
           text,
         })
+      }
+
+      // WhatsApp alert to the organizer (non-blocking)
+      if (org?.phone) {
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+        sendText(
+          formatChatId(org.phone),
+          [
+            `🎟️ *New ticket sale — ${ev.title}*`,
+            "",
+            `Buyer: ${order.guestName ?? session.user.name ?? "Someone"}`,
+            `Order: ${id.slice(0, 8)}...`,
+            saleLines.length > 0
+              ? `Items:\n${saleLines.map((l) => `  • ${l.qty}× ${l.label} — ${l.amount}`).join("\n")}`
+              : null,
+            `Total: ${order.totalAmount} ${order.currency ?? "USD"}`,
+            "",
+            `👉 ${appUrl}/organizer/events/${order.eventId}/attendees`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        ).catch((e) => console.error("[finalize] failed to send WhatsApp to organizer:", e))
       }
     } catch (err) {
       console.error("[finalize] failed to notify organiser:", err)

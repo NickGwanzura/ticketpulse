@@ -35,6 +35,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
     .select({
       guestName: orders.guestName,
       guestEmail: orders.guestEmail,
+      guestPhone: orders.guestPhone,
       tierName: ticketTiers.name,
       quantity: orderItems.quantity,
       scannedAt: tickets.scannedAt,
@@ -116,6 +117,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                   <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                     <th className="px-5 py-3.5 text-left">Name</th>
                     <th className="px-3 py-3.5 text-left">Email</th>
+                    <th className="px-3 py-3.5 text-left">Phone</th>
                     <th className="px-3 py-3.5 text-left">Ticket</th>
                     <th className="px-3 py-3.5 text-right">Qty</th>
                     <th className="px-3 py-3.5 text-center">Checked in</th>
@@ -128,6 +130,20 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                         {r.guestName || "—"}
                       </td>
                       <td className="px-3 py-3.5 text-[13px] text-ink-2">{r.guestEmail}</td>
+                      <td className="px-3 py-3.5 text-[13px] text-ink-2 font-mono">
+                        {r.guestPhone ? (
+                          <a
+                            href={`https://wa.me/${r.guestPhone.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-green-600 transition-colors"
+                          >
+                            {r.guestPhone}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="px-3 py-3.5 text-[13px] text-ink-2">{r.tierName ?? "N/A"}</td>
                       <td className="px-3 py-3.5 text-[13px] text-right text-ink">{r.quantity}</td>
                       <td className="px-3 py-3.5 text-center">
@@ -164,6 +180,18 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                     )}
                   </div>
                   <div className="text-[12px] text-ink-3">{r.guestEmail}</div>
+                  {r.guestPhone && (
+                    <div className="text-[12px] text-ink-3 font-mono">
+                      <a
+                        href={`https://wa.me/${r.guestPhone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-green-600 transition-colors"
+                      >
+                        {r.guestPhone}
+                      </a>
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 text-[12px] text-ink-2">
                     <span>{r.tierName ?? "N/A"}</span>
                     <span>×{r.quantity}</span>

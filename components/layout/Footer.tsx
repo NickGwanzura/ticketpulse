@@ -1,7 +1,7 @@
 import Link from "next/link"
 import {
   ArrowRight, Mail, MapPin, Globe, Apple, Smartphone,
-  ShieldCheck, FileText, ScanLine, Wallet,
+  ShieldCheck, FileText, ScanLine, Wallet, MessageCircle,
 } from "lucide-react"
 
 function IconX(props: React.SVGProps<SVGSVGElement>) {
@@ -94,6 +94,7 @@ const SOCIALS: { label: string; href: string; Icon: (p: React.SVGProps<SVGSVGEle
 const TRUST = [
   { icon: ShieldCheck, k: "Verified by default", v: "Every organizer & vendor checked" },
   { icon: FileText,    k: "Printable PDF + QR",   v: "Same code, paper or phone" },
+  { icon: MessageCircle, k: "WhatsApp delivery",  v: "Tickets land in your chat" },
   { icon: ScanLine,    k: "Our gate scanner",     v: "End-to-end on TicketPulse" },
   { icon: Wallet,      k: "Pay-as-you-sell",      v: "Flat 5%, never up front" },
 ]

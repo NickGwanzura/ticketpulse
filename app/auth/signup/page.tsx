@@ -78,6 +78,12 @@ export default async function SignUpPage({
                 html: adminNotice.html,
                 text: adminNotice.text,
               }).catch((e) => console.error("admin signup notification", e))
+
+              // WhatsApp alert to admin (fire-and-forget).
+              const { sendAdminAlert } = await import("@/lib/whatsapp")
+              sendAdminAlert(
+                `🆕 *New signup — ${role}*\n\nName: ${name ?? "—"}\nEmail: ${email}\nRole: ${role}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/users`,
+              ).catch((e) => console.error("admin signup WhatsApp alert", e))
             }
 
             await signIn("credentials", {

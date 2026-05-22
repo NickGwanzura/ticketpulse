@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Check, Sparkles, ArrowRight, ShieldCheck, FileText, Smartphone, ScanLine } from "lucide-react"
+import { Check, Sparkles, ArrowRight, ShieldCheck, FileText, Smartphone, ScanLine, MessageCircle } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
 const TIERS = [
@@ -11,6 +11,7 @@ const TIERS = [
     features: [
       "Browse all events",
       "Printable PDF ticket + mobile QR",
+      "WhatsApp ticket delivery",
       "EcoCash and Visa cards",
       "Refund up to 24h before",
       "Photo packs & merch in-app",
@@ -25,7 +26,8 @@ const TIERS = [
     sub: "per ticket sold",
     features: [
       "Unlimited events & tiers",
-      "PDF + mobile tickets, our gate scanner, no third-party app",
+      "PDF + mobile tickets, WhatsApp delivery, our gate scanner",
+      "WhatsApp broadcast to all attendees",
       "Built-in shuttle, merch, photo packs",
       "Verified payouts (USD, ZAR, EcoCash)",
       "Real-time scan analytics & duplicate guard",
@@ -78,10 +80,11 @@ export default function PricingPage() {
             Free for attendees. Free to list as a vendor. Organizers pay a flat 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts. Same pricing since launch in May 2026.
           </p>
 
-          <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl">
+          <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl">
             {[
               { icon: FileText,   k: "Printable PDF tickets", v: "Emailed at checkout. A4-ready, scan from paper." },
               { icon: Smartphone, k: "Mobile QR + wallet",    v: "Same code in your account, on any device." },
+              { icon: MessageCircle, k: "WhatsApp delivery",  v: "Tickets land straight in your WhatsApp chat." },
               { icon: ScanLine,   k: "Our gate scanner",      v: "Reader app for organizers, included in 5%." },
             ].map(({ icon: Icon, k, v }) => (
               <div key={k} className="rounded-xl border border-line bg-paper/80 backdrop-blur p-3.5 flex items-start gap-3">

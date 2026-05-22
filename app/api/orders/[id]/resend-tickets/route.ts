@@ -102,6 +102,18 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       ticketUrl: `${appUrl}/orders/${id}`,
     })
 
+    // ── WhatsApp ticket resend (non-blocking) ──────────────────────────
+    if (order.guestPhone) {
+      const origin = new URL(req.url).origin
+      fetch(`${origin}/api/whatsapp/send-ticket`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      }).catch((err) =>
+        console.error("[resend-tickets] failed to send WhatsApp:", err),
+      )
+    }
+
     // Update updatedAt to enforce cooldown on subsequent resends
     await db
       .update(orders)

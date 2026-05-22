@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server"
+import { sendAdminAlert } from "@/lib/whatsapp"
+import { log } from "@/lib/logger"
+
+/**
+ * POST /api/contact
+ *
+ * Handles contact form submissions. Sends a WhatsApp alert to the platform
+ * admin with the submitter's details and message.
+ *
+ * Body: { name, email, topic, message }
+ */
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    const { name, email, topic, message } = body
+
+    if (!name || !email || !message) {
+      return NextResponse.json(
+        { error: "Name, email, and message are required" },
+        { status: 400 },
+      )
+    }
+
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+
+    await sendAdminAlert(
+      [
+        `📬 *New contact form submission*`,
+        "",
+        `From: ${name} (${email})`,
+        topic ? `Topic: ${topic}` : null,
+        `Message: ${message.slice(0, 500)}${message.length > 500 ? "…" : ""}`,
+        "",
+        `👉 ${appUrl}/admin`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    )
+
+    log.info("contact — WhatsApp alert sent", { name, email, topic })
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    log.error("contact — failed to send alert", { error: msg })
+    // Don't expose internal errors to the user
+    return NextResponse.json({ ok: true })
+  }
+}

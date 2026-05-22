@@ -54,7 +54,7 @@ interface HeroTicket {
 
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay first with just your name, email, and phone. We hold your seat and email a magic link. One click verifies the email, releases your tickets, and creates your account passwordless. You can set a password later from your account settings, or never. The tickets work either way." },
-  { q: "How do I get my ticket after I buy?",       a: "Instantly after you click the magic link. You get a printable PDF ticket by email and inside your TicketPulse account, plus a mobile QR. The QR is bound to your account, so you can sign in on any device the day-of." },
+  { q: "How do I get my ticket after I buy?",       a: "Instantly after you click the magic link. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once. The QR is bound to your account, so you can sign in on any device the day-of." },
   { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet. It reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
   { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24 to 72h for cards)." },
   { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
@@ -118,8 +118,9 @@ function buildStats(eventsOnSale: number) {
 
 const STEPS = [
   { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
-  { icon: FileText,          title: "One-click verify",     body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in. Your account is created and signed in. Set a password later if you want." },
-  { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, or wallet pass. End to end on TicketPulse. No third-party scanners." },
+  { icon: FileText,          title: "One-click verify",     body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in. Your ticket also arrives by WhatsApp — all at once. Your account is created and signed in. Set a password later if you want." },
+  { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Your ticket QR and event details land directly on your phone via WhatsApp after purchase. No app to download, no email to search for — it's right in your chat." },
+  { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, wallet pass, or your WhatsApp chat. End to end on TicketPulse. No third-party scanners." },
 ]
 
 const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
@@ -331,6 +332,7 @@ export default async function Home() {
               <div className="tp-fade-up-4 mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
                 <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-emerald-600" /> No signup to buy</span>
                 <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-emerald-600" /> PDF + mobile QR</span>
+                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-emerald-600" /> Delivered on WhatsApp</span>
                 <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-emerald-600" /> Our gate scanner</span>
               </div>
 

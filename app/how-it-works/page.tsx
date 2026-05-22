@@ -30,7 +30,7 @@ const ATTENDEE_STEPS = [
   {
     icon: Ticket,
     title: "One-click verify",
-    body: "We email a magic link. Click once: tickets release, account auto-created passwordless. Set a password later, or don't. Your call.",
+    body: "We email a magic link. Click once: tickets release, account auto-created passwordless. Your ticket also arrives by WhatsApp — no app to download. Set a password later, or don't. Your call.",
   },
   {
     icon: ScanLine,
@@ -53,7 +53,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Ticket,
     title: "Sell tickets",
-    body: "Public on-sale with EcoCash, Visa, USD, ZAR. Buyers get printable PDF + mobile QR instantly.",
+    body: "Public on-sale with EcoCash, Visa, USD, ZAR. Buyers get printable PDF, mobile QR, and WhatsApp ticket instantly.",
   },
   {
     icon: ScanLine,

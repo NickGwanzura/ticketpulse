@@ -4,7 +4,7 @@ import { Mail, MessageSquare, MapPin, Phone, Clock, Sparkles, ArrowRight } from 
 const CHANNELS = [
   { icon: MessageSquare, title: "Live chat",     body: "Mon to Fri, 8:00 to 18:00 CAT", value: "Open chat",         href: "#chat" },
   { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "hello@ticketpulse.co.zw", href: "mailto:hello@ticketpulse.co.zw" },
-  { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 777 816 368",  href: "https://wa.me/263777816368" },
+  { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 788 689 923",  href: "https://wa.me/263788689923" },
 ]
 
 const TOPICS = [
@@ -41,31 +41,35 @@ export default function ContactPage() {
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Send a message</p>
           <h2 className="text-[24px] md:text-[28px] font-bold tracking-tight text-ink mb-6">How can we help?</h2>
 
-          <form className="rounded-2xl border border-line bg-paper p-6 md:p-7 space-y-4">
+          <form
+            action="/api/contact"
+            method="POST"
+            className="rounded-2xl border border-line bg-paper p-6 md:p-7 space-y-4"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Your name</label>
-                <input type="text" required placeholder="Tendai Moyo"
+                <input type="text" name="name" required placeholder="Tendai Moyo"
                   className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition" />
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
-                <input type="email" required placeholder="you@example.com"
+                <input type="email" name="email" required placeholder="you@example.com"
                   className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition" />
               </div>
             </div>
 
             <div>
               <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Topic</label>
-              <select required className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition">
+              <select name="topic" required className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition">
                 <option value="">Choose a topic…</option>
-                {TOPICS.map((t) => <option key={t}>{t}</option>)}
+                {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
 
             <div>
               <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Message</label>
-              <textarea rows={6} required placeholder="Tell us a bit more…"
+              <textarea name="message" rows={6} required placeholder="Tell us a bit more…"
                 className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition resize-none" />
             </div>
 

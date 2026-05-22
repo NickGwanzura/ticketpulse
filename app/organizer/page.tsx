@@ -693,6 +693,7 @@ export default async function OrganizerPage() {
               { title: "Set up payouts", body: "Add EcoCash or bank to receive payouts.",   href: "/payouts" },
               { title: "Browse vendors", body: "Find catering, sound, security and more.",  href: "/vendors" },
               { title: "Live dashboard", body: "Real-time check-in tracking and entry stats.", href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/live` : "#" },
+              { title: "WhatsApp broadcast", body: "Send bulk WhatsApp messages to attendees.", href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/whatsapp` : "#" },
               { title: "Promo codes", body: "Create discount codes to boost ticket sales.",  href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/promos` : "#" },
               { title: "Attendee list", body: "View and export your full attendee roster.",  href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/attendees` : "#" },
               { title: "Read the guide", body: "Selling tips for first-time organizers.",    href: "/help" },

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { Lock, Sparkles, ArrowRight, Ticket, ScanLine, ShieldCheck } from "lucide-react"
+import { Lock, Sparkles, ArrowRight, Ticket, ScanLine, ShieldCheck, MessageCircle } from "lucide-react"
 import Countdown from "@/components/launch/Countdown"
 import WhatsAppWidget from "@/components/launch/WhatsAppWidget"
 import {
@@ -41,7 +41,8 @@ async function unlock(formData: FormData) {
 }
 
 const TEASERS = [
-  { icon: Ticket,       title: "Mobile + printable", body: "Same QR. Email PDF, wallet pass, or screenshot." },
+  { icon: Ticket,       title: "Mobile + printable", body: "Same QR. Email PDF, wallet pass, or WhatsApp." },
+  { icon: MessageCircle, title: "WhatsApp tickets",  body: "Your ticket lands in your chat after purchase." },
   { icon: ScanLine,     title: "Our gate scanner",   body: "End-to-end. No third-party app. No queues." },
   { icon: ShieldCheck,  title: "EcoCash & Visa",     body: "Both clear instantly at checkout. Refundable up to 24h." },
 ]
