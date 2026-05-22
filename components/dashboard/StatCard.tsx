@@ -27,7 +27,7 @@ export default function StatCard({
 }: Props) {
   const TrendIcon = trendDir === "down" ? ArrowDownRight : ArrowUpRight
   const trendColor =
-    trendDir === "down" ? "text-rose-700" : trendDir === "flat" ? "text-ink-3" : "text-emerald-700"
+    trendDir === "down" ? "text-rose-700" : trendDir === "flat" ? "text-ink-3" : "text-green-700"
 
   return (
     <div

@@ -84,7 +84,7 @@ export default function VendorListingCard({
                 <span
                   className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${
                     listing.available && !listing.booked
-                      ? "bg-emerald-50 text-emerald-700"
+                      ? "bg-green-50 text-green-700"
                       : listing.booked
                         ? "bg-amber-50 text-amber-700"
                         : "bg-paper-2 text-ink-2 ring-1 ring-line"
@@ -96,7 +96,7 @@ export default function VendorListingCard({
               <p className="text-[12.5px] text-ink-2">
                 {listing.vendor.businessName}
                 {listing.vendor.verified && (
-                  <span className="ml-1 text-emerald-600">✓ Verified</span>
+                  <span className="ml-1 text-green-600">✓ Verified</span>
                 )}
                 <span className="mx-1.5 text-ink-3">·</span>
                 {vendorCategoryLabel(listing.vendor.category)}
@@ -260,7 +260,7 @@ export default function VendorListingCard({
               )}
 
               {state.ok && state.message && (
-                <p className="text-[13px] text-emerald-600">{state.message}</p>
+                <p className="text-[13px] text-green-600">{state.message}</p>
               )}
 
               <div className="flex items-center gap-2">

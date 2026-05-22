@@ -29,10 +29,10 @@ import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
 const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
   concert:    { emoji: "🎵", gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  accent: "text-violet-700" },
   marathon:   { emoji: "🏃", gradient: "from-sky-100 via-blue-50 to-cyan-50",        accent: "text-sky-700" },
-  walkathon:  { emoji: "🚶", gradient: "from-emerald-100 via-teal-50 to-cyan-50",    accent: "text-emerald-700" },
+  walkathon:  { emoji: "🚶", gradient: "from-green-100 via-teal-50 to-cyan-50",    accent: "text-green-700" },
   film:       { emoji: "🎬", gradient: "from-amber-100 via-orange-50 to-rose-50",    accent: "text-amber-700" },
   exhibition: { emoji: "🏢", gradient: "from-slate-100 via-blue-50 to-indigo-50",    accent: "text-slate-700" },
-  expedition: { emoji: "⛰️", gradient: "from-lime-100 via-emerald-50 to-teal-50",    accent: "text-emerald-800" },
+  expedition: { emoji: "⛰️", gradient: "from-lime-100 via-green-50 to-teal-50",    accent: "text-green-800" },
 }
 
 interface HeroTicket {
@@ -90,7 +90,7 @@ function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
       coverImage: event.coverImage,
       badge: event.status === "sold_out"
         ? { label: "SOLD OUT", color: "bg-rose-600 text-white" }
-        : { label: "ON SALE", color: "bg-emerald-600 text-white" },
+        : { label: "ON SALE", color: "bg-green-600 text-white" },
       rotate: placement.rotate,
       placement: placement.placement,
       z: placement.z,
@@ -101,10 +101,10 @@ function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
 const CATEGORIES = [
   { label: "Concerts",    value: "concert",    icon: Music,      gradient: "from-violet-50 to-fuchsia-50",   ring: "ring-violet-200/60",   accent: "text-violet-700" },
   { label: "Marathons",   value: "marathon",   icon: Trophy,     gradient: "from-sky-50 to-blue-50",         ring: "ring-sky-200/60",      accent: "text-sky-700" },
-  { label: "Walkathons",  value: "walkathon",  icon: Footprints, gradient: "from-emerald-50 to-teal-50",     ring: "ring-emerald-200/60",  accent: "text-emerald-700" },
+  { label: "Walkathons",  value: "walkathon",  icon: Footprints, gradient: "from-green-50 to-teal-50",     ring: "ring-green-200/60",  accent: "text-green-700" },
   { label: "Film",        value: "film",       icon: Film,       gradient: "from-amber-50 to-orange-50",     ring: "ring-amber-200/60",    accent: "text-amber-700" },
   { label: "Exhibitions", value: "exhibition", icon: Building2,  gradient: "from-slate-50 to-indigo-50",     ring: "ring-indigo-200/60",   accent: "text-indigo-700" },
-  { label: "Expeditions", value: "expedition", icon: Mountain,   gradient: "from-lime-50 to-emerald-50",     ring: "ring-lime-200/60",     accent: "text-lime-700" },
+  { label: "Expeditions", value: "expedition", icon: Mountain,   gradient: "from-lime-50 to-green-50",     ring: "ring-lime-200/60",     accent: "text-lime-700" },
 ]
 
 function buildStats(eventsOnSale: number) {
@@ -164,7 +164,7 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: num
                 {formatCurrency(ticket.price, ticket.currency)}
               </>
             ) : (
-              <span className="text-emerald-700">Free entry</span>
+              <span className="text-green-700">Free entry</span>
             )}
           </span>
           <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-navy">
@@ -267,7 +267,7 @@ export default async function Home() {
 
         {/* Layer 8: floating sparkles */}
         <div className="absolute top-[18%] left-[44%] -z-10 w-1.5 h-1.5 rounded-full bg-blue/70 shadow-[0_0_18px_4px_rgba(5,112,222,0.4)] animate-pulse" aria-hidden />
-        <div className="absolute top-[58%] left-[12%] -z-10 w-1 h-1 rounded-full bg-emerald-500/70 shadow-[0_0_12px_3px_rgba(16,185,129,0.3)] animate-pulse [animation-delay:1.2s]" aria-hidden />
+        <div className="absolute top-[58%] left-[12%] -z-10 w-1 h-1 rounded-full bg-green-500/70 shadow-[0_0_12px_3px_rgba(141,211,47,0.3)] animate-pulse [animation-delay:1.2s]" aria-hidden />
         <div className="absolute top-[35%] right-[6%] -z-10 w-1 h-1 rounded-full bg-amber-400/80 shadow-[0_0_10px_3px_rgba(245,158,11,0.3)] animate-pulse [animation-delay:2.4s] hidden md:block" aria-hidden />
 
         {/* Layer 9: bottom curve fade */}
@@ -286,11 +286,11 @@ export default async function Home() {
             <div>
               <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-7 shadow-sm shadow-ink/5">
                 <span className="relative flex w-2 h-2">
-                  <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
-                  <span className="relative block w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
+                  <span className="relative block w-2 h-2 rounded-full bg-green-500" />
                 </span>
                 <span className="text-[11.5px] font-semibold tracking-[0.04em] text-ink">
-                  <span className="text-emerald-700">Live</span>
+                  <span className="text-green-700">Live</span>
                   <span className="text-ink-3"> · launched May 2026</span>
                 </span>
               </div>
@@ -330,10 +330,10 @@ export default async function Home() {
               </form>
 
               <div className="tp-fade-up-4 mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
-                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-emerald-600" /> No signup to buy</span>
-                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-emerald-600" /> PDF + mobile QR</span>
-                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-emerald-600" /> Delivered on WhatsApp</span>
-                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-emerald-600" /> Our gate scanner</span>
+                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-green-600" /> No signup to buy</span>
+                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-green-600" /> PDF + mobile QR</span>
+                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-green-600" /> Delivered on WhatsApp</span>
+                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-green-600" /> Our gate scanner</span>
               </div>
 
               {/* Launch credibility */}
@@ -502,7 +502,7 @@ export default async function Home() {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {[
             { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-blue/15",   accent: "text-blue" },
-            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-emerald-50 to-paper-2", ring: "ring-emerald-200/60", accent: "text-emerald-700" },
+            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-green-50 to-paper-2", ring: "ring-green-200/60", accent: "text-green-700" },
             { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
           ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (
             <div

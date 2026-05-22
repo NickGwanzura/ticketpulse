@@ -48,7 +48,7 @@ export default function EventWaitlist() {
           </p>
 
           {status === "success" ? (
-            <div className="mt-4 flex items-center gap-2 text-emerald-700 text-[13px] font-medium">
+            <div className="mt-4 flex items-center gap-2 text-green-700 text-[13px] font-medium">
               <Check size={16} />
               {message}
             </div>

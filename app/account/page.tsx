@@ -149,7 +149,7 @@ export default async function AccountPage() {
 
           <div className="rounded-2xl border border-line bg-paper divide-y divide-line">
             <div className="flex items-start gap-4 p-5">
-              <ShieldCheck size={16} className="text-emerald-600 mt-0.5" />
+              <ShieldCheck size={16} className="text-green-600 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Two-factor authentication</p>
                 <p className="text-[12.5px] text-ink-2 mt-0.5">Extra layer of security on sign-in.</p>

@@ -52,7 +52,7 @@ export default function VendorsApplyPage() {
                   "Photos of past work (3+)",
                 ].map((c) => (
                   <li key={c} className="flex items-center gap-2 text-[13.5px] text-ink-2">
-                    <Check size={14} className="text-emerald-600 shrink-0" />
+                    <Check size={14} className="text-green-600 shrink-0" />
                     {c}
                   </li>
                 ))}

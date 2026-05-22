@@ -35,16 +35,16 @@ export default function AiNarrativeSummary(props: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-gradient-to-br from-emerald-50/40 to-teal-50/40 p-5 tp-lift">
+    <div className="rounded-2xl border border-line bg-gradient-to-br from-green-50/40 to-teal-50/40 p-5 tp-lift">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <BarChart3 size={15} className="text-emerald-600" />
+          <BarChart3 size={15} className="text-green-600" />
           <h3 className="text-[14px] font-semibold tracking-tight text-ink">AI Narrative Summary</h3>
         </div>
         <button
           onClick={generate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-green-700 hover:text-green-900 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           {narrative ? "Refresh" : "Generate"}

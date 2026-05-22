@@ -17,7 +17,7 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const STATUS_STYLE: Record<string, string> = {
-  paid:                   "bg-emerald-50 text-emerald-700",
+  paid:                   "bg-green-50 text-green-700",
   pending:                "bg-amber-50 text-amber-700",
   awaiting_verification:  "bg-blue-soft text-navy",
   refunded:               "bg-rose-50 text-rose-700",
@@ -118,8 +118,8 @@ export default async function AdminOrdersPage({
       label: "Total revenue",
       value: formatCurrency(totalPaid, "USD"),
       icon: DollarSign,
-      tone: "text-emerald-700",
-      bg: "bg-emerald-50",
+      tone: "text-green-700",
+      bg: "bg-green-50",
     },
     {
       label: "Total orders",
@@ -276,7 +276,7 @@ export default async function AdminOrdersPage({
                           {o.paymentMethod ? (
                             <div className="flex flex-col gap-0.5">
                               <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2">
-                                <Smartphone size={12} className="text-emerald-700" />
+                                <Smartphone size={12} className="text-green-700" />
                                 {o.paymentMethod}
                               </span>
                               {o.paymentRef && (
@@ -413,7 +413,7 @@ export default async function AdminOrdersPage({
                       <span className="inline-flex items-center gap-1.5">
                         {o.paymentMethod ? (
                           <>
-                            <Smartphone size={11} className="text-emerald-700" />
+                            <Smartphone size={11} className="text-green-700" />
                             {o.paymentMethod}
                           </>
                         ) : (

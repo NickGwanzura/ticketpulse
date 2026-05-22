@@ -28,10 +28,10 @@ const CATEGORY_EMOJI: Record<string, string> = {
 const CATEGORY_GRADIENT: Record<string, string> = {
   concert:    "from-violet-600 via-fuchsia-700 to-pink-800",
   marathon:   "from-sky-600 via-blue-700 to-cyan-800",
-  walkathon:  "from-emerald-600 via-teal-700 to-cyan-800",
+  walkathon:  "from-green-600 via-teal-700 to-cyan-800",
   film:       "from-amber-600 via-orange-700 to-rose-800",
   exhibition: "from-slate-600 via-blue-700 to-indigo-800",
-  expedition: "from-lime-600 via-emerald-700 to-teal-800",
+  expedition: "from-lime-600 via-green-700 to-teal-800",
 }
 
 function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" } | null {

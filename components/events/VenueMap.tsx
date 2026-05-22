@@ -119,7 +119,7 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
                 href={googleDirectionsLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 transition-colors tracking-tight rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-green-600 hover:text-green-700 transition-colors tracking-tight rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5"
               >
                 <Navigation size={12} />
                 Get Directions

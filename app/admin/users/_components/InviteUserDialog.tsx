@@ -172,7 +172,7 @@ export default function InviteUserDialog() {
                 </p>
               )}
               {success && (
-                <p className="text-[12px] text-emerald-700" role="status">
+                <p className="text-[12px] text-green-700" role="status">
                   {success}
                 </p>
               )}

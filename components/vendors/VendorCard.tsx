@@ -20,7 +20,7 @@ export default function VendorCard({ vendor }: VendorCardProps) {
         <span className="text-4xl relative">{visual.emoji}</span>
         {vendor.verified && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1 bg-white/90 backdrop-blur ring-1 ring-line text-ink text-[10px] font-semibold tracking-wide px-2 py-1 rounded-full">
-            <ShieldCheck size={11} className="text-emerald-600" /> Verified
+            <ShieldCheck size={11} className="text-green-600" /> Verified
           </span>
         )}
       </div>

@@ -69,7 +69,7 @@ export default async function LogoutPage() {
         </div>
 
         <p className="mt-5 text-center text-[12px] text-ink-3 inline-flex items-center justify-center gap-1.5 w-full">
-          <ShieldCheck size={12} className="text-emerald-600" />
+          <ShieldCheck size={12} className="text-green-600" />
           Your tickets stay safe, re-sign in with the same email.
         </p>
       </div>

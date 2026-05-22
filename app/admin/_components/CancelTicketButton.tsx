@@ -83,7 +83,7 @@ export default function CancelTicketButton({
           className={cn(
             "absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium shadow-lg whitespace-nowrap pointer-events-none",
             state.ok
-              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+              ? "bg-green-50 text-green-700 ring-1 ring-green-200"
               : "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
           )}
         >

@@ -70,7 +70,7 @@ export default function OrdersPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${
-                          o.status === "paid" ? "bg-emerald-50 text-emerald-700"
+                          o.status === "paid" ? "bg-green-50 text-green-700"
                           : o.status === "refunded" ? "bg-rose-50 text-rose-700"
                           : "bg-amber-50 text-amber-700"
                         }`}>

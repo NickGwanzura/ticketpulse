@@ -387,7 +387,7 @@ export default function CheckoutPage() {
               {appliedPromo ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-700">
+                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-green-700">
                       <Tag size={13} /> {appliedPromo.code}
                     </span>
                     <button
@@ -400,7 +400,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex items-baseline justify-between text-[13px]">
                     <span className="text-ink-3">Discount</span>
-                    <span className="font-semibold text-emerald-600">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
+                    <span className="font-semibold text-green-600">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
                   </div>
                 </div>
               ) : (

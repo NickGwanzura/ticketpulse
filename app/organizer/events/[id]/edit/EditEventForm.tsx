@@ -244,7 +244,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
   return (
     <div className="space-y-8">
       {showCreatedToast && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-800" role="status">
           Draft created. Add a cover image and the rest of your details below.
         </div>
       )}
@@ -259,7 +259,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
           </div>
         )}
         {state.ok && state.message && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800" role="status">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-800" role="status">
             {state.message}
           </div>
         )}

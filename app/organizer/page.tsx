@@ -71,20 +71,20 @@ const KPI_SPARKLINES: Record<string, number[]> = {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  published: "bg-emerald-50 text-emerald-700",
+  published: "bg-green-50 text-green-700",
   draft:     "bg-paper-2 text-ink-2 ring-1 ring-line",
   sold_out:  "bg-rose-50 text-rose-700",
   cancelled: "bg-rose-50 text-rose-700",
 }
 
 const METHOD_STYLE: Record<string, string> = {
-  EcoCash: "bg-emerald-50 text-emerald-700",
+  EcoCash: "bg-green-50 text-green-700",
   Card:    "bg-blue-soft text-blue",
   Bank:    "bg-paper-2 text-ink-2 ring-1 ring-line",
 }
 
 const ORDER_STATUS_STYLE: Record<string, string> = {
-  confirmed: "bg-emerald-50 text-emerald-700",
+  confirmed: "bg-green-50 text-green-700",
   refunded:  "bg-rose-50 text-rose-600",
   pending:   "bg-amber-50 text-amber-700",
 }

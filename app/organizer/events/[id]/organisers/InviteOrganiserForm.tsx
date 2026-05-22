@@ -58,7 +58,7 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
         )}
 
         {state.ok && state.message && (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-[13px] text-emerald-800">
+          <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
             {state.message}
           </div>
         )}

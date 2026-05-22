@@ -6,10 +6,10 @@ interface AnimatedCheckProps {
 export default function AnimatedCheck({ size = 56, className }: AnimatedCheckProps) {
   return (
     <span
-      className={`relative inline-flex items-center justify-center rounded-2xl bg-emerald-50 ring-1 ring-emerald-200/60 ${className ?? ""}`}
+      className={`relative inline-flex items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-200/60 ${className ?? ""}`}
       style={{ width: size, height: size }}
     >
-      <span className="absolute inset-0 rounded-2xl bg-emerald-500/15 blur-xl -z-10" />
+      <span className="absolute inset-0 rounded-2xl bg-green-500/15 blur-xl -z-10" />
       <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" aria-hidden>
         <circle
           cx="12" cy="12" r="11"

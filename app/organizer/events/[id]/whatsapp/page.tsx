@@ -74,7 +74,7 @@ export default function WhatsAppPage() {
         {/* Info card */}
         <div className="rounded-2xl border border-line bg-paper p-5 md:p-6 space-y-3">
           <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-green-soft p-2 shrink-0">
+            <div className="rounded-lg bg-green-50 p-2 shrink-0">
               <Smartphone size={18} className="text-green-600" />
             </div>
             <div className="space-y-1">
@@ -181,11 +181,11 @@ export default function WhatsAppPage() {
 
           {/* Status messages */}
           {bulkState.ok && bulkState.total && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-[13px] text-emerald-800">
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
               WhatsApp messages dispatched to {bulkState.sent} of{" "}
               {bulkState.total} attendees.
               {bulkState.batchId && (
-                <span className="block text-[11.5px] mt-1 text-emerald-600">
+                <span className="block text-[11.5px] mt-1 text-green-600">
                   Batch ID: {bulkState.batchId}
                 </span>
               )}
@@ -202,7 +202,7 @@ export default function WhatsAppPage() {
             </div>
           )}
           {testState?.ok && !testState?.error && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-[13px] text-emerald-800">
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
               Test message sent! Check your WhatsApp.
             </div>
           )}

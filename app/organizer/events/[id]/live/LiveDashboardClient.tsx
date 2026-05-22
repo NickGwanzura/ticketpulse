@@ -58,8 +58,8 @@ export default function LiveDashboardClient({
           label="Checked in"
           value={`${stats.checkedIn} / ${stats.totalSold}`}
           trendLabel={stats.totalSold > 0 ? `${stats.checkinPct}% of sold` : "No tickets sold"}
-          iconBg="bg-emerald-100"
-          iconColor="text-emerald-700"
+          iconBg="bg-green-100"
+          iconColor="text-green-700"
         />
         <StatCard
           icon={Users}

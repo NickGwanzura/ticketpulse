@@ -208,7 +208,7 @@ export default async function SignUpPage({
             "Cancel & refund up to 24hrs before",
           ].map((p) => (
             <li key={p} className="flex items-center gap-2 text-[13px] text-ink-2">
-              <Check size={14} className="text-emerald-600" /> {p}
+              <Check size={14} className="text-green-600" /> {p}
             </li>
           ))}
         </ul>

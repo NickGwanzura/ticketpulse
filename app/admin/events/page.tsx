@@ -17,7 +17,7 @@ import { publishEventAction } from "@/app/admin/actions"
 type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
 
 const STATUS_STYLE: Record<EventStatus, string> = {
-  published: "bg-emerald-50 text-emerald-700",
+  published: "bg-green-50 text-green-700",
   draft:     "bg-paper-2 text-ink-2 ring-1 ring-line",
   sold_out:  "bg-blue-soft text-navy",
   cancelled: "bg-rose-50 text-rose-700",
@@ -108,7 +108,7 @@ export default async function AdminEventsPage({
   }
 
   const stats = [
-    { label: "Live",      value: totals.published, icon: CalendarCheck, tone: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: "Live",      value: totals.published, icon: CalendarCheck, tone: "text-green-700", bg: "bg-green-50" },
     { label: "Drafts",    value: totals.draft,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
     { label: "Sold out",  value: totals.sold_out,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-blue-soft" },
     { label: "Cancelled", value: totals.cancelled, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
@@ -237,7 +237,7 @@ export default async function AdminEventsPage({
                                   className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
                                     status === "published"
                                       ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                                      : "text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
+                                      : "text-green-600 hover:text-green-800 hover:bg-green-50"
                                   }`}
                                 >
                                   {status === "published" ? <EyeOff size={14} /> : <Send size={14} />}
@@ -325,7 +325,7 @@ export default async function AdminEventsPage({
                             className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors ${
                               status === "published"
                                 ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                : "bg-green-50 text-green-700 hover:bg-green-100"
                             }`}
                           >
                             {status === "published" ? <EyeOff size={12} /> : <Send size={12} />}

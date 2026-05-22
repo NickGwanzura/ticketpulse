@@ -24,7 +24,7 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
         <p className="text-[12.5px] text-red-500">{state.error}</p>
       )}
       {state.ok && state.message && (
-        <p className="text-[12.5px] text-emerald-600">{state.message}</p>
+        <p className="text-[12.5px] text-green-600">{state.message}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

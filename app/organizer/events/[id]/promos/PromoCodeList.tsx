@@ -73,7 +73,7 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
                 className={cn(
                   "inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
                   code.type === "percent"
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-green-100 text-green-700"
                     : "bg-indigo-100 text-indigo-700",
                 )}
               >
@@ -118,7 +118,7 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition",
                 code.active
-                  ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                  ? "bg-green-100 text-green-700 hover:bg-green-200"
                   : "bg-ink/5 text-ink-3 hover:bg-ink/10",
               )}
             >

@@ -19,7 +19,7 @@ type Role = "attendee" | "organizer" | "vendor" | "admin"
 const ROLE_STYLE: Record<Role, string> = {
   attendee:  "bg-violet-50 text-violet-700",
   organizer: "bg-sky-50 text-sky-700",
-  vendor:    "bg-emerald-50 text-emerald-700",
+  vendor:    "bg-green-50 text-green-700",
   admin:     "bg-amber-50 text-amber-700",
 }
 
@@ -27,7 +27,7 @@ const AVATAR_COLORS = [
   "bg-rose-100 text-rose-700",
   "bg-sky-100 text-sky-700",
   "bg-violet-100 text-violet-700",
-  "bg-emerald-100 text-emerald-700",
+  "bg-green-100 text-green-700",
   "bg-amber-100 text-amber-700",
   "bg-cyan-100 text-cyan-700",
   "bg-pink-100 text-pink-700",
@@ -79,7 +79,7 @@ export default async function AdminUsersPage() {
     { label: "Total users",  value: stats.total,     icon: User,        tone: "text-ink-2",      bg: "bg-paper-2" },
     { label: "Attendees",    value: stats.attendee,   icon: UserCheck,   tone: "text-violet-700", bg: "bg-violet-50" },
     { label: "Organizers",   value: stats.organizer,  icon: ShieldCheck, tone: "text-sky-700",    bg: "bg-sky-50" },
-    { label: "Vendors",      value: stats.vendor,     icon: Store,       tone: "text-emerald-700",bg: "bg-emerald-50" },
+    { label: "Vendors",      value: stats.vendor,     icon: Store,       tone: "text-green-700",bg: "bg-green-50" },
     { label: "Admins",       value: stats.admin,      icon: ShieldAlert, tone: "text-amber-700",  bg: "bg-amber-50" },
   ]
 
@@ -171,7 +171,7 @@ export default async function AdminUsersPage() {
                         </td>
                         <td className="px-3 py-3.5">
                           {u.emailVerified ? (
-                            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-emerald-700">
+                            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-green-700">
                               <BadgeCheck size={13} /> Verified
                             </span>
                           ) : (
@@ -207,7 +207,7 @@ export default async function AdminUsersPage() {
                                 <button
                                   type="submit"
                                   title="Verify email"
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-green-600 hover:bg-green-50 transition-colors"
                                 >
                                   <MailCheck size={14} />
                                 </button>
@@ -237,7 +237,7 @@ export default async function AdminUsersPage() {
                     <div className="flex flex-wrap items-center gap-1.5 mb-3">
                       <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ROLE_STYLE[u.role as Role]}`}>{u.role}</span>
                       {u.emailVerified ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 px-2 py-0.5 rounded-full bg-emerald-50">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 px-2 py-0.5 rounded-full bg-green-50">
                           <BadgeCheck size={10} /> Verified
                         </span>
                       ) : (
@@ -265,7 +265,7 @@ export default async function AdminUsersPage() {
                         <form action={verifyUserEmailAction.bind(null, u.id)}>
                           <button
                             type="submit"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[12px] font-medium transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-50 text-green-700 hover:bg-green-100 text-[12px] font-medium transition-colors"
                           >
                             <MailCheck size={12} /> Verify email
                           </button>

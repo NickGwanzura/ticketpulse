@@ -22,7 +22,7 @@ const PAYOUTS: Payout[] = []
 const STATUS_STYLE: Record<Status, string> = {
   pending:   "bg-amber-50 text-amber-700",
   transit:   "bg-sky-50 text-sky-700",
-  completed: "bg-emerald-50 text-emerald-700",
+  completed: "bg-green-50 text-green-700",
   held:      "bg-rose-50 text-rose-700",
 }
 
@@ -49,7 +49,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
   const stats = [
     { label: "Pending payouts", value: PAYOUTS.filter((p) => p.status === "pending").length,   icon: Clock,         tone: "text-amber-700",   bg: "bg-amber-50" },
     { label: "In transit",      value: PAYOUTS.filter((p) => p.status === "transit").length,   icon: Send,          tone: "text-sky-700",     bg: "bg-sky-50" },
-    { label: "Paid this month", value: PAYOUTS.filter((p) => p.status === "completed").length, icon: CheckCircle2,  tone: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: "Paid this month", value: PAYOUTS.filter((p) => p.status === "completed").length, icon: CheckCircle2,  tone: "text-green-700", bg: "bg-green-50" },
     { label: "Held",            value: PAYOUTS.filter((p) => p.status === "held").length,      icon: AlertOctagon,  tone: "text-rose-700",    bg: "bg-rose-50" },
   ]
 
@@ -141,7 +141,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         </td>
                         <td className="px-3 py-4">
                           <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
-                            {p.method === "EcoCash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                            {p.method === "EcoCash" ? <Smartphone size={12} className="text-green-700" /> : <Building2 size={12} className="text-sky-700" />}
                             {p.method}
                           </span>
                         </td>
@@ -180,7 +180,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[12.5px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
-                        {p.method === "EcoCash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                        {p.method === "EcoCash" ? <Smartphone size={12} className="text-green-700" /> : <Building2 size={12} className="text-sky-700" />}
                         {p.method} · {formatDateShort(p.requestedAt)}
                       </span>
                       <span className="text-[14px] font-bold tracking-tight text-ink">

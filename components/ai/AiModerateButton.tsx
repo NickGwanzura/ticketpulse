@@ -51,7 +51,7 @@ export default function AiModerateButton({
       </button>
 
       {result && !loading && (
-        <div className={`mt-2 text-[11px] flex items-start gap-1.5 ${result.flagged ? "text-rose-600" : "text-emerald-600"}`}>
+        <div className={`mt-2 text-[11px] flex items-start gap-1.5 ${result.flagged ? "text-rose-600" : "text-green-600"}`}>
           {result.flagged ? (
             <>
               <ShieldAlert size={12} className="mt-0.5 shrink-0" />

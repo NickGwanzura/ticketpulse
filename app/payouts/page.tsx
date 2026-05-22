@@ -40,9 +40,9 @@ export default function PayoutsPage() {
             EcoCash, USD, or ZAR, release straight to your account when the gate closes. No invoices, no chasing.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-[12.5px] text-ink-3">
-            <span className="inline-flex items-center gap-2"><Clock size={14} className="text-emerald-600" /> 24-hour settlement</span>
-            <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-600" /> Escrow-backed</span>
-            <span className="inline-flex items-center gap-2"><Check size={14} className="text-emerald-600" /> No setup fee</span>
+            <span className="inline-flex items-center gap-2"><Clock size={14} className="text-green-600" /> 24-hour settlement</span>
+            <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-green-600" /> Escrow-backed</span>
+            <span className="inline-flex items-center gap-2"><Check size={14} className="text-green-600" /> No setup fee</span>
           </div>
         </div>
       </section>
@@ -54,7 +54,7 @@ export default function PayoutsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {RAILS.map(({ icon: Icon, title, body, chip }) => (
             <div key={title} className="rounded-2xl border border-line bg-paper p-6 relative">
-              <span className="absolute top-5 right-5 text-[10px] font-semibold tracking-wide bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+              <span className="absolute top-5 right-5 text-[10px] font-semibold tracking-wide bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                 {chip}
               </span>
               <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-blue-soft ring-1 ring-blue/15 mb-4">

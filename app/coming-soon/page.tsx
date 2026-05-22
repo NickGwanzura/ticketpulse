@@ -15,10 +15,10 @@ import { formatDateShort } from "@/lib/utils"
 const COMING_SOON_CATEGORY_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
   concert:    { emoji: "🎵", gradient: "from-violet-50 to-fuchsia-50",   accent: "text-violet-700" },
   marathon:   { emoji: "🏃", gradient: "from-sky-100 via-blue-50 to-cyan-50", accent: "text-sky-700" },
-  walkathon:  { emoji: "🚶", gradient: "from-emerald-50 to-teal-50",     accent: "text-emerald-700" },
+  walkathon:  { emoji: "🚶", gradient: "from-green-50 to-teal-50",     accent: "text-green-700" },
   film:       { emoji: "🎬", gradient: "from-amber-50 to-orange-50",     accent: "text-amber-700" },
   exhibition: { emoji: "🏢", gradient: "from-slate-50 to-indigo-50",     accent: "text-slate-700" },
-  expedition: { emoji: "⛰️", gradient: "from-lime-50 to-emerald-50",     accent: "text-emerald-800" },
+  expedition: { emoji: "⛰️", gradient: "from-lime-50 to-green-50",     accent: "text-green-800" },
 }
 
 const WHATSAPP_PHONE = "263777816368"
@@ -132,8 +132,8 @@ export default async function ComingSoonPage({
         {/* Tag */}
         <div className="mt-7 inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 shadow-sm shadow-ink/5">
           <span className="relative flex w-1.5 h-1.5">
-            <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-70" />
-            <span className="relative block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-70" />
+            <span className="relative block w-1.5 h-1.5 rounded-full bg-green-500" />
           </span>
           <Sparkles size={12} className="text-blue" />
           <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">

@@ -65,8 +65,8 @@ export async function GET(req: Request) {
             width: dotSize,
             height: dotSize,
             borderRadius: 999,
-            background: "#34d399",
-            boxShadow: `0 0 0 ${dotShadow}px rgba(52,211,153,0.25)`,
+            background: "#8DD32F",
+            boxShadow: `0 0 0 ${dotShadow}px rgba(141,211,47,0.25)`,
           }}
         />
       </div>

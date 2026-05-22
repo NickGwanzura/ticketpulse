@@ -31,9 +31,9 @@ export default async function SignInPage({
         </div>
 
         {resetOk ? (
-          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3">
-            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
-            <p className="text-[13px] font-medium text-emerald-900">
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-green-200 bg-green-50 px-3.5 py-3">
+            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+            <p className="text-[13px] font-medium text-green-900">
               Password updated. Sign in below.
             </p>
           </div>

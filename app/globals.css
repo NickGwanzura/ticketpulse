@@ -24,7 +24,19 @@
   --color-blue: #0570de;
   --color-blue-soft: #eff4fb;
 
-  --color-success: #0e9f6e;
+  --color-success: #8DD32F;
+
+  --color-green: #8DD32F;
+  --color-green-50: #F0FAE5;
+  --color-green-100: #DBF2C4;
+  --color-green-200: #BDE88E;
+  --color-green-300: #A8E06A;
+  --color-green-400: #97D94A;
+  --color-green-500: #8DD32F;
+  --color-green-600: #5A9418;
+  --color-green-700: #427010;
+  --color-green-800: #2B4C08;
+  --color-green-900: #1A3005;
 }
 
 html { color-scheme: light; }

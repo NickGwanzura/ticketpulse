@@ -93,9 +93,7 @@ function layout({ preheader, heading, body, cta }: LayoutOpts): string {
               <table role="presentation" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align:middle;padding-right:10px;">
-                    <div style="width:32px;height:32px;border-radius:8px;background:${BRAND.navy};text-align:center;line-height:32px;">
-                      <span style="display:inline-block;width:6px;height:6px;border-radius:9999px;background:#FFFFFF;vertical-align:middle;"></span>
-                    </div>
+                    <img src="${escape(APP_URL)}/logo.svg" alt="TicketPulse" width="32" height="32" style="display:block;outline:none;border:none;border-radius:6px;" />
                   </td>
                   <td style="vertical-align:middle;">
                     <span style="font-size:18px;font-weight:700;letter-spacing:-0.01em;color:${BRAND.ink};">TicketPulse</span>

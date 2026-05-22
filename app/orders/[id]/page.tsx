@@ -256,7 +256,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <aside>
           <div className="sticky top-24 rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04]">
             <h3 className="text-[16px] font-semibold tracking-tight text-ink mb-1">Receipt</h3>
-            <p className="text-xs text-ink-3 mb-5">Status: <span className={`font-semibold ${order.status === "paid" ? "text-emerald-700" : "text-amber-700"}`}>{order.status}</span></p>
+            <p className="text-xs text-ink-3 mb-5">Status: <span className={`font-semibold ${order.status === "paid" ? "text-green-700" : "text-amber-700"}`}>{order.status}</span></p>
 
             <ul className="space-y-3 pb-5 border-b border-line">
               {order.items.map((line) => (
@@ -306,7 +306,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   {resendingTickets ? "Sending…" : "Resend ticket email"}
                 </button>
                 {resendTicketNote && (
-                  <p className={`mt-2 text-[11.5px] text-center ${resendTicketNote.startsWith("Sent") ? "text-emerald-700" : "text-ink-3"}`}>
+                  <p className={`mt-2 text-[11.5px] text-center ${resendTicketNote.startsWith("Sent") ? "text-green-700" : "text-ink-3"}`}>
                     {resendTicketNote}
                   </p>
                 )}

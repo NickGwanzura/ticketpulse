@@ -283,9 +283,9 @@ export default function OrganizerScanPage() {
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-6">
         {/* Trust strip */}
         <div className="rounded-2xl border border-line bg-paper p-4 md:p-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-[12.5px] text-ink-2">
-          <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-emerald-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
+          <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-green-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
           <span className="inline-flex items-center gap-2"><Ticket size={14} className="text-ink-3" /> Reads PDF, mobile QR, and Apple/Google Wallet.</span>
-          <span className={`inline-flex items-center gap-2 ${online ? "text-emerald-700" : "text-amber-700"}`}>
+          <span className={`inline-flex items-center gap-2 ${online ? "text-green-700" : "text-amber-700"}`}>
             {online ? <Wifi size={14} /> : <WifiOff size={14} />}
             {online ? "Online · live sync" : "Offline · queued, syncs on reconnect"}
           </span>
@@ -294,7 +294,7 @@ export default function OrganizerScanPage() {
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
-            { l: "Checked in", v: stats.valid, color: "text-emerald-700" },
+            { l: "Checked in", v: stats.valid, color: "text-green-700" },
             { l: "Duplicates", v: stats.dupes, color: "text-amber-700" },
             { l: "Rejected",   v: stats.unknown, color: "text-rose-700" },
             { l: "Total scans", v: stats.total, color: "text-ink" },
@@ -400,7 +400,7 @@ export default function OrganizerScanPage() {
             {/* Latest result */}
             <div className={`tp-slide-up rounded-2xl border p-5 ${
               !latest ? "border-line bg-paper" :
-              latest.status === "valid" ? "border-emerald-200 bg-emerald-50/60 ring-1 ring-emerald-200/40" :
+              latest.status === "valid" ? "border-green-200 bg-green-50/60 ring-1 ring-green-200/40" :
               latest.status === "duplicate" ? "border-amber-200 bg-amber-50/60 ring-1 ring-amber-200/40" :
               "border-rose-200 bg-rose-50/60 ring-1 ring-rose-200/40"
             }`}>
@@ -414,7 +414,7 @@ export default function OrganizerScanPage() {
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ring-1 ${
                       latest.status === "valid"
-                        ? "bg-emerald-100 text-emerald-700 ring-emerald-300/50"
+                        ? "bg-green-100 text-green-700 ring-green-300/50"
                         : latest.status === "duplicate"
                         ? "bg-amber-100 text-amber-700 ring-amber-300/50"
                         : "bg-rose-100 text-rose-700 ring-rose-300/50"
@@ -482,7 +482,7 @@ export default function OrganizerScanPage() {
                     {recent.map((r, i) => (
                       <li key={`${r.code}-${i}`} className="px-5 py-3 flex items-start gap-3">
                         <span className={`mt-0.5 inline-flex w-6 h-6 items-center justify-center rounded-md text-[11px] font-bold ${
-                          r.status === "valid" ? "bg-emerald-50 text-emerald-700" :
+                          r.status === "valid" ? "bg-green-50 text-green-700" :
                           r.status === "duplicate" ? "bg-amber-50 text-amber-700" :
                           "bg-rose-50 text-rose-700"
                         }`}>

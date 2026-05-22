@@ -88,7 +88,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
               Total tickets: <strong className="text-ink">{totalTickets}</strong>
             </span>
             <span className="text-ink-3">
-              Checked in: <strong className="text-emerald-700">{checkedIn}</strong> / {totalTickets}
+              Checked in: <strong className="text-green-700">{checkedIn}</strong> / {totalTickets}
             </span>
           </div>
           <a
@@ -148,7 +148,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                       <td className="px-3 py-3.5 text-[13px] text-right text-ink">{r.quantity}</td>
                       <td className="px-3 py-3.5 text-center">
                         {r.scannedAt ? (
-                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-semibold text-green-700">
                             Yes
                           </span>
                         ) : (
@@ -170,7 +170,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                   <div className="flex items-center justify-between">
                     <span className="text-[13px] font-medium text-ink">{r.guestName || "—"}</span>
                     {r.scannedAt ? (
-                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
                         Checked in
                       </span>
                     ) : (

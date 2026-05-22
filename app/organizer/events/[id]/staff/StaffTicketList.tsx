@@ -20,7 +20,7 @@ function getStatusBadge(status: string | null) {
     case "available":
       return {
         label: "Active",
-        cls: "bg-emerald-50 text-emerald-700",
+        cls: "bg-green-50 text-green-700",
         icon: CheckCircle,
       }
     case "used":

@@ -111,7 +111,7 @@ export default async function VendorsPage({
               defaultChecked={verifiedOnly}
               className="sr-only"
             />
-            <ShieldCheck size={15} className={verifiedOnly ? "text-blue" : "text-emerald-600"} />
+            <ShieldCheck size={15} className={verifiedOnly ? "text-blue" : "text-green-600"} />
             Verified only
           </label>
           <button

@@ -248,7 +248,7 @@ export default async function AdminAnalyticsPage({
   const totalPayments = paymentRows.reduce((s, r) => s + r.count, 0)
   const COLORS = [
     "bg-navy",
-    "bg-emerald-500",
+    "bg-green-500",
     "bg-amber-500",
     "bg-sky-500",
     "bg-rose-500",
@@ -322,7 +322,7 @@ export default async function AdminAnalyticsPage({
                   {formatCurrency(currentRevenue, "USD")}
                 </p>
                 {prevRevenue > 0 && (
-                  <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${revenueDelta >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                  <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${revenueDelta >= 0 ? "text-green-700" : "text-rose-700"}`}>
                     {revenueDelta >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                     {Math.abs(revenueDelta).toFixed(1)}% vs prev
                   </span>
@@ -403,7 +403,7 @@ export default async function AdminAnalyticsPage({
                 <p className="text-[11px] text-ink-3 mb-1.5">{label}</p>
                 <p className="text-[18px] font-bold tracking-tight text-ink leading-none">{value}</p>
                 {delta !== 0 && (
-                  <span className={`mt-2 inline-flex items-center gap-1 text-[11.5px] font-medium ${up ? "text-emerald-700" : "text-rose-700"}`}>
+                  <span className={`mt-2 inline-flex items-center gap-1 text-[11.5px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
                     {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
                     {Math.abs(delta).toFixed(1)}%
                   </span>

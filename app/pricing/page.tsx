@@ -127,7 +127,7 @@ export default function PricingPage() {
               <ul className="space-y-2.5 mb-8">
                 {t.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[14px] text-ink-2">
-                    <Check size={15} className="text-emerald-600 mt-0.5 shrink-0" />
+                    <Check size={15} className="text-green-600 mt-0.5 shrink-0" />
                     {f}
                   </li>
                 ))}
@@ -156,7 +156,7 @@ export default function PricingPage() {
           </div>
           <FAQSection items={FAQ} />
           <div className="mt-10 rounded-2xl border border-line bg-paper p-5 flex items-start gap-3">
-            <ShieldCheck size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+            <ShieldCheck size={16} className="text-green-600 mt-0.5 shrink-0" />
             <p className="text-[13.5px] text-ink-2 leading-relaxed">
               <span className="font-semibold text-ink">No surprise fees.</span>{" "}
               We publish every cent we charge. If you spot a fee that isn&apos;t listed here,{" "}

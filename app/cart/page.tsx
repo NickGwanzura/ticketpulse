@@ -246,7 +246,7 @@ export default function CartPage() {
 
             <div className="flex items-center justify-between text-[12.5px] text-ink-3 pb-4 border-b border-line">
               <span>Booking fees</span>
-              <span className="text-emerald-700 font-medium">Free</span>
+              <span className="text-green-700 font-medium">Free</span>
             </div>
 
             <Link
@@ -258,7 +258,7 @@ export default function CartPage() {
 
             <ul className="mt-5 space-y-2 text-[12px] text-ink-2">
               <li className="flex items-center gap-2">
-                <ShieldCheck size={13} className="text-emerald-600" />
+                <ShieldCheck size={13} className="text-green-600" />
                 Verified organizers · escrowed payments
               </li>
               <li className="flex items-center gap-2">

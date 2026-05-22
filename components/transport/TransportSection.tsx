@@ -31,7 +31,7 @@ export default function TransportSection({ routes }: TransportSectionProps) {
           const avail = availabilityLabel(route.bookedSeats, route.totalSeats)
           const seatCount = seats[route.id] ?? 1
           const fullyBooked = route.bookedSeats >= route.totalSeats
-          const availColor = fullyBooked ? "text-rose-700" : avail.label.includes("left") ? "text-amber-700" : "text-emerald-700"
+          const availColor = fullyBooked ? "text-rose-700" : avail.label.includes("left") ? "text-amber-700" : "text-green-700"
 
           return (
             <div key={route.id} className="rounded-2xl border border-line bg-paper p-5 hover:border-line-2 transition-colors">
@@ -42,7 +42,7 @@ export default function TransportSection({ routes }: TransportSectionProps) {
                       {vehicleLabel(route.vehicleType)}
                     </span>
                     {route.operator.verified && (
-                      <span className="flex items-center gap-1 text-[10.5px] font-medium text-emerald-700">
+                      <span className="flex items-center gap-1 text-[10.5px] font-medium text-green-700">
                         <CheckCircle size={11} /> Verified
                       </span>
                     )}

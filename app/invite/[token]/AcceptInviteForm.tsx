@@ -130,7 +130,7 @@ export default function AcceptInviteForm({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 text-center">
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 text-center">
               Signed in as <strong>{email}</strong>
             </div>
 

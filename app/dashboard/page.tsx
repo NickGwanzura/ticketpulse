@@ -92,7 +92,7 @@ export default async function DashboardPage() {
           <div className="col-span-12 md:col-span-7 rounded-2xl border border-line bg-paper shadow-sm overflow-hidden">
             {/* Card top bar */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full bg-green-50 text-green-700">
                 <CheckCircle2 size={10} /> Confirmed
               </span>
               <div className="flex items-center gap-1">

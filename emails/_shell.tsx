@@ -25,7 +25,7 @@ export const BRAND = {
   blue: "#2D6CDF",
   blueSoft: "#EAF2FA",
   navy: "#0B1F4A",
-  emerald: "#10B981",
+  emerald: "#8DD32F",
   url: APP_URL,
 } as const
 
@@ -61,28 +61,18 @@ export function EmailShell({ preview, children }: ShellProps) {
               <table cellPadding={0} cellSpacing={0} role="presentation">
                 <tr>
                   <td style={{ verticalAlign: "middle", paddingRight: 10 }}>
-                    <div
+                    <Img
+                      src={`${BRAND.url}/logo.svg`}
+                      alt="TicketPulse"
+                      width={32}
+                      height={32}
                       style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
-                        backgroundColor: BRAND.navy,
-                        display: "inline-block",
-                        textAlign: "center",
-                        lineHeight: "32px",
+                        display: "block",
+                        outline: "none",
+                        border: "none",
+                        borderRadius: 6,
                       }}
-                    >
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: 6,
-                          height: 6,
-                          borderRadius: 9999,
-                          backgroundColor: "#FFFFFF",
-                          verticalAlign: "middle",
-                        }}
-                      />
-                    </div>
+                    />
                   </td>
                   <td style={{ verticalAlign: "middle" }}>
                     <Text

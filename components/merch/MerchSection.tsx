@@ -53,7 +53,7 @@ export default function MerchSection({ items, eventTitle }: MerchSectionProps) {
                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                     soldOut ? "bg-rose-50 text-rose-700"
                     : low ? "bg-amber-50 text-amber-700"
-                    : "bg-emerald-50 text-emerald-700"
+                    : "bg-green-50 text-green-700"
                   }`}>
                     {soldOut ? "Sold out" : `${remaining} left`}
                   </span>

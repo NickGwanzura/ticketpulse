@@ -96,10 +96,10 @@ const PATTERNS = {
 const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
   concert:    { gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  emoji: "🎵", tint: "text-violet-700",    ring: "ring-violet-200/60",   pattern: PATTERNS.concert },
   marathon:   { gradient: "from-sky-100 via-blue-50 to-cyan-50",        emoji: "🏃", tint: "text-sky-700",       ring: "ring-sky-200/60",      pattern: PATTERNS.marathon },
-  walkathon:  { gradient: "from-emerald-100 via-teal-50 to-cyan-50",    emoji: "🚶", tint: "text-emerald-700",   ring: "ring-emerald-200/60",  pattern: PATTERNS.walkathon },
+  walkathon:  { gradient: "from-green-100 via-teal-50 to-cyan-50",    emoji: "🚶", tint: "text-green-700",   ring: "ring-green-200/60",  pattern: PATTERNS.walkathon },
   film:       { gradient: "from-amber-100 via-orange-50 to-rose-50",    emoji: "🎬", tint: "text-amber-700",     ring: "ring-amber-200/60",    pattern: PATTERNS.film },
   exhibition: { gradient: "from-slate-100 via-blue-50 to-indigo-50",    emoji: "🏢", tint: "text-slate-700",     ring: "ring-slate-200/60",    pattern: PATTERNS.exhibition },
-  expedition: { gradient: "from-lime-100 via-emerald-50 to-teal-50",    emoji: "⛰️", tint: "text-emerald-800",   ring: "ring-lime-200/60",     pattern: PATTERNS.expedition },
+  expedition: { gradient: "from-lime-100 via-green-50 to-teal-50",    emoji: "⛰️", tint: "text-green-800",   ring: "ring-lime-200/60",     pattern: PATTERNS.expedition },
 }
 
 function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" } | null {
@@ -197,7 +197,7 @@ export default function EventCard({
           </span>
         )}
         {!featured && !soldOut && status === "published" && (
-          <span className="absolute top-3 left-3 bg-emerald-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+          <span className="absolute top-3 left-3 bg-green-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
             ON SALE
           </span>
         )}
@@ -251,7 +251,7 @@ export default function EventCard({
             <div className="h-1 bg-paper-2 rounded-full overflow-hidden ring-1 ring-line">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${
-                  pct >= 90 ? "bg-rose-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500"
+                  pct >= 90 ? "bg-rose-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500"
                 }`}
                 style={{ width: `${Math.max(8, pct)}%` }}
               />
@@ -270,7 +270,7 @@ export default function EventCard({
                 </span>
               </>
             ) : (
-              <span className="text-[13px] font-semibold text-emerald-700">Free entry</span>
+              <span className="text-[13px] font-semibold text-green-700">Free entry</span>
             )}
           </div>
           <span className="inline-flex items-center gap-1 rounded-lg bg-paper-2 ring-1 ring-line px-2.5 py-1.5 text-[12px] font-semibold text-navy group-hover:bg-navy group-hover:text-white group-hover:ring-navy transition-all">

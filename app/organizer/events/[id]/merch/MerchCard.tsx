@@ -44,7 +44,7 @@ export default function MerchCard({ eventId, merch }: { eventId: string; merch: 
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-[15.5px] font-semibold text-ink truncate">{merch.name}</p>
-                <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${merch.active ? "bg-emerald-50 text-emerald-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
+                <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${merch.active ? "bg-green-50 text-green-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
                   {merch.active ? "Active" : "Hidden"}
                 </span>
               </div>

@@ -45,7 +45,7 @@ export default function ShareEventButton({ eventTitle, eventDescription }: Props
       onClick={handleShare}
       className="border border-line bg-paper text-ink-2 rounded-lg p-2.5 hover:text-ink hover:border-line-2 transition-colors relative"
     >
-      {copied ? <Check size={15} className="text-emerald-500" /> : <Share2 size={15} />}
+      {copied ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
 
       {copied && (
         <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-ink text-paper text-[11px] font-medium px-2 py-1 rounded-md shadow-sm pointer-events-none">

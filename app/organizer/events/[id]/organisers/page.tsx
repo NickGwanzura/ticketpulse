@@ -156,7 +156,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
         <div className="rounded-2xl border border-line bg-paper overflow-hidden">
           <div className="px-5 py-4 border-b border-line">
             <div className="flex items-center gap-2">
-              <CheckCircle size={14} className="text-emerald-600" />
+              <CheckCircle size={14} className="text-green-600" />
               <span className="text-[13px] font-semibold text-ink">
                 Active organisers ({acceptedOrganisers.length})
               </span>

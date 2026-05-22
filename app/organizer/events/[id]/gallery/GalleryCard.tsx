@@ -54,7 +54,7 @@ export default function GalleryCard({ eventId, gallery, photos }: Props) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-[15.5px] font-semibold text-ink truncate">{gallery.name}</p>
-              <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${gallery.isPublic ? "bg-emerald-50 text-emerald-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
+              <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${gallery.isPublic ? "bg-green-50 text-green-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
                 {gallery.isPublic ? <Eye size={10} /> : <EyeOff size={10} />}
                 {gallery.isPublic ? "Public" : "Hidden"}
               </span>

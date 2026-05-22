@@ -142,8 +142,8 @@ export default async function AdminOverviewPage() {
   const ACTIVITY: Activity[] = recentOrders.map((o) => ({
     kind: "order",
     icon: o.status === "paid" ? CreditCard : ShoppingCart,
-    iconColor: o.status === "paid" ? "text-emerald-700" : "text-ink-2",
-    iconBg: o.status === "paid" ? "bg-emerald-50" : "bg-paper-2",
+    iconColor: o.status === "paid" ? "text-green-700" : "text-ink-2",
+    iconBg: o.status === "paid" ? "bg-green-50" : "bg-paper-2",
     who: o.contactName ?? "Someone",
     msg: o.status === "paid"
       ? `paid ${formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}`
@@ -275,7 +275,7 @@ export default async function AdminOverviewPage() {
                 {currency ? formatCurrency(value, currency) : value.toLocaleString()}
               </p>
               <div className="mt-3 flex items-center justify-between gap-3">
-                <span className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${up ? "text-emerald-700" : "text-rose-700"}`}>
+                <span className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
                   {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
                   {Math.abs(delta).toFixed(1)}% MoM
                 </span>

@@ -112,7 +112,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                   <p className="text-[14px] font-semibold tracking-tight text-ink">{tier.name}</p>
                   <p className="text-xs text-ink-2 mt-0.5">{tier.description}</p>
                   <p className={`text-[11px] mt-1.5 font-medium ${
-                    soldOut ? "text-rose-700" : remaining <= 20 ? "text-amber-700" : "text-emerald-700"
+                    soldOut ? "text-rose-700" : remaining <= 20 ? "text-amber-700" : "text-green-700"
                   }`}>
                     {soldOut ? "Sold out" : remaining <= 20 ? `Only ${remaining} left` : "Available"}
                   </p>
@@ -180,7 +180,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
         className="w-full inline-flex items-center justify-center gap-2 border border-line bg-paper text-ink font-medium py-3 rounded-xl hover:border-line-2 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {added ? (
-          <><Check size={14} className="text-emerald-600" /> Added to cart</>
+          <><Check size={14} className="text-green-600" /> Added to cart</>
         ) : (
           <><ShoppingBag size={14} /> Add to cart</>
         )}

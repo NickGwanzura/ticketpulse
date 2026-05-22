@@ -31,8 +31,8 @@ export default function AboutPage() {
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-24 pb-12 md:pb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
             <span className="relative flex w-2 h-2">
-              <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
-              <span className="relative block w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
+              <span className="relative block w-2 h-2 rounded-full bg-green-500" />
             </span>
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">About · Live since May 2026</span>
           </div>
@@ -86,10 +86,10 @@ export default function AboutPage() {
               const isNow = m.year === "Now"
               return (
                 <li key={i} className="relative pl-8 pb-8 last:pb-0">
-                  <span className={`absolute left-0 top-2 w-3.5 h-3.5 rounded-full bg-paper border-2 ${isNow ? "border-emerald-500" : "border-navy"}`}>
-                    {isNow && <span className="absolute inset-0 rounded-full bg-emerald-500/30 animate-ping" aria-hidden />}
+                  <span className={`absolute left-0 top-2 w-3.5 h-3.5 rounded-full bg-paper border-2 ${isNow ? "border-green-500" : "border-navy"}`}>
+                    {isNow && <span className="absolute inset-0 rounded-full bg-green-500/30 animate-ping" aria-hidden />}
                   </span>
-                  <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-1 ${isNow ? "text-emerald-700" : "text-blue"}`}>{m.year}</p>
+                  <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-1 ${isNow ? "text-green-700" : "text-blue"}`}>{m.year}</p>
                   <p className="text-[16px] font-semibold tracking-tight text-ink">{m.title}</p>
                   <p className="text-[13.5px] text-ink-2 mt-1 leading-relaxed">{m.body}</p>
                 </li>

@@ -80,7 +80,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[14px] font-semibold tracking-tight text-ink truncate">{listing.vendor.businessName}</span>
                         {listing.vendor.verified && (
-                          <CheckCircle size={12} className="text-emerald-600 shrink-0" />
+                          <CheckCircle size={12} className="text-green-600 shrink-0" />
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-ink-2 mb-2">
@@ -163,7 +163,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                     <p className="text-sm font-semibold text-ink">{listing.vendor.businessName}</p>
                     <p className="text-xs text-ink-2">{listing.packageName}</p>
                   </div>
-                  <span className="ml-auto text-[10px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">Booked</span>
+                  <span className="ml-auto text-[10px] font-medium bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Booked</span>
                 </div>
               </div>
             ))}

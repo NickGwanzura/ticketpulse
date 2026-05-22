@@ -92,7 +92,7 @@ export default async function TiersPage({
         </Link>
 
         {justCreated && (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-800">
             Draft created. Add at least one ticket tier below so people can buy.
           </div>
         )}

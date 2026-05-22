@@ -43,7 +43,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                   </span>
                   {vendor.verified && (
                     <span className="inline-flex items-center gap-1 bg-paper ring-1 ring-line text-ink text-[10.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full">
-                      <ShieldCheck size={11} className="text-emerald-600" /> Verified
+                      <ShieldCheck size={11} className="text-green-600" /> Verified
                     </span>
                   )}
                 </div>
@@ -150,7 +150,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                         <ul className="mt-4 space-y-1.5">
                           {pkg.bullets.map((b) => (
                             <li key={b} className="flex items-start gap-2 text-[13.5px] text-ink-2">
-                              <Check size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+                              <Check size={14} className="text-green-600 mt-0.5 shrink-0" />
                               <span>{b}</span>
                             </li>
                           ))}
@@ -221,7 +221,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               </div>
 
               <div className="mt-5 rounded-xl bg-paper-2 border border-line p-3.5 flex items-start gap-2.5">
-                <ShieldCheck size={15} className="text-emerald-600 mt-0.5 shrink-0" />
+                <ShieldCheck size={15} className="text-green-600 mt-0.5 shrink-0" />
                 <p className="text-[12px] leading-relaxed text-ink-2">
                   All payments are held by TicketPulse and released to the vendor on event completion. Refundable if cancelled within terms.
                 </p>

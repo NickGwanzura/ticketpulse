@@ -17,7 +17,7 @@ import CancelOrderButton from "@/app/admin/_components/CancelOrderButton"
 import CancelTicketButton from "@/app/admin/_components/CancelTicketButton"
 
 const STATUS_STYLE: Record<string, string> = {
-  paid:                   "bg-emerald-50 text-emerald-700",
+  paid:                   "bg-green-50 text-green-700",
   pending:                "bg-amber-50 text-amber-700",
   awaiting_verification:  "bg-blue-soft text-navy",
   refunded:               "bg-rose-50 text-rose-700",
@@ -175,8 +175,8 @@ export default async function AdminTicketsPage({
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           <div className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">
-            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-emerald-50">
-              <Ticket size={16} className="text-emerald-700" />
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50">
+              <Ticket size={16} className="text-green-700" />
             </span>
             <div>
               <p className="text-[11.5px] text-ink-3 mb-0.5">Tickets issued</p>
@@ -472,7 +472,7 @@ export default async function AdminTicketsPage({
                         <span className="inline-flex items-center gap-1">
                           {o.paymentMethod ? (
                             <>
-                              <Smartphone size={11} className="text-emerald-700" />
+                              <Smartphone size={11} className="text-green-700" />
                               {o.paymentMethod}
                             </>
                           ) : (

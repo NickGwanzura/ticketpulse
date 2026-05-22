@@ -69,8 +69,8 @@ export default function OpenGraphImage() {
             width: 28,
             height: 28,
             borderRadius: 999,
-            background: "#34d399",
-            boxShadow: "0 0 0 8px rgba(52,211,153,0.25)",
+            background: "#8DD32F",
+            boxShadow: "0 0 0 8px rgba(141,211,47,0.25)",
           }}
         />
       </div>

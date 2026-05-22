@@ -21,8 +21,8 @@ export default function MediaPage() {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-[12.5px] text-ink-3">
-            <span className="inline-flex items-center gap-2"><Camera size={14} className="text-emerald-600" /> Photo galleries coming after each event</span>
-            <span className="inline-flex items-center gap-2"><Download size={14} className="text-emerald-600" /> Original-quality downloads</span>
+            <span className="inline-flex items-center gap-2"><Camera size={14} className="text-green-600" /> Photo galleries coming after each event</span>
+            <span className="inline-flex items-center gap-2"><Download size={14} className="text-green-600" /> Original-quality downloads</span>
           </div>
         </div>
       </section>

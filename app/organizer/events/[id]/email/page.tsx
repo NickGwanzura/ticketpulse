@@ -161,7 +161,7 @@ export default function EmailPage() {
 
           {/* Status messages */}
           {bulkState.ok && bulkState.total && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-[13px] text-emerald-800">
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
               Email sent to {bulkState.sent} of {bulkState.total} attendees.
             </div>
           )}
@@ -176,7 +176,7 @@ export default function EmailPage() {
             </div>
           )}
           {testState?.ok && !testState?.error && (
-            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-[13px] text-emerald-800">
+            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
               Test email sent! Check your inbox.
             </div>
           )}

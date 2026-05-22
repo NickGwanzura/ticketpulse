@@ -127,7 +127,7 @@ export default function AccountForm({
         <p className="text-[12.5px] text-rose-600 font-medium">{error}</p>
       )}
       {saved && (
-        <p className="text-[12.5px] text-emerald-600 font-medium">Changes saved.</p>
+        <p className="text-[12.5px] text-green-600 font-medium">Changes saved.</p>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-2">

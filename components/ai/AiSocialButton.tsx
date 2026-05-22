@@ -88,7 +88,7 @@ export default function AiSocialButton({
             className="absolute top-2 right-2 text-ink-3 hover:text-ink transition-colors"
             title="Copy to clipboard"
           >
-            {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+            {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
           </button>
         </div>
       )}

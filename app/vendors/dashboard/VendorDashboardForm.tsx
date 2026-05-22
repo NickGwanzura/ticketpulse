@@ -207,7 +207,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 pt-2">
         <div className="flex-1 min-h-[1.25rem]" aria-live="polite">
           {status.kind === "saved" && (
-            <p className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-700">
+            <p className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-green-700">
               <Check size={14} /> Profile saved.
             </p>
           )}

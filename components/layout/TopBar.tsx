@@ -55,8 +55,8 @@ export default function TopBar() {
         {/* Live dot */}
         <span className="hidden sm:inline-flex items-center gap-1.5 shrink-0">
           <span className="relative flex w-1.5 h-1.5">
-            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-70" />
-            <span className="relative block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-70" />
+            <span className="relative block w-1.5 h-1.5 rounded-full bg-green-400" />
           </span>
           <span className="text-[10.5px] font-semibold tracking-[0.18em] text-white/80 uppercase">Live</span>
           <span className="hidden md:inline text-white/30">·</span>
@@ -73,7 +73,7 @@ export default function TopBar() {
                   i === idx ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5 pointer-events-none"
                 }`}
               >
-                <Icon size={12} className="text-emerald-300 shrink-0" />
+                <Icon size={12} className="text-green-300 shrink-0" />
                 <span className="truncate">{text}</span>
               </p>
             ))}

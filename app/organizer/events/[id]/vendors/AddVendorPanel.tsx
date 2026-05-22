@@ -121,7 +121,7 @@ export default function AddVendorPanel({
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-ink truncate">
                           {v.businessName}
-                          {v.verified && <span className="ml-1 text-[11px] text-emerald-600">✓ Verified</span>}
+                          {v.verified && <span className="ml-1 text-[11px] text-green-600">✓ Verified</span>}
                         </p>
                         <p className="text-ink-3 truncate">
                           {vendorCategoryLabel(v.category)}{v.city ? ` · ${v.city}` : ""}
@@ -252,7 +252,7 @@ export default function AddVendorPanel({
                 )}
 
                 {state.ok && state.message && (
-                  <p className="text-[13px] text-emerald-600">{state.message}</p>
+                  <p className="text-[13px] text-green-600">{state.message}</p>
                 )}
 
                 <div className="flex items-center gap-2 pt-1">

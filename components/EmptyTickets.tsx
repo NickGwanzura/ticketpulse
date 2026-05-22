@@ -44,7 +44,7 @@ export default function EmptyTickets({ className }: { className?: string }) {
       {/* Sparkles */}
       <span className="absolute top-2 left-[18%] w-1.5 h-1.5 rounded-full bg-blue/70 animate-pulse" />
       <span className="absolute top-3 right-[14%] w-1 h-1 rounded-full bg-amber-400/80 animate-pulse [animation-delay:0.6s]" />
-      <span className="absolute bottom-6 left-[28%] w-1 h-1 rounded-full bg-emerald-500/70 animate-pulse [animation-delay:1.2s]" />
+      <span className="absolute bottom-6 left-[28%] w-1 h-1 rounded-full bg-green-500/70 animate-pulse [animation-delay:1.2s]" />
     </div>
   )
 }
