@@ -199,9 +199,11 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   return (
     <main className="bg-[#f4f7fa] min-h-screen">
       <style>{`
-        @page { size: A4; margin: 0; }
+        @page { size: A4 portrait; margin: 0; }
         @media print {
           html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+          main { background: #fff !important; padding: 0 !important; }
+          .max-w-\[210mm\] { max-width: none !important; padding: 0 !important; }
           .tp-no-print { display: none !important; }
           .tp-print-page {
             page-break-after: always;
@@ -266,116 +268,127 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
           const qr = qrUrls[`${idx}`]
 
           return (
-            <article
-              key={`${line.key}-${i}`}
-              ref={(el) => { ticketRefs.current[idx] = el }}
-              className="tp-print-page relative bg-white rounded-3xl border border-[#e2e8f0] overflow-hidden shadow-[0_20px_60px_-20px_rgba(10,37,64,0.15)] print:rounded-none print:shadow-none print:border-0"
-            >
-              {/* ── Gradient top bar ─────────────────────────────────────── */}
-              <div className="h-1.5 bg-gradient-to-r from-[#0a2540] via-[#2563eb] to-[#0a2540]" aria-hidden />
+            <div key={`${line.key}-${i}`} className="tp-print-page">
+              {/* ── Ticket content (captured for PDF) ──────────────────── */}
+              <article
+                ref={(el) => { ticketRefs.current[idx] = el }}
+                className="relative bg-white rounded-3xl border border-[#e2e8f0] overflow-hidden shadow-[0_20px_60px_-20px_rgba(10,37,64,0.15)] print:rounded-none print:shadow-none print:border-0"
+              >
+                {/* ── Gradient top bar ─────────────────────────────────── */}
+                <div className="h-1.5 bg-gradient-to-r from-[#0a2540] via-[#2563eb] to-[#0a2540]" aria-hidden />
 
-              {/* ── Header ───────────────────────────────────────────────── */}
-              <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-[#0a2540] flex items-center justify-center">
-                    <Ticket size={16} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-bold tracking-tight text-[#0a2540]">TicketPulse</p>
-                    <p className="text-[9.5px] text-[#8a9caa]">Verified digital ticket</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-semibold tracking-[0.2em] text-[#8a9caa] uppercase">Ticket</p>
-                  <p className="text-[12px] font-mono text-[#0a2540] tabular-nums tracking-tight">{human}</p>
-                </div>
-              </div>
-
-              {/* ── Divider ──────────────────────────────────────────────── */}
-              <div className="mx-6 md:mx-8 border-t border-dashed border-[#e2e8f0]" />
-
-              {/* ── Body ─────────────────────────────────────────────────── */}
-              <div className="px-6 md:px-8 py-5 grid grid-cols-1 md:grid-cols-[1.4fr_auto_1fr] gap-5 items-stretch">
-                {/* Left: event info */}
-                <div className="min-w-0">
-                  {/* Tier badge */}
-                  <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold text-blue-700 mb-3">
-                    {line.tierName}
-                  </span>
-
-                  {/* Event title */}
-                  <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight leading-[1.15] text-[#0a2540]">
-                    {line.eventTitle}
-                  </h2>
-
-                  {/* Details */}
-                  <dl className="mt-4 space-y-3">
-                    <div className="flex items-start gap-2.5">
-                      <Calendar size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
-                      <div>
-                        <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Issued</dt>
-                        <dd className="text-[12.5px] text-[#0a2540] font-medium">{formatDate(order.createdAt)}</dd>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <MapPin size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
-                      <div>
-                        <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Holder</dt>
-                        <dd className="text-[12.5px] text-[#0a2540] font-medium">{order.contact.name || order.contact.email}</dd>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <Smartphone size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
-                      <div>
-                        <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Payment</dt>
-                        <dd className="text-[12.5px] text-[#0a2540] font-medium">{order.payment.method.toUpperCase()}</dd>
-                      </div>
-                    </div>
-                  </dl>
-
-                  {/* Meta grid */}
-                  <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5">
-                    <div>
-                      <p className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Order</p>
-                      <p className="text-[11px] font-mono text-[#0a2540] tabular-nums">{order.id}</p>
+                {/* ── Header ───────────────────────────────────────────── */}
+                <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-[#0a2540] flex items-center justify-center">
+                      <Ticket size={16} className="text-white" />
                     </div>
                     <div>
-                      <p className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Seat</p>
-                      <p className="text-[11px] font-semibold text-[#0a2540]">{i + 1} of {line.qty}</p>
+                      <p className="text-[13px] font-bold tracking-tight text-[#0a2540]">TicketPulse</p>
+                      <p className="text-[9.5px] text-[#8a9caa]">Verified digital ticket</p>
                     </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-semibold tracking-[0.2em] text-[#8a9caa] uppercase">Ticket</p>
+                    <p className="text-[12px] font-mono text-[#0a2540] tabular-nums tracking-tight">{human}</p>
                   </div>
                 </div>
 
-                {/* Middle: perforation (desktop only) */}
-                <div className="hidden md:flex relative items-center justify-center" aria-hidden>
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#f4f7fa] ring-1 ring-[#e2e8f0]" />
-                  <span className="w-px h-full border-l-2 border-dashed border-[#e2e8f0]" />
-                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#f4f7fa] ring-1 ring-[#e2e8f0]" />
+                {/* ── Divider ──────────────────────────────────────────── */}
+                <div className="mx-6 md:mx-8 border-t border-dashed border-[#e2e8f0]" />
+
+                {/* ── Body ─────────────────────────────────────────────── */}
+                <div className="px-6 md:px-8 py-5 grid grid-cols-1 md:grid-cols-[1.4fr_auto_1fr] gap-5 items-stretch">
+                  {/* Left: event info */}
+                  <div className="min-w-0">
+                    {/* Tier badge */}
+                    <span className="inline-block rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold text-blue-700 mb-3">
+                      {line.tierName}
+                    </span>
+
+                    {/* Event title */}
+                    <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight leading-[1.15] text-[#0a2540]">
+                      {line.eventTitle}
+                    </h2>
+
+                    {/* Details */}
+                    <dl className="mt-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <Calendar size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
+                        <div>
+                          <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Issued</dt>
+                          <dd className="text-[12.5px] text-[#0a2540] font-medium">{formatDate(order.createdAt)}</dd>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <MapPin size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
+                        <div>
+                          <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Holder</dt>
+                          <dd className="text-[12.5px] text-[#0a2540] font-medium">{order.contact.name || order.contact.email}</dd>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <Smartphone size={13} className="text-[#8a9caa] mt-0.5 shrink-0" />
+                        <div>
+                          <dt className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Payment</dt>
+                          <dd className="text-[12.5px] text-[#0a2540] font-medium">{order.payment.method.toUpperCase()}</dd>
+                        </div>
+                      </div>
+                    </dl>
+
+                    {/* Meta grid */}
+                    <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5">
+                      <div>
+                        <p className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Order</p>
+                        <p className="text-[11px] font-mono text-[#0a2540] tabular-nums">{order.id}</p>
+                      </div>
+                      <div>
+                        <p className="text-[8.5px] font-semibold tracking-[0.15em] text-[#8a9caa] uppercase">Seat</p>
+                        <p className="text-[11px] font-semibold text-[#0a2540]">{i + 1} of {line.qty}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle: perforation (desktop only) */}
+                  <div className="hidden md:flex relative items-center justify-center" aria-hidden>
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#f4f7fa] ring-1 ring-[#e2e8f0]" />
+                    <span className="w-px h-full border-l-2 border-dashed border-[#e2e8f0]" />
+                    <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#f4f7fa] ring-1 ring-[#e2e8f0]" />
+                  </div>
+
+                  {/* Right: real QR code */}
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-2xl bg-[#f8fafc] ring-1 ring-[#e2e8f0] p-5 print:bg-white print:ring-0">
+                    <p className="text-[9px] font-semibold tracking-[0.2em] text-[#8a9caa] uppercase">Scan at gate</p>
+                    {qr ? (
+                      <img
+                        src={qr}
+                        alt={`QR code for ${code}`}
+                        className="w-[160px] h-[160px] rounded-xl ring-1 ring-[#e2e8f0] bg-white"
+                      />
+                    ) : (
+                      <div className="w-[160px] h-[160px] rounded-xl bg-[#e2e8f0] animate-pulse flex items-center justify-center">
+                        <Loader2 size={20} className="text-[#8a9caa] animate-spin" />
+                      </div>
+                    )}
+                    <p className="text-[8.5px] font-mono text-[#8a9caa] tabular-nums break-all text-center max-w-[160px] leading-relaxed">
+                      {code}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Right: real QR code */}
-                <div className="flex flex-col items-center justify-center gap-3 rounded-2xl bg-[#f8fafc] ring-1 ring-[#e2e8f0] p-5 print:bg-white print:ring-0">
-                  <p className="text-[9px] font-semibold tracking-[0.2em] text-[#8a9caa] uppercase">Scan at gate</p>
-                  {qr ? (
-                    <img
-                      src={qr}
-                      alt={`QR code for ${code}`}
-                      className="w-[160px] h-[160px] rounded-xl ring-1 ring-[#e2e8f0] bg-white"
-                    />
-                  ) : (
-                    <div className="w-[160px] h-[160px] rounded-xl bg-[#e2e8f0] animate-pulse flex items-center justify-center">
-                      <Loader2 size={20} className="text-[#8a9caa] animate-spin" />
-                    </div>
-                  )}
-                  <p className="text-[8.5px] font-mono text-[#8a9caa] tabular-nums break-all text-center max-w-[160px] leading-relaxed">
-                    {code}
+                {/* ── Footer ───────────────────────────────────────────── */}
+                <div className="border-t border-dashed border-[#e2e8f0] px-6 md:px-8 py-3 flex flex-wrap items-center justify-between gap-2 bg-[#f8fafc]/70 print:bg-white">
+                  <p className="text-[9px] text-[#8a9caa] inline-flex items-center gap-1.5">
+                    <ShieldCheck size={10} className="text-emerald-600" />
+                    Verified by TicketPulse. One entry only. Valid with photo ID.
                   </p>
+                  <p className="text-[9px] font-mono text-[#8a9caa] tabular-nums">{human}</p>
                 </div>
-              </div>
+              </article>
 
-              {/* ── Per-ticket download button (screen only) ─────────────── */}
+              {/* ── Per-ticket download button — OUTSIDE article so it's not captured in PDF ── */}
               {qr && (
-                <div className="tp-no-print px-6 md:px-8 pb-5">
+                <div className="tp-no-print pt-3 pb-1">
                   <button
                     onClick={() => downloadTicketPdf(idx)}
                     disabled={downloadingIndex === idx}
@@ -390,16 +403,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
                   </button>
                 </div>
               )}
-
-              {/* ── Footer ───────────────────────────────────────────────── */}
-              <div className="border-t border-dashed border-[#e2e8f0] px-6 md:px-8 py-3 flex flex-wrap items-center justify-between gap-2 bg-[#f8fafc]/70 print:bg-white">
-                <p className="text-[9px] text-[#8a9caa] inline-flex items-center gap-1.5">
-                  <ShieldCheck size={10} className="text-emerald-600" />
-                  Verified by TicketPulse. One entry only. Valid with photo ID.
-                </p>
-                <p className="text-[9px] font-mono text-[#8a9caa] tabular-nums">{human}</p>
-              </div>
-            </article>
+            </div>
           )
         })}
       </div>

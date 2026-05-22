@@ -162,24 +162,29 @@ export default async function OrganizerPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer")
 
-  // Check if user is an invited organiser for any event
-  const invitedEventIds = await db
+  const isAdmin = session.user.role === "admin"
+
+  // Single query for non-admins — reused for both access check and where clause
+  const invitedEventIds = isAdmin ? [] : await db
     .select({ eventId: eventOrganisers.eventId })
     .from(eventOrganisers)
     .where(eq(eventOrganisers.userId, session.user.id))
 
   const isInvitedOrganiser = invitedEventIds.length > 0
 
-  // Allow access if: organizer role, admin role, or invited organiser for at least one event
-  if (session.user.role !== "organizer" && session.user.role !== "admin" && !isInvitedOrganiser) {
+  if (!isAdmin && session.user.role !== "organizer" && !isInvitedOrganiser) {
     redirect("/dashboard")
   }
 
-  // Build where condition: events owned by user OR events where user is invited organiser
+  // Build where condition:
+  // - Admins see ALL events (no filter)
+  // - Organizers see events they own or are invited to
   const ownedIds = invitedEventIds.map((r) => r.eventId)
-  const whereClause = ownedIds.length > 0
-    ? or(eq(events.organizerId, session.user.id), inArray(events.id, ownedIds))
-    : eq(events.organizerId, session.user.id)
+  const whereClause = isAdmin
+    ? undefined
+    : ownedIds.length > 0
+      ? or(eq(events.organizerId, session.user.id), inArray(events.id, ownedIds))
+      : eq(events.organizerId, session.user.id)
 
   const rows = await db
     .select({

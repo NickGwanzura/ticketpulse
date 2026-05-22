@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, MailCheck, RefreshCw, Loader2, Search } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, MailCheck, RefreshCw, Loader2, Search, Send } from "lucide-react"
 import QrCode from "@/components/QrCode"
 
 type AwaitingStatus = {
@@ -97,6 +97,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
+  const [resendingTickets, setResendingTickets] = useState(false)
+  const [resendTicketNote, setResendTicketNote] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ready) return
@@ -118,6 +120,26 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       })
       .catch(() => setFetching(false))
   }, [ready, id, getOrder])
+
+  async function resendTickets() {
+    if (resendingTickets) return
+    setResendingTickets(true)
+    setResendTicketNote(null)
+    try {
+      const res = await fetch(`/api/orders/${id}/resend-tickets`, { method: "POST" })
+      if (res.status === 429) setResendTicketNote("Please wait a moment before resending.")
+      else if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Couldn't resend. Try again shortly." }))
+        setResendTicketNote(body.error ?? "Couldn't resend. Try again shortly.")
+      } else {
+        setResendTicketNote("Sent! Check your inbox.")
+      }
+    } catch {
+      setResendTicketNote("Couldn't resend. Try again shortly.")
+    } finally {
+      setResendingTickets(false)
+    }
+  }
 
   if (awaitingFlag) {
     return <AwaitingVerification orderId={id} />
@@ -265,6 +287,29 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               <p className="inline-flex items-center gap-2 text-ink-2"><Mail size={12} className="text-ink-3" /> {order.contact.email}</p>
               <p className="inline-flex items-center gap-2 text-ink-2"><Smartphone size={12} className="text-ink-3" /> {order.payment.method.toUpperCase()}</p>
             </div>
+
+            {order.status === "paid" && (
+              <div className="mt-4 pt-4 border-t border-line">
+                <button
+                  type="button"
+                  onClick={resendTickets}
+                  disabled={resendingTickets}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-navy/20 hover:bg-navy-700 disabled:opacity-60 transition"
+                >
+                  {resendingTickets ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Send size={14} />
+                  )}
+                  {resendingTickets ? "Sending…" : "Resend ticket email"}
+                </button>
+                {resendTicketNote && (
+                  <p className={`mt-2 text-[11.5px] text-center ${resendTicketNote.startsWith("Sent") ? "text-emerald-700" : "text-ink-3"}`}>
+                    {resendTicketNote}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </aside>
       </div>
