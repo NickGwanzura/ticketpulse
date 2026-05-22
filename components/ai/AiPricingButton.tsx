@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Sparkles, RefreshCw } from "lucide-react"
+import { Sparkles } from "lucide-react"
+import { useAiGenerate } from "./use-ai-generate"
 
 interface PricingSuggestion {
   reasoning: string
@@ -19,37 +19,24 @@ export default function AiPricingButton({
   venue: string
   city: string
 }) {
-  const [result, setResult] = useState<PricingSuggestion | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { data: result, loading, error, generate } = useAiGenerate<PricingSuggestion>()
 
-  const generate = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/ai/pricing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventTitle, category, venue, city }),
-      })
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      setResult(data)
-    } catch {
-      setResult(null)
-    } finally {
-      setLoading(false)
-    }
+  const handleGenerate = () => {
+    generate("/api/ai/pricing", { eventTitle, category, venue, city })
   }
 
   return (
     <div>
       <button
-        onClick={generate}
+        onClick={handleGenerate}
         disabled={loading}
         className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-2 hover:text-navy transition-colors disabled:opacity-50"
       >
         <Sparkles size={12} />
         {loading ? "Thinking…" : result ? "Refresh pricing" : "AI pricing suggestion"}
       </button>
+
+      {error && <p className="text-[11px] text-rose-600 mt-1">{error}</p>}
 
       {result && !loading && (
         <div className="mt-2 rounded-lg border border-line bg-paper p-3">

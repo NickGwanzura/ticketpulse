@@ -2,49 +2,12 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
-  Calendar, MapPin, Ticket, ArrowUpRight, Download, Share2,
-  Wallet, CheckCircle2, ClipboardList,
+  Calendar, Ticket, ArrowUpRight,
+  CheckCircle2, ClipboardList,
   HelpCircle, Star, Activity,
 } from "lucide-react"
-import QrCode from "@/components/QrCode"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
-import { formatCurrency, formatDateShort } from "@/lib/utils"
-
-const FEATURED_TICKET = {
-  id: "TP-DEMO-TICKET",
-  event: "Your next event",
-  tier: "Sample tier",
-  venue: "Venue, City",
-  startsAt: new Date("2026-12-31T18:00:00"),
-  gate: "Gate A",
-  seat: "Open seating",
-  qrValue: "TP|DEMO|PREVIEW",
-  price: 0,
-  currency: "USD",
-} as const
-
-type UpcomingTicket = {
-  id: string
-  event: string
-  category: string
-  emoji: string
-  venue: string
-  startsAt: Date
-  href: string
-}
-
-type ActivityItem = {
-  icon: React.ElementType
-  title: string
-  sub: string
-  ago: string
-  color: string
-  bg: string
-}
-
-const UPCOMING_TICKETS: UpcomingTicket[] = []
-const ACTIVITY: ActivityItem[] = []
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -90,85 +53,13 @@ export default async function DashboardPage() {
 
           {/* Featured ticket card */}
           <div className="col-span-12 md:col-span-7 rounded-2xl border border-line bg-paper shadow-sm overflow-hidden">
-            {/* Card top bar */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full bg-green-50 text-green-700">
-                <CheckCircle2 size={10} /> Confirmed
-              </span>
-              <div className="flex items-center gap-1">
-                <button className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-ink px-2.5 py-1.5 rounded-lg hover:bg-paper-2 transition-colors">
-                  <Download size={13} /> Download
-                </button>
-                <button className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-ink px-2.5 py-1.5 rounded-lg hover:bg-paper-2 transition-colors">
-                  <Share2 size={13} /> Share
-                </button>
-              </div>
-            </div>
-
-            {/* Card body */}
-            <div className="relative flex flex-col md:flex-row">
-              {/* Left: event details */}
-              <div className="flex-1 p-5 md:p-6 min-w-0">
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-2">Your ticket</p>
-                <h2 className="text-[17px] font-bold tracking-tight text-ink leading-snug mb-2">
-                  {FEATURED_TICKET.event}
-                </h2>
-                <span className="inline-block text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-full bg-green-50 text-blue mb-4">
-                  {FEATURED_TICKET.tier}
-                </span>
-
-                <div className="space-y-2.5">
-                  <div className="flex items-start gap-2.5 text-[13px] text-ink-2">
-                    <Calendar size={14} className="text-ink-3 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="font-semibold text-ink">{formatDateShort(FEATURED_TICKET.startsAt)}</span>
-                      <span className="text-ink-3"> &middot; 06:00 AM</span>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5 text-[13px] text-ink-2">
-                    <MapPin size={14} className="text-ink-3 mt-0.5 shrink-0" />
-                    <span>{FEATURED_TICKET.venue}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
-                    <span className="text-ink-3 text-[11px] font-semibold tracking-wide uppercase w-14 shrink-0">Gate</span>
-                    <span className="font-semibold text-ink">{FEATURED_TICKET.gate}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
-                    <span className="text-ink-3 text-[11px] font-semibold tracking-wide uppercase w-14 shrink-0">Seat</span>
-                    <span>{FEATURED_TICKET.seat}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
-                    <span className="text-ink-3 text-[11px] font-semibold tracking-wide uppercase w-14 shrink-0">Name</span>
-                    <span className="font-semibold text-ink">{attendeeName}</span>
-                  </div>
-                </div>
-
-                <p className="mt-4 font-mono text-[11px] text-ink-3 tracking-widest select-all">
-                  {FEATURED_TICKET.id}
-                </p>
-                <p className="mt-1 text-[12px] text-ink-2">
-                  {formatCurrency(FEATURED_TICKET.price, FEATURED_TICKET.currency)}
-                </p>
-              </div>
-
-              {/* Perforated divider */}
-              <div className="hidden md:flex absolute top-0 bottom-0 left-[52%] flex-col items-center justify-between pointer-events-none">
-                <span className="w-4 h-4 rounded-full bg-paper-2 border border-line -mt-2 shrink-0" />
-                <div className="flex-1 border-l-2 border-dashed border-line my-1" />
-                <span className="w-4 h-4 rounded-full bg-paper-2 border border-line -mb-2 shrink-0" />
-              </div>
-
-              {/* Right: QR panel */}
-              <div className="md:w-[44%] flex flex-col items-center justify-center p-5 md:p-6 bg-paper-2 md:border-l border-t md:border-t-0 border-dashed border-line">
-                <div className="rounded-xl overflow-hidden p-2 bg-white shadow-sm mb-3">
-                  <QrCode value={FEATURED_TICKET.qrValue} size={180} />
-                </div>
-                <p className="text-[12px] text-ink-3 text-center mb-4">Show this at the gate</p>
-                <button className="inline-flex items-center gap-2 text-[12px] font-semibold text-ink-2 hover:text-ink px-3 py-2 rounded-lg border border-line hover:border-line-2 bg-paper hover:bg-paper-2 transition-colors">
-                  <Wallet size={13} /> Add to Apple Wallet
-                </button>
-              </div>
-            </div>
+            <EmptyState
+              icon={Ticket}
+              title="No featured ticket"
+              body="Browse events and buy your first ticket. It will appear here."
+              ctaLabel="Browse events"
+              ctaHref="/events"
+            />
           </div>
 
           {/* Upcoming tickets list */}
@@ -176,46 +67,13 @@ export default async function DashboardPage() {
             <div className="px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink">Upcoming tickets</h2>
             </div>
-            {UPCOMING_TICKETS.length === 0 ? (
-              <EmptyState
-                icon={Ticket}
-                title="No upcoming tickets"
-                body="Tickets you buy will appear here."
-                ctaLabel="Browse events"
-                ctaHref="/events"
-              />
-            ) : (
-              <>
-                <div className="divide-y divide-line">
-                  {UPCOMING_TICKETS.map((t) => (
-                    <Link
-                      key={t.id}
-                      href={t.href}
-                      className="flex items-center gap-3 p-4 md:p-5 hover:bg-paper-2 transition-colors group"
-                    >
-                      <div className="w-9 h-9 rounded-full border border-line bg-paper-2 flex items-center justify-center text-[18px] shrink-0 select-none">
-                        {t.emoji}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] font-semibold text-ink leading-snug line-clamp-1">{t.event}</p>
-                        <p className="text-[11.5px] text-ink-3 mt-0.5">
-                          {formatDateShort(t.startsAt)} &middot; {t.venue.split(",")[0]}
-                        </p>
-                      </div>
-                      <ArrowUpRight size={14} className="text-ink-3 group-hover:text-ink transition-colors shrink-0" />
-                    </Link>
-                  ))}
-                </div>
-                <div className="px-5 md:px-6 py-3.5 border-t border-line">
-                  <Link
-                    href="/tickets"
-                    className="text-[12.5px] font-semibold text-navy hover:underline inline-flex items-center gap-1"
-                  >
-                    View all tickets <ArrowUpRight size={12} />
-                  </Link>
-                </div>
-              </>
-            )}
+            <EmptyState
+              icon={Ticket}
+              title="No upcoming tickets"
+              body="Tickets you buy will appear here."
+              ctaLabel="Browse events"
+              ctaHref="/events"
+            />
           </div>
         </div>
 
@@ -224,31 +82,11 @@ export default async function DashboardPage() {
           <div className="px-5 md:px-6 py-4 border-b border-line">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent activity</h2>
           </div>
-          {ACTIVITY.length === 0 ? (
-            <EmptyState
-              icon={Activity}
-              title="No activity yet"
-              body="Your ticket purchases, refunds, and orders will appear here."
-            />
-          ) : (
-            <div className="divide-y divide-line">
-              {ACTIVITY.map((item, i) => {
-                const Icon = item.icon
-                return (
-                  <div key={i} className="flex items-start gap-3.5 px-5 md:px-6 py-4">
-                    <div className={`mt-0.5 w-8 h-8 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                      <Icon size={14} className={item.color} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13.5px] font-semibold text-ink">{item.title}</p>
-                      <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{item.sub}</p>
-                    </div>
-                    <span className="text-[11.5px] text-ink-3 whitespace-nowrap mt-0.5">{item.ago}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          <EmptyState
+            icon={Activity}
+            title="No activity yet"
+            body="Your ticket purchases, refunds, and orders will appear here."
+          />
         </div>
 
         {/* Quick actions */}

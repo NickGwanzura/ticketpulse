@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Mail, MessageSquare, MapPin, Phone, Clock, Sparkles, ArrowRight } from "lucide-react"
+import { inputBaseClass } from "@/lib/utils"
 
 const CHANNELS = [
   { icon: MessageSquare, title: "Live chat",     body: "Mon to Fri, 8:00 to 18:00 CAT", value: "Open chat",         href: "#chat" },
@@ -50,12 +51,12 @@ export default function ContactPage() {
               <div>
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Your name</label>
                 <input type="text" name="name" required placeholder="Tendai Moyo"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition" />
+                  className={inputBaseClass} />
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
                 <input type="email" name="email" required placeholder="you@example.com"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition" />
+                  className={inputBaseClass} />
               </div>
             </div>
 
@@ -70,7 +71,7 @@ export default function ContactPage() {
             <div>
               <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Message</label>
               <textarea name="message" rows={6} required placeholder="Tell us a bit more…"
-                className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition resize-none" />
+                className={`${inputBaseClass} resize-none`} />
             </div>
 
             <button type="submit"

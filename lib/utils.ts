@@ -74,3 +74,6 @@ export function vendorCategoryLabel(cat: string) {
   }
   return labels[cat] ?? cat
 }
+
+export const inputBaseClass =
+  "w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"

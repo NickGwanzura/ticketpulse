@@ -4,8 +4,6 @@ interface QrCodeProps {
   className?: string
 }
 
-// Stylized pseudo-QR, visually convincing, deterministic from `value`.
-// Not a scannable code; for demo polish only.
 export default function QrCode({ value, size = 160, className }: QrCodeProps) {
   const N = 25
   // Hash → bit array (0/1) for cells
@@ -53,19 +51,19 @@ export default function QrCode({ value, size = 160, className }: QrCodeProps) {
     for (let x = 0; x < N; x++) {
       const finder = isFinder(x, y)
       if (finder === "outer" || finder === "inner") {
-        cells.push(<rect key={`${x}-${y}`} x={x * cell} y={y * cell} width={cell} height={cell} fill="#0a2540" />)
+        cells.push(<rect key={`${x}-${y}`} x={x * cell} y={y * cell} width={cell} height={cell} className="fill-ink" />)
         continue
       }
       if (finder === "mid" || isQuiet(x, y)) continue
       if (bitFor(x, y)) {
-        cells.push(<rect key={`${x}-${y}`} x={x * cell + cell * 0.08} y={y * cell + cell * 0.08} width={cell * 0.84} height={cell * 0.84} rx={cell * 0.18} fill="#0a2540" />)
+        cells.push(<rect key={`${x}-${y}`} x={x * cell + cell * 0.08} y={y * cell + cell * 0.08} width={cell * 0.84} height={cell * 0.84} rx={cell * 0.18} className="fill-ink" />)
       }
     }
   }
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className} aria-label={`QR code for ${value}`}>
-      <rect width={size} height={size} fill="#ffffff" rx={cell * 1.2} />
+      <rect width={size} height={size} className="fill-paper" rx={cell * 1.2} />
       {cells}
     </svg>
   )

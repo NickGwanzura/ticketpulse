@@ -4,11 +4,11 @@ import { useState } from "react"
 import { Sparkles, Loader } from "lucide-react"
 
 const PURPOSES = [
-  { value: "reminder", label: "📅 Event reminder" },
-  { value: "thank_you", label: "🙏 Thank you" },
-  { value: "announcement", label: "📢 Announcement" },
-  { value: "update", label: "🔄 Update" },
-  { value: "custom", label: "✏️ Custom" },
+  { value: "reminder", label: "Event reminder" },
+  { value: "thank_you", label: "Thank you" },
+  { value: "announcement", label: "Announcement" },
+  { value: "update", label: "Update" },
+  { value: "custom", label: "Custom" },
 ] as const
 
 interface Props {

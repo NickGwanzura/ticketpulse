@@ -110,12 +110,12 @@ export default async function ComingSoonPage({
         style={{ animationDelay: "240ms" }}
       >
         <div className="h-14 bg-gradient-to-br from-violet-50 to-fuchsia-50 flex items-center justify-center">
-          <span className="text-2xl">🎵</span>
+          <Ticket size={24} className="text-violet-500" />
         </div>
         <div className="p-3">
           <p className="text-[9px] font-semibold tracking-[0.18em] uppercase text-violet-700 mb-0.5">Ticket</p>
-          <p className="text-[11px] font-semibold tracking-tight text-ink truncate">Rumble in SA</p>
-          <p className="text-[10px] text-ink-3 mt-0.5">Sun 17 May · Pretoria</p>
+          <p className="text-[11px] font-semibold tracking-tight text-ink truncate">Your next event</p>
+          <p className="text-[10px] text-ink-3 mt-0.5">Browse upcoming events</p>
         </div>
       </div>
 

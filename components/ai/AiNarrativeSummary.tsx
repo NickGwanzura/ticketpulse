@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { BarChart3, RefreshCw } from "lucide-react"
+import { useAiGenerate } from "./use-ai-generate"
 
 interface Props {
   totalRevenue: number
@@ -13,25 +13,10 @@ interface Props {
 }
 
 export default function AiNarrativeSummary(props: Props) {
-  const [narrative, setNarrative] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { data: result, loading, error, generate } = useAiGenerate<{ narrative: string }>()
 
-  const generate = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/ai/narrative", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(props),
-      })
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      setNarrative(data.narrative)
-    } catch {
-      setNarrative("Could not generate narrative.")
-    } finally {
-      setLoading(false)
-    }
+  const handleGenerate = () => {
+    generate("/api/ai/narrative", props)
   }
 
   return (
@@ -42,16 +27,18 @@ export default function AiNarrativeSummary(props: Props) {
           <h3 className="text-[14px] font-semibold tracking-tight text-ink">AI Narrative Summary</h3>
         </div>
         <button
-          onClick={generate}
+          onClick={handleGenerate}
           disabled={loading}
           className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-green-700 hover:text-green-900 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          {narrative ? "Refresh" : "Generate"}
+          {result ? "Refresh" : "Generate"}
         </button>
       </div>
 
-      {!narrative && !loading && (
+      {error && <p className="text-[12px] text-rose-600 mb-2">{error}</p>}
+
+      {!result && !loading && (
         <p className="text-[12.5px] text-ink-2 leading-relaxed">
           Click <strong>Generate</strong> for an AI-powered narrative of your analytics.
         </p>
@@ -64,8 +51,8 @@ export default function AiNarrativeSummary(props: Props) {
         </div>
       )}
 
-      {narrative && !loading && (
-        <p className="text-[12.5px] text-ink-2 leading-relaxed">{narrative}</p>
+      {result && !loading && (
+        <p className="text-[12.5px] text-ink-2 leading-relaxed">{result.narrative}</p>
       )}
     </div>
   )

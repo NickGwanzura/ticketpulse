@@ -17,7 +17,7 @@ import {
   type UploadKind,
 } from "@/lib/upload-limits"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// Types
 
 type AspectRatio = "square" | "wide" | "portrait" | "free"
 
@@ -61,7 +61,7 @@ type UploadState = {
   error?: string
 }
 
-// ─── Utilities ───────────────────────────────────────────────────────────────
+// Utilities
 
 const ASPECT_CLASS: Record<AspectRatio, string> = {
   square:   "aspect-square",
@@ -95,7 +95,6 @@ function uploadToR2(uploadUrl: string, file: File, onProgress: (p: number) => vo
   })
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ImageUploader(props: Props) {
   const {
@@ -129,7 +128,7 @@ export default function ImageUploader(props: Props) {
   const acceptAttr = ALLOWED_IMAGE_MIME.join(",")
   const triggerDisabled = !!disabled || remaining === 0
 
-  // ── Emit changes ───────────────────────────────────────────────────────────
+  // Emit changes
   const emit = useCallback((next: string[]) => {
     if (multiple) {
       props.onValuesChange?.(next)
@@ -138,7 +137,7 @@ export default function ImageUploader(props: Props) {
     }
   }, [multiple, props])
 
-  // ── File processing ────────────────────────────────────────────────────────
+  // File processing
   const processFiles = useCallback(async (fileList: FileList | File[]) => {
     const files = Array.from(fileList).slice(0, remaining)
     if (files.length === 0) return
@@ -197,7 +196,6 @@ export default function ImageUploader(props: Props) {
         // 3) Mark complete & append to values
         setUploads((u) => u.filter((it) => it.id !== id))
         // Snapshot current items at the time of completion to avoid races.
-        // We re-read from props by computing inside the setter chain.
         if (multiple) {
           const current = (props.values ?? []) as string[]
           props.onValuesChange?.([...current, publicUrl].slice(0, maxItems))
@@ -211,7 +209,7 @@ export default function ImageUploader(props: Props) {
     }
   }, [remaining, limit, kind, vendorId, eventId, multiple, maxItems, props])
 
-  // ── Drag-drop on the dropzone ──────────────────────────────────────────────
+  // Drag-drop on the dropzone
   const onDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setDragOver(false)
@@ -228,11 +226,11 @@ export default function ImageUploader(props: Props) {
     e.target.value = "" // allow re-selecting the same file
   }
 
-  // ── Reorder via HTML5 drag-and-drop (multi mode) ───────────────────────────
+  // Reorder via HTML5 drag-and-drop (multi mode)
   const onItemDragStart = (i: number) => (e: DragEvent<HTMLDivElement>) => {
     setDraggingIndex(i)
     e.dataTransfer.effectAllowed = "move"
-    // Required for Firefox to begin a drag operation
+    // Required for Firefox drag
     e.dataTransfer.setData("text/plain", String(i))
   }
   const onItemDragOver = (i: number) => (e: DragEvent<HTMLDivElement>) => {
@@ -251,7 +249,7 @@ export default function ImageUploader(props: Props) {
   }
   const onItemDragEnd = () => setDraggingIndex(null)
 
-  // ── Item actions ───────────────────────────────────────────────────────────
+  // Item actions
   const removeAt = (i: number) => {
     const next = items.slice()
     next.splice(i, 1)
@@ -265,7 +263,6 @@ export default function ImageUploader(props: Props) {
     emit(next)
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className={cn("flex flex-col gap-2.5", className)}>
       {label && (

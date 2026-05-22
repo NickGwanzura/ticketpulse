@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Sparkles, ArrowRight, Check, ShieldCheck, Wallet, Calendar } from "lucide-react"
+import { inputBaseClass } from "@/lib/utils"
 
 const PERKS = [
   { icon: Wallet,      title: "Verified payouts",  body: "USD, ZAR, EcoCash. Released on event completion, no chasing organizers." },
@@ -72,7 +73,7 @@ export default function VendorsApplyPage() {
                   type="text"
                   required
                   placeholder="e.g. Mama's Kitchen"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className={inputBaseClass}
                 />
               </div>
 
@@ -101,7 +102,7 @@ export default function VendorsApplyPage() {
                     type="text"
                     required
                     placeholder="Harare"
-                    className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className={inputBaseClass}
                   />
                 </div>
                 <div>
@@ -110,7 +111,7 @@ export default function VendorsApplyPage() {
                     type="tel"
                     required
                     placeholder="+263 77…"
-                    className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className={inputBaseClass}
                   />
                 </div>
               </div>
@@ -121,7 +122,7 @@ export default function VendorsApplyPage() {
                   type="email"
                   required
                   placeholder="hello@yourbusiness.co.zw"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className={inputBaseClass}
                 />
               </div>
 
@@ -131,7 +132,7 @@ export default function VendorsApplyPage() {
                   rows={4}
                   required
                   placeholder="What do you offer, who are your past clients, what makes you the right pick?"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition resize-none"
+                  className={`${inputBaseClass} resize-none`}
                 />
               </div>
 
@@ -140,7 +141,7 @@ export default function VendorsApplyPage() {
                 <input
                   type="url"
                   placeholder="https://…"
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className={inputBaseClass}
                 />
               </div>
 

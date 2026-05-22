@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { Sparkles, RefreshCw } from "lucide-react"
+import { useAiGenerate } from "./use-ai-generate"
 
 interface Brief {
   summary: string
@@ -21,25 +21,10 @@ export default function AiBriefCard({
   topCategory: string
   topCity: string
 }) {
-  const [brief, setBrief] = useState<Brief | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { data: brief, loading, error, generate } = useAiGenerate<Brief>()
 
-  const generate = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/ai/brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activeEvents, totalOrganizers, totalRevenue, topCategory, topCity }),
-      })
-      if (!res.ok) throw new Error()
-      const data = await res.json()
-      setBrief(data)
-    } catch {
-      setBrief(null)
-    } finally {
-      setLoading(false)
-    }
+  const handleGenerate = () => {
+    generate("/api/ai/brief", { activeEvents, totalOrganizers, totalRevenue, topCategory, topCity })
   }
 
   return (
@@ -50,7 +35,7 @@ export default function AiBriefCard({
           <h3 className="text-[14px] font-semibold tracking-tight text-ink">AI Platform Brief</h3>
         </div>
         <button
-          onClick={generate}
+          onClick={handleGenerate}
           disabled={loading}
           className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-blue hover:text-green-700 transition-colors disabled:opacity-50"
         >
@@ -58,6 +43,8 @@ export default function AiBriefCard({
           {brief ? "Refresh" : "Generate"}
         </button>
       </div>
+
+      {error && <p className="text-[12px] text-rose-600 mb-2">{error}</p>}
 
       {!brief && !loading && (
         <p className="text-[12.5px] text-ink-2 leading-relaxed">
