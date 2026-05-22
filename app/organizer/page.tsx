@@ -188,6 +188,7 @@ export default async function OrganizerPage() {
       title: events.title,
       category: events.category,
       venue: events.venue,
+      city: events.city,
       startsAt: events.startsAt,
       status: events.status,
     })

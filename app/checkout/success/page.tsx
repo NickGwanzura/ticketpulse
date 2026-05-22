@@ -29,13 +29,30 @@ function CheckoutSuccessInner() {
   const id = params.get("id") ?? ""
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
+  const [fetching, setFetching] = useState(false)
 
   useEffect(() => {
     if (!ready) return
-    queueMicrotask(() => { setOrder(getOrder(id)) })
+
+    // Try localStorage first
+    const local = getOrder(id)
+    if (local) {
+      setOrder(local)
+      return
+    }
+
+    // Fall back to server-side API
+    setFetching(true)
+    fetch(`/api/orders/${id}/data`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: OrderRecord | null) => {
+        setOrder(data)
+        setFetching(false)
+      })
+      .catch(() => setFetching(false))
   }, [ready, id, getOrder])
 
-  if (!ready) {
+  if (!ready || fetching) {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <div className="h-12 w-12 mx-auto bg-paper-2 rounded-2xl animate-pulse" />
@@ -48,6 +65,7 @@ function CheckoutSuccessInner() {
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</p>
+        <p className="mt-1 text-[13px] text-ink-3">If you just completed a purchase, check your email — it may take a moment to appear here.</p>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-navy-700 transition">
           See your orders <ArrowRight size={14} />
         </Link>

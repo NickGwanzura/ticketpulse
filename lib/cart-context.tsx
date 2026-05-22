@@ -45,7 +45,7 @@ interface CartContextValue {
   removeItem: (key: string) => void
   updateQty: (key: string, qty: number) => void
   clear: () => void
-  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"]) => OrderRecord
+  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string) => OrderRecord
   getOrders: () => OrderRecord[]
   getOrder: (id: string) => OrderRecord | null
 }
@@ -130,9 +130,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [getOrders])
 
   const placeOrder = useCallback(
-    (contact: OrderRecord["contact"], payment: OrderRecord["payment"]): OrderRecord => {
+    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string): OrderRecord => {
       const order: OrderRecord = {
-        id: makeOrderId(),
+        id: orderId ?? makeOrderId(),
         createdAt: new Date().toISOString(),
         status: "paid",
         items: [...items],

@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, MailCheck, RefreshCw, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, MailCheck, RefreshCw, Loader2, Search } from "lucide-react"
 import QrCode from "@/components/QrCode"
 
 type AwaitingStatus = {
@@ -96,17 +96,34 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const awaitingFlag = search.get("awaiting") === "1"
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
+  const [fetching, setFetching] = useState(false)
 
   useEffect(() => {
     if (!ready) return
-    queueMicrotask(() => { setOrder(getOrder(id)) })
+
+    // Try localStorage first
+    const local = getOrder(id)
+    if (local) {
+      setOrder(local)
+      return
+    }
+
+    // Fall back to server-side API
+    setFetching(true)
+    fetch(`/api/orders/${id}/data`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: OrderRecord | null) => {
+        setOrder(data)
+        setFetching(false)
+      })
+      .catch(() => setFetching(false))
   }, [ready, id, getOrder])
 
   if (awaitingFlag) {
     return <AwaitingVerification orderId={id} />
   }
 
-  if (!ready) {
+  if (!ready || fetching) {
     return (
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-20">
         <div className="h-8 w-40 bg-paper-2 rounded animate-pulse mb-6" />
@@ -117,8 +134,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   if (!order) {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
+        <div className="inline-flex w-14 h-14 items-center justify-center rounded-2xl bg-paper-2 ring-1 ring-line mb-5">
+          <Search size={22} className="text-ink-3" />
+        </div>
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
+        <p className="mt-1 text-[13px] text-ink-3">If you just purchased, check your email — it may take a moment to appear here.</p>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-navy-700 transition">
           <ArrowLeft size={14} /> All orders
         </Link>

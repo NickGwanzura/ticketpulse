@@ -40,6 +40,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   const { id } = use(params)
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
+  const [fetching, setFetching] = useState(false)
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({})
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const [downloadAll, setDownloadAll] = useState(false)
@@ -47,7 +48,23 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     if (!ready) return
-    queueMicrotask(() => setOrder(getOrder(id)))
+
+    // Try localStorage first
+    const local = getOrder(id)
+    if (local) {
+      setOrder(local)
+      return
+    }
+
+    // Fall back to server-side API
+    setFetching(true)
+    fetch(`/api/orders/${id}/data`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: OrderRecord | null) => {
+        setOrder(data)
+        setFetching(false)
+      })
+      .catch(() => setFetching(false))
   }, [ready, id, getOrder])
 
   // Generate real QR code data URLs for each ticket
@@ -149,7 +166,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     }
   }, [order])
 
-  if (!ready) {
+  if (!ready || fetching) {
     return (
       <main className="min-h-screen bg-[#f4f7fa] px-5 py-20">
         <div className="h-8 w-40 bg-white/60 rounded animate-pulse mx-auto" />
@@ -162,6 +179,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
       <main className="min-h-screen bg-[#f4f7fa] px-5 py-20 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-[#0a2540]">Order not found</h1>
         <p className="mt-2 text-[14px] text-[#5a6d7c]">No order with id <span className="font-mono">{id}</span>.</p>
+        <p className="mt-1 text-[13px] text-[#5a6d7c]">If you just purchased, check your email — it may take a moment to appear here.</p>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0a2540] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1a3550] transition">
           <ArrowLeft size={14} /> All orders
         </Link>

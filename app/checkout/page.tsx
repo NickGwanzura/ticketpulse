@@ -59,6 +59,7 @@ export default function CheckoutPage() {
           placeOrder(
             { name: pollingContact.current.name, email: pollingContact.current.email, phone: pollingContact.current.phone },
             { method: pollingContact.current.method },
+            pollingOrderId,
           )
           router.push(`/orders/${pollingOrderId}?awaiting=1`)
           return
@@ -166,6 +167,7 @@ export default function CheckoutPage() {
         placeOrder(
           { name: form.name, email: form.email, phone: form.phone },
           { method: form.payment },
+          data.orderId,
         )
         window.location.href = data.redirectUrl
         return
@@ -177,6 +179,7 @@ export default function CheckoutPage() {
           placeOrder(
             { name: form.name, email: form.email, phone: form.phone },
             { method: form.payment },
+            data.orderId,
           )
           router.push(`/orders/${data.orderId}?awaiting=1`)
           return
@@ -190,6 +193,7 @@ export default function CheckoutPage() {
       placeOrder(
         { name: form.name, email: form.email, phone: form.phone },
         { method: form.payment },
+        data.orderId,
       )
       router.push(`/orders/${data.orderId}?awaiting=1`)
     } catch (err) {

@@ -3,10 +3,14 @@
 import { revalidatePath } from "next/cache"
 import { eq } from "drizzle-orm"
 
-import { auth } from "@/auth"
+import { auth, signIn } from "@/auth"
 import { db } from "@/db"
-import { events, users } from "@/db/schema"
-import { sendEmail, adminEmail } from "@/lib/email"
+import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
+import {
+  sendEmail,
+  adminEmail,
+  sendOrderConfirmationEmail,
+} from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
 
 /**
@@ -136,6 +140,114 @@ export async function unverifyUserEmailAction(userId: string) {
 
   revalidatePath("/admin/users")
   revalidatePath("/admin")
+}
+
+/**
+ * Resend the order confirmation or verification email for an order.
+ *
+ * - Paid orders: resends the branded ticket confirmation email.
+ * - Awaiting-verification orders: resends the verification magic link.
+ * - Other statuses: throws an error.
+ */
+export async function resendOrderEmailAction(orderId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) throw new Error("Order not found")
+
+  const recipient = order.guestEmail
+  if (!recipient) throw new Error("Order has no guest email")
+
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+
+  // ── Awaiting verification → resend magic link ───────────────────────────
+  if (order.status === "awaiting_verification") {
+    const finalizeUrl = `${appUrl}/api/orders/${orderId}/finalize`
+
+    await signIn("resend", {
+      email: recipient,
+      redirectTo: finalizeUrl,
+      redirect: false,
+    })
+
+    await db
+      .update(orders)
+      .set({ verificationSentAt: new Date(), updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+
+    revalidatePath("/admin/orders")
+    return
+  }
+
+  // ── Paid → resend order confirmation ────────────────────────────────────
+  if (order.status === "paid") {
+    const [ev] = await db
+      .select({
+        title: events.title,
+        startsAt: events.startsAt,
+        venue: events.venue,
+      })
+      .from(events)
+      .where(eq(events.id, order.eventId))
+      .limit(1)
+
+    if (!ev) throw new Error("Event not found")
+
+    const items = await db
+      .select({
+        qty: orderItems.quantity,
+        unit: orderItems.unitPrice,
+        total: orderItems.total,
+        tierName: ticketTiers.name,
+      })
+      .from(orderItems)
+      .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+      .where(eq(orderItems.orderId, orderId))
+
+    const lines = items.map((i) => ({
+      label: i.tierName ?? "Ticket",
+      qty: i.qty,
+      amount: `${i.total} ${order.currency ?? "USD"}`,
+    }))
+
+    const eventDate = ev.startsAt
+      ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "TBA"
+
+    await sendOrderConfirmationEmail({
+      to: recipient,
+      buyerName: order.guestName,
+      orderId: orderId,
+      eventTitle: ev.title,
+      eventDate,
+      eventVenue: ev.venue ?? undefined,
+      lines,
+      total: String(order.totalAmount ?? "0"),
+      currency: order.currency ?? "USD",
+      ticketUrl: `${appUrl}/orders/${orderId}`,
+    })
+
+    revalidatePath("/admin/orders")
+    return
+  }
+
+  throw new Error(
+    `Cannot resend email for order with status "${order.status}". Only paid or awaiting-verification orders are supported.`,
+  )
 }
 
 /**
