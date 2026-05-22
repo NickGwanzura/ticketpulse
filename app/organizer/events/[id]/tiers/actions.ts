@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import { eq, inArray, sql } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { z } from "zod"
 
 import { auth } from "@/auth"
@@ -185,19 +185,12 @@ export async function deleteTierAction(formData: FormData): Promise<void> {
   const guard = await requireTierOwnership(tierId)
   if (!guard.ok) redirect(guard.redirectTo)
 
-  // 1. Cancel any tickets linked to this tier
-  const tierTickets = await db
-    .select({ id: tickets.id })
-    .from(tickets)
+  // 1. Delete any tickets linked to this tier (tickets.tier_id is NOT NULL
+  //    with no onDelete cascade, so they must be removed before the tier can
+  //    be deleted)
+  await db
+    .delete(tickets)
     .where(eq(tickets.tierId, tierId))
-
-  if (tierTickets.length > 0) {
-    const ticketIds = tierTickets.map((t) => t.id)
-    await db
-      .update(tickets)
-      .set({ status: "cancelled" })
-      .where(inArray(tickets.id, ticketIds))
-  }
 
   // 2. Nullify order_items.tier_id references so the FK constraint doesn't block deletion
   await db

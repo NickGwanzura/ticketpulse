@@ -225,9 +225,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                       <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase">Ticket {i + 1} of {line.qty}</p>
                       <p className="mt-1.5 text-[15.5px] font-semibold tracking-tight text-ink line-clamp-1">{line.eventTitle}</p>
                       <p className="text-[13px] text-ink-2">{line.tierName}</p>
-                      <p className="mt-3 text-[12.5px] text-ink-3 inline-flex items-center gap-1.5">
-                        <Calendar size={12} /> Issued {formatDate(order.createdAt)}
-                      </p>
+                      {order.status === "paid" && (
+                        <p className="mt-3 text-[12.5px] text-ink-3 inline-flex items-center gap-1.5">
+                          <Calendar size={12} /> Issued {formatDate(order.createdAt)}
+                        </p>
+                      )}
                       <Link href={`/events/${line.eventSlug}`} className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all">
                         View event <ArrowUpRight size={12} />
                       </Link>
