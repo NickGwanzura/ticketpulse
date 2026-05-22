@@ -21,19 +21,19 @@
   --color-navy-700: #143d6b;
   --color-navy-600: #1a4f8c;
 
-  --color-success: #8DD32F;
+  --color-success: #131132;
 
-  --color-green: #8DD32F;
-  --color-green-50: #F0FAE5;
-  --color-green-100: #DBF2C4;
-  --color-green-200: #BDE88E;
-  --color-green-300: #A8E06A;
-  --color-green-400: #97D94A;
-  --color-green-500: #8DD32F;
-  --color-green-600: #5A9418;
-  --color-green-700: #427010;
-  --color-green-800: #2B4C08;
-  --color-green-900: #1A3005;
+  --color-green: #131132;
+  --color-green-50: #EEEDF3;
+  --color-green-100: #D4D3E2;
+  --color-green-200: #B0AEC9;
+  --color-green-300: #8C89B0;
+  --color-green-400: #4A4870;
+  --color-green-500: #131132;
+  --color-green-600: #0D0B26;
+  --color-green-700: #09071A;
+  --color-green-800: #060410;
+  --color-green-900: #030207;
 }
 
 html { color-scheme: light; }
@@ -81,7 +81,7 @@ body {
    follows the element's border-radius naturally. */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-green-600), 0 0 0 4px rgba(90, 148, 24, 0.15);
+  box-shadow: 0 0 0 2px var(--color-green-600), 0 0 0 4px rgba(19, 17, 50, 0.15);
   border-radius: 6px;
 }
 
@@ -368,7 +368,7 @@ html { scroll-padding-top: 5rem; }
 .tp-glow-ring:focus-visible,
 .tp-glow-ring:hover {
   border-color: var(--color-green-600);
-  box-shadow: 0 0 0 3px rgba(90, 148, 24, 0.15);
+  box-shadow: 0 0 0 3px rgba(19, 17, 50, 0.15);
 }
 
 /* Animated progress fill — apply origin-left so transform: scaleX animates
@@ -401,8 +401,8 @@ html { scroll-padding-top: 5rem; }
 
 /* Soft pulse glow — for active indicators, live dots, scan feedback. */
 @keyframes tp-glow-pulse {
-  0%, 100% { box-shadow: 0 0 6px 2px rgba(90, 148, 24, 0.15); }
-  50%      { box-shadow: 0 0 14px 4px rgba(90, 148, 24, 0.25); }
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(19, 17, 50, 0.15); }
+  50%      { box-shadow: 0 0 14px 4px rgba(19, 17, 50, 0.25); }
 }
 .tp-glow-pulse {
   animation: tp-glow-pulse 2.4s ease-in-out infinite;
