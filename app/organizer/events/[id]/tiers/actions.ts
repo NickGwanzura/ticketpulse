@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, ticketTiers, tickets } from "@/db/schema"
+import { events, ticketTiers, tickets, orderItems } from "@/db/schema"
 
 async function requireEventOwnership(eventId: string) {
   const session = await auth()
@@ -185,7 +185,7 @@ export async function deleteTierAction(formData: FormData): Promise<void> {
   const guard = await requireTierOwnership(tierId)
   if (!guard.ok) redirect(guard.redirectTo)
 
-  // Cancel any tickets associated with this tier first, then delete the tier.
+  // 1. Cancel any tickets linked to this tier
   const tierTickets = await db
     .select({ id: tickets.id })
     .from(tickets)
@@ -193,14 +193,19 @@ export async function deleteTierAction(formData: FormData): Promise<void> {
 
   if (tierTickets.length > 0) {
     const ticketIds = tierTickets.map((t) => t.id)
-    // Cancel all non-cancelled, non-refunded tickets
     await db
       .update(tickets)
       .set({ status: "cancelled" })
       .where(inArray(tickets.id, ticketIds))
   }
 
-  // Delete the tier (cascading delete handles remaining references)
+  // 2. Nullify order_items.tier_id references so the FK constraint doesn't block deletion
+  await db
+    .update(orderItems)
+    .set({ tierId: null })
+    .where(eq(orderItems.tierId, tierId))
+
+  // 3. Delete the tier itself
   await db.delete(ticketTiers).where(eq(ticketTiers.id, tierId))
   revalidatePath(`/organizer/events/${eventId}/tiers`)
 }
