@@ -98,7 +98,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
         />
       )}
 
-      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-20 flex items-center gap-3 md:gap-6">
+      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-24 flex items-center gap-3 md:gap-6">
         {/* Brand */}
         <Link
           href="/"
@@ -106,7 +106,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           aria-label="TicketPulse home"
         >
           <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-[76px] w-auto" />
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-[86px] w-auto" />
           </span>
         </Link>
 
@@ -290,7 +290,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
       {eventsOpen && (
         <>
           <div className="fixed inset-0 z-30 bg-ink/10 backdrop-blur-[1px]" onClick={() => setEventsOpen(false)} aria-hidden />
-          <div className="absolute left-0 right-0 top-20 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
+          <div className="absolute left-0 right-0 top-24 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
             <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8">
               <div>
                 <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">By category</p>

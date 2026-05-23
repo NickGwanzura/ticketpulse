@@ -276,7 +276,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
 }
 
 /* Subtle scroll-margin so anchor jumps clear the sticky navbar. */
-html { scroll-padding-top: 5rem; }
+html { scroll-padding-top: 6rem; }
 
 /* Dotted hover underline on inline copy links inside long-form prose. */
 .prose a:not(.button) {

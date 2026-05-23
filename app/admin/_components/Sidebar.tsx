@@ -24,7 +24,7 @@ export default function Sidebar({ name, email }: { name: string; email: string }
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex sticky top-20 self-start h-[calc(100vh-5rem)] w-[248px] shrink-0 flex-col border-r border-line bg-paper">
+      <aside className="hidden lg:flex sticky top-24 self-start h-[calc(100vh-6rem)] w-[248px] shrink-0 flex-col border-r border-line bg-paper">
         <div className="px-5 py-5 border-b border-line">
           <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Admin</p>
           <div className="flex items-center gap-2.5">
@@ -69,7 +69,7 @@ export default function Sidebar({ name, email }: { name: string; email: string }
       </aside>
 
       {/* Mobile/tablet top tab strip */}
-      <div className="lg:hidden sticky top-20 z-30 bg-paper/90 backdrop-blur-xl border-b border-line">
+      <div className="lg:hidden sticky top-24 z-30 bg-paper/90 backdrop-blur-xl border-b border-line">
         <div className="flex items-center justify-between px-5 py-3 border-b border-line">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-navy text-white shrink-0">

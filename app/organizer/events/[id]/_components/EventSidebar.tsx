@@ -59,7 +59,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex sticky top-20 self-start h-[calc(100vh-5rem)] w-[232px] shrink-0 flex-col border-r border-line bg-paper">
+      <aside className="hidden lg:flex sticky top-24 self-start h-[calc(100vh-6rem)] w-[232px] shrink-0 flex-col border-r border-line bg-paper">
         {/* Event header */}
         <div className="px-4 py-4 border-b border-line">
           <Link
@@ -111,7 +111,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
       </aside>
 
       {/* Mobile/tablet top tab strip */}
-      <div className="lg:hidden sticky top-20 z-30 bg-paper/90 backdrop-blur-xl border-b border-line">
+      <div className="lg:hidden sticky top-24 z-30 bg-paper/90 backdrop-blur-xl border-b border-line">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line">
           <Link
             href="/organizer"
