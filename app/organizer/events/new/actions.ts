@@ -22,6 +22,8 @@ const CreateSchema = z.object({
   endsAt:        z.string().optional(),
   tags:          z.string().optional(),
   googleMapsUrl: z.string().trim().url("Must be a valid URL").max(500).optional().or(z.literal("")),
+  lat:           z.string().trim().optional(),
+  lng:           z.string().trim().optional(),
 })
 
 export type CreateEventState = {
@@ -68,6 +70,8 @@ export async function createEventAction(
     endsAt:        formData.get("endsAt")?.toString() ?? undefined,
     tags:          formData.get("tags")?.toString() ?? undefined,
     googleMapsUrl: formData.get("googleMapsUrl")?.toString() ?? undefined,
+    lat:           formData.get("lat")?.toString() ?? undefined,
+    lng:           formData.get("lng")?.toString() ?? undefined,
   }
 
   const parsed = CreateSchema.safeParse(raw)
@@ -102,13 +106,26 @@ export async function createEventAction(
 
   const slug = await generateUniqueSlug(data.title)
 
-  // Auto-geocode from the venue/address/city/country
-  const { lat, lng } = await geocodeFromLocation(
-    data.venue,
-    data.city,
-    data.country,
-    data.address,
-  )
+  // Prefer client-provided coords; fall back to server-side geocode
+  let lat: string | null = null
+  let lng: string | null = null
+  if (
+    data.lat && data.lng &&
+    !isNaN(parseFloat(data.lat)) &&
+    !isNaN(parseFloat(data.lng))
+  ) {
+    lat = data.lat
+    lng = data.lng
+  } else {
+    const result = await geocodeFromLocation(
+      data.venue,
+      data.city,
+      data.country,
+      data.address,
+    )
+    lat = result.lat?.toString() ?? null
+    lng = result.lng?.toString() ?? null
+  }
 
   const [created] = await db
     .insert(events)
@@ -123,8 +140,8 @@ export async function createEventAction(
       city:          data.city,
       country:       data.country,
       address:       data.address || null,
-      lat:           lat?.toString() ?? null,
-      lng:           lng?.toString() ?? null,
+      lat,
+      lng,
       startsAt,
       endsAt,
       tags:          tagList,

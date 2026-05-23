@@ -316,17 +316,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             </div>
 
             {/* ── Venue map ── */}
-            {(row.lat ?? row.lng ?? row.googleMapsUrl) && (
-              <VenueMap
-                lat={row.lat}
-                lng={row.lng}
-                venue={row.venue}
-                address={row.address}
-                city={row.city}
-                country={row.country}
-                googleMapsUrl={row.googleMapsUrl}
-              />
-            )}
+            <VenueMap
+              lat={row.lat}
+              lng={row.lng}
+              venue={row.venue}
+              address={row.address}
+              city={row.city}
+              country={row.country}
+              googleMapsUrl={row.googleMapsUrl}
+            />
 
             <MerchSection items={[]} eventTitle={row.title} />
             <TransportSection routes={[]} />

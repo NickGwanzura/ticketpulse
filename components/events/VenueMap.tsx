@@ -16,7 +16,10 @@ function hasValidCoords(lat: unknown, lng: unknown): lat is number | string {
   if (lat == null || lng == null) return false
   const n1 = typeof lat === "string" ? parseFloat(lat) : (lat as number)
   const n2 = typeof lng === "string" ? parseFloat(lng) : (lng as number)
-  return !isNaN(n1) && !isNaN(n2)
+  if (isNaN(n1) || isNaN(n2)) return false
+  // Reject 0,0 — it's almost always a placeholder/default, not a real location
+  if (n1 === 0 && n2 === 0) return false
+  return true
 }
 
 /**

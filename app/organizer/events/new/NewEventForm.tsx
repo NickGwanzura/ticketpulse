@@ -1,11 +1,13 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
 import Link from "next/link"
 import { ArrowLeft, ImageIcon, Save, Sparkles, Loader2, MapPin } from "lucide-react"
 
 import Button from "@/components/ui/Button"
+import VenueMap from "@/components/events/VenueMap"
+import { geocodeFromLocation } from "@/lib/geocode"
 import { createEventAction, type CreateEventState } from "./actions"
 import AiModerateButton from "@/components/ai/AiModerateButton"
 import AiTagSuggest from "@/components/ai/AiTagSuggest"
@@ -60,6 +62,48 @@ export default function NewEventForm() {
   const [genDesc, setGenDesc] = useState(false)
   const [genLoc, setGenLoc] = useState(false)
   const [tags, setTags] = useState<string[]>([])
+
+  // Location fields (controlled for live geocoding preview)
+  const [venue, setVenue] = useState("")
+  const [city, setCity] = useState("")
+  const [country, setCountry] = useState("Zimbabwe")
+  const [address, setAddress] = useState("")
+
+  // Live-geocoded coordinates (from client-side Nominatim call)
+  const [liveLat, setLiveLat] = useState<string | null>(null)
+  const [liveLng, setLiveLng] = useState<string | null>(null)
+  const [geocoding, setGeocoding] = useState(false)
+  const [geocodeNotFound, setGeocodeNotFound] = useState(false)
+
+  const searchQuery = [venue, address, city, country].filter(Boolean).join(", ")
+
+  // Debounce geocoding: call Nominatim 600 ms after the user stops typing
+  const geocodeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  useEffect(() => {
+    if (!venue || !city) {
+      setLiveLat(null)
+      setLiveLng(null)
+      setGeocodeNotFound(false)
+      return
+    }
+
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
+
+    geocodeTimer.current = setTimeout(async () => {
+      setGeocoding(true)
+      setGeocodeNotFound(false)
+      const result = await geocodeFromLocation(venue, city, country, address)
+      setLiveLat(result.lat?.toString() ?? null)
+      setLiveLng(result.lng?.toString() ?? null)
+      setGeocodeNotFound(result.lat === null || result.lng === null)
+      setGeocoding(false)
+    }, 600)
+
+    return () => {
+      if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
+    }
+  }, [venue, city, country, address])
 
   async function handleGenerateDesc(form: HTMLFormElement) {
     const fd = new FormData(form)
@@ -210,6 +254,11 @@ export default function NewEventForm() {
           />
         </div>
 
+        {/* Location */}
+        <div className="md:col-span-2 mt-2">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Location</p>
+        </div>
+
         <div>
           <label htmlFor="venue" className="block text-[13px] font-medium text-ink mb-1.5">Venue</label>
           <input
@@ -219,6 +268,8 @@ export default function NewEventForm() {
             required
             maxLength={160}
             placeholder="HICC"
+            value={venue}
+            onChange={(e) => setVenue(e.target.value)}
             className={inputCls(!!errs.venue)}
           />
           <FieldError message={errs.venue} />
@@ -233,6 +284,8 @@ export default function NewEventForm() {
             required
             maxLength={80}
             placeholder="Harare"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
             className={inputCls(!!errs.city)}
           />
           <FieldError message={errs.city} />
@@ -244,8 +297,9 @@ export default function NewEventForm() {
             id="country"
             name="country"
             type="text"
-            defaultValue="Zimbabwe"
             maxLength={80}
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
             className={inputCls(!!errs.country)}
           />
           <FieldError message={errs.country} />
@@ -259,6 +313,8 @@ export default function NewEventForm() {
             type="text"
             maxLength={240}
             placeholder="Street, suburb"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
             className={inputCls()}
           />
         </div>
@@ -280,6 +336,49 @@ export default function NewEventForm() {
             )}
             {genLoc ? "Looking up location…" : "Suggest country & address from venue"}
           </button>
+        </div>
+
+        {/* Hidden lat/lng forwarded to server action */}
+        <input type="hidden" name="lat" value={liveLat ?? ""} />
+        <input type="hidden" name="lng" value={liveLng ?? ""} />
+
+        <div className="md:col-span-2">
+          {geocoding && (
+            <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
+              <Loader2 size={20} className="mx-auto mb-2 text-ink-3 animate-spin" />
+              <p className="text-[13px] font-medium text-ink-2">Locating venue…</p>
+              <p className="text-[11px] text-ink-3 mt-1 truncate max-w-xs mx-auto">{searchQuery}</p>
+            </div>
+          )}
+          {!geocoding && liveLat && liveLng && (
+            <VenueMap
+              lat={liveLat}
+              lng={liveLng}
+              venue={venue}
+              address={address}
+              city={city}
+              country={country}
+            />
+          )}
+          {!geocoding && geocodeNotFound && !liveLat && !liveLng && (
+            <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/50 px-4 py-5 text-center">
+              <MapPin size={20} className="mx-auto mb-2 text-ink-3" />
+              <p className="text-[13px] font-medium text-ink-2">Location not found</p>
+              <p className="text-[11px] text-ink-3 mt-1 truncate max-w-xs mx-auto">{searchQuery}</p>
+              <p className="text-[11px] text-ink-3 mt-0.5">
+                Try a more specific venue name or address.
+              </p>
+            </div>
+          )}
+          {!geocoding && !geocodeNotFound && !liveLat && !liveLng && (
+            <div className="rounded-xl border border-dashed border-line bg-paper-2/50 px-4 py-5 text-center">
+              <MapPin size={20} className="mx-auto mb-2 text-ink-3" />
+              <p className="text-[13px] font-medium text-ink-2">Venue map</p>
+              <p className="text-[12px] text-ink-3 mt-0.5">
+                Enter a venue and city to see the location on a map.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-2">
