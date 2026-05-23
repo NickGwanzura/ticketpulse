@@ -1,11 +1,11 @@
-import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, desc, and } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, Users, UserPlus, X, Mail, Clock, CheckCircle, XCircle } from "lucide-react"
+import { ArrowLeft, Users, Mail, Clock, CheckCircle, XCircle, X } from "lucide-react"
 
 import { db } from "@/db"
 import { events, users, eventOrganisers, organiserInvites } from "@/db/schema"
+import { requireOwnerAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import InviteOrganiserForm from "./InviteOrganiserForm"
@@ -17,19 +17,16 @@ type RouteParams = { id: string }
 export default async function OrganisersPage({ params }: { params: Promise<RouteParams> }) {
   const { id } = await params
 
-  const session = await auth()
-  if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/organisers`)
+  const owner = await requireOwnerAccess(id)
+  if (!owner.ok) redirect(owner.redirectTo)
 
   const [event] = await db
-    .select({ id: events.id, title: events.title, organizerId: events.organizerId })
+    .select({ id: events.id, title: events.title })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
 
   if (!event) notFound()
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
-  }
 
   // Fetch accepted organisers with user info
   const acceptedOrganisers = await db
@@ -70,7 +67,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
         subtitle="Invite up to 2 people to help manage this event."
         actions={
           <Link
-            href={`/organizer/events/${id}/edit`}
+            href={`/organizer/events/${id}`}
             className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />

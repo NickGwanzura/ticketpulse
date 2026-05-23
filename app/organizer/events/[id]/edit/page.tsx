@@ -1,11 +1,11 @@
-import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, Ticket } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
+import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EditEventForm from "./EditEventForm"
 
@@ -25,8 +25,8 @@ export default async function EditEventPage({
   const { id } = await params
   const sp = await searchParams
 
-  const session = await auth()
-  if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/edit`)
+  const access = await requireEventAccess(id)
+  if (!access.allowed) redirect(access.redirectTo)
 
   const [row] = await db
     .select()
@@ -35,10 +35,6 @@ export default async function EditEventPage({
     .limit(1)
 
   if (!row) notFound()
-
-  if (row.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
-  }
 
   const tiers = await db
     .select({
@@ -60,16 +56,17 @@ export default async function EditEventPage({
         eyebrow="Organizer"
         title={row.title || "Untitled event"}
         subtitle="Edit the basics, upload a cover image, and manage gallery and merch."
+        actions={
+          <Link
+            href={`/organizer/events/${id}`}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to event
+          </Link>
+        }
       />
 
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-4">
-        <Link
-          href="/organizer"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
-        >
-          <ArrowLeft size={13} /> Back to dashboard
-        </Link>
-
         <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 tp-fade-up-1">
           <EditEventForm
             event={{

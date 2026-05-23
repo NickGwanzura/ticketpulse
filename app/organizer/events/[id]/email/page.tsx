@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Send, MailCheck } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
-import { sendBulkEmailAction, sendTestEmailAction, type EmailFormState } from "./actions"
+import { sendBulkEmailAction, sendTestEmailAction, getAttendeeEmailCount, type EmailFormState } from "./actions"
 import AiEmailCopilot from "@/components/ai/AiEmailCopilot"
 
 function inputCls(hasError?: boolean) {
@@ -38,8 +38,7 @@ export default function EmailPage() {
 
   // Fetch recipient count and event details on mount
   useEffect(() => {
-    fetch(`/api/events/${eventId}/attendees/export`, { method: "HEAD" })
-      .catch(() => {})
+    getAttendeeEmailCount(eventId).then(setRecipientCount).catch(() => {})
     // Fetch event title for AI copilot
     fetch("/api/events")
       .then((r) => r.json())
@@ -94,6 +93,11 @@ export default function EmailPage() {
             <p className="text-[12.5px] text-ink-3">
               Use <code className="text-blue text-[12px]">{`{name}`}</code> for the recipient's first name and{" "}
               <code className="text-blue text-[12px]">{`{event}`}</code> for the event name.
+              {recipientCount !== null && (
+                <span className="ml-1.5 inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                  {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}
+                </span>
+              )}
             </p>
           </div>
 

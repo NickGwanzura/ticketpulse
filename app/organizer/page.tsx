@@ -1,19 +1,23 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { eq, desc, or, inArray } from "drizzle-orm"
+import { eq, desc, or, inArray, sql, and, gte } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
   ScanLine, LayoutList, ShoppingCart,
-  Activity, Mail, Tag, ExternalLink,
+  Activity, Mail, Tag, ExternalLink, AlertCircle,
+  CheckCircle2, Percent,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers } from "@/db/schema"
+import { events, eventOrganisers, orders, orderItems, ticketTiers, tickets, users } from "@/db/schema"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
+import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
+
+/* ─── Types ───────────────────────────────────────────────────────────────── */
 
 type EventRow = {
   id: string
@@ -34,6 +38,7 @@ type OrderRow = {
   name: string
   event: string
   amount: number
+  currency: string
   method: string
   status: string
   ago: string
@@ -45,29 +50,25 @@ type VipBuyer = {
   tickets: number
 }
 
-type ActivityItem = {
-  icon: React.ElementType
-  text: string
-  ago: string
-}
-
 type SalesByEvent = {
   id: string
   title: string
   revenue: number
 }
 
-const MOCK_ORDERS: OrderRow[] = []
-const VIP_BUYERS: VipBuyer[] = []
-const ACTIVITY: ActivityItem[] = []
-const SALES_BY_EVENT: SalesByEvent[] = []
-const REVENUE_30D: number[] = []
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
 
-const KPI_SPARKLINES: Record<string, number[]> = {
-  "Live events":   [],
-  "Tickets sold":  [],
-  "Revenue (USD)": [],
-  "Followers":     [],
+function timeAgo(d: Date): string {
+  const ms = Date.now() - d.getTime()
+  const sec = Math.floor(ms / 1000)
+  if (sec < 60) return `${sec}s ago`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 30) return `${day}d ago`
+  return d.toLocaleDateString()
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -75,18 +76,20 @@ const STATUS_STYLE: Record<string, string> = {
   draft:     "bg-paper-2 text-ink-2 ring-1 ring-line",
   sold_out:  "bg-rose-50 text-rose-700",
   cancelled: "bg-rose-50 text-rose-700",
+  completed: "bg-blue-50 text-blue-700",
 }
 
 const METHOD_STYLE: Record<string, string> = {
-  EcoCash: "bg-green-50 text-green-700",
-  Card:    "bg-green-50 text-blue",
-  Bank:    "bg-paper-2 text-ink-2 ring-1 ring-line",
+  ecocash: "bg-green-50 text-green-700",
+  card:    "bg-blue-50 text-blue-700",
+  omari:   "bg-paper-2 text-ink-2 ring-1 ring-line",
 }
 
 const ORDER_STATUS_STYLE: Record<string, string> = {
-  confirmed: "bg-green-50 text-green-700",
+  paid:      "bg-green-50 text-green-700",
   refunded:  "bg-rose-50 text-rose-600",
   pending:   "bg-amber-50 text-amber-700",
+  awaiting_verification: "bg-blue-50 text-blue-700",
 }
 
 function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
@@ -130,7 +133,7 @@ function RevenueChart({ data }: { data: number[] }) {
     )
   }
   const min = 0
-  const max = Math.max(...data)
+  const max = Math.max(...data, 1)
   const w = 800
   const h = 120
   const pts = data.map((v, i) => {
@@ -159,33 +162,14 @@ function RevenueChart({ data }: { data: number[] }) {
   )
 }
 
-export default async function OrganizerPage() {
-  const session = await auth()
-  if (!session) redirect("/auth/signin?callbackUrl=/organizer")
+/* ─── Data fetchers ───────────────────────────────────────────────────────── */
 
-  const isAdmin = session.user.role === "admin"
-
-  // Single query for non-admins — reused for both access check and where clause
-  const invitedEventIds = isAdmin ? [] : await db
-    .select({ eventId: eventOrganisers.eventId })
-    .from(eventOrganisers)
-    .where(eq(eventOrganisers.userId, session.user.id))
-
-  const isInvitedOrganiser = invitedEventIds.length > 0
-
-  if (!isAdmin && session.user.role !== "organizer" && !isInvitedOrganiser) {
-    redirect("/dashboard")
-  }
-
-  // Build where condition:
-  // - Admins see ALL events (no filter)
-  // - Organizers see events they own or are invited to
-  const ownedIds = invitedEventIds.map((r) => r.eventId)
+async function getOrganizerEvents(userId: string, isAdmin: boolean, invitedIds: string[]) {
   const whereClause = isAdmin
     ? undefined
-    : ownedIds.length > 0
-      ? or(eq(events.organizerId, session.user.id), inArray(events.id, ownedIds))
-      : eq(events.organizerId, session.user.id)
+    : invitedIds.length > 0
+      ? or(eq(events.organizerId, userId), inArray(events.id, invitedIds))
+      : eq(events.organizerId, userId)
 
   const rows = await db
     .select({
@@ -203,31 +187,253 @@ export default async function OrganizerPage() {
     .orderBy(desc(events.startsAt))
     .limit(50)
 
-  // Sales/revenue/capacity figures will land once tickets+orders are wired up.
-  // For now we surface honest empty rows so the dashboard reflects real data.
-  const ORGANIZER_EVENTS: EventRow[] = rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    title: r.title,
-    category: r.category,
-    venue: r.venue,
-    city: r.city,
-    startsAt: r.startsAt,
-    status: r.status ?? "draft",
-    sold: 0,
-    capacity: 0,
-    revenue: 0,
-    currency: "USD",
-  }))
+  return rows
+}
+
+async function getEventSales(eventIds: string[]) {
+  if (eventIds.length === 0) return { tiers: [], orders: [] }
+
+  const tiers = await db
+    .select({
+      eventId: ticketTiers.eventId,
+      totalQuantity: ticketTiers.totalQuantity,
+      soldQuantity: ticketTiers.soldQuantity,
+      price: ticketTiers.price,
+      currency: ticketTiers.currency,
+    })
+    .from(ticketTiers)
+    .where(inArray(ticketTiers.eventId, eventIds))
+
+  const ordersRows = await db
+    .select({
+      eventId: orders.eventId,
+      totalAmount: orders.totalAmount,
+      currency: orders.currency,
+      status: orders.status,
+    })
+    .from(orders)
+    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "awaiting_verification"])))
+
+  return { tiers, orders: ordersRows }
+}
+
+async function getRecentOrders(eventIds: string[], limit = 8) {
+  if (eventIds.length === 0) return []
+  const rows = await db
+    .select({
+      guestName: orders.guestName,
+      guestEmail: orders.guestEmail,
+      totalAmount: orders.totalAmount,
+      currency: orders.currency,
+      paymentMethod: orders.paymentMethod,
+      status: orders.status,
+      createdAt: orders.createdAt,
+      eventId: orders.eventId,
+    })
+    .from(orders)
+    .where(inArray(orders.eventId, eventIds))
+    .orderBy(desc(orders.createdAt))
+    .limit(limit)
+
+  return rows
+}
+
+async function getTopBuyers(eventIds: string[], limit = 5) {
+  if (eventIds.length === 0) return []
+  const rows = await db
+    .select({
+      guestName: orders.guestName,
+      guestEmail: orders.guestEmail,
+      totalAmount: orders.totalAmount,
+    })
+    .from(orders)
+    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid"])))
+
+  const map = new Map<string, VipBuyer>()
+  for (const r of rows) {
+    const key = r.guestEmail || r.guestName || "Guest"
+    const existing = map.get(key)
+    if (existing) {
+      existing.spent += Number(r.totalAmount ?? 0)
+      existing.tickets += 1
+    } else {
+      map.set(key, {
+        name: r.guestName || r.guestEmail || "Guest",
+        spent: Number(r.totalAmount ?? 0),
+        tickets: 1,
+      })
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.spent - a.spent).slice(0, limit)
+}
+
+async function getRevenueByDay(eventIds: string[], days = 30) {
+  if (eventIds.length === 0) return []
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  const rows = await db
+    .select({
+      createdAt: orders.createdAt,
+      totalAmount: orders.totalAmount,
+    })
+    .from(orders)
+    .where(
+      and(
+        inArray(orders.eventId, eventIds),
+        inArray(orders.status, ["paid", "awaiting_verification"]),
+        gte(orders.createdAt, since),
+      ),
+    )
+    .orderBy(orders.createdAt)
+
+  // Bucket by day
+  const byDay = new Map<string, number>()
+  for (let i = 0; i < days; i++) {
+    const d = new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000)
+    const key = d.toISOString().slice(0, 10)
+    byDay.set(key, 0)
+  }
+  for (const r of rows) {
+    if (!r.createdAt) continue
+    const key = new Date(r.createdAt).toISOString().slice(0, 10)
+    if (byDay.has(key)) {
+      byDay.set(key, byDay.get(key)! + Number(r.totalAmount ?? 0))
+    }
+  }
+  return Array.from(byDay.values())
+}
+
+/* ─── Page ────────────────────────────────────────────────────────────────── */
+
+export default async function OrganizerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string; rev?: string }>
+}) {
+  const session = await auth()
+  if (!session) redirect("/auth/signin?callbackUrl=/organizer")
+
+  const isAdmin = session.user.role === "admin"
+
+  // Fetch user's commission rate for display
+  const [userRow] = await db
+    .select({ commissionRate: users.commissionRate })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1)
+  const commissionRate = Number(userRow?.commissionRate ?? 8)
+  const isFreeListing = commissionRate === 0
+
+  const invitedEventIds = isAdmin ? [] : await db
+    .select({ eventId: eventOrganisers.eventId })
+    .from(eventOrganisers)
+    .where(eq(eventOrganisers.userId, session.user.id))
+
+  const isInvitedOrganiser = invitedEventIds.length > 0
+
+  if (!isAdmin && session.user.role !== "organizer" && !isInvitedOrganiser) {
+    redirect("/dashboard")
+  }
+
+  const sp = await searchParams
+  const filter = sp.filter || "all"
+  const revDays = Math.min(365, Math.max(7, Number(sp.rev) || 30))
+
+  const ownedIds = invitedEventIds.map((r) => r.eventId)
+  const rawEvents = await getOrganizerEvents(session.user.id, isAdmin, ownedIds)
+
+  const eventIds = rawEvents.map((r) => r.id)
+  const { tiers: allTiers, orders: allOrders } = await getEventSales(eventIds)
+  const recentOrdersRaw = await getRecentOrders(eventIds)
+  const vipBuyers = await getTopBuyers(eventIds)
+  const revenue30d = await getRevenueByDay(eventIds, revDays)
+
+  // Build enriched event rows
+  const ORGANIZER_EVENTS: EventRow[] = rawEvents.map((r) => {
+    const eventTiers = allTiers.filter((t) => t.eventId === r.id)
+    const capacity = eventTiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
+    const sold = eventTiers.reduce((s, t) => s + (t.soldQuantity ?? 0), 0)
+    const eventOrders = allOrders.filter((o) => o.eventId === r.id)
+    const revenue = eventOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+    const currency = eventTiers[0]?.currency ?? eventOrders[0]?.currency ?? "USD"
+    return {
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      category: r.category,
+      venue: r.venue,
+      city: r.city,
+      startsAt: r.startsAt,
+      status: r.status ?? "draft",
+      sold,
+      capacity,
+      revenue,
+      currency,
+    }
+  })
+
+  const filteredEvents = ORGANIZER_EVENTS.filter((e) => {
+    if (filter === "live") return e.status === "published"
+    if (filter === "drafts") return e.status === "draft"
+    return true
+  })
 
   const totalRevenue = ORGANIZER_EVENTS.reduce((s, e) => s + (e.currency === "USD" ? e.revenue : 0), 0)
-  const totalSold    = ORGANIZER_EVENTS.reduce((s, e) => s + e.sold, 0)
-  const liveEvents   = ORGANIZER_EVENTS.filter((e) => e.status === "published").length
+  const totalSold = ORGANIZER_EVENTS.reduce((s, e) => s + e.sold, 0)
+  const liveEvents = ORGANIZER_EVENTS.filter((e) => e.status === "published").length
 
-  const gross    = 0
-  const net      = 0
-  const refunds  = 0
-  const avgOrder = 0
+  const gross = totalRevenue
+  const net = totalRevenue * 0.97 // rough estimate minus 3% fees
+  const refunds = 0 // no refund tracking yet
+  const avgOrder = totalSold > 0 ? totalRevenue / totalSold : 0
+
+  const RECENT_ORDERS: OrderRow[] = recentOrdersRaw.map((o) => ({
+    name: o.guestName || o.guestEmail || "Guest",
+    event: ORGANIZER_EVENTS.find((e) => e.id === o.eventId)?.title ?? "Event",
+    amount: Number(o.totalAmount ?? 0),
+    currency: o.currency ?? "USD",
+    method: o.paymentMethod || "—",
+    status: o.status || "pending",
+    ago: o.createdAt ? timeAgo(new Date(o.createdAt)) : "—",
+  }))
+
+  const SALES_BY_EVENT: SalesByEvent[] = ORGANIZER_EVENTS
+    .filter((e) => e.revenue > 0)
+    .map((e) => ({ id: e.id, title: e.title, revenue: e.revenue }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 6)
+
+  // Activity
+  const activity: { icon: typeof Activity; text: string; ago: string }[] = []
+  for (const o of recentOrdersRaw.slice(0, 3)) {
+    if (o.status === "paid") {
+      activity.push({
+        icon: Activity,
+        text: `${o.guestName || o.guestEmail || "Someone"} purchased tickets`,
+        ago: o.createdAt ? timeAgo(new Date(o.createdAt)) : "Recently",
+      })
+    }
+  }
+
+  // Sparkline from revenue data
+  const sparkData = revenue30d.length >= 2 ? revenue30d : []
+  const KPI_SPARKLINES: Record<string, number[]> = {
+    "Live events":   [],
+    "Tickets sold":  [],
+    "Revenue (USD)": sparkData,
+    "Followers":     [],
+  }
+
+  // Find best event for AI insight (first published with sales, or first published, or first)
+  const insightEvent = ORGANIZER_EVENTS.find((e) => e.status === "published" && e.sold > 0)
+    || ORGANIZER_EVENTS.find((e) => e.status === "published")
+    || ORGANIZER_EVENTS[0]
+
+  // Checklist state
+  const hasEvents = ORGANIZER_EVENTS.length > 0
+  const hasTiers = allTiers.length > 0
+  const hasPublished = ORGANIZER_EVENTS.some((e) => e.status === "published")
+  const hasSales = totalSold > 0
+  const firstEventId = ORGANIZER_EVENTS[0]?.id
 
   return (
     <div className="tp-fade-up">
@@ -254,7 +460,47 @@ export default async function OrganizerPage() {
         }
       />
 
+      {/* Commission rate badge */}
+      <div className="max-w-7xl mx-auto px-5 md:px-8 pt-4">
+        {isFreeListing ? (
+          <div className="inline-flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3 py-1.5 text-[12px] font-medium text-green-700">
+            <CheckCircle2 size={13} /> Free listing — no platform fee on your events
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-2 rounded-full bg-paper-2 border border-line px-3 py-1.5 text-[12px] text-ink-2">
+            <Percent size={13} className="text-ink-3" /> Platform fee: {commissionRate}% per ticket sold
+          </div>
+        )}
+      </div>
+
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-8">
+
+        {/* New organizer checklist */}
+        <NewOrganizerChecklist
+          hasEvents={hasEvents}
+          hasTiers={hasTiers}
+          hasPublished={hasPublished}
+          hasSales={hasSales}
+          firstEventId={firstEventId}
+        />
+
+        {/* Draft alert */}
+        {ORGANIZER_EVENTS.some((e) => e.status === "draft") && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-[13px] font-semibold text-amber-800">
+                You have {ORGANIZER_EVENTS.filter((e) => e.status === "draft").length} draft event{ORGANIZER_EVENTS.filter((e) => e.status === "draft").length !== 1 ? "s" : ""}
+              </p>
+              <p className="text-[12.5px] text-amber-700 mt-0.5">
+                Publish them to start selling tickets.{" "}
+                <Link href={`/organizer/events/${ORGANIZER_EVENTS.find((e) => e.status === "draft")?.id}/edit`} className="underline hover:text-amber-900">
+                  Open first draft
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
@@ -289,24 +535,30 @@ export default async function OrganizerPage() {
         {/* Revenue chart */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-2">
           <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-            <h2 className="text-[16px] font-semibold tracking-tight text-ink">Revenue (last 30 days)</h2>
+            <h2 className="text-[16px] font-semibold tracking-tight text-ink">Revenue (last {revDays} days)</h2>
             <div className="flex items-center gap-1">
-              {["7d", "30d", "90d", "All"].map((pill, i) => (
-                <span
-                  key={pill}
+              {[
+                { label: "7d", days: 7 },
+                { label: "30d", days: 30 },
+                { label: "90d", days: 90 },
+                { label: "All", days: 365 },
+              ].map((pill) => (
+                <Link
+                  key={pill.label}
+                  href={`/organizer?filter=${filter}&rev=${pill.days}`}
                   className={`text-[11.5px] font-medium px-2.5 py-1 rounded-md cursor-pointer select-none ${
-                    i === 1
+                    pill.days === revDays
                       ? "bg-paper-2 ring-1 ring-line text-ink"
                       : "text-ink-2 hover:text-ink"
                   }`}
                 >
-                  {pill}
-                </span>
+                  {pill.label}
+                </Link>
               ))}
             </div>
           </div>
           <div className="px-5 md:px-6 pt-5 pb-4">
-            <RevenueChart data={REVENUE_30D} />
+            <RevenueChart data={revenue30d} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-line border-t border-line">
             {[
@@ -336,27 +588,41 @@ export default async function OrganizerPage() {
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink">All events</h2>
               <div className="flex items-center gap-1.5">
-                <button className="text-[12.5px] font-medium text-ink-2 hover:text-ink px-3 py-1.5 rounded-md hover:bg-paper-2">All</button>
-                <button className="text-[12.5px] font-medium text-ink-2 hover:text-ink px-3 py-1.5 rounded-md hover:bg-paper-2">Live</button>
-                <button className="text-[12.5px] font-medium text-ink-2 hover:text-ink px-3 py-1.5 rounded-md hover:bg-paper-2">Drafts</button>
+                {[
+                  { label: "All", value: "all" },
+                  { label: "Live", value: "live" },
+                  { label: "Drafts", value: "drafts" },
+                ].map((f) => (
+                  <Link
+                    key={f.value}
+                    href={`/organizer?filter=${f.value}`}
+                    className={`text-[12.5px] font-medium px-3 py-1.5 rounded-md transition-colors ${
+                      filter === f.value
+                        ? "bg-paper-2 text-ink ring-1 ring-line"
+                        : "text-ink-2 hover:text-ink hover:bg-paper-2"
+                    }`}
+                  >
+                    {f.label}
+                  </Link>
+                ))}
               </div>
             </div>
 
-            {ORGANIZER_EVENTS.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <EmptyState
                 icon={LayoutList}
-                title="No events yet"
-                body="Create your first event to start selling tickets."
-                ctaLabel="Create event"
-                ctaHref="/organizer/events/new"
+                title={filter === "all" ? "No events yet" : `No ${filter} events`}
+                body={filter === "all" ? "Create your first event to start selling tickets." : "Try a different filter."}
+                ctaLabel={filter !== "all" ? undefined : "Create event"}
+                ctaHref={filter !== "all" ? undefined : "/organizer/events/new"}
               />
             ) : (
               <>
                 {/* Mobile cards */}
                 <div className="md:hidden divide-y divide-line">
-                  {ORGANIZER_EVENTS.map((e) => (
+                  {filteredEvents.map((e) => (
                     <div key={e.id} className="p-5 hover:bg-paper-2 transition-colors">
-                      <Link href={`/organizer/events/${e.id}/edit`} className="block">
+                      <Link href={`/organizer/events/${e.id}`} className="block">
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[e.status] ?? STATUS_STYLE.draft}`}>
                             {e.status}
@@ -397,12 +663,12 @@ export default async function OrganizerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {ORGANIZER_EVENTS.map((e) => {
+                    {filteredEvents.map((e) => {
                       const pct = e.capacity > 0 ? Math.round((e.sold / e.capacity) * 100) : 0
                       return (
                         <tr key={e.id} className="tp-row-accent hover:bg-paper-2 transition-colors">
                           <td className="px-6 py-4 max-w-xs">
-                            <Link href={`/organizer/events/${e.id}/edit`} className="block">
+                            <Link href={`/organizer/events/${e.id}`} className="block">
                               <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
                               <p className="text-[12px] text-ink-3 mt-0.5">{e.venue}</p>
                             </Link>
@@ -466,15 +732,15 @@ export default async function OrganizerPage() {
           {/* Side column */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-4">
 
-            {/* AI Sales Insight (for first published event, or general) */}
-            {ORGANIZER_EVENTS.length > 0 && (
+            {/* AI Sales Insight */}
+            {insightEvent && (
               <AiInsightCard
-                eventTitle={ORGANIZER_EVENTS[0].title}
-                sold={ORGANIZER_EVENTS[0].sold}
-                capacity={ORGANIZER_EVENTS[0].capacity}
-                daysRemaining={Math.max(0, Math.ceil((new Date(ORGANIZER_EVENTS[0].startsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}
-                category={ORGANIZER_EVENTS[0].category}
-                city={ORGANIZER_EVENTS[0].city}
+                eventTitle={insightEvent.title}
+                sold={insightEvent.sold}
+                capacity={insightEvent.capacity}
+                daysRemaining={Math.max(0, Math.ceil((new Date(insightEvent.startsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}
+                category={insightEvent.category}
+                city={insightEvent.city}
               />
             )}
 
@@ -501,7 +767,7 @@ export default async function OrganizerPage() {
             {/* VIP attendees */}
             <div className="rounded-2xl border border-line bg-paper p-5 flex-1">
               <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">Top buyers</p>
-              {VIP_BUYERS.length === 0 ? (
+              {vipBuyers.length === 0 ? (
                 <EmptyState
                   icon={Users}
                   title="No buyers yet"
@@ -510,12 +776,12 @@ export default async function OrganizerPage() {
                 />
               ) : (
                 <div className="space-y-3">
-                  {VIP_BUYERS.map((b, i) => (
+                  {vipBuyers.map((b, i) => (
                     <div key={b.name} className="flex items-center gap-3">
                       <span className="text-[11px] font-bold text-ink-3 w-4 tabular-nums">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-semibold text-ink truncate">{b.name}</p>
-                        <p className="text-[11px] text-ink-3">{b.tickets} tickets</p>
+                        <p className="text-[11px] text-ink-3">{b.tickets} order{b.tickets !== 1 ? "s" : ""}</p>
                       </div>
                       <span className="text-[13px] font-bold text-ink tabular-nums shrink-0">{formatCurrency(b.spent, "USD")}</span>
                     </div>
@@ -523,7 +789,6 @@ export default async function OrganizerPage() {
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
@@ -567,7 +832,7 @@ export default async function OrganizerPage() {
               <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent orders</h2>
             </div>
 
-            {MOCK_ORDERS.length === 0 ? (
+            {RECENT_ORDERS.length === 0 ? (
               <EmptyState
                 icon={ShoppingCart}
                 title="No orders yet"
@@ -577,7 +842,7 @@ export default async function OrganizerPage() {
               <>
                 {/* Mobile: stacked cards */}
                 <div className="md:hidden divide-y divide-line">
-                  {MOCK_ORDERS.map((o) => (
+                  {RECENT_ORDERS.map((o) => (
                     <div key={`${o.name}-${o.ago}`} className="p-4">
                       <div className="flex justify-between items-start gap-2 mb-1">
                         <p className="text-[13.5px] font-semibold text-ink">{o.name}</p>
@@ -587,8 +852,8 @@ export default async function OrganizerPage() {
                       </div>
                       <p className="text-[12px] text-ink-3 truncate mb-2">{o.event}</p>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(o.amount, "USD")}</span>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method]}`}>{o.method}</span>
+                        <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(o.amount, o.currency)}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method] ?? METHOD_STYLE.ecocash}`}>{o.method}</span>
                         <span className="text-[11px] text-ink-3 ml-auto">{o.ago}</span>
                       </div>
                     </div>
@@ -608,15 +873,15 @@ export default async function OrganizerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {MOCK_ORDERS.map((o) => (
+                    {RECENT_ORDERS.map((o) => (
                       <tr key={`${o.name}-${o.ago}`} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-3 text-[13px] font-semibold text-ink whitespace-nowrap">{o.name}</td>
                         <td className="px-3 py-3 text-[12px] text-ink-2 max-w-[160px]">
                           <span className="line-clamp-1">{o.event}</span>
                         </td>
-                        <td className="px-3 py-3 text-right text-[13px] font-bold text-ink tabular-nums whitespace-nowrap">{formatCurrency(o.amount, "USD")}</td>
+                        <td className="px-3 py-3 text-right text-[13px] font-bold text-ink tabular-nums whitespace-nowrap">{formatCurrency(o.amount, o.currency)}</td>
                         <td className="px-3 py-3 text-center">
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method]}`}>{o.method}</span>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method] ?? METHOD_STYLE.ecocash}`}>{o.method}</span>
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ORDER_STATUS_STYLE[o.status]}`}>
@@ -639,7 +904,7 @@ export default async function OrganizerPage() {
           {/* Activity timeline */}
           <div className="col-span-12 lg:col-span-5 rounded-2xl border border-line bg-paper p-5">
             <p className="text-[16px] font-semibold tracking-tight text-ink mb-5">What&apos;s happening</p>
-            {ACTIVITY.length === 0 ? (
+            {activity.length === 0 ? (
               <EmptyState
                 icon={Calendar}
                 title="No recent activity"
@@ -648,8 +913,8 @@ export default async function OrganizerPage() {
               />
             ) : (
               <div className="space-y-4">
-                {ACTIVITY.map(({ icon: Icon, text, ago }) => (
-                  <div key={text} className="flex items-start gap-3">
+                {activity.map(({ icon: Icon, text, ago }, i) => (
+                  <div key={i} className="flex items-start gap-3">
                     <div className="mt-0.5 rounded-lg bg-paper-2 p-1.5 shrink-0">
                       <Icon size={13} className="text-ink-2" />
                     </div>
@@ -707,7 +972,6 @@ export default async function OrganizerPage() {
               </Link>
             ))}
           </div>
-
         </div>
       </div>
     </div>

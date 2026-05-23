@@ -1,4 +1,3 @@
-import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
@@ -6,6 +5,7 @@ import { ArrowLeft, Ticket, ShoppingBag, ImageIcon } from "lucide-react"
 
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
+import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import TierCard from "./TierCard"
@@ -27,23 +27,19 @@ export default async function TiersPage({
   const { id } = await params
   const sp = await searchParams
 
-  const session = await auth()
-  if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/tiers`)
+  const access = await requireEventAccess(id)
+  if (!access.allowed) redirect(access.redirectTo)
 
   const [event] = await db
     .select({
       id: events.id,
       title: events.title,
-      organizerId: events.organizerId,
       status: events.status,
     })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
   if (!event) notFound()
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
-  }
 
   const tiers = await db
     .select()
@@ -60,36 +56,16 @@ export default async function TiersPage({
         title={`Tickets: ${event.title}`}
         subtitle="Set up the tiers people can buy. Add as many as you need — early bird, GA, VIP."
         actions={
-          <>
-            <Link
-              href={`/organizer/events/${id}/edit`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              Event details
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/gallery`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <ImageIcon size={15} /> Gallery
-            </Link>
-            <Link
-              href={`/organizer/events/${id}/merch`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
-            >
-              <ShoppingBag size={15} /> Merch
-            </Link>
-          </>
+          <Link
+            href={`/organizer/events/${id}`}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to event
+          </Link>
         }
       />
 
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
-        <Link
-          href={`/organizer/events/${id}/edit`}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
-        >
-          <ArrowLeft size={13} /> Back to event
-        </Link>
 
         {justCreated && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-800">

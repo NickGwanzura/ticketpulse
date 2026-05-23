@@ -90,7 +90,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await auth()
-  const isOrganizer = session?.user.role === "organizer"
 
   const where = UUID_RE.test(id)
     ? or(eq(events.slug, id), eq(events.id, id))
@@ -115,6 +114,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       coverImage: events.coverImage,
       tags: events.tags,
       googleMapsUrl: events.googleMapsUrl,
+      organizerId: events.organizerId,
       organizerName: users.name,
       organizerImage: users.image,
     })
@@ -124,6 +124,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     .limit(1)
 
   if (!row) notFound()
+
+  const isEventOwner = session?.user?.id === row.organizerId || session?.user?.role === "admin"
 
   const tierRows = await db
     .select()
@@ -328,7 +330,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
             <MerchSection items={[]} eventTitle={row.title} />
             <TransportSection routes={[]} />
-            <VendorSection listings={vendorListingsData} eventId={row.id} eventSlug={row.slug} eventTitle={row.title} isOrganizer={isOrganizer} />
+            <VendorSection listings={vendorListingsData} eventId={row.id} eventSlug={row.slug} eventTitle={row.title} isOrganizer={isEventOwner} />
             <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
 

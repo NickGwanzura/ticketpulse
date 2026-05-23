@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const inserted = await db
     .insert(users)
-    .values({ email, role })
+    .values({ email, role, commissionRate: role === "admin" ? "0" : undefined })
     .onConflictDoNothing({ target: users.email })
     .returning({ id: users.id })
 

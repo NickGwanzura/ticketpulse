@@ -1,11 +1,11 @@
-import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, Store, ShoppingBag } from "lucide-react"
+import { ArrowLeft, Store } from "lucide-react"
 
 import { db } from "@/db"
 import { events, vendors, vendorListings } from "@/db/schema"
+import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import AddVendorPanel from "./AddVendorPanel"
@@ -24,18 +24,15 @@ export default async function VendorsPage({
 }) {
   const { id } = await params
 
-  const session = await auth()
-  if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/vendors`)
+  const access = await requireEventAccess(id)
+  if (!access.allowed) redirect(access.redirectTo)
 
   const [event] = await db
-    .select({ id: events.id, title: events.title, organizerId: events.organizerId })
+    .select({ id: events.id, title: events.title })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
   if (!event) notFound()
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
-  }
 
   // Fetch existing vendor listings for this event (joined with vendor info)
   const listings = await db
@@ -81,15 +78,17 @@ export default async function VendorsPage({
         eyebrow="Organizer"
         title={`Vendors: ${event.title}`}
         subtitle="Browse marketplace vendors and add them as optional add-ons for ticket buyers."
+        actions={
+          <Link
+            href={`/organizer/events/${id}`}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to event
+          </Link>
+        }
       />
 
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
-        <Link
-          href={`/organizer/events/${id}/edit`}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
-        >
-          <ArrowLeft size={13} /> Back to event
-        </Link>
 
         <AddVendorPanel eventId={id} vendors={marketplaceVendors} />
 

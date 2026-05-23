@@ -64,6 +64,24 @@ async function getAttendeePhones(eventId: string) {
   })
 }
 
+export async function getAttendeePhoneCount(eventId: string): Promise<number> {
+  const rows = await db
+    .select({ guestPhone: orders.guestPhone })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.eventId, eventId),
+        inArray(orders.status, ["paid"]),
+        isNotNull(orders.guestPhone),
+      ),
+    )
+  const seen = new Set<string>()
+  for (const r of rows) {
+    if (r.guestPhone) seen.add(r.guestPhone)
+  }
+  return seen.size
+}
+
 function interpolateVariables(
   text: string,
   vars: { name?: string | null; event?: string | null },

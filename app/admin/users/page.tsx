@@ -181,7 +181,7 @@ export default async function AdminUsersPage() {
                           )}
                         </td>
                         <td className="px-3 py-3.5">
-                          {u.role === "organizer" ? (
+                          {u.role === "organizer" || u.role === "admin" ? (
                             <CommissionRateInput userId={u.id} rate={u.commissionRate} />
                           ) : (
                             <span className="text-[12px] text-ink-3">—</span>
@@ -246,7 +246,7 @@ export default async function AdminUsersPage() {
                         </span>
                       )}
                     </div>
-                    {u.role === "organizer" && (
+                    {(u.role === "organizer" || u.role === "admin") && (
                       <div className="mb-3">
                         <CommissionRateInput userId={u.id} rate={u.commissionRate} />
                       </div>

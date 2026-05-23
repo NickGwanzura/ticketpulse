@@ -8,6 +8,7 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import {
   sendBulkWhatsAppAction,
   sendTestWhatsAppAction,
+  getAttendeePhoneCount,
   type WhatsAppFormState,
 } from "./actions"
 
@@ -25,6 +26,7 @@ export default function WhatsAppPage() {
 
   const [message, setMessage] = useState("")
   const [eventTitle, setEventTitle] = useState("your event")
+  const [recipientCount, setRecipientCount] = useState<number | null>(null)
 
   const [bulkState, bulkAction, bulkPending] = useActionState<
     WhatsAppFormState,
@@ -36,8 +38,9 @@ export default function WhatsAppPage() {
     FormData
   >(sendTestWhatsAppAction.bind(null, eventId), undefined)
 
-  // Fetch event title on mount
+  // Fetch event title and recipient count on mount
   useEffect(() => {
+    getAttendeePhoneCount(eventId).then(setRecipientCount).catch(() => {})
     fetch("/api/events")
       .then((r) => r.json())
       .then((data) => {
@@ -108,6 +111,11 @@ export default function WhatsAppPage() {
               <code className="text-blue text-[12px]">*bold*</code>,{" "}
               <code className="text-blue text-[12px]">_italic_</code>,{" "}
               <code className="text-blue text-[12px]">~strikethrough~</code>.
+              {recipientCount !== null && (
+                <span className="ml-1.5 inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                  {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}
+                </span>
+              )}
             </p>
           </div>
 

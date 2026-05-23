@@ -43,7 +43,7 @@ export default function LiveDashboardClient({
   }, [eventId])
 
   useEffect(() => {
-    const interval = setInterval(refresh, 30_000)
+    const interval = setInterval(refresh, 5_000)
     // Also fetch immediately to get recent check-ins
     refresh()
     return () => clearInterval(interval)

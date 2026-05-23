@@ -62,6 +62,24 @@ async function getAttendeeEmails(eventId: string) {
   })
 }
 
+export async function getAttendeeEmailCount(eventId: string): Promise<number> {
+  const rows = await db
+    .select({ guestEmail: orders.guestEmail })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.eventId, eventId),
+        inArray(orders.status, ["paid"]),
+        isNotNull(orders.guestEmail),
+      ),
+    )
+  const seen = new Set<string>()
+  for (const r of rows) {
+    if (r.guestEmail) seen.add(r.guestEmail)
+  }
+  return seen.size
+}
+
 export async function sendBulkEmailAction(
   eventId: string,
   _prev: EmailFormState | undefined,

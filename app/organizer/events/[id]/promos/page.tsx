@@ -1,4 +1,3 @@
-import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
@@ -6,6 +5,7 @@ import { ArrowLeft, Tag } from "lucide-react"
 
 import { db } from "@/db"
 import { events, promoCodes } from "@/db/schema"
+import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import PromoCodeList from "./PromoCodeList"
@@ -24,18 +24,15 @@ export default async function PromosPage({
 }) {
   const { id } = await params
 
-  const session = await auth()
-  if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/promos`)
+  const access = await requireEventAccess(id)
+  if (!access.allowed) redirect(access.redirectTo)
 
   const [event] = await db
-    .select({ id: events.id, title: events.title, organizerId: events.organizerId })
+    .select({ id: events.id, title: events.title })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
   if (!event) notFound()
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
-  }
 
   const codes = await db
     .select()
@@ -61,7 +58,7 @@ export default async function PromosPage({
         title={`Promo codes: ${event.title}`}
         actions={
           <Link
-            href={`/organizer/events/${id}/edit`}
+            href={`/organizer/events/${id}`}
             className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />

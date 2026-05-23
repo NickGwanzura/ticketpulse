@@ -1,4 +1,3 @@
-import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
@@ -6,6 +5,7 @@ import { ArrowLeft, ImageIcon } from "lucide-react"
 
 import { db } from "@/db"
 import { events, eventGalleries, galleryPhotos } from "@/db/schema"
+import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import GalleryCard from "./GalleryCard"
@@ -24,14 +24,13 @@ export default async function GalleryPage({
 }) {
   const { id } = await params
 
-  const session = await auth()
-  if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/gallery`)
+  const access = await requireEventAccess(id)
+  if (!access.allowed) redirect(access.redirectTo)
 
   const [event] = await db
     .select({
       id: events.id,
       title: events.title,
-      organizerId: events.organizerId,
       slug: events.slug,
     })
     .from(events)
@@ -39,9 +38,6 @@ export default async function GalleryPage({
     .limit(1)
 
   if (!event) notFound()
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
-  }
 
   const galleries = await db
     .select()
@@ -77,15 +73,17 @@ export default async function GalleryPage({
         eyebrow="Organizer"
         title={`Photo galleries: ${event.title}`}
         subtitle="Group event photos into packs. Each gallery has its own cover, price, and visibility."
+        actions={
+          <Link
+            href={`/organizer/events/${id}`}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to event
+          </Link>
+        }
       />
 
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
-        <Link
-          href={`/organizer/events/${id}/edit`}
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
-        >
-          <ArrowLeft size={13} /> Back to event
-        </Link>
 
         <NewGalleryPanel eventId={id} />
 

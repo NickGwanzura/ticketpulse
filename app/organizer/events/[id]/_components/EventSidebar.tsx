@@ -21,6 +21,7 @@ import {
 
 const NAV = (eventId: string) =>
   [
+    { label: "Overview", href: `/organizer/events/${eventId}`, icon: Activity },
     { label: "Event details", href: `/organizer/events/${eventId}/edit`, icon: Settings },
     { label: "Tickets", href: `/organizer/events/${eventId}/tiers`, icon: Ticket },
     { label: "Photo gallery", href: `/organizer/events/${eventId}/gallery`, icon: ImageIcon },
@@ -48,14 +49,17 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
   const isPublished = eventStatus === "published"
 
   const isActive = (href: string) => {
-    // Exact match for the edit page, prefix match for sub-routes
-    return pathname === href
+    // Exact match for overview (no trailing slash), prefix match for others
+    if (pathname === href) return true
+    // Don't let /edit match /eventId itself
+    if (href.endsWith(`/${eventId}`)) return pathname === href
+    return pathname.startsWith(`${href}/`)
   }
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex sticky top-16 self-start h-[calc(100vh-4rem)] w-[232px] shrink-0 flex-col border-r border-line bg-paper">
+      <aside className="hidden lg:flex sticky top-20 self-start h-[calc(100vh-5rem)] w-[232px] shrink-0 flex-col border-r border-line bg-paper">
         {/* Event header */}
         <div className="px-4 py-4 border-b border-line">
           <Link
@@ -107,7 +111,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
       </aside>
 
       {/* Mobile/tablet top tab strip */}
-      <div className="lg:hidden sticky top-16 z-30 bg-paper/90 backdrop-blur-xl border-b border-line">
+      <div className="lg:hidden sticky top-20 z-30 bg-paper/90 backdrop-blur-xl border-b border-line">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line">
           <Link
             href="/organizer"

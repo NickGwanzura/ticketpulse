@@ -98,7 +98,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
         />
       )}
 
-      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-16 flex items-center gap-3 md:gap-6">
+      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-20 flex items-center gap-3 md:gap-6">
         {/* Brand */}
         <Link
           href="/"
@@ -106,7 +106,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           aria-label="TicketPulse home"
         >
           <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-auto" />
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-[76px] w-auto" />
           </span>
         </Link>
 
@@ -250,22 +250,47 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           )}
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-paper-2"
-          aria-label="Menu"
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {/* Mobile: auth or hamburger */}
+        {session ? (
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-paper-2"
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        ) : (
+          <div className="md:hidden flex items-center gap-1.5">
+            <Link
+              href="/auth/signin"
+              className="inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="inline-flex h-9 items-center rounded-lg bg-green-600 px-3 text-[13px] font-semibold text-white hover:bg-green-700 transition-colors"
+            >
+              Sign up
+            </Link>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink hover:bg-paper-2"
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* Events mega menu */}
       {eventsOpen && (
         <>
           <div className="fixed inset-0 z-30 bg-ink/10 backdrop-blur-[1px]" onClick={() => setEventsOpen(false)} aria-hidden />
-          <div className="absolute left-0 right-0 top-16 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
+          <div className="absolute left-0 right-0 top-20 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
             <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8">
               <div>
                 <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">By category</p>
@@ -415,12 +440,17 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <Link href="/auth/signin" className="flex items-center justify-center rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
-                    Sign in
-                  </Link>
-                  <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white">
-                    Get tickets <ArrowRight size={13} />
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href="/auth/signin" className="flex items-center justify-center rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
+                      Sign in
+                    </Link>
+                    <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white">
+                      Sign up <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                  <Link href="/events" className="flex items-center justify-center gap-1.5 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:bg-paper-2 transition-colors">
+                    Browse events <ArrowRight size={13} />
                   </Link>
                 </div>
               )}
