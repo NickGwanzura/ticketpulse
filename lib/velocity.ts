@@ -171,11 +171,12 @@ export async function initiateVelocityTransaction(payload: {
   debitCurrency: string
   authType: "REMOTE" | "WEB"
   salesOrderTrace: string
+  returnUrl?: string
 }): Promise<VelocityTransaction> {
   if (!MERCHANT_PHONE || !MERCHANT_ACCOUNT) {
     throw new Error("VELOCITY_MERCHANT_PHONE / VELOCITY_MERCHANT_ACCOUNT not set")
   }
-  const body = {
+  const body: Record<string, unknown> = {
     amount: payload.amount,
     paymentProcessorLabel: payload.processor,
     debitPhone: payload.debitPhone,
@@ -188,6 +189,10 @@ export async function initiateVelocityTransaction(payload: {
     type: "REQUEST",
     authType: payload.authType,
     salesOrderTrace: payload.salesOrderTrace,
+  }
+  // WEB (card) flows typically need a return URL for the hosted checkout
+  if (payload.authType === "WEB" && payload.returnUrl) {
+    body.returnUrl = payload.returnUrl
   }
   return velocityFetch<VelocityTransaction>("/transactions", {
     method: "POST",

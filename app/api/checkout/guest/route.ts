@@ -263,6 +263,7 @@ export async function POST(req: Request) {
       })
 
       const isEcoCash = parsed.paymentMethod === "velocity-ecocash"
+      const { returnUrl } = velocityUrls(order.id, origin)
       const tx = await initiateVelocityTransaction({
         amount: total,
         processor: isEcoCash ? "ECOCASH" : "VMC",
@@ -270,6 +271,7 @@ export async function POST(req: Request) {
         debitCurrency: currency,
         authType: isEcoCash ? "REMOTE" : "WEB",
         salesOrderTrace: salesOrder.trace,
+        returnUrl: isEcoCash ? undefined : returnUrl,
       })
 
       await db
