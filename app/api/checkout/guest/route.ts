@@ -269,7 +269,7 @@ export async function POST(req: Request) {
         debitPhone: parsed.phone,
         debitCurrency: currency,
         authType: isEcoCash ? "REMOTE" : "WEB",
-        salesOrderId: salesOrder.workflowId,
+        salesOrderTrace: salesOrder.trace,
       })
 
       await db
@@ -280,7 +280,6 @@ export async function POST(req: Request) {
             ...(appliedPromo ? { promo: appliedPromo } : {}),
             velocity: {
               salesOrderTrace: salesOrder.trace,
-              salesOrderId: salesOrder.workflowId,
               transactionTrace: tx.trace,
               workflowId: salesOrder.workflowId,
             },

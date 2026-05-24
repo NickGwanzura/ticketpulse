@@ -170,7 +170,7 @@ export async function initiateVelocityTransaction(payload: {
   debitPhone: string
   debitCurrency: string
   authType: "REMOTE" | "WEB"
-  salesOrderId: string
+  salesOrderTrace: string
 }): Promise<VelocityTransaction> {
   if (!MERCHANT_PHONE || !MERCHANT_ACCOUNT) {
     throw new Error("VELOCITY_MERCHANT_PHONE / VELOCITY_MERCHANT_ACCOUNT not set")
@@ -187,7 +187,7 @@ export async function initiateVelocityTransaction(payload: {
     creditAccount: MERCHANT_ACCOUNT,
     type: "REQUEST",
     authType: payload.authType,
-    salesOrderId: payload.salesOrderId,
+    salesOrderTrace: payload.salesOrderTrace,
   }
   return velocityFetch<VelocityTransaction>("/transactions", {
     method: "POST",
