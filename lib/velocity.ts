@@ -7,30 +7,64 @@ const MERCHANT_PHONE = process.env.VELOCITY_MERCHANT_PHONE
 const MERCHANT_ACCOUNT = process.env.VELOCITY_MERCHANT_ACCOUNT
 const VELOCITY_ITEM_CODE = process.env.VELOCITY_ITEM_CODE
 
-function authHeaders(): Record<string, string> {
+// Auth modes:
+//  bearer      → Authorization: Bearer <key>  (default)
+//  x-api-key   → X-API-Key: <key>
+//  api-key     → api-key: <key>
+//  raw         → Authorization: <key>  (no Bearer prefix)
+//  query       → ?apiKey=<key> appended to URL
+const AUTH_MODE = (process.env.VELOCITY_AUTH_MODE || "bearer") as "bearer" | "x-api-key" | "api-key" | "raw" | "query"
+
+function buildAuthHeaders(): Record<string, string> {
   if (!API_KEY) throw new Error("VELOCITY_API_KEY not set")
-  // Default: Bearer token. Override VELOCITY_AUTH_HEADER if Velocity uses a custom header.
-  const headerName = process.env.VELOCITY_AUTH_HEADER || "Authorization"
-  const headerValue = headerName === "Authorization" ? `Bearer ${API_KEY}` : API_KEY
-  return {
-    [headerName]: headerValue,
-    "Content-Type": "application/json",
+  switch (AUTH_MODE) {
+    case "x-api-key":
+      return { "X-API-Key": API_KEY }
+    case "api-key":
+      return { "api-key": API_KEY }
+    case "raw":
+      return { Authorization: API_KEY }
+    case "bearer":
+    default:
+      return { Authorization: `Bearer ${API_KEY}` }
   }
 }
 
-async function velocityFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+function buildUrl(path: string): string {
   const url = `${BASE_URL}${path}`
+  if (AUTH_MODE === "query" && API_KEY) {
+    const sep = url.includes("?") ? "&" : "?"
+    return `${url}${sep}apiKey=${encodeURIComponent(API_KEY)}`
+  }
+  return url
+}
+
+async function velocityFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  const url = buildUrl(path)
+  const headers: Record<string, string> = {
+    ...buildAuthHeaders(),
+    "Content-Type": "application/json",
+    ...(opts?.headers as Record<string, string> || {}),
+  }
+
   const res = await fetch(url, {
     ...opts,
-    headers: {
-      ...authHeaders(),
-      ...(opts?.headers || {}),
-    },
+    headers,
   })
+
   if (!res.ok) {
     const text = await res.text().catch(() => "")
+    log.error("velocity — API error", {
+      method: opts?.method || "GET",
+      path,
+      url,
+      status: res.status,
+      authMode: AUTH_MODE,
+      response: text,
+    })
     throw new Error(`Velocity ${opts?.method || "GET"} ${path} → ${res.status}: ${text}`)
   }
+
   return res.json() as Promise<T>
 }
 
