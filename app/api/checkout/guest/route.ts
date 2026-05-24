@@ -272,6 +272,7 @@ export async function POST(req: Request) {
         authType: isEcoCash ? "REMOTE" : "WEB",
         salesOrderTrace: salesOrder.trace,
         returnUrl: isEcoCash ? undefined : returnUrl,
+        customerEmail: isEcoCash ? undefined : parsed.email,
       })
 
       await db

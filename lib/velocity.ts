@@ -172,6 +172,7 @@ export async function initiateVelocityTransaction(payload: {
   authType: "REMOTE" | "WEB"
   salesOrderTrace: string
   returnUrl?: string
+  customerEmail?: string
 }): Promise<VelocityTransaction> {
   if (!MERCHANT_PHONE || !MERCHANT_ACCOUNT) {
     throw new Error("VELOCITY_MERCHANT_PHONE / VELOCITY_MERCHANT_ACCOUNT not set")
@@ -179,7 +180,6 @@ export async function initiateVelocityTransaction(payload: {
   const body: Record<string, unknown> = {
     amount: payload.amount,
     paymentProcessorLabel: payload.processor,
-    debitPhone: payload.debitPhone,
     debitRegion: "ZW",
     debitCurrency: payload.debitCurrency,
     debitRef: "velocityafrica",
@@ -190,10 +190,25 @@ export async function initiateVelocityTransaction(payload: {
     authType: payload.authType,
     salesOrderTrace: payload.salesOrderTrace,
   }
-  // WEB (card) flows typically need a return URL for the hosted checkout
+
+  // REMOTE (EcoCash) requires debitPhone for the USSD push.
+  // WEB (card) may not need it — only send if explicitly provided.
+  if (payload.authType === "REMOTE" || payload.debitPhone) {
+    body.debitPhone = payload.debitPhone
+  }
+
+  // WEB (card) flows need a callback URL for the hosted checkout.
+  // Velocity might expect "callbackUrl" rather than "returnUrl".
   if (payload.authType === "WEB" && payload.returnUrl) {
+    body.callbackUrl = payload.returnUrl
     body.returnUrl = payload.returnUrl
   }
+
+  // WEB (card) might require customer email for receipt/risk checks.
+  if (payload.authType === "WEB" && payload.customerEmail) {
+    body.customerEmail = payload.customerEmail
+  }
+
   return velocityFetch<VelocityTransaction>("/transactions", {
     method: "POST",
     body: JSON.stringify(body),
