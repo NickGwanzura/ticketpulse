@@ -47,6 +47,8 @@ async function velocityFetch<T>(path: string, opts?: RequestInit): Promise<T> {
     ...(opts?.headers as Record<string, string> || {}),
   }
 
+  log.info("velocity — request", { method: opts?.method || "GET", path, body: opts?.body })
+
   const res = await fetch(url, {
     ...opts,
     headers,
@@ -60,6 +62,7 @@ async function velocityFetch<T>(path: string, opts?: RequestInit): Promise<T> {
       url,
       status: res.status,
       authMode: AUTH_MODE,
+      body: opts?.body,
       response: text,
     })
     throw new Error(`Velocity ${opts?.method || "GET"} ${path} → ${res.status}: ${text}`)
@@ -167,7 +170,7 @@ export async function initiateVelocityTransaction(payload: {
   debitPhone: string
   debitCurrency: string
   authType: "REMOTE" | "WEB"
-  salesOrderTrace: string
+  salesOrderId: string
 }): Promise<VelocityTransaction> {
   if (!MERCHANT_PHONE || !MERCHANT_ACCOUNT) {
     throw new Error("VELOCITY_MERCHANT_PHONE / VELOCITY_MERCHANT_ACCOUNT not set")
@@ -184,7 +187,7 @@ export async function initiateVelocityTransaction(payload: {
     creditAccount: MERCHANT_ACCOUNT,
     type: "REQUEST",
     authType: payload.authType,
-    salesOrderId: payload.salesOrderTrace,
+    salesOrderId: payload.salesOrderId,
   }
   return velocityFetch<VelocityTransaction>("/transactions", {
     method: "POST",
