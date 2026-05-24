@@ -188,17 +188,22 @@ export async function initiateVelocityTransaction(payload: {
     creditAccount: MERCHANT_ACCOUNT,
     type: "REQUEST",
     authType: payload.authType,
-    salesOrderTrace: payload.salesOrderTrace,
+  }
+
+  // EcoCash (REMOTE) uses salesOrderTrace.
+  // Card (WEB) might use salesOrderId instead.
+  if (payload.authType === "REMOTE") {
+    body.salesOrderTrace = payload.salesOrderTrace
+  } else {
+    body.salesOrderId = payload.salesOrderTrace
   }
 
   // REMOTE (EcoCash) requires debitPhone for the USSD push.
-  // WEB (card) may not need it — only send if explicitly provided.
-  if (payload.authType === "REMOTE" || payload.debitPhone) {
+  if (payload.authType === "REMOTE") {
     body.debitPhone = payload.debitPhone
   }
 
   // WEB (card) flows need a callback URL for the hosted checkout.
-  // Velocity might expect "callbackUrl" rather than "returnUrl".
   if (payload.authType === "WEB" && payload.returnUrl) {
     body.callbackUrl = payload.returnUrl
     body.returnUrl = payload.returnUrl
