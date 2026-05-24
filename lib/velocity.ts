@@ -126,15 +126,14 @@ export async function fetchVelocityCustomer(phone: string): Promise<VelocityCust
 
 export async function createVelocitySalesOrder(payload: {
   currency: string
-  customerId: string
+  customerId: string | null
   amount: number
   notes?: string
   orderDate?: string
   dueDate?: string
 }): Promise<VelocitySalesOrder> {
-  const body = {
+  const body: Record<string, unknown> = {
     currencyCodeString: payload.currency,
-    customerIdString: payload.customerId,
     orderDate: payload.orderDate || new Date().toISOString().split("T")[0],
     dueDate: payload.dueDate || payload.orderDate || new Date().toISOString().split("T")[0],
     notes: payload.notes || "TicketPulse order",
@@ -150,6 +149,11 @@ export async function createVelocitySalesOrder(payload: {
         ]
       : [],
     charges: [{ amount: 0 }],
+  }
+  // Only send customerIdString if we have a real UUID. Velocity uses a default
+  // customer when the field is omitted.
+  if (payload.customerId) {
+    body.customerIdString = payload.customerId
   }
   return velocityFetch<VelocitySalesOrder>("/sales-orders", {
     method: "POST",

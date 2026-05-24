@@ -253,7 +253,7 @@ export async function POST(req: Request) {
   if (isVelocity) {
     try {
       const velocityCustomer = await fetchVelocityCustomer(parsed.phone)
-      const customerId = velocityCustomer?.customerUid || "default"
+      const customerId = velocityCustomer?.customerUid ?? null
 
       const salesOrder = await createVelocitySalesOrder({
         currency,
