@@ -5,6 +5,12 @@ import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes } from "@/db/schema"
 import { startOrderVerification } from "@/lib/order-verification"
 import { PESEPAY_METHODS, getPesepay, pesepayUrls } from "@/lib/pesepay"
+import {
+  fetchVelocityCustomer,
+  createVelocitySalesOrder,
+  initiateVelocityTransaction,
+  velocityUrls,
+} from "@/lib/velocity"
 import { checkoutLimiter } from "@/lib/rate-limit"
 
 const TicketItem = z.object({
@@ -23,7 +29,7 @@ const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
   phone: z.string().min(3).max(40).trim(),
-  paymentMethod: z.enum(["ecocash", "card", "omari"]),
+  paymentMethod: z.enum(["ecocash", "card", "omari", "velocity-ecocash", "velocity-vmc"]),
   eventSlug: z.string().min(1).max(160),
   items: z
     .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))
@@ -162,15 +168,16 @@ export async function POST(req: Request) {
     }
   }
 
-  const method = PESEPAY_METHODS[parsed.paymentMethod]
-  if (!method) {
+  const isVelocity = parsed.paymentMethod.startsWith("velocity-")
+  const method = isVelocity ? null : PESEPAY_METHODS[parsed.paymentMethod]
+  if (!isVelocity && !method) {
     return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 })
   }
 
   // Offline cash flows skip PesePay entirely and go straight to the verify
   // email step, just like before this integration existed. Online flows insert
-  // as `pending` and only progress once PesePay confirms the payment.
-  const initialStatus = method.flow === "offline" ? "awaiting_verification" : "pending"
+  // as `pending` and only progress once the provider confirms the payment.
+  const initialStatus = method && method.flow === "offline" ? "awaiting_verification" : "pending"
 
   const [order] = await db
     .insert(orders)
@@ -227,7 +234,7 @@ export async function POST(req: Request) {
   const origin = new URL(req.url).origin
 
   // ─── Offline (pay at venue) ───────────────────────────────────────────────
-  if (method.flow === "offline") {
+  if (method && method.flow === "offline") {
     const { expiresAt } = await startOrderVerification({
       orderId: order.id,
       email: parsed.email,
@@ -242,6 +249,71 @@ export async function POST(req: Request) {
     })
   }
 
+  // ─── Velocity Africa flows ────────────────────────────────────────────────
+  if (isVelocity) {
+    try {
+      const velocityCustomer = await fetchVelocityCustomer(parsed.phone)
+      const customerId = velocityCustomer?.customerUid || "default"
+
+      const salesOrder = await createVelocitySalesOrder({
+        currency,
+        customerId,
+        amount: total,
+        notes: `${event.title} · order ${order.id.slice(0, 8)}`,
+      })
+
+      const isEcoCash = parsed.paymentMethod === "velocity-ecocash"
+      const tx = await initiateVelocityTransaction({
+        amount: total,
+        processor: isEcoCash ? "ECOCASH" : "VMC",
+        debitPhone: parsed.phone,
+        debitCurrency: currency,
+        authType: isEcoCash ? "REMOTE" : "WEB",
+        salesOrderTrace: salesOrder.trace,
+      })
+
+      await db
+        .update(orders)
+        .set({
+          paymentRef: tx.trace,
+          metadata: {
+            ...(appliedPromo ? { promo: appliedPromo } : {}),
+            velocity: {
+              salesOrderTrace: salesOrder.trace,
+              transactionTrace: tx.trace,
+              workflowId: salesOrder.workflowId,
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, order.id))
+
+      if (tx.redirectUrl) {
+        return NextResponse.json({
+          orderId: order.id,
+          flow: "redirect",
+          redirectUrl: tx.redirectUrl,
+        })
+      }
+
+      return NextResponse.json({
+        orderId: order.id,
+        flow: "seamless",
+        reference: tx.trace,
+        paid: false,
+      })
+    } catch (err) {
+      await db
+        .update(orders)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(eq(orders.id, order.id))
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Velocity payment failed" },
+        { status: 502 },
+      )
+    }
+  }
+
   // ─── PesePay flows ────────────────────────────────────────────────────────
   const pesepay = getPesepay()
   const { resultUrl, returnUrl } = pesepayUrls(order.id, origin)
@@ -251,7 +323,7 @@ export async function POST(req: Request) {
   const reason = `${event.title} · order ${order.id.slice(0, 8)}`
   const merchantRef = order.id
 
-  if (method.flow === "seamless" && method.code) {
+  if (method && method.flow === "seamless" && method.code) {
     const payment = pesepay.createPayment(
       currency,
       method.code,

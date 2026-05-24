@@ -14,13 +14,17 @@ type CheckoutResponse =
   | { flow: "seamless"; orderId: string; reference: string; paid: boolean }
   | { flow: "redirect"; orderId: string; redirectUrl: string }
 
+type PaymentMethodValue = "ecocash" | "omari" | "card" | "velocity-ecocash" | "velocity-vmc"
+
 const POLL_INTERVAL_MS = 4000
 const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money TTL
 
-const PAYMENT_METHODS = [
-  { value: "ecocash", label: "EcoCash",   body: "Mobile money. Instant.",        icon: Smartphone },
-  { value: "omari",   label: "Omari",     body: "Mobile money. Instant.",        icon: Smartphone },
-  { value: "card",    label: "Card",      body: "Visa, Mastercard, AmEx.",        icon: CreditCard },
+const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string; icon: typeof Smartphone }[] = [
+  { value: "ecocash", label: "EcoCash", body: "Mobile money. Instant.", icon: Smartphone },
+  { value: "omari", label: "Omari", body: "Mobile money. Instant.", icon: Smartphone },
+  { value: "card", label: "Card", body: "Visa, Mastercard, AmEx.", icon: CreditCard },
+  { value: "velocity-ecocash", label: "EcoCash — Velocity", body: "Mobile money via Velocity Africa.", icon: Smartphone },
+  { value: "velocity-vmc", label: "Card — Velocity", body: "Visa / Mastercard via Velocity Africa.", icon: CreditCard },
 ]
 
 export default function CheckoutPage() {
@@ -34,7 +38,7 @@ export default function CheckoutPage() {
     name: "",
     email: "",
     phone: "",
-    payment: "ecocash",
+    payment: "ecocash" as PaymentMethodValue,
   })
   const [promoInput, setPromoInput] = useState("")
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: "percent" | "fixed"; value: number; discount: number } | null>(null)
@@ -50,10 +54,15 @@ export default function CheckoutPage() {
     let cancelled = false
     const startedAt = Date.now()
 
+    const isVelocityPoll = pollingContact.current?.method.startsWith("velocity-")
+    const statusEndpoint = isVelocityPoll
+      ? `/api/checkout/velocity/status/${pollingOrderId}`
+      : `/api/checkout/pesepay/status/${pollingOrderId}`
+
     const tick = async () => {
       if (cancelled) return
       try {
-        const res = await fetch(`/api/checkout/pesepay/status/${pollingOrderId}`, { cache: "no-store" })
+        const res = await fetch(statusEndpoint, { cache: "no-store" })
         const data = await res.json()
         if (data.paid && pollingContact.current) {
           placeOrder(
@@ -209,7 +218,7 @@ export default function CheckoutPage() {
   return (
     <div>
       {pollingOrderId && (
-        <PesepayWaitingOverlay
+        <PaymentWaitingOverlay
           method={form.payment}
           phone={form.phone}
           onCancel={() => {
@@ -319,7 +328,7 @@ export default function CheckoutPage() {
                       name="payment"
                       value={value}
                       checked={checked}
-                      onChange={(e) => setForm({ ...form, payment: e.target.value })}
+                      onChange={(e) => setForm({ ...form, payment: e.target.value as PaymentMethodValue })}
                       className="sr-only"
                     />
                     <div className="flex items-start gap-3">
@@ -497,10 +506,17 @@ export default function CheckoutPage() {
   )
 }
 
-function PesepayWaitingOverlay({
+function PaymentWaitingOverlay({
   method, phone, onCancel,
 }: { method: string; phone: string; onCancel: () => void }) {
-  const label = method === "ecocash" ? "EcoCash" : method === "omari" ? "Omari" : "Mobile money"
+  const isVelocity = method.startsWith("velocity-")
+  const label =
+    method === "ecocash" ? "EcoCash"
+    : method === "omari" ? "Omari"
+    : method === "velocity-ecocash" ? "EcoCash — Velocity"
+    : method === "velocity-vmc" ? "Card — Velocity"
+    : "Mobile money"
+  const isCard = method === "card" || method === "velocity-vmc"
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm px-4">
       <div className="relative w-full max-w-md rounded-2xl border border-line bg-paper p-7 shadow-xl shadow-ink/10">
@@ -514,15 +530,19 @@ function PesepayWaitingOverlay({
         </button>
         <div className="flex items-center gap-3">
           <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-navy">
-            <Smartphone size={18} />
+            {isCard ? <CreditCard size={18} /> : <Smartphone size={18} />}
           </span>
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">{label}</p>
-            <h3 className="text-[17px] font-semibold tracking-tight text-ink">Check your phone</h3>
+            <h3 className="text-[17px] font-semibold tracking-tight text-ink">
+              {isCard ? "Complete payment" : "Check your phone"}
+            </h3>
           </div>
         </div>
         <p className="mt-4 text-[13.5px] text-ink-2 leading-relaxed">
-          We sent a payment prompt to <span className="font-semibold text-ink">{phone}</span>. Open the prompt and enter your PIN to confirm. We&apos;ll move you forward as soon as it clears.
+          {isCard
+            ? "We're redirecting you to complete the payment. Once confirmed, you'll be moved forward automatically."
+            : <>We sent a payment prompt to <span className="font-semibold text-ink">{phone}</span>. Open the prompt and enter your PIN to confirm. We&apos;ll move you forward as soon as it clears.</>}
         </p>
         <div className="mt-5 inline-flex items-center gap-2 text-[12.5px] text-ink-3">
           <Loader2 size={13} className="animate-spin text-blue" />
