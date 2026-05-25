@@ -63,7 +63,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Wallet,
     title: "Get paid",
-    body: "Verified payouts to EcoCash, USD, or ZAR after the event clears. 5% per ticket, nothing up front.",
+    body: "Request a payout at any time. We deduct 5% per ticket and send the balance to EcoCash or your bank account within 24 hours. Nothing up front.",
   },
 ]
 

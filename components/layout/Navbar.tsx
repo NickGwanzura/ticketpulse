@@ -106,7 +106,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           aria-label="TicketPulse home"
         >
           <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-[86px] w-auto" />
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 md:h-[86px] w-auto" />
           </span>
         </Link>
 

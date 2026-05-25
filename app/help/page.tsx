@@ -9,7 +9,7 @@ const TOPICS = [
   { icon: Ticket,      title: "Tickets & entry",  body: "QR codes, transfers, refunds.",         href: "#tickets" },
   { icon: CreditCard,  title: "Payments",         body: "EcoCash and Visa cards.",                 href: "#payments" },
   { icon: ShieldCheck, title: "Account & safety", body: "Security, verification, refunds.",      href: "#account" },
-  { icon: CalendarCog, title: "For organizers",   body: "Selling, payouts, scanning.",           href: "/help#organizers" },
+  { icon: CalendarCog, title: "For organizers",   body: "Selling, payouts, scanning.",           href: "/help/organizers" },
   { icon: Store,       title: "For vendors",      body: "Listing, bookings, payouts.",           href: "/help/vendors" },
   { icon: Users,       title: "Group bookings",   body: "Buy for teams or families.",            href: "#groups" },
 ]
@@ -18,7 +18,7 @@ const POPULAR = [
   { q: "How do I transfer a ticket to someone else?",  a: "Open the ticket in your account, tap Transfer, and enter the recipient's email. They'll get a link and a fresh QR code in their account." },
   { q: "When will I get my refund?",                   a: "Refunds appear in the original payment method within 24 to 72 hours, depending on the provider. EcoCash refunds are usually instant." },
   { q: "What if I lose my phone before the event?",    a: "Sign in to your account on any device, your QR is bound to your account, not the device. Or visit will-call at the gate with photo ID." },
-  { q: "How do organizers get paid?",                  a: "Payouts run within 24h of an event ending, in USD, ZAR, or to EcoCash. Cancelled events trigger automatic refunds, no payout." },
+  { q: "How do organizers get paid?",                  a: "Organizers can request a payout at any time from their dashboard. We deduct 5% per ticket and transfer the balance to EcoCash or a bank account within 24 hours. Cancelled events trigger automatic refunds, no payout." },
   { q: "Are vendor profiles vetted?",                  a: "Verified badge means we've checked business registration, references, and reviewed past events. Unverified profiles are still real businesses but newer to the platform." },
 ]
 
