@@ -22,6 +22,7 @@ import {
   Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
+import HeroEventCard from "@/components/events/HeroEventCard"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
@@ -364,11 +365,19 @@ export default async function Home() {
                     ))}
                   </div>
 
-                  {/* Desktop: absolute floating */}
+                  {/* Desktop: absolute floating (2-3 cards) OR large centered card (1 card) */}
                   <div className="hidden lg:block relative h-full">
-                    {heroTickets.map((t, i) => (
-                      <HeroTicketCard key={t.slug} ticket={t} index={i} />
-                    ))}
+                    {heroTickets.length === 1 ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full max-w-[380px]">
+                          <HeroTicketCard ticket={heroTickets[0]} index={0} />
+                        </div>
+                      </div>
+                    ) : (
+                      heroTickets.map((t, i) => (
+                        <HeroTicketCard key={t.slug} ticket={t} index={i} />
+                      ))
+                    )}
                   </div>
                 </>
               ) : (
@@ -412,20 +421,43 @@ export default async function Home() {
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">
               {featuredEvents.length === 1 ? "Our launch event." : "What's on."}
             </h2>
-            <p className="mt-3 text-[15px] text-ink-2">The calendar is filling up fast. <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.</p>
+            <p className="mt-3 text-[15px] text-ink-2">
+              {featuredEvents.length === 1
+                ? "The first of many. Grab your spot before it sells out."
+                : "The calendar is filling up fast."}{" "}
+              <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.
+            </p>
           </div>
 
-          <div className={featuredEvents.length === 1 ? "max-w-md mx-auto" : "columns-1 sm:columns-2 lg:columns-3 gap-5 md:gap-6 space-y-5 md:space-y-6"}>
-            {featuredEvents.map((e, i) => (
-              <div
-                key={e.id}
-                style={{ animationDelay: `${i * 90}ms` }}
-                className="tp-fade-up break-inside-avoid"
-              >
-                <EventCard {...e} />
-              </div>
-            ))}
-          </div>
+          {featuredEvents.length === 1 ? (
+            <div className="tp-fade-up">
+              <HeroEventCard
+                slug={featuredEvents[0].slug}
+                title={featuredEvents[0].title}
+                category={featuredEvents[0].category}
+                venue={featuredEvents[0].venue}
+                city={featuredEvents[0].city}
+                startsAt={featuredEvents[0].startsAt}
+                coverImage={featuredEvents[0].coverImage}
+                lowestPrice={featuredEvents[0].lowestPrice}
+                currency={featuredEvents[0].currency}
+                soldQuantity={featuredEvents[0].soldQuantity}
+                totalQuantity={featuredEvents[0].totalQuantity}
+              />
+            </div>
+          ) : (
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 md:gap-6 space-y-5 md:space-y-6">
+              {featuredEvents.map((e, i) => (
+                <div
+                  key={e.id}
+                  style={{ animationDelay: `${i * 90}ms` }}
+                  className="tp-fade-up break-inside-avoid"
+                >
+                  <EventCard {...e} />
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
