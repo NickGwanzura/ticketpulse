@@ -52,7 +52,10 @@ async function openwaFetch<T = unknown>(
  * @example formatChatId("0771234567")        // "771234567@c.us"
  */
 export function formatChatId(phone: string): string {
-  const digits = phone.replace(/\D/g, "")
+  let digits = phone.replace(/\D/g, "")
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1)
+  }
   return `${digits}@c.us`
 }
 

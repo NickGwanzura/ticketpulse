@@ -153,6 +153,12 @@ export async function createEventAction(
     return { ok: false, error: "Could not create event. Try again." }
   }
 
+  // WhatsApp alert to admin (fire-and-forget).
+  const { sendAdminAlert } = await import("@/lib/whatsapp")
+  sendAdminAlert(
+    `📅 *New event created*\n\nTitle: ${data.title}\nCategory: ${data.category}\nCity: ${data.city}\nStarts: ${startsAt.toLocaleDateString("en-GB")}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/events`,
+  ).catch((e) => console.error("[createEvent] admin WhatsApp alert", e))
+
   revalidatePath("/organizer")
   redirect(`/organizer/events/${created.id}/tiers?created=1`)
 }

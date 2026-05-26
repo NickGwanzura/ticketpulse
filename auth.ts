@@ -62,20 +62,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           ) {
             await sendWelcomeEmail({ to: user.email, name: user.name })
 
+            const role = (user as { role?: string }).role ?? "attendee"
+
             // Notify the admin about the new signup (fire-and-forget).
             const { sendEmail, adminEmail } = await import("@/lib/email")
             const { newSignupAdminNotification } = await import("@/lib/email-templates")
             const notice = newSignupAdminNotification({
               name: user.name ?? null,
               email: user.email,
-              role: (user as { role?: string }).role ?? "attendee",
+              role,
             })
             sendEmail({
               to: adminEmail,
-              subject: `New signup: ${user.email} (${(user as { role?: string }).role ?? "attendee"})`,
+              subject: `New signup: ${user.email} (${role})`,
               html: notice.html,
               text: notice.text,
             }).catch((e) => console.error("[auth] admin signup notification", e))
+
+            // WhatsApp alert to admin (fire-and-forget).
+            const { sendAdminAlert } = await import("@/lib/whatsapp")
+            sendAdminAlert(
+              `🆕 *New signup — ${role}*\n\nName: ${user.name ?? "—"}\nEmail: ${user.email}\nRole: ${role}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/users`,
+            ).catch((e) => console.error("[auth] admin signup WhatsApp alert", e))
           }
         } catch (e) {
           console.error("[auth] welcome email / admin notification", e)

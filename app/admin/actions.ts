@@ -100,6 +100,16 @@ export async function publishEventAction(eventId: string) {
     } catch (err) {
       console.error("[publishEvent] failed to notify admin:", err)
     }
+
+    // WhatsApp alert to admin (fire-and-forget).
+    try {
+      const { sendAdminAlert } = await import("@/lib/whatsapp")
+      await sendAdminAlert(
+        `🎉 *Event published*\n\nTitle: ${ev.title}\nDate: ${eventDate}\nURL: ${eventUrl}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/events`,
+      )
+    } catch (err) {
+      console.error("[publishEvent] failed to send admin WhatsApp alert:", err)
+    }
   }
 
   revalidatePath("/admin/events")
