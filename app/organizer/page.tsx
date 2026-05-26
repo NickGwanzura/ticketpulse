@@ -6,7 +6,7 @@ import {
   Plus, ArrowUpRight, Calendar, DollarSign, Users, Ticket, TrendingUp,
   ScanLine, LayoutList, ShoppingCart,
   Activity, Mail, Tag, ExternalLink, AlertCircle,
-  CheckCircle2, Percent,
+  CheckCircle2, Percent, HelpCircle,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -647,6 +647,9 @@ export default async function OrganizerPage({
                         <Link href={`/organizer/events/${e.id}/promos`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
                           <Tag size={13} /> Promos
                         </Link>
+                        <Link href={`/organizer/events/${e.id}/questions`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
+                          <HelpCircle size={13} /> Questions
+                        </Link>
                         <Link href={`/organizer/events/${e.id}/email`} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
                           <Mail size={13} /> Email
                         </Link>
@@ -715,6 +718,13 @@ export default async function OrganizerPage({
                                 title="Promo codes"
                               >
                                 <Tag size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/questions`}
+                                className="inline-flex items-center justify-center text-ink-3 hover:text-navy p-1.5 rounded-md hover:bg-navy/5"
+                                title="Ticket questions"
+                              >
+                                <HelpCircle size={14} />
                               </Link>
                               <Link
                                 href={`/organizer/events/${e.id}/email`}

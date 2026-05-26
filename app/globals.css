@@ -530,5 +530,5 @@ html { scroll-padding-top: 5.5rem; }
 
 .tp-stroke-draw {
   stroke-dasharray: 240;
-  animation: tp-stroke-draw 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) 220ms both;
+  animation: tp-stroke-draw 1.2s cubic-bezier(0.22, 0.61, 0.36, 1) 80ms both;
 }

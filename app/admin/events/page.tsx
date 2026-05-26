@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   CalendarCheck, FileText, XCircle, PackageCheck,
-  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle,
 } from "lucide-react"
 import { desc, eq, sql } from "drizzle-orm"
 
@@ -228,6 +228,13 @@ export default async function AdminEventsPage({
                           </td>
                           <td className="px-3 py-3.5">
                             <div className="flex items-center justify-end gap-1">
+                              <Link
+                                href={`/organizer/events/${e.id}`}
+                                aria-label="Manage event"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-navy hover:text-navy hover:bg-green-50 transition-colors"
+                              >
+                                <Settings size={14} />
+                              </Link>
                               <form
                                 action={publishEventAction.bind(null, e.id)}
                               >
@@ -263,6 +270,13 @@ export default async function AdminEventsPage({
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
                               >
                                 <Ticket size={14} />
+                              </Link>
+                              <Link
+                                href={`/organizer/events/${e.id}/questions`}
+                                aria-label="Ticket questions"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <HelpCircle size={14} />
                               </Link>
                               <Link
                                 href={`/organizer/events/${e.id}/gallery`}
@@ -319,6 +333,12 @@ export default async function AdminEventsPage({
                         <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{sold}/{capacity}</span>
                       </div>
                       <div className="flex items-center gap-2 text-[12px]">
+                        <Link
+                          href={`/organizer/events/${e.id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-50 text-navy hover:bg-green-100 transition-colors font-semibold"
+                        >
+                          <Settings size={12} /> Manage
+                        </Link>
                         <form action={publishEventAction.bind(null, e.id)}>
                           <button
                             type="submit"
@@ -337,6 +357,9 @@ export default async function AdminEventsPage({
                         </Link>
                         <Link href={`/organizer/events/${e.id}/tiers`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <Ticket size={12} /> Tickets
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/questions`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
+                          <HelpCircle size={12} /> Questions
                         </Link>
                         <Link href={`/organizer/events/${e.id}/gallery`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <ImageIcon size={12} /> Gallery

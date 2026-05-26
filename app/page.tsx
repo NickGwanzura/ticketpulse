@@ -282,7 +282,7 @@ export default async function Home() {
         </svg>
 
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-16 md:pb-24">
-          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
+          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-16 items-center">
             {/* LEFT. Text */}
             <div>
               <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-7 shadow-sm shadow-ink/5">
@@ -310,7 +310,7 @@ export default async function Home() {
                 Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
               </p>
 
-              <form action="/events" className="tp-fade-up-3 mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl">
+              <form action="/events" className="tp-fade-up-3 mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">
                 <div className="relative flex-1 group">
                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none transition-colors group-focus-within:text-blue" />
                   <input
@@ -330,7 +330,7 @@ export default async function Home() {
                 </button>
               </form>
 
-              <div className="tp-fade-up-4 mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-full border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
+              <div className="tp-fade-up-4 mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
                 <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-green-600" /> No signup to buy</span>
                 <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-green-600" /> PDF + mobile QR</span>
                 <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-green-600" /> Delivered on WhatsApp</span>
@@ -350,7 +350,7 @@ export default async function Home() {
             </div>
 
             {/* RIGHT. Floating ticket cards */}
-            <div className="relative h-[420px] lg:h-[480px]">
+            <div className="relative min-h-[280px] md:min-h-[320px] lg:h-[480px]">
               {/* Decorative glow */}
               <div className="absolute inset-0 -z-10 [background:radial-gradient(500px_circle_at_50%_45%,rgba(5,112,222,0.10),transparent_60%)] pointer-events-none" />
 
@@ -476,7 +476,7 @@ export default async function Home() {
                 key={value}
                 href={`/events?category=${value}`}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 h-32 sm:h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
+                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 h-32 sm:h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 hover:ring-1 hover:ring-green-500/15 active:scale-[0.99] transition-all`}
               >
                 <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
                   <Icon size={17} className={accent} />
@@ -509,14 +509,14 @@ export default async function Home() {
               className="tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-28px_rgba(10,37,64,0.18)] transition-all duration-300"
             >
               <span
-                className="pointer-events-none absolute -top-2 -right-3 select-none text-[72px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft transition-colors"
+                className="pointer-events-none absolute -top-2 -right-3 select-none text-[72px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft group-hover:scale-110 group-hover:translate-x-0.5 transition-all duration-300"
                 aria-hidden
               >
                 0{i + 1}
               </span>
 
               <div className="relative flex items-center gap-3 mb-5">
-                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/15 group-hover:ring-blue/25 transition-colors">
+                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/15 group-hover:bg-green-100 group-hover:ring-green-500/25 transition-all duration-300">
                   <Icon size={22} className="text-green-600" />
                 </span>
                 <span className="text-[10.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
@@ -540,7 +540,7 @@ export default async function Home() {
             <div
               key={k}
               style={{ animationDelay: `${i * 80}ms` }}
-              className="tp-fade-up group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 transition-all duration-300"
+              className="tp-fade-up group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(10,37,64,0.12)] transition-all duration-300"
             >
               <span className={`inline-flex w-11 h-11 items-center justify-center rounded-xl bg-gradient-to-br ${tone} ring-1 ${ring} shrink-0 mb-3.5`}>
                 <Icon size={18} className={accent} />
