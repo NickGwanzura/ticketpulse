@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { eq, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, tickets, users } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets, users, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
 import { sendText, formatChatId } from "@/lib/whatsapp"
@@ -51,6 +51,32 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       updatedAt: new Date(),
     })
     .where(eq(orders.id, id))
+
+  // ── Persist question responses ────────────────────────────────────────────
+  try {
+    const meta = (order.metadata ?? {}) as { questionResponses?: Record<string, string> }
+    if (meta.questionResponses && Object.keys(meta.questionResponses).length > 0) {
+      const eventQuestionsList = await db
+        .select({ id: ticketQuestions.id })
+        .from(ticketQuestions)
+        .where(eq(ticketQuestions.eventId, order.eventId))
+
+      const validQuestionIds = new Set(eventQuestionsList.map((q) => q.id))
+      const responseValues = Object.entries(meta.questionResponses)
+        .filter(([qid]) => validQuestionIds.has(qid))
+        .map(([questionId, response]) => ({
+          questionId,
+          orderId: id,
+          response: response.slice(0, 2000),
+        }))
+
+      if (responseValues.length > 0) {
+        await db.insert(ticketQuestionResponses).values(responseValues)
+      }
+    }
+  } catch (err) {
+    console.error("[finalize] failed to persist question responses:", err)
+  }
 
   // ── Create individual ticket records with QR codes ─────────────────────────
   // Each ticket-type order item produces one record per quantity.

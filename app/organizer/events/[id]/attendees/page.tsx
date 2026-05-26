@@ -1,11 +1,11 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
-import { eq, and, inArray, desc, sql } from "drizzle-orm"
+import { eq, and, inArray, desc, asc, sql } from "drizzle-orm"
 import Link from "next/link"
 import { ArrowLeft, Download, Users } from "lucide-react"
 
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, tickets } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -30,9 +30,17 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
     .limit(1)
   if (!event) notFound()
 
+  // ── Event questions ────────────────────────────────────────────────────────
+  const questions = await db
+    .select({ id: ticketQuestions.id, question: ticketQuestions.question })
+    .from(ticketQuestions)
+    .where(eq(ticketQuestions.eventId, id))
+    .orderBy(asc(ticketQuestions.sortOrder))
+
   // ── Attendee data ──────────────────────────────────────────────────────────
   const rows = await db
     .select({
+      orderId: orders.id,
       guestName: orders.guestName,
       guestEmail: orders.guestEmail,
       guestPhone: orders.guestPhone,
@@ -56,6 +64,27 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
       ),
     )
     .orderBy(desc(orders.createdAt))
+
+  // Fetch responses for all paid orders
+  const orderIds = [...new Set(rows.map((r) => r.orderId))]
+  const responses = orderIds.length > 0
+    ? await db
+        .select({
+          orderId: ticketQuestionResponses.orderId,
+          questionId: ticketQuestionResponses.questionId,
+          response: ticketQuestionResponses.response,
+        })
+        .from(ticketQuestionResponses)
+        .where(inArray(ticketQuestionResponses.orderId, orderIds))
+    : []
+
+  const responseMap = new Map<string, Map<string, string>>()
+  for (const r of responses) {
+    if (!responseMap.has(r.orderId)) {
+      responseMap.set(r.orderId, new Map())
+    }
+    responseMap.get(r.orderId)!.set(r.questionId, r.response)
+  }
 
   const totalBuyers = new Set(rows.map((r) => r.guestEmail)).size
   const totalTickets = rows.reduce((sum, r) => sum + r.quantity, 0)
@@ -121,6 +150,9 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                     <th className="px-3 py-3.5 text-left">Ticket</th>
                     <th className="px-3 py-3.5 text-right">Qty</th>
                     <th className="px-3 py-3.5 text-center">Checked in</th>
+                    {questions.map((q) => (
+                      <th key={q.id} className="px-3 py-3.5 text-left max-w-[180px]">{q.question}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -157,6 +189,14 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                           </span>
                         )}
                       </td>
+                      {questions.map((q) => {
+                        const answer = responseMap.get(r.orderId)?.get(q.id)
+                        return (
+                          <td key={q.id} className="px-3 py-3.5 text-[13px] text-ink-2 max-w-[180px] truncate" title={answer ?? undefined}>
+                            {answer ?? "—"}
+                          </td>
+                        )
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -165,39 +205,55 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
 
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-line">
-              {rows.map((r, i) => (
-                <div key={`${r.qrCode ?? r.guestEmail}-${i}`} className="px-5 py-4 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-medium text-ink">{r.guestName || "—"}</span>
-                    {r.scannedAt ? (
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                        Checked in
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-medium text-ink-3">
-                        Not checked in
-                      </span>
+              {rows.map((r, i) => {
+                const orderResponses = responseMap.get(r.orderId)
+                return (
+                  <div key={`${r.qrCode ?? r.guestEmail}-${i}`} className="px-5 py-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-medium text-ink">{r.guestName || "—"}</span>
+                      {r.scannedAt ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                          Checked in
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-medium text-ink-3">
+                          Not checked in
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[12px] text-ink-3">{r.guestEmail}</div>
+                    {r.guestPhone && (
+                      <div className="text-[12px] text-ink-3 font-mono">
+                        <a
+                          href={`https://wa.me/${r.guestPhone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-green-600 transition-colors"
+                        >
+                          {r.guestPhone}
+                        </a>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 text-[12px] text-ink-2">
+                      <span>{r.tierName ?? "N/A"}</span>
+                      <span>×{r.quantity}</span>
+                    </div>
+                    {questions.length > 0 && (
+                      <div className="pt-2 space-y-1 border-t border-line mt-2">
+                        {questions.map((q) => {
+                          const answer = orderResponses?.get(q.id)
+                          return (
+                            <div key={q.id} className="text-[11.5px]">
+                              <span className="text-ink-3">{q.question}:</span>{" "}
+                              <span className="text-ink-2">{answer ?? "—"}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
                     )}
                   </div>
-                  <div className="text-[12px] text-ink-3">{r.guestEmail}</div>
-                  {r.guestPhone && (
-                    <div className="text-[12px] text-ink-3 font-mono">
-                      <a
-                        href={`https://wa.me/${r.guestPhone.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-green-600 transition-colors"
-                      >
-                        {r.guestPhone}
-                      </a>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 text-[12px] text-ink-2">
-                    <span>{r.tierName ?? "N/A"}</span>
-                    <span>×{r.quantity}</span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

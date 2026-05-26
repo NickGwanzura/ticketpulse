@@ -65,9 +65,6 @@ body {
     min-height: 44px;
     min-width: 44px;
   }
-  /* Increase spacing between tappable items on mobile */
-  .gap-2 { gap: 0.625rem; }
-  .gap-3 { gap: 0.875rem; }
 }
 
 /* Define scrollbar-width for consistent scrollbar sizing across browsers. */
@@ -276,7 +273,10 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
 }
 
 /* Subtle scroll-margin so anchor jumps clear the sticky navbar. */
-html { scroll-padding-top: 6rem; }
+html { scroll-padding-top: 5.5rem; }
+@media (min-width: 768px) {
+  html { scroll-padding-top: 8.5rem; }
+}
 
 /* Dotted hover underline on inline copy links inside long-form prose. */
 .prose a:not(.button) {

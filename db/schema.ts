@@ -487,6 +487,7 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   vendorListings: many(vendorListings),
   eventOrganisers: many(eventOrganisers),
   organiserInvites: many(organiserInvites),
+  ticketQuestions: many(ticketQuestions),
 }))
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -511,6 +512,7 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   user: one(users, { fields: [orders.userId], references: [users.id] }),
   event: one(events, { fields: [orders.eventId], references: [events.id] }),
   items: many(orderItems),
+  questionResponses: many(ticketQuestionResponses),
 }))
 
 export const ticketTiersRelations = relations(ticketTiers, ({ one }) => ({
@@ -527,6 +529,38 @@ export const shuttleRoutesRelations = relations(shuttleRoutes, ({ one, many }) =
   event: one(events, { fields: [shuttleRoutes.eventId], references: [events.id] }),
   operator: one(transportOperators, { fields: [shuttleRoutes.operatorId], references: [transportOperators.id] }),
   bookings: many(transportBookings),
+}))
+
+export const ticketQuestions = pgTable("ticket_questions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  required: boolean("required").default(false),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ticket_questions_event_id_idx").on(table.eventId),
+])
+
+export const ticketQuestionResponses = pgTable("ticket_question_responses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  questionId: uuid("question_id").notNull().references(() => ticketQuestions.id, { onDelete: "cascade" }),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  response: text("response").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("ticket_question_responses_question_id_idx").on(table.questionId),
+  index("ticket_question_responses_order_id_idx").on(table.orderId),
+])
+
+export const ticketQuestionsRelations = relations(ticketQuestions, ({ one, many }) => ({
+  event: one(events, { fields: [ticketQuestions.eventId], references: [events.id] }),
+  responses: many(ticketQuestionResponses),
+}))
+
+export const ticketQuestionResponsesRelations = relations(ticketQuestionResponses, ({ one }) => ({
+  question: one(ticketQuestions, { fields: [ticketQuestionResponses.questionId], references: [ticketQuestions.id] }),
+  order: one(orders, { fields: [ticketQuestionResponses.orderId], references: [orders.id] }),
 }))
 
 export const galleryRelations = relations(eventGalleries, ({ one, many }) => ({

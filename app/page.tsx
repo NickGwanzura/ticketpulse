@@ -296,7 +296,7 @@ export default async function Home() {
                 </span>
               </div>
 
-              <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[44px] leading-[1.0] sm:text-[60px] md:text-[76px] md:leading-[0.96] text-ink">
+              <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[40px] leading-[1.05] sm:text-[60px] sm:leading-[1.0] md:text-[76px] md:leading-[0.96] text-ink">
                 Every event.<br />
                 <span className="relative inline-block">
                   <span className="bg-gradient-to-r from-navy via-navy-700 to-blue bg-clip-text text-transparent">One ticket.</span>
@@ -357,9 +357,9 @@ export default async function Home() {
               {heroTickets.length > 0 ? (
                 <>
                   {/* Mobile/tablet: stack horizontally with snap */}
-                  <div className="lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-5 px-5 scrollbar-none">
+                  <div className="lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-5 px-5 no-scrollbar">
                     {heroTickets.map((t) => (
-                      <div key={t.slug} className="snap-center shrink-0 w-[280px]">
+                      <div key={t.slug} className="snap-center shrink-0 w-[260px] sm:w-[280px]">
                         <HeroTicketCard ticket={t} />
                       </div>
                     ))}
@@ -476,7 +476,7 @@ export default async function Home() {
                 key={value}
                 href={`/events?category=${value}`}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-5 h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
+                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 h-32 sm:h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
               >
                 <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
                   <Icon size={17} className={accent} />
@@ -509,7 +509,7 @@ export default async function Home() {
               className="tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-28px_rgba(10,37,64,0.18)] transition-all duration-300"
             >
               <span
-                className="pointer-events-none absolute -top-2 -right-1 select-none text-[80px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft transition-colors"
+                className="pointer-events-none absolute -top-2 -right-3 select-none text-[72px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft transition-colors"
                 aria-hidden
               >
                 0{i + 1}

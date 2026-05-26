@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { eq, and, inArray, desc, sql } from "drizzle-orm"
+import { eq, and, inArray, desc, asc, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, tickets } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
 import { auth } from "@/auth"
 
 type RouteParams = { params: Promise<{ id: string }> }
@@ -27,9 +27,17 @@ export async function GET(_req: Request, ctx: RouteParams) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
+  // Fetch event questions
+  const questions = await db
+    .select({ id: ticketQuestions.id, question: ticketQuestions.question })
+    .from(ticketQuestions)
+    .where(eq(ticketQuestions.eventId, id))
+    .orderBy(asc(ticketQuestions.sortOrder))
+
   // Fetch attendees — confirmed orders with ticket items
   const rows = await db
     .select({
+      orderId: orders.id,
       guestName: orders.guestName,
       guestEmail: orders.guestEmail,
       guestPhone: orders.guestPhone,
@@ -58,8 +66,29 @@ export async function GET(_req: Request, ctx: RouteParams) {
     )
     .orderBy(desc(orders.createdAt))
 
+  const orderIds = [...new Set(rows.map((r) => r.orderId))]
+  const responses = orderIds.length > 0
+    ? await db
+        .select({
+          orderId: ticketQuestionResponses.orderId,
+          questionId: ticketQuestionResponses.questionId,
+          response: ticketQuestionResponses.response,
+        })
+        .from(ticketQuestionResponses)
+        .where(inArray(ticketQuestionResponses.orderId, orderIds))
+    : []
+
+  const responseMap = new Map<string, Map<string, string>>()
+  for (const r of responses) {
+    if (!responseMap.has(r.orderId)) {
+      responseMap.set(r.orderId, new Map())
+    }
+    responseMap.get(r.orderId)!.set(r.questionId, r.response)
+  }
+
   // Build CSV
-  const header = "Name,Email,Phone,Ticket Type,Qty,Unit Price,Total,Checked In,QR Code"
+  const questionHeaders = questions.map((q) => escapeCsv(q.question)).join(",")
+  const header = `Name,Email,Phone,Ticket Type,Qty,Unit Price,Total,Checked In,QR Code${questionHeaders ? "," + questionHeaders : ""}`
   const csvRows = rows.map((r) => {
     const name = escapeCsv(r.guestName ?? "")
     const email = escapeCsv(r.guestEmail ?? "")
@@ -67,7 +96,8 @@ export async function GET(_req: Request, ctx: RouteParams) {
     const tier = escapeCsv(r.tierName ?? "N/A")
     const checkedIn = r.scannedAt ? "Yes" : "No"
     const qr = escapeCsv(r.qrCode ?? "")
-    return `${name},${email},${phone},${tier},${r.quantity},${r.unitPrice},${r.total},${checkedIn},${qr}`
+    const qCols = questions.map((q) => escapeCsv(responseMap.get(r.orderId)?.get(q.id) ?? "")).join(",")
+    return `${name},${email},${phone},${tier},${r.quantity},${r.unitPrice},${r.total},${checkedIn},${qr}${qCols ? "," + qCols : ""}`
   })
 
   const csv = [header, ...csvRows].join("\n")

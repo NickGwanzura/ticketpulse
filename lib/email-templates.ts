@@ -1054,3 +1054,86 @@ export function groqAiAnnouncementEmail(opts: {
 
   return { html, text }
 }
+
+// ─── New features announcement: Hide organizer + FAQ ─────────────────────────
+
+export function newFeaturesAnnouncementEmail(opts: {
+  name?: string | null
+}): { html: string; text: string } {
+  const first = opts.name?.split(" ")[0]?.trim()
+  const greeting = first ? `Hey ${first},` : "Hi there,"
+  const appUrl = APP_URL
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${escape(greeting)}
+    </p>
+    <p style="margin:0 0 14px;">
+      We have just shipped two new features to help you run better events on TicketPulse.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="margin:16px 0 8px;padding:18px;border:1px solid ${BRAND.line};border-radius:14px;background:${BRAND.paper2};">
+      <tr>
+        <td style="padding:0 0 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">🙈</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">Hide Your Name from the Event Page</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">You can now choose to hide &quot;Organized by [your name]&quot; from the public event page. Toggle it on when creating or editing any event — perfect for private events, surprise parties, or when you simply prefer to keep a low profile.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:32px;vertical-align:top;padding:2px 10px 0 0;">
+                <span style="font-size:16px;">❓</span>
+              </td>
+              <td style="font-size:14px;color:${BRAND.ink};">
+                <strong style="display:block;font-size:14px;margin-bottom:2px;">More About This Event — FAQ Section</strong>
+                <span style="font-size:13px;color:${BRAND.ink2};">Add a dedicated &quot;More About This Event&quot; section to any event page. Use it for FAQs, what to bring, dress code, parking info, refund policies, accessibility details — anything your attendees need to know. This appears right on the public event page below the description.</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:16px 0 0;font-size:13px;color:${BRAND.ink3};">
+      Both options are available now when you create or edit an event.
+    </p>`
+
+  const html = layout({
+    preheader: "Hide your name from events and add FAQ sections — new on TicketPulse.",
+    heading: "New on TicketPulse",
+    body,
+    cta: { label: "Go to organizer dashboard", href: `${appUrl}/organizer` },
+  })
+
+  const text = [
+    "New on TicketPulse",
+    "",
+    greeting,
+    "",
+    "We've just shipped two new features to help you run better events:",
+    "",
+    "🙈 Hide Your Name from the Event Page",
+    "Choose to hide 'Organized by [your name]' from the public event page. Perfect for private events or when you prefer to keep a low profile. Toggle it when creating or editing any event.",
+    "",
+    "❓ More About This Event — FAQ Section",
+    "Add a dedicated 'More About This Event' section to any event page. Use it for FAQs, what to bring, dress code, parking info, refund policies, accessibility details — anything attendees need to know.",
+    "",
+    "Both options are available now when you create or edit an event.",
+    "",
+    `Go to your dashboard: ${appUrl}/organizer`,
+    "",
+    "TicketPulse",
+  ].join("\n")
+
+  return { html, text }
+}

@@ -187,7 +187,7 @@ export default function Footer() {
       {/* Trust strip */}
       <div className="relative border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 md:px-8 py-7">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-5 md:gap-6">
             {TRUST.map(({ icon: Icon, k, v }) => (
               <div key={k} className="flex items-start gap-3">
                 <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white/[0.06] ring-1 ring-white/15 shrink-0">
@@ -205,7 +205,7 @@ export default function Footer() {
 
       {/* Main */}
       <div className="relative max-w-7xl mx-auto px-6 md:px-8 py-14 md:py-20">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-10 md:gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-6 md:gap-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="inline-flex items-center" aria-label="TicketPulse home">

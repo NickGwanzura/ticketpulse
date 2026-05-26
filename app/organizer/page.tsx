@@ -437,6 +437,11 @@ export default async function OrganizerPage({
 
   return (
     <div className="tp-fade-up">
+      <div className="max-w-7xl mx-auto px-5 md:px-8 pt-6 md:pt-8">
+        <Link href="/organizer">
+          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-10 w-auto lg:hidden" />
+        </Link>
+      </div>
       <PageHeader
         eyebrow="Organizer"
         title="Your events"

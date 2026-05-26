@@ -1,10 +1,11 @@
-import { Check, ShoppingBag, User, CreditCard, Ticket } from "lucide-react"
+import { Check, ShoppingBag, User, HelpCircle, CreditCard, Ticket } from "lucide-react"
 
 const STEPS = [
-  { id: "cart",    label: "Cart",     Icon: ShoppingBag },
-  { id: "details", label: "Details",  Icon: User },
-  { id: "pay",     label: "Payment",  Icon: CreditCard },
-  { id: "done",    label: "Tickets",  Icon: Ticket },
+  { id: "cart",      label: "Cart",      Icon: ShoppingBag },
+  { id: "details",   label: "Details",   Icon: User },
+  { id: "questions", label: "Questions", Icon: HelpCircle },
+  { id: "pay",       label: "Payment",   Icon: CreditCard },
+  { id: "done",      label: "Tickets",   Icon: Ticket },
 ] as const
 
 type StepId = (typeof STEPS)[number]["id"]

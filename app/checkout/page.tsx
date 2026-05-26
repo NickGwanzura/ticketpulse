@@ -40,6 +40,8 @@ export default function CheckoutPage() {
     phone: "",
     payment: "ecocash" as PaymentMethodValue,
   })
+  const [eventQuestions, setEventQuestions] = useState<{ id: string; question: string; required: boolean }[]>([])
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({})
   const [promoInput, setPromoInput] = useState("")
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: "percent" | "fixed"; value: number; discount: number } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
@@ -98,6 +100,23 @@ export default function CheckoutPage() {
     return () => { cancelled = true }
   }, [pollingOrderId, placeOrder, router])
 
+  // Fetch event questions once cart is ready
+  useEffect(() => {
+    if (!ready || items.length === 0) return
+    const ticketItem = items.find((i) => i.kind === "ticket")
+    if (!ticketItem) return
+    fetch(`/api/checkout/questions?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.questions) {
+          setEventQuestions(data.questions)
+        }
+      })
+      .catch(() => {
+        // silently fail — questions are optional
+      })
+  }, [ready, items])
+
   if (!ready) {
     return (
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-20">
@@ -144,6 +163,15 @@ export default function CheckoutPage() {
     }
 
     try {
+      // Validate required questions
+      for (const q of eventQuestions) {
+        if (q.required && !questionAnswers[q.id]?.trim()) {
+          setSubmitError(`Please answer the required question: "${q.question}"`)
+          setSubmitting(false)
+          return
+        }
+      }
+
       const body: Record<string, unknown> = {
         email: form.email,
         name: form.name,
@@ -157,6 +185,9 @@ export default function CheckoutPage() {
       }
       if (appliedPromo) {
         body.promoCode = appliedPromo.code
+      }
+      if (eventQuestions.length > 0) {
+        body.questionResponses = questionAnswers
       }
       const res = await fetch("/api/checkout/guest", {
         method: "POST",
@@ -241,7 +272,15 @@ export default function CheckoutPage() {
               </h1>
             </div>
             <div className="w-full md:max-w-md">
-              <CheckoutSteps active={form.payment ? "pay" : "details"} />
+              <CheckoutSteps active={
+                form.payment && eventQuestions.length > 0
+                  ? "pay"
+                  : form.payment
+                  ? "pay"
+                  : eventQuestions.length > 0 && Object.keys(questionAnswers).length > 0
+                  ? "questions"
+                  : "details"
+              } />
             </div>
           </div>
         </div>
@@ -307,9 +346,41 @@ export default function CheckoutPage() {
             </div>
           </section>
 
+          {/* Questions */}
+          {eventQuestions.length > 0 && (
+            <section className="rounded-2xl border border-line bg-paper p-6 md:p-7">
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">02 · Questions</p>
+              <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-1">A few quick questions</h2>
+              <p className="text-xs text-ink-3 mb-5">The organiser would like to know a little more about you.</p>
+
+              <div className="space-y-4">
+                {eventQuestions.map((q) => (
+                  <div key={q.id}>
+                    <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+                      {q.question}
+                      {q.required && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      required={q.required}
+                      value={questionAnswers[q.id] ?? ""}
+                      onChange={(e) =>
+                        setQuestionAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                      }
+                      placeholder="Your answer"
+                      className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Payment */}
           <section className="rounded-2xl border border-line bg-paper p-6 md:p-7">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">02 · Payment</p>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
+              {eventQuestions.length > 0 ? "03" : "02"} · Payment
+            </p>
             <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-1">How would you like to pay?</h2>
             <p className="text-xs text-ink-3 mb-5">Choose your method, we&apos;ll redirect to confirm.</p>
 

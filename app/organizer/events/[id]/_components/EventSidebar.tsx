@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Settings,
   ArrowLeft,
+  HelpCircle,
 } from "lucide-react"
 
 const NAV = (eventId: string) =>
@@ -24,6 +25,7 @@ const NAV = (eventId: string) =>
     { label: "Overview", href: `/organizer/events/${eventId}`, icon: Activity },
     { label: "Event details", href: `/organizer/events/${eventId}/edit`, icon: Settings },
     { label: "Tickets", href: `/organizer/events/${eventId}/tiers`, icon: Ticket },
+    { label: "Questions", href: `/organizer/events/${eventId}/questions`, icon: HelpCircle },
     { label: "Photo gallery", href: `/organizer/events/${eventId}/gallery`, icon: ImageIcon },
     { label: "Merch", href: `/organizer/events/${eventId}/merch`, icon: ShoppingBag },
     { label: "Vendors", href: `/organizer/events/${eventId}/vendors`, icon: Store },
@@ -60,11 +62,17 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex sticky top-24 self-start h-[calc(100vh-6rem)] w-[232px] shrink-0 flex-col border-r border-line bg-paper">
+        {/* Logo */}
+        <div className="px-4 pt-4 pb-2">
+          <Link href="/organizer" className="inline-block">
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-10 w-auto" />
+          </Link>
+        </div>
         {/* Event header */}
-        <div className="px-4 py-4 border-b border-line">
+        <div className="px-4 py-3 border-b border-line">
           <Link
             href="/organizer"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-3 hover:text-ink mb-2 transition-colors"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-3 hover:text-ink mb-1.5 transition-colors"
           >
             <ArrowLeft size={11} />
             Dashboard

@@ -81,6 +81,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
   }, [eventsOpen])
 
   const eventsActive = pathname === "/events" || pathname.startsWith("/events/")
+  const isDashboardRoute = pathname.startsWith("/organizer") || pathname.startsWith("/admin") || pathname.startsWith("/dashboard")
 
   return (
     <header
@@ -98,17 +99,19 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
         />
       )}
 
-      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-24 flex items-center gap-3 md:gap-6">
-        {/* Brand */}
-        <Link
-          href="/"
-          className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
-          aria-label="TicketPulse home"
-        >
-          <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 md:h-[86px] w-auto" />
-          </span>
-        </Link>
+      <nav className="max-w-7xl mx-auto px-5 md:px-8 h-16 md:h-24 flex items-center gap-3 md:gap-6">
+        {/* Brand — hidden on dashboard routes */}
+        {!isDashboardRoute && (
+          <Link
+            href="/"
+            className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
+            aria-label="TicketPulse home"
+          >
+            <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
+              <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 md:h-[86px] w-auto" />
+            </span>
+          </Link>
+        )}
 
         {/* Desktop nav with mega menu */}
         <div className="hidden md:flex items-center gap-1 mx-auto">
@@ -261,16 +264,16 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         ) : (
-          <div className="md:hidden flex items-center gap-1.5">
+          <div className="md:hidden flex items-center gap-1">
             <Link
               href="/auth/signin"
-              className="inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
+              className="hidden sm:inline-flex h-9 items-center rounded-lg px-2.5 text-[12.5px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/auth/signup"
-              className="inline-flex h-9 items-center rounded-lg bg-green-600 px-3 text-[13px] font-semibold text-white hover:bg-green-700 transition-colors"
+              className="hidden sm:inline-flex h-9 items-center rounded-lg bg-green-600 px-2.5 text-[12.5px] font-semibold text-white hover:bg-green-700 transition-colors"
             >
               Sign up
             </Link>
@@ -290,7 +293,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
       {eventsOpen && (
         <>
           <div className="fixed inset-0 z-30 bg-ink/10 backdrop-blur-[1px]" onClick={() => setEventsOpen(false)} aria-hidden />
-          <div className="absolute left-0 right-0 top-24 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
+          <div className="absolute left-0 right-0 top-16 md:top-24 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
             <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8">
               <div>
                 <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">By category</p>
@@ -363,7 +366,9 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
 
       {/* Mobile drawer */}
       {menuOpen && (
-        <div className="md:hidden border-t border-line bg-paper">
+        <>
+          <div className="md:hidden fixed inset-0 z-30 bg-ink/20 backdrop-blur-[1px]" onClick={() => setMenuOpen(false)} aria-hidden />
+          <div className="md:hidden relative z-40 border-t border-line bg-paper">
           <div className="max-w-7xl mx-auto px-5 py-4 space-y-5">
             {/* Search */}
             <Link href="/events" className="flex items-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm text-ink-2">
@@ -457,6 +462,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
             </div>
           </div>
         </div>
+        </>
       )}
     </header>
   )

@@ -25,7 +25,12 @@ export default function Sidebar({ name, email }: { name: string; email: string }
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex sticky top-24 self-start h-[calc(100vh-6rem)] w-[248px] shrink-0 flex-col border-r border-line bg-paper">
-        <div className="px-5 py-5 border-b border-line">
+        <div className="px-5 pt-4 pb-2">
+          <Link href="/admin">
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-10 w-auto" />
+          </Link>
+        </div>
+        <div className="px-5 py-4 border-b border-line">
           <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Admin</p>
           <div className="flex items-center gap-2.5">
             <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-navy text-white">

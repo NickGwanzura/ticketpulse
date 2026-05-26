@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { eq, and, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { startOrderVerification } from "@/lib/order-verification"
 import { PESEPAY_METHODS, getPesepay, pesepayUrls } from "@/lib/pesepay"
 import {
@@ -36,6 +36,7 @@ const Body = z.object({
     .min(1)
     .max(30),
   promoCode: z.string().max(40).optional(),
+  questionResponses: z.record(z.string().uuid(), z.string().min(0).max(2000)).optional(),
 })
 
 export async function POST(req: Request) {
@@ -179,6 +180,31 @@ export async function POST(req: Request) {
   // as `pending` and only progress once the provider confirms the payment.
   const initialStatus = method && method.flow === "offline" ? "awaiting_verification" : "pending"
 
+  // Validate question responses if provided
+  let questionResponseMeta: Record<string, string> | undefined
+  if (parsed.questionResponses && Object.keys(parsed.questionResponses).length > 0) {
+    const eventQuestionsList = await db
+      .select({ id: ticketQuestions.id, required: ticketQuestions.required })
+      .from(ticketQuestions)
+      .where(eq(ticketQuestions.eventId, event.id))
+
+    const questionMap = new Map(eventQuestionsList.map((q) => [q.id, q]))
+    for (const [qid, answer] of Object.entries(parsed.questionResponses)) {
+      const q = questionMap.get(qid)
+      if (!q) {
+        return NextResponse.json({ error: `Invalid question ID: ${qid}` }, { status: 400 })
+      }
+      if (q.required && !answer.trim()) {
+        return NextResponse.json({ error: `Required question missing answer` }, { status: 400 })
+      }
+    }
+    questionResponseMeta = parsed.questionResponses
+  }
+
+  const orderMetadata: Record<string, unknown> = {}
+  if (appliedPromo) orderMetadata.promo = appliedPromo
+  if (questionResponseMeta) orderMetadata.questionResponses = questionResponseMeta
+
   const [order] = await db
     .insert(orders)
     .values({
@@ -188,7 +214,7 @@ export async function POST(req: Request) {
       totalAmount: total.toFixed(2),
       currency,
       paymentMethod: parsed.paymentMethod,
-      metadata: appliedPromo ? { promo: appliedPromo } : undefined,
+      metadata: Object.keys(orderMetadata).length > 0 ? orderMetadata : undefined,
       guestEmail: parsed.email,
       guestName: parsed.name,
       guestPhone: parsed.phone,
