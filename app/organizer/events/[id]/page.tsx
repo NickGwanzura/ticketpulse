@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Ticket, Users, DollarSign, Activity, Mail, MessageCircle,
   Tag, QrCode, ShoppingBag, ImageIcon, Store, ArrowUpRight,
-  TrendingUp, Calendar, ScanLine,
+  TrendingUp, Calendar, ScanLine, HelpCircle,
 } from "lucide-react"
 
 import { db } from "@/db"
@@ -313,6 +313,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                   { label: "Gate scanner", href: `/organizer/scan`, icon: ScanLine },
                   { label: "Staff tickets", href: `/organizer/events/${id}/staff`, icon: QrCode },
                   { label: "Photo gallery", href: `/organizer/events/${id}/gallery`, icon: ImageIcon },
+                  { label: "Questions", href: `/organizer/events/${id}/questions`, icon: HelpCircle },
                   { label: "Merch", href: `/organizer/events/${id}/merch`, icon: ShoppingBag },
                   { label: "Vendors", href: `/organizer/events/${id}/vendors`, icon: Store },
                 ].map(({ label, href, icon: Icon }) => (
