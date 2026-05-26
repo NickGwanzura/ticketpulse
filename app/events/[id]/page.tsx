@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Calendar, MapPin, Users, Heart } from "lucide-react"
+import { Calendar, MapPin, Users, Heart, HelpCircle } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
 // Cuts DB load by ~95% for the most-hit public pages while
@@ -114,6 +114,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       coverImage: events.coverImage,
       tags: events.tags,
       googleMapsUrl: events.googleMapsUrl,
+      hideOrganizerName: events.hideOrganizerName,
+      faq: events.faq,
       organizerId: events.organizerId,
       organizerName: users.name,
       organizerImage: users.image,
@@ -210,7 +212,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       },
     },
     image: row.coverImage ?? undefined,
-    organizer: row.organizerName
+    organizer: row.organizerName && !row.hideOrganizerName
       ? {
           "@type": "Person",
           name: row.organizerName,
@@ -282,7 +284,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-ink-2 mb-6">
                 <span className="flex items-center gap-2"><Calendar size={14} className="text-ink-3" />{timeDisplay}</span>
                 <span className="flex items-center gap-2"><MapPin size={14} className="text-ink-3" />{row.venue}, {row.city}</span>
-                {row.organizerName && (
+                {row.organizerName && !row.hideOrganizerName && (
                   <span className="flex items-center gap-2"><Users size={14} className="text-ink-3" />Organized by {row.organizerName}</span>
                 )}
               </div>
@@ -325,6 +327,19 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               country={row.country}
               googleMapsUrl={row.googleMapsUrl}
             />
+
+            {/* ── FAQ / More About ── */}
+            {row.faq && (
+              <div className="rounded-2xl border border-line bg-paper p-6 md:p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <HelpCircle size={16} className="text-navy" />
+                  <h2 className="text-[16px] font-semibold text-ink">More About This Event</h2>
+                </div>
+                <div className="text-ink-2 leading-relaxed text-[15px] whitespace-pre-wrap">
+                  {row.faq}
+                </div>
+              </div>
+            )}
 
             <MerchSection items={[]} eventTitle={row.title} />
             <TransportSection routes={[]} />

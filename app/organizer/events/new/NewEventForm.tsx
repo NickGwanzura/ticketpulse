@@ -254,6 +254,36 @@ export default function NewEventForm() {
           />
         </div>
 
+        {/* Visibility & FAQ */}
+        <div className="md:col-span-2 mt-2">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Visibility & Details</p>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="hideOrganizerName"
+              className="w-4 h-4 rounded border-line text-navy focus:ring-navy/20"
+            />
+            <span className="text-[13px] text-ink">Hide my name from the event page</span>
+          </label>
+          <p className="mt-1 text-[11.5px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
+        </div>
+
+        <div className="md:col-span-2">
+          <label htmlFor="faq" className="block text-[13px] font-medium text-ink mb-1.5">More About This Event <span className="text-ink-3 font-normal">(optional)</span></label>
+          <textarea
+            id="faq"
+            name="faq"
+            rows={6}
+            maxLength={8000}
+            placeholder="FAQ, what to bring, dress code, parking info, refund policy, accessibility details..."
+            className={inputCls()}
+          />
+          <p className="mt-1 text-[11.5px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
+        </div>
+
         {/* Location */}
         <div className="md:col-span-2 mt-2">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Location</p>

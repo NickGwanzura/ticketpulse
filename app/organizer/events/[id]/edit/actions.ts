@@ -30,6 +30,8 @@ const UpdateSchema = z.object({
   lat:           z.string().optional(),
   lng:           z.string().optional(),
   googleMapsUrl: z.string().trim().url("Must be a valid URL").max(500).optional().or(z.literal("")),
+  hideOrganizerName: z.string().optional(),
+  faq:           z.string().trim().max(8000).optional(),
 })
 
 export type UpdateEventState = {
@@ -91,6 +93,8 @@ export async function updateEventAction(
     lat:           formData.get("lat")?.toString() ?? undefined,
     lng:           formData.get("lng")?.toString() ?? undefined,
     googleMapsUrl: formData.get("googleMapsUrl")?.toString() ?? undefined,
+    hideOrganizerName: formData.get("hideOrganizerName")?.toString() ?? undefined,
+    faq:           formData.get("faq")?.toString() ?? undefined,
   }
 
   const parsed = UpdateSchema.safeParse(raw)
@@ -166,6 +170,8 @@ export async function updateEventAction(
       tags:          tagList,
       coverImage:    data.coverImage || null,
       googleMapsUrl: data.googleMapsUrl || null,
+      hideOrganizerName: data.hideOrganizerName === "on",
+      faq:           data.faq || null,
       updatedAt:     new Date(),
     })
     .where(eq(events.id, data.id))

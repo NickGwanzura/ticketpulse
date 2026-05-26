@@ -166,6 +166,8 @@ export const events = pgTable("events", {
   googleMapsUrl: text("google_maps_url"),
   tags: json("tags").$type<string[]>().default([]),
   featured: boolean("featured").default(false),
+  hideOrganizerName: boolean("hide_organizer_name").default(false),
+  faq: text("faq"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

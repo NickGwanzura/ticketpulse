@@ -108,6 +108,8 @@ type Props = {
     coverImage: string | null
     tags: string[] | null
     googleMapsUrl: string | null
+    hideOrganizerName: boolean | null
+    faq: string | null
   }
   tiers: TierSummary[]
   showCreatedToast?: boolean
@@ -127,6 +129,7 @@ function ReqMark() {
 export default function EditEventForm({ event, tiers, showCreatedToast }: Props) {
   const [state, formAction] = useActionState(updateEventAction, INITIAL)
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
+  const [hideOrganizer, setHideOrganizer] = useState(event.hideOrganizerName ?? false)
   const errs = state.fieldErrors ?? {}
 
   const [genDesc, setGenDesc] = useState(false)
@@ -326,6 +329,39 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               </div>
             </div>
             <textarea id="description" name="description" rows={4} maxLength={4000} defaultValue={event.description ?? ""} className={inputCls()} />
+          </div>
+
+          {/* Visibility & FAQ */}
+          <div className="md:col-span-2 mt-2">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Visibility & Details</p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="hideOrganizerName"
+                checked={hideOrganizer}
+                onChange={(e) => setHideOrganizer(e.target.checked)}
+                className="w-4 h-4 rounded border-line text-navy focus:ring-navy/20"
+              />
+              <span className="text-[13px] text-ink">Hide my name from the event page</span>
+            </label>
+            <p className="mt-1 text-[11.5px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="faq" className="block text-[13px] font-medium text-ink mb-1.5">More About This Event <span className="text-ink-3 font-normal">(optional)</span></label>
+            <textarea
+              id="faq"
+              name="faq"
+              rows={6}
+              maxLength={8000}
+              defaultValue={event.faq ?? ""}
+              placeholder="FAQ, what to bring, dress code, parking info, refund policy, accessibility details..."
+              className={inputCls()}
+            />
+            <p className="mt-1 text-[11.5px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
           </div>
 
           {/* Location */}

@@ -24,6 +24,8 @@ const CreateSchema = z.object({
   googleMapsUrl: z.string().trim().url("Must be a valid URL").max(500).optional().or(z.literal("")),
   lat:           z.string().trim().optional(),
   lng:           z.string().trim().optional(),
+  hideOrganizerName: z.string().optional(),
+  faq:           z.string().trim().max(8000).optional(),
 })
 
 export type CreateEventState = {
@@ -72,6 +74,8 @@ export async function createEventAction(
     googleMapsUrl: formData.get("googleMapsUrl")?.toString() ?? undefined,
     lat:           formData.get("lat")?.toString() ?? undefined,
     lng:           formData.get("lng")?.toString() ?? undefined,
+    hideOrganizerName: formData.get("hideOrganizerName")?.toString() ?? undefined,
+    faq:           formData.get("faq")?.toString() ?? undefined,
   }
 
   const parsed = CreateSchema.safeParse(raw)
@@ -146,6 +150,8 @@ export async function createEventAction(
       endsAt,
       tags:          tagList,
       googleMapsUrl: data.googleMapsUrl || null,
+      hideOrganizerName: data.hideOrganizerName === "on",
+      faq:           data.faq || null,
     })
     .returning({ id: events.id })
 
