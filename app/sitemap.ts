@@ -23,18 +23,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/legal/cookies",      priority: 0.3, changeFrequency: "yearly" as const },
   ]
 
-  // Dynamic event pages
-  const eventRows = await db
-    .select({ slug: events.slug, updatedAt: events.updatedAt })
-    .from(events)
-    .where(eq(events.status, "published"))
+  // Dynamic event pages — graceful fallback when DB is unreachable at build time
+  let eventRoutes: MetadataRoute.Sitemap = []
+  try {
+    const eventRows = await db
+      .select({ slug: events.slug, updatedAt: events.updatedAt })
+      .from(events)
+      .where(eq(events.status, "published"))
 
-  const eventRoutes = eventRows.map((e) => ({
-    url: `${baseUrl}/events/${e.slug}`,
-    lastModified: e.updatedAt ?? new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }))
+    eventRoutes = eventRows.map((e) => ({
+      url: `${baseUrl}/events/${e.slug}`,
+      lastModified: e.updatedAt ?? new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }))
+  } catch {
+    // Build-time DB may not be available (e.g. Railway build without DB access).
+    // Static routes are still emitted so the build doesn't fail.
+  }
 
   return [
     ...staticRoutes.map((r) => ({
