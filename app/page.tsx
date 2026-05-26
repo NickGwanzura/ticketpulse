@@ -281,11 +281,11 @@ export default async function Home() {
           <path d="M0 60 Q 300 0, 600 30 T 1200 60 Z" fill="rgba(5,112,222,0.06)" />
         </svg>
 
-        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-16 md:pb-24">
+        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-12 md:pb-24">
           <div className="grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-16 items-center">
             {/* LEFT. Text */}
             <div>
-              <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-7 shadow-sm shadow-ink/5">
+              <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-8 md:mb-7 shadow-sm shadow-ink/5">
                 <span className="relative flex w-2 h-2">
                   <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
                   <span className="relative block w-2 h-2 rounded-full bg-green-500" />
@@ -306,11 +306,11 @@ export default async function Home() {
                 </span>
               </h1>
 
-              <p className="tp-fade-up-2 mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
+              <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
                 Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
               </p>
 
-              <form action="/events" className="tp-fade-up-3 mt-9 flex flex-col sm:flex-row gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">
+              <form action="/events" className="tp-fade-up-3 mt-10 md:mt-9 flex flex-col sm:flex-row gap-3 md:gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">
                 <div className="relative flex-1 group">
                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none transition-colors group-focus-within:text-blue" />
                   <input
@@ -330,7 +330,7 @@ export default async function Home() {
                 </button>
               </form>
 
-              <div className="tp-fade-up-4 mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
+              <div className="tp-fade-up-4 mt-7 md:mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-2 md:py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
                 <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-green-600" /> No signup to buy</span>
                 <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-green-600" /> PDF + mobile QR</span>
                 <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-green-600" /> Delivered on WhatsApp</span>
@@ -338,7 +338,7 @@ export default async function Home() {
               </div>
 
               {/* Launch credibility */}
-              <div className="tp-fade-up-5 mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-2.5">
+              <div className="tp-fade-up-5 mt-10 md:mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-3 md:py-2.5">
                 <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
                   <ShieldCheck size={16} className="text-green-600" />
                 </span>
@@ -350,7 +350,7 @@ export default async function Home() {
             </div>
 
             {/* RIGHT. Floating ticket cards */}
-            <div className="relative min-h-[280px] md:min-h-[320px] lg:h-[480px]">
+            <div className="hidden md:block relative min-h-[280px] md:min-h-[320px] lg:h-[480px]">
               {/* Decorative glow */}
               <div className="absolute inset-0 -z-10 [background:radial-gradient(500px_circle_at_50%_45%,rgba(5,112,222,0.10),transparent_60%)] pointer-events-none" />
 
@@ -389,6 +389,24 @@ export default async function Home() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Mobile: event cards below hero content */}
+          <div className="md:hidden mt-10 -mx-5 px-5">
+            {heroTickets.length > 0 ? (
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 no-scrollbar">
+                {heroTickets.map((t) => (
+                  <div key={t.slug} className="snap-center shrink-0 w-[260px] sm:w-[280px]">
+                    <HeroTicketCard ticket={t} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-line bg-paper/70 backdrop-blur p-8 text-center max-w-sm mx-auto">
+                <p className="text-[13.5px] font-semibold tracking-tight text-ink">Events drop soon.</p>
+                <p className="mt-1.5 text-[12.5px] text-ink-2">The first tickets land here the moment organizers go live.</p>
+              </div>
+            )}
           </div>
         </div>
 
