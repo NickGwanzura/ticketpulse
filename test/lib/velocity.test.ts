@@ -20,7 +20,7 @@ describe("velocity", () => {
     process.env.VELOCITY_API_KEY = "test-key"
     process.env.VELOCITY_MERCHANT_PHONE = "+263771234567"
     process.env.VELOCITY_MERCHANT_ACCOUNT = "acc-001"
-    process.env.VELOCITY_TICKET_ITEM_CODE = "TicketPulse Ticket"
+    process.env.VELOCITY_TICKET_ITEM_CODE = "tp001"
     mod = await import("@/lib/velocity")
   })
 
@@ -48,12 +48,12 @@ describe("velocity", () => {
 
     it("fetches all items when no itemCode given", async () => {
       vi.mocked(global.fetch).mockResolvedValueOnce(
-        mockResponse([{ itemCode: "TicketPulse Ticket", itemName: "General", unitPrice: 10 }]),
+        mockResponse([{ itemCode: "tp001", itemName: "General", unitPrice: 10 }]),
       )
 
       const items = await mod.fetchVelocityItems()
       expect(items).toHaveLength(1)
-      expect(items[0].itemCode).toBe("TicketPulse Ticket")
+      expect(items[0].itemCode).toBe("tp001")
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining("/items"),
         expect.any(Object),
@@ -126,7 +126,7 @@ describe("velocity", () => {
       const callArgs = vi.mocked(global.fetch).mock.calls[0]
       const body = JSON.parse(callArgs[1]!.body as string)
       expect(body.currencyCodeString).toBe("USD")
-      expect(body.items[0].itemCode).toBe("TicketPulse Ticket")
+      expect(body.items[0].itemCode).toBe("tp001")
       expect(body.items[0].unitPrice).toBe(25)
     })
 
