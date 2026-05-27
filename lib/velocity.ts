@@ -331,13 +331,13 @@ export async function createVelocitySalesOrder(payload: {
   })
 
   // Defensively extract trace — Velocity may use different field names
-  const trace = (result.trace as string) || (result.salesOrderTrace as string) || (result.id as string)
+  const trace = (result.trace as string) || (result.salesOrderTrace as string) || (result.id as string) || (result.externalId as string)
   const workflowId = (result.workflowId as string) || (result.workflowId as string)
   const status = (result.status as string) || ""
 
   if (!trace) {
-    log.error("velocity — sales order response missing trace field", { responseKeys: Object.keys(result) })
-    throw new Error(`Velocity createSalesOrder — response missing trace field. Keys: ${Object.keys(result).join(",")}`)
+    log.error("velocity — sales order response missing trace field", { responseKeys: Object.keys(result), response: JSON.stringify(result).slice(0, 500) })
+    throw new Error(`Velocity createSalesOrder — response missing trace. Keys: ${Object.keys(result).join(",")}`)
   }
 
   return { trace, workflowId: workflowId || trace, status }
