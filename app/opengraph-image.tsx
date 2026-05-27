@@ -16,7 +16,8 @@ export default function OpenGraphImage() {
           justifyContent: "center",
           position: "relative",
           background:
-            "linear-gradient(135deg, #131132 0%, #0E1032 55%, #151232 100%)",
+            "linear-gradient(135deg, #0A2540 0%, #0D3B66 45%, #131132 100%)",
+          overflow: "hidden",
         }}
       >
         {/* Top highlight */}
@@ -26,53 +27,67 @@ export default function OpenGraphImage() {
             top: 0,
             left: 0,
             right: 0,
-            height: 140,
+            height: 200,
             background:
-              "linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%)",
+              "linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 100%)",
           }}
         />
 
-        {/* Subtle glow orb */}
+        {/* Glow orb - center */}
         <div
           style={{
             position: "absolute",
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 600,
-            height: 600,
+            width: 700,
+            height: 700,
             borderRadius: "50%",
             background:
-              "radial-gradient(closest-side, rgba(5,112,222,0.15), transparent)",
+              "radial-gradient(closest-side, rgba(5,112,222,0.18), transparent)",
           }}
         />
 
-        {/* Logo — full SVG with ticket icon + wordmark */}
+        {/* Glow orb - bottom right accent */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: -120,
+            right: -80,
+            width: 500,
+            height: 500,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(closest-side, rgba(22,163,74,0.12), transparent)",
+          }}
+        />
+
+        {/* Logo - full ticket icon + wordmark, centered, large */}
         <svg
           viewBox="0 0 1000 600"
-          style={{ width: 640, height: 384 }}
+          style={{ width: 700, height: 420 }}
           fill="none"
         >
           {/* Ticket icon body */}
           <path
-            fill="#909090"
+            fill="#6B7B99"
             d="M442.62,617.6h-34.51V488.67h54.23c9.86,0,18.8,1.74,26.83,5.22c8.02,3.48,14.41,8.72,19.15,15.74
               c4.74,7.01,7.11,15.52,7.11,25.5c0,9.86-2.53,18.17-7.59,24.93c-5.06,6.76-11.73,11.79-20,15.07c-8.28,3.29-17.29,4.93-27.02,4.93
               h-18.2V617.6z M461.2,515.78h-18.58v37.16h18.96c5.31,0,9.67-1.71,13.08-5.12c3.41-3.41,5.12-7.65,5.12-12.7
               c0-5.81-1.68-10.49-5.03-14.03C471.41,517.55,466.89,515.78,461.2,515.78z"
           />
           <path
-            fill="#909090"
+            fill="#6B7B99"
             d="M590.89,525.83h34.51v91.96h-16.69l-9.86-9.48c-13.4,8.34-25.92,12.52-37.54,12.52
               c-11.12,0-19.47-3.25-25.03-9.77c-5.56-6.51-8.34-15.13-8.34-25.88v-59.35h34.51v56.12c0,3.16,0.76,5.78,2.27,7.87
               c1.52,2.09,4.05,3.13,7.59,3.13c2.02,0,4.86-0.54,8.53-1.61c3.66-1.07,7.01-2.3,10.05-3.7V525.83z"
           />
           <path
-            fill="#909090"
+            fill="#6B7B99"
             d="M646.25,617.6V485.82l34.51-2.09V617.6H646.25z"
           />
           <path
-            fill="#909090"
+            fill="#6B7B99"
             d="M696.31,608.88l9.67-21.8c3.66,1.77,8.12,3.29,13.36,4.55c5.25,1.27,9.51,1.9,12.8,1.9
               c2.28,0,4.17-0.38,5.69-1.14c1.52-0.76,2.27-1.77,2.27-3.03c0-0.76-0.85-1.67-2.56-2.75c-1.71-1.07-3.89-2.05-6.54-2.94
               c-9.61-3.41-17.47-7.46-23.61-12.13c-6.13-4.68-9.2-10.81-9.2-18.39c0-9.61,3.6-17.13,10.81-22.56c7.21-5.43,17.19-8.15,29.96-8.15
@@ -82,7 +97,7 @@ export default function OpenGraphImage() {
               c-5.43,0-12.17-0.89-20.19-2.65C707.33,615.26,700.98,612.54,696.31,608.88z"
           />
           <path
-            fill="#909090"
+            fill="#6B7B99"
             d="M874.91,580.25h-55.93c1.26,3.92,3.63,6.98,7.11,9.2c3.48,2.21,8.06,3.32,13.75,3.32
               c8.72,0,17.13-2.09,25.21-6.26l9.67,23.32c-3.79,2.78-9.26,5.12-16.4,7.01c-7.14,1.9-14.44,2.85-21.9,2.85
               c-10.75,0-20.26-1.83-28.54-5.5c-8.28-3.66-14.76-9.13-19.43-16.4c-4.68-7.27-7.02-15.96-7.02-26.07c0-9.99,2.15-18.71,6.45-26.17
@@ -92,7 +107,7 @@ export default function OpenGraphImage() {
           />
           {/* Ticket icon center detail */}
           <path
-            fill="#B0AEC9"
+            fill="#8B9CBD"
             d="M512.56,610.38c-4.14-7.94-8.11-15.88-11.91-23.93c-0.17,0.11-0.39,0.17-0.62,0.28
               c-9.84,3.86-20.63,5.93-31.99,6.04c5.48,11.85,11.3,23.6,17.39,35.28c1.85,2.12,1.51,9.28-1.06,10.01l-51.28,13.92
               c-4.53-8.56-10.46-15.88-17.45-21.7c-4.86-4.19-10.29-7.6-15.99-10.18c-13.92-6.37-29.75-8.05-45.18-4.14
@@ -105,13 +120,13 @@ export default function OpenGraphImage() {
               c2.35,8.22,12.64,13.7,20.69,11.52l65.82-17.89c11.52-3.13,20.52-14.93,23.43-23.54C521.73,632.58,518.43,621.56,512.56,610.38z"
           />
           <path
-            fill="#454572"
+            fill="#2A3F5F"
             d="M141.03,523.19c24.91,55.34,51.86,114.89,51.01,177.08c-14.32-3.68-21.77-16.94-24.52-30.03
               c-5.67-26.9-11.75-52.2-21.97-78.15c-19.62-49.85-44.97-95.06-73.25-140.16c-7.61-12.14-7.5-30.48,4.17-38.53
               c11.14-7.68,22.82-12.35,35.63-17.42l11.11,22.33l-25.36,10.89c-1.84,0.79-5.12,3.94-5.45,5.53c-0.33,1.59,0.81,5.25,1.79,6.71
               C112.04,468.03,127.86,493.93,141.03,523.19z"
           />
-          {/* Wordmark: "TicketPulse" — white on dark bg */}
+          {/* Wordmark: "TicketPulse" — white */}
           <path
             fill="#FFFFFF"
             d="M497.8,371.33h-41.14v101.82h-34.51V371.33h-37.92v-27.11h110.35L497.8,371.33z"
@@ -157,15 +172,28 @@ export default function OpenGraphImage() {
         <div
           style={{
             position: "absolute",
-            bottom: 72,
-            color: "rgba(255,255,255,0.55)",
-            fontSize: 26,
+            bottom: 56,
+            color: "rgba(255,255,255,0.50)",
+            fontSize: 24,
             fontWeight: 400,
-            letterSpacing: "0.06em",
+            letterSpacing: "0.08em",
           }}
         >
           Every event. One ticket.
         </div>
+
+        {/* Bottom accent line */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            background:
+              "linear-gradient(90deg, rgba(5,112,222,0) 0%, rgba(5,112,222,0.6) 50%, rgba(22,163,74,0.6) 80%, rgba(22,163,74,0) 100%)",
+          }}
+        />
       </div>
     ),
     { ...size }

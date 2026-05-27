@@ -43,11 +43,14 @@ export const metadata: Metadata = {
     siteName: "TicketPulse",
     title: "TicketPulse. Every event. One ticket.",
     description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+    url: "/",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "TicketPulse. Every event. One ticket.",
     description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
   alternates: {
     canonical: "/",
