@@ -5,7 +5,7 @@ const BASE_URL = process.env.VELOCITY_API_URL?.replace(/\/$/, "") || "https://ap
 const API_KEY = process.env.VELOCITY_API_KEY
 const MERCHANT_PHONE = process.env.VELOCITY_MERCHANT_PHONE
 const MERCHANT_ACCOUNT = process.env.VELOCITY_MERCHANT_ACCOUNT
-const VELOCITY_ITEM_CODE = process.env.VELOCITY_ITEM_CODE
+const VELOCITY_TICKET_ITEM_CODE = process.env.VELOCITY_TICKET_ITEM_CODE
 
 const FETCH_TIMEOUT_MS = 15_000
 const DEBIT_REGION = process.env.VELOCITY_DEBIT_REGION || "ZW"
@@ -43,17 +43,19 @@ function validateEnv() {
     ["VELOCITY_API_KEY", API_KEY],
     ["VELOCITY_MERCHANT_PHONE", MERCHANT_PHONE],
     ["VELOCITY_MERCHANT_ACCOUNT", MERCHANT_ACCOUNT],
+    ["VELOCITY_TICKET_ITEM_CODE", VELOCITY_TICKET_ITEM_CODE],
   ] as const
   const missing = required.filter(([, v]) => !v || !v.trim()).map(([k]) => k)
   if (missing.length > 0) {
     log.error("velocity — missing required env vars", { missing })
+    throw new Error(`Velocity — missing required env vars: ${missing.join(", ")}`)
   }
   log.info("velocity — env validated", {
     baseUrl: BASE_URL,
     authMode: AUTH_MODE,
     merchantPhoneSet: !!MERCHANT_PHONE,
     merchantAccountSet: !!MERCHANT_ACCOUNT,
-    itemCodeSet: !!VELOCITY_ITEM_CODE,
+    itemCodeSet: !!VELOCITY_TICKET_ITEM_CODE,
     apiKeySet: !!API_KEY,
     debitRegion: DEBIT_REGION,
     debitRef: DEBIT_REF,
@@ -282,6 +284,9 @@ export async function createVelocitySalesOrder(payload: {
   orderDate?: string
   dueDate?: string
 }): Promise<VelocitySalesOrder> {
+  if (!VELOCITY_TICKET_ITEM_CODE || !VELOCITY_TICKET_ITEM_CODE.trim()) {
+    throw new Error("Velocity createSalesOrder — VELOCITY_TICKET_ITEM_CODE not set")
+  }
   const missing = validateRequiredFields(
     { currency: payload.currency, amount: payload.amount },
     "createVelocitySalesOrder",
@@ -296,24 +301,14 @@ export async function createVelocitySalesOrder(payload: {
     dueDate: payload.dueDate || payload.orderDate || new Date().toISOString().split("T")[0],
     notes: payload.notes || "TicketPulse order",
     authorized: true,
-    items: VELOCITY_ITEM_CODE
-      ? [
-          {
-            itemCode: VELOCITY_ITEM_CODE,
-            qty: 1,
-            unitPrice: payload.amount,
-            amount: payload.amount,
-          },
-        ]
-      : [
-          {
-            itemCode: "TICKET",
-            itemName: payload.notes || "Event ticket",
-            qty: 1,
-            unitPrice: payload.amount,
-            amount: payload.amount,
-          },
-        ],
+    items: [
+      {
+        itemCode: VELOCITY_TICKET_ITEM_CODE!,
+        qty: 1,
+        unitPrice: payload.amount,
+        amount: payload.amount,
+      },
+    ],
     charges: [{ amount: 0 }],
   }
   // Send customerIdString only if we have a valid UUID. Velocity uses a default
@@ -325,8 +320,9 @@ export async function createVelocitySalesOrder(payload: {
   log.info("velocity — sales order payload", {
     amount: payload.amount,
     currency: payload.currency,
+    itemCode: VELOCITY_TICKET_ITEM_CODE,
     hasCustomerId: !!payload.customerId,
-    itemCodeSet: !!VELOCITY_ITEM_CODE,
+    notes: payload.notes,
   })
 
   const result = await velocityFetch<Record<string, unknown>>("/sales-orders", {
