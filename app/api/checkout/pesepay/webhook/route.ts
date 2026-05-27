@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { getPesepay, verifyWebhookSecret } from "@/lib/pesepay"
 import { startOrderVerification } from "@/lib/order-verification"
+import { notifyPaymentSuccess } from "@/lib/payment-notifications"
 import { log } from "@/lib/logger"
 
 // PesePay calls this URL server-to-server once it has a definitive result for
@@ -147,6 +148,8 @@ export async function POST(req: Request) {
       email: order.guestEmail,
       origin,
     })
+
+    notifyPaymentSuccess(result.claimed.id)
 
     log.info("pesepay webhook — verification started", {
       reference,

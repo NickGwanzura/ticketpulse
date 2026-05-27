@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { getPesepay, type OrderMetadata } from "@/lib/pesepay"
 import { startOrderVerification } from "@/lib/order-verification"
+import { notifyPaymentSuccess, notifyPaymentFailed } from "@/lib/payment-notifications"
 import { log } from "@/lib/logger"
 
 type Params = { id: string }
@@ -57,12 +58,14 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         email: order.guestEmail,
         origin,
       })
+      notifyPaymentSuccess(id)
     }
   } else if (result.success && !result.paid) {
     await db
       .update(orders)
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(orders.id, id))
+    notifyPaymentFailed(id, result.message ?? "Payment was not completed")
     return NextResponse.redirect(`${origin}/orders/${id}?error=payment_failed`)
   }
 

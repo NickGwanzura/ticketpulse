@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { getPesepay, type OrderMetadata } from "@/lib/pesepay"
 import { startOrderVerification } from "@/lib/order-verification"
+import { notifyPaymentSuccess } from "@/lib/payment-notifications"
 import { log } from "@/lib/logger"
 
 type Params = { id: string }
@@ -81,6 +82,7 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
     }
     const origin = new URL(_req.url).origin
     await startOrderVerification({ orderId: id, email, origin })
+    notifyPaymentSuccess(id)
     return NextResponse.json({
       orderId: id,
       status: "awaiting_verification",
