@@ -5,12 +5,6 @@ import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { startOrderVerification } from "@/lib/order-verification"
 import { PESEPAY_METHODS, getPesepay, pesepayUrls } from "@/lib/pesepay"
-import {
-  fetchVelocityCustomer,
-  createVelocitySalesOrder,
-  initiateVelocityTransaction,
-  velocityUrls,
-} from "@/lib/velocity"
 import { checkoutLimiter } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
 
@@ -30,7 +24,7 @@ const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
   phone: z.string().min(3).max(40).trim(),
-  paymentMethod: z.enum(["ecocash", "card", "omari", "velocity-ecocash", "velocity-vmc"]),
+  paymentMethod: z.enum(["ecocash", "card", "omari"]),
   eventSlug: z.string().min(1).max(160),
   items: z
     .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))
@@ -199,16 +193,15 @@ export async function POST(req: Request) {
     }
   }
 
-  const isVelocity = parsed.paymentMethod.startsWith("velocity-")
-  const method = isVelocity ? null : PESEPAY_METHODS[parsed.paymentMethod]
-  if (!isVelocity && !method) {
+  const method = PESEPAY_METHODS[parsed.paymentMethod]
+  if (!method) {
     return NextResponse.json({ error: "Unsupported payment method" }, { status: 400 })
   }
 
   // Offline cash flows skip PesePay entirely and go straight to the verify
   // email step, just like before this integration existed. Online flows insert
   // as `pending` and only progress once the provider confirms the payment.
-  const initialStatus = method && method.flow === "offline" ? "awaiting_verification" : "pending"
+  const initialStatus = method.flow === "offline" ? "awaiting_verification" : "pending"
 
   // Validate question responses if provided
   let questionResponseMeta: Record<string, string> | undefined
@@ -290,7 +283,7 @@ export async function POST(req: Request) {
   const origin = new URL(req.url).origin
 
   // ─── Offline (pay at venue) ───────────────────────────────────────────────
-  if (method && method.flow === "offline") {
+  if (method.flow === "offline") {
     const { expiresAt } = await startOrderVerification({
       orderId: order.id,
       email: parsed.email,
@@ -305,164 +298,6 @@ export async function POST(req: Request) {
     })
   }
 
-  // ─── Velocity Africa flows ────────────────────────────────────────────────
-  if (isVelocity) {
-    try {
-      // Pre-validate frontend fields before calling Velocity APIs
-      const frontendErrors: string[] = []
-      if (!parsed.name || !parsed.name.trim()) frontendErrors.push("Name is required")
-      if (!parsed.email || !parsed.email.trim()) frontendErrors.push("Email is required")
-      if (!parsed.phone || !parsed.phone.trim()) frontendErrors.push("Phone is required")
-      if (total <= 0) frontendErrors.push("Amount must be greater than 0")
-      if (ticketItems.length === 0) frontendErrors.push("No tickets in order")
-      if (frontendErrors.length > 0) {
-        await db
-          .update(orders)
-          .set({ status: "cancelled", updatedAt: new Date() })
-          .where(eq(orders.id, order.id))
-        return NextResponse.json({ error: frontendErrors.join("; ") }, { status: 400 })
-      }
-
-      // ── Idempotency recovery ───────────────────────────────────────────
-      // If a /transactions call timed out on a previous attempt, we may already
-      // have a sales order but not a transaction trace stored in metadata.
-      // Check before proceeding to avoid creating duplicate sales orders.
-      const [fullOrder] = await db
-        .select({ metadata: orders.metadata })
-        .from(orders)
-        .where(eq(orders.id, order.id))
-        .limit(1)
-      const existingMeta = (fullOrder?.metadata ?? {}) as Record<string, unknown>
-      const existingVelocity = existingMeta.velocity as Record<string, unknown> | null | undefined
-      const existingSoTrace = existingVelocity?.salesOrderTrace as string | undefined
-      const existingTxTrace = existingVelocity?.transactionTrace as string | undefined
-      const existingWorkflowId = existingVelocity?.workflowId as string | undefined
-      const existingRedirectUrl = existingVelocity?.redirectUrl as string | undefined
-
-      // If we have a fully completed transaction (trace + redirectUrl stored),
-      // recover from a previous response-loss without re-creating.
-      if (existingSoTrace && existingTxTrace && existingRedirectUrl) {
-        log.info("guest checkout — recovering completed Velocity transaction", {
-          orderId: order.id,
-          transactionTrace: existingTxTrace,
-        })
-        return NextResponse.json({
-          orderId: order.id,
-          flow: "redirect",
-          redirectUrl: existingRedirectUrl,
-        })
-      }
-
-      let salesOrderTrace: string
-      let workflowId: string
-
-      const velocityCustomer = await fetchVelocityCustomer(parsed.phone)
-      const customerId = velocityCustomer?.customerUid ?? null
-
-      let salesOrder
-      if (existingSoTrace) {
-        // Sales order was created on a previous attempt but transaction wasn't
-        // completed — reuse the sales order instead of creating a new one.
-        log.info("guest checkout — reusing existing sales order", {
-          orderId: order.id,
-          salesOrderTrace: existingSoTrace,
-        })
-        salesOrder = { trace: existingSoTrace, workflowId: existingWorkflowId || existingSoTrace, status: "" }
-      } else {
-        salesOrder = await createVelocitySalesOrder({
-          currency,
-          customerId,
-          amount: total,
-          notes: `${event.title} · order ${order.id.slice(0, 8)}`,
-        })
-      }
-      salesOrderTrace = salesOrder.trace
-      workflowId = salesOrder.workflowId
-
-      // Store the sales order trace immediately so a timeout doesn't lose it
-      await db
-        .update(orders)
-        .set({
-          metadata: {
-            ...(appliedPromo ? { promo: appliedPromo } : {}),
-            velocity: {
-              salesOrderTrace,
-              workflowId,
-            },
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, order.id))
-
-      const isEcoCash = parsed.paymentMethod === "velocity-ecocash"
-      const { returnUrl: velReturnUrl } = velocityUrls(order.id, origin)
-      const tx = await initiateVelocityTransaction({
-        amount: total,
-        processor: isEcoCash ? "ECOCASH" : "VMC",
-        debitPhone: parsed.phone,
-        debitCurrency: currency,
-        authType: isEcoCash ? "REMOTE" : "WEB",
-        salesOrderTrace,
-        returnUrl: isEcoCash ? undefined : velReturnUrl,
-        customerEmail: isEcoCash ? undefined : parsed.email,
-        idempotencyKey: order.id,
-      })
-
-      await db
-        .update(orders)
-        .set({
-          paymentRef: tx.trace,
-          metadata: {
-            ...(appliedPromo ? { promo: appliedPromo } : {}),
-            velocity: {
-              salesOrderTrace,
-              transactionTrace: tx.trace,
-              workflowId,
-              redirectUrl: tx.redirectUrl,
-            },
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, order.id))
-
-      if (tx.redirectUrl) {
-        return NextResponse.json({
-          orderId: order.id,
-          flow: "redirect",
-          redirectUrl: tx.redirectUrl,
-        })
-      }
-
-      return NextResponse.json({
-        orderId: order.id,
-        flow: "seamless",
-        reference: tx.trace,
-        paid: false,
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Velocity payment failed"
-      const isTimeout = message.includes("timeout")
-      log.error("guest checkout — Velocity error", {
-        orderId: order.id,
-        paymentMethod: parsed.paymentMethod,
-        error: message,
-        isTimeout,
-      })
-      // On timeout, leave the order as pending so the client can retry.
-      // On other errors (validation, auth, server error), cancel definitively.
-      if (!isTimeout) {
-        await db
-          .update(orders)
-          .set({ status: "cancelled", updatedAt: new Date() })
-          .where(eq(orders.id, order.id))
-      }
-      return NextResponse.json(
-        { error: message },
-        { status: isTimeout ? 504 : 502 },
-      )
-    }
-  }
-
   // ─── PesePay flows ────────────────────────────────────────────────────────
   const pesepay = getPesepay()
   const { resultUrl, returnUrl } = pesepayUrls(order.id, origin)
@@ -472,7 +307,7 @@ export async function POST(req: Request) {
   const reason = `${event.title} · order ${order.id.slice(0, 8)}`
   const merchantRef = order.id
 
-  if (method && method.flow === "seamless" && method.code) {
+  if (method.flow === "seamless" && method.code) {
     const payment = pesepay.createPayment(
       currency,
       method.code,
