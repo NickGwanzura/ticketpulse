@@ -33,10 +33,12 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const FILTER_PILLS = [
-  { label: "All",     value: "all" },
-  { label: "Paid",    value: "paid" },
-  { label: "Pending", value: "pending" },
-  { label: "Refunded",value: "refunded" },
+  { label: "All",              value: "all" },
+  { label: "Paid",             value: "paid" },
+  { label: "Pending",          value: "pending" },
+  { label: "Awaiting verify",  value: "awaiting_verification" },
+  { label: "Cancelled",        value: "cancelled" },
+  { label: "Refunded",         value: "refunded" },
 ]
 
 export default async function AdminOrdersPage({
@@ -66,7 +68,11 @@ export default async function AdminOrdersPage({
     )
   }
 
-  if (statusFilter !== "all") {
+  if (statusFilter === "pending") {
+    conditions.push(
+      or(eq(orders.status, "pending"), eq(orders.status, "awaiting_verification")),
+    )
+  } else if (statusFilter !== "all") {
     conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "awaiting_verification" | "refunded" | "cancelled"))
   }
 
@@ -111,6 +117,7 @@ export default async function AdminOrdersPage({
   const pendingOrders = allOrders.filter(
     (o) => o.status === "pending" || o.status === "awaiting_verification",
   )
+  const cancelledOrders = allOrders.filter((o) => o.status === "cancelled")
   const totalPaid = paidOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
   const statCards = [
@@ -142,6 +149,13 @@ export default async function AdminOrdersPage({
       tone: "text-amber-700",
       bg: "bg-amber-50",
     },
+    {
+      label: "Cancelled",
+      value: cancelledOrders.length.toLocaleString(),
+      icon: ShoppingCart,
+      tone: "text-red-600",
+      bg: "bg-rose-50",
+    },
   ]
 
   const customerName = (row: (typeof orderRows)[number]) =>
@@ -159,7 +173,7 @@ export default async function AdminOrdersPage({
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 tp-fade-up-1">
           {statCards.map(({ label, value, icon: Icon, tone, bg }) => (
             <div
               key={label}
