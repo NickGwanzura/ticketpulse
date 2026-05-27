@@ -12,6 +12,7 @@ import {
   velocityUrls,
 } from "@/lib/velocity"
 import { checkoutLimiter } from "@/lib/rate-limit"
+import { log } from "@/lib/logger"
 
 const TicketItem = z.object({
   kind: z.literal("ticket"),
@@ -307,27 +308,104 @@ export async function POST(req: Request) {
   // ─── Velocity Africa flows ────────────────────────────────────────────────
   if (isVelocity) {
     try {
+      // Pre-validate frontend fields before calling Velocity APIs
+      const frontendErrors: string[] = []
+      if (!parsed.name || !parsed.name.trim()) frontendErrors.push("Name is required")
+      if (!parsed.email || !parsed.email.trim()) frontendErrors.push("Email is required")
+      if (!parsed.phone || !parsed.phone.trim()) frontendErrors.push("Phone is required")
+      if (total <= 0) frontendErrors.push("Amount must be greater than 0")
+      if (ticketItems.length === 0) frontendErrors.push("No tickets in order")
+      if (frontendErrors.length > 0) {
+        await db
+          .update(orders)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(eq(orders.id, order.id))
+        return NextResponse.json({ error: frontendErrors.join("; ") }, { status: 400 })
+      }
+
+      // ── Idempotency recovery ───────────────────────────────────────────
+      // If a /transactions call timed out on a previous attempt, we may already
+      // have a sales order but not a transaction trace stored in metadata.
+      // Check before proceeding to avoid creating duplicate sales orders.
+      const [fullOrder] = await db
+        .select({ metadata: orders.metadata })
+        .from(orders)
+        .where(eq(orders.id, order.id))
+        .limit(1)
+      const existingMeta = (fullOrder?.metadata ?? {}) as Record<string, unknown>
+      const existingVelocity = existingMeta.velocity as Record<string, unknown> | null | undefined
+      const existingSoTrace = existingVelocity?.salesOrderTrace as string | undefined
+      const existingTxTrace = existingVelocity?.transactionTrace as string | undefined
+      const existingWorkflowId = existingVelocity?.workflowId as string | undefined
+      const existingRedirectUrl = existingVelocity?.redirectUrl as string | undefined
+
+      // If we have a fully completed transaction (trace + redirectUrl stored),
+      // recover from a previous response-loss without re-creating.
+      if (existingSoTrace && existingTxTrace && existingRedirectUrl) {
+        log.info("guest checkout — recovering completed Velocity transaction", {
+          orderId: order.id,
+          transactionTrace: existingTxTrace,
+        })
+        return NextResponse.json({
+          orderId: order.id,
+          flow: "redirect",
+          redirectUrl: existingRedirectUrl,
+        })
+      }
+
+      let salesOrderTrace: string
+      let workflowId: string
+
       const velocityCustomer = await fetchVelocityCustomer(parsed.phone)
       const customerId = velocityCustomer?.customerUid ?? null
 
-      const salesOrder = await createVelocitySalesOrder({
-        currency,
-        customerId,
-        amount: total,
-        notes: `${event.title} · order ${order.id.slice(0, 8)}`,
-      })
+      let salesOrder
+      if (existingSoTrace) {
+        // Sales order was created on a previous attempt but transaction wasn't
+        // completed — reuse the sales order instead of creating a new one.
+        log.info("guest checkout — reusing existing sales order", {
+          orderId: order.id,
+          salesOrderTrace: existingSoTrace,
+        })
+        salesOrder = { trace: existingSoTrace, workflowId: existingWorkflowId || existingSoTrace, status: "" }
+      } else {
+        salesOrder = await createVelocitySalesOrder({
+          currency,
+          customerId,
+          amount: total,
+          notes: `${event.title} · order ${order.id.slice(0, 8)}`,
+        })
+      }
+      salesOrderTrace = salesOrder.trace
+      workflowId = salesOrder.workflowId
+
+      // Store the sales order trace immediately so a timeout doesn't lose it
+      await db
+        .update(orders)
+        .set({
+          metadata: {
+            ...(appliedPromo ? { promo: appliedPromo } : {}),
+            velocity: {
+              salesOrderTrace,
+              workflowId,
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, order.id))
 
       const isEcoCash = parsed.paymentMethod === "velocity-ecocash"
-      const { returnUrl } = velocityUrls(order.id, origin)
+      const { returnUrl: velReturnUrl } = velocityUrls(order.id, origin)
       const tx = await initiateVelocityTransaction({
         amount: total,
         processor: isEcoCash ? "ECOCASH" : "VMC",
         debitPhone: parsed.phone,
         debitCurrency: currency,
         authType: isEcoCash ? "REMOTE" : "WEB",
-        salesOrderTrace: salesOrder.trace,
-        returnUrl: isEcoCash ? undefined : returnUrl,
+        salesOrderTrace,
+        returnUrl: isEcoCash ? undefined : velReturnUrl,
         customerEmail: isEcoCash ? undefined : parsed.email,
+        idempotencyKey: order.id,
       })
 
       await db
@@ -337,9 +415,10 @@ export async function POST(req: Request) {
           metadata: {
             ...(appliedPromo ? { promo: appliedPromo } : {}),
             velocity: {
-              salesOrderTrace: salesOrder.trace,
+              salesOrderTrace,
               transactionTrace: tx.trace,
-              workflowId: salesOrder.workflowId,
+              workflowId,
+              redirectUrl: tx.redirectUrl,
             },
           },
           updatedAt: new Date(),
@@ -361,13 +440,25 @@ export async function POST(req: Request) {
         paid: false,
       })
     } catch (err) {
-      await db
-        .update(orders)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(orders.id, order.id))
+      const message = err instanceof Error ? err.message : "Velocity payment failed"
+      const isTimeout = message.includes("timeout")
+      log.error("guest checkout — Velocity error", {
+        orderId: order.id,
+        paymentMethod: parsed.paymentMethod,
+        error: message,
+        isTimeout,
+      })
+      // On timeout, leave the order as pending so the client can retry.
+      // On other errors (validation, auth, server error), cancel definitively.
+      if (!isTimeout) {
+        await db
+          .update(orders)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(eq(orders.id, order.id))
+      }
       return NextResponse.json(
-        { error: err instanceof Error ? err.message : "Velocity payment failed" },
-        { status: 502 },
+        { error: message },
+        { status: isTimeout ? 504 : 502 },
       )
     }
   }

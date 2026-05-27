@@ -7,6 +7,13 @@ const MERCHANT_PHONE = process.env.VELOCITY_MERCHANT_PHONE
 const MERCHANT_ACCOUNT = process.env.VELOCITY_MERCHANT_ACCOUNT
 const VELOCITY_ITEM_CODE = process.env.VELOCITY_ITEM_CODE
 
+const FETCH_TIMEOUT_MS = 15_000
+const DEBIT_REGION = process.env.VELOCITY_DEBIT_REGION || "ZW"
+const DEBIT_REF = process.env.VELOCITY_DEBIT_REF || "velocityafrica"
+
+// UUID v4 regex for validating customer IDs
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 // Auth modes:
 //  bearer      → Authorization: Bearer <key>  (default)
 //  x-api-key   → X-API-Key: <key>
@@ -14,6 +21,47 @@ const VELOCITY_ITEM_CODE = process.env.VELOCITY_ITEM_CODE
 //  raw         → Authorization: <key>  (no Bearer prefix)
 //  query       → ?apiKey=<key> appended to URL
 const AUTH_MODE = (process.env.VELOCITY_AUTH_MODE || "bearer") as "bearer" | "x-api-key" | "api-key" | "raw" | "query"
+
+// ── Startup environment validation ────────────────────────────────────────
+
+function checkEnv(required: boolean, key: string, value: string | undefined): string | null {
+  if (!value || !value.trim()) {
+    if (required) {
+      log.error("velocity — missing required env var", { key })
+      return null
+    }
+    log.warn("velocity — optional env var not set", { key })
+    return null
+  }
+  return value.trim()
+}
+
+let envValidated = false
+function validateEnv() {
+  if (envValidated) return
+  const required = [
+    ["VELOCITY_API_KEY", API_KEY],
+    ["VELOCITY_MERCHANT_PHONE", MERCHANT_PHONE],
+    ["VELOCITY_MERCHANT_ACCOUNT", MERCHANT_ACCOUNT],
+  ] as const
+  const missing = required.filter(([, v]) => !v || !v.trim()).map(([k]) => k)
+  if (missing.length > 0) {
+    log.error("velocity — missing required env vars", { missing })
+  }
+  log.info("velocity — env validated", {
+    baseUrl: BASE_URL,
+    authMode: AUTH_MODE,
+    merchantPhoneSet: !!MERCHANT_PHONE,
+    merchantAccountSet: !!MERCHANT_ACCOUNT,
+    itemCodeSet: !!VELOCITY_ITEM_CODE,
+    apiKeySet: !!API_KEY,
+    debitRegion: DEBIT_REGION,
+    debitRef: DEBIT_REF,
+  })
+  envValidated = true
+}
+
+// ── Auth helpers ──────────────────────────────────────────────────────────
 
 function buildAuthHeaders(): Record<string, string> {
   if (!API_KEY) throw new Error("VELOCITY_API_KEY not set")
@@ -39,7 +87,65 @@ function buildUrl(path: string): string {
   return url
 }
 
+// ── Payload sanitization ──────────────────────────────────────────────────
+
+function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(body)) {
+    if (value === undefined || value === null) {
+      log.warn("velocity — sanitize: stripping null/undefined field", { field: key })
+      continue
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim()
+      if (trimmed.length === 0) {
+        log.warn("velocity — sanitize: stripping empty string field", { field: key })
+        continue
+      }
+      cleaned[key] = trimmed
+    } else if (typeof value === "number" && !Number.isFinite(value)) {
+      log.warn("velocity — sanitize: stripping non-finite number", { field: key, value })
+      continue
+    } else {
+      cleaned[key] = value
+    }
+  }
+  return cleaned
+}
+
+function maskSecret(val: string): string {
+  if (val.length <= 8) return "***"
+  return val.slice(0, 4) + "****" + val.slice(-4)
+}
+
+function isValidUUID(str: string | null | undefined): boolean {
+  return typeof str === "string" && UUID_RE.test(str)
+}
+
+// ── Pre-validation ────────────────────────────────────────────────────────
+
+function validateRequiredFields(fields: Record<string, unknown>, label: string): string[] {
+  const missing: string[] = []
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined || value === null) {
+      missing.push(key)
+    } else if (typeof value === "string" && value.trim().length === 0) {
+      missing.push(key)
+    } else if (typeof value === "number" && (!Number.isFinite(value) || value <= 0)) {
+      missing.push(`${key} (invalid: ${value})`)
+    }
+  }
+  if (missing.length > 0) {
+    log.error("velocity — pre-validation failed", { label, missingFields: missing })
+  }
+  return missing
+}
+
+// ── Core HTTP client ──────────────────────────────────────────────────────
+
 async function velocityFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  validateEnv()
+
   const url = buildUrl(path)
   const headers: Record<string, string> = {
     ...buildAuthHeaders(),
@@ -47,28 +153,68 @@ async function velocityFetch<T>(path: string, opts?: RequestInit): Promise<T> {
     ...(opts?.headers as Record<string, string> || {}),
   }
 
-  log.info("velocity — request", { method: opts?.method || "GET", path, body: opts?.body })
-
-  const res = await fetch(url, {
-    ...opts,
-    headers,
+  // Log the request (mask API key in URL for query mode)
+  const safeUrl = AUTH_MODE === "query" ? url.replace(API_KEY || "", maskSecret(API_KEY || "")) : url
+  log.info("velocity — request", {
+    method: opts?.method || "GET",
+    path,
+    url: safeUrl,
+    bodySize: typeof opts?.body === "string" ? opts.body.length : undefined,
   })
 
-  if (!res.ok) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+  try {
+    const res = await fetch(url, {
+      ...opts,
+      headers,
+      signal: controller.signal,
+    })
+
     const text = await res.text().catch(() => "")
-    log.error("velocity — API error", {
+
+    if (!res.ok) {
+      log.error("velocity — API error", {
+        method: opts?.method || "GET",
+        path,
+        url: safeUrl,
+        status: res.status,
+        authMode: AUTH_MODE,
+        response: text,
+        bodyPreview: typeof opts?.body === "string" ? JSON.parse(opts.body) : undefined,
+      })
+      throw new Error(`Velocity ${opts?.method || "GET"} ${path} → ${res.status}: ${text}`)
+    }
+
+    // Log successful response (truncate large bodies)
+    log.info("velocity — response", {
       method: opts?.method || "GET",
       path,
-      url,
       status: res.status,
-      authMode: AUTH_MODE,
-      body: opts?.body,
-      response: text,
+      responseSize: text.length,
     })
-    throw new Error(`Velocity ${opts?.method || "GET"} ${path} → ${res.status}: ${text}`)
-  }
 
-  return res.json() as Promise<T>
+    if (!text) {
+      throw new Error(`Velocity ${opts?.method || "GET"} ${path} → empty response body`)
+    }
+
+    let parsed: T
+    try {
+      parsed = JSON.parse(text) as T
+    } catch {
+      throw new Error(`Velocity ${opts?.method || "GET"} ${path} → invalid JSON: ${text.slice(0, 200)}`)
+    }
+
+    return parsed
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Velocity ${opts?.method || "GET"} ${path} → timeout after ${FETCH_TIMEOUT_MS}ms`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -108,6 +254,7 @@ export interface VelocityOrderMetadata {
   salesOrderTrace: string
   transactionTrace: string
   workflowId: string
+  redirectUrl?: string
 }
 
 // ── Methods ─────────────────────────────────────────────────────────────────
@@ -135,6 +282,14 @@ export async function createVelocitySalesOrder(payload: {
   orderDate?: string
   dueDate?: string
 }): Promise<VelocitySalesOrder> {
+  const missing = validateRequiredFields(
+    { currency: payload.currency, amount: payload.amount },
+    "createVelocitySalesOrder",
+  )
+  if (missing.length > 0) {
+    throw new Error(`Velocity createSalesOrder — missing required fields: ${missing.join(", ")}`)
+  }
+
   const body: Record<string, unknown> = {
     currencyCodeString: payload.currency,
     orderDate: payload.orderDate || new Date().toISOString().split("T")[0],
@@ -150,18 +305,46 @@ export async function createVelocitySalesOrder(payload: {
             amount: payload.amount,
           },
         ]
-      : [],
+      : [
+          {
+            itemCode: "TICKET",
+            itemName: payload.notes || "Event ticket",
+            qty: 1,
+            unitPrice: payload.amount,
+            amount: payload.amount,
+          },
+        ],
     charges: [{ amount: 0 }],
   }
-  // Only send customerIdString if we have a real UUID. Velocity uses a default
+  // Send customerIdString only if we have a valid UUID. Velocity uses a default
   // customer when the field is omitted.
-  if (payload.customerId) {
+  if (isValidUUID(payload.customerId)) {
     body.customerIdString = payload.customerId
   }
-  return velocityFetch<VelocitySalesOrder>("/sales-orders", {
-    method: "POST",
-    body: JSON.stringify(body),
+
+  log.info("velocity — sales order payload", {
+    amount: payload.amount,
+    currency: payload.currency,
+    hasCustomerId: !!payload.customerId,
+    itemCodeSet: !!VELOCITY_ITEM_CODE,
   })
+
+  const result = await velocityFetch<Record<string, unknown>>("/sales-orders", {
+    method: "POST",
+    body: JSON.stringify(sanitizePayload(body)),
+  })
+
+  // Defensively extract trace — Velocity may use different field names
+  const trace = (result.trace as string) || (result.salesOrderTrace as string) || (result.id as string)
+  const workflowId = (result.workflowId as string) || (result.workflowId as string)
+  const status = (result.status as string) || ""
+
+  if (!trace) {
+    log.error("velocity — sales order response missing trace field", { responseKeys: Object.keys(result) })
+    throw new Error(`Velocity createSalesOrder — response missing trace field. Keys: ${Object.keys(result).join(",")}`)
+  }
+
+  return { trace, workflowId: workflowId || trace, status }
 }
 
 export async function initiateVelocityTransaction(payload: {
@@ -173,63 +356,108 @@ export async function initiateVelocityTransaction(payload: {
   salesOrderTrace: string
   returnUrl?: string
   customerEmail?: string
+  idempotencyKey?: string
 }): Promise<VelocityTransaction> {
   if (!MERCHANT_PHONE || !MERCHANT_ACCOUNT) {
     throw new Error("VELOCITY_MERCHANT_PHONE / VELOCITY_MERCHANT_ACCOUNT not set")
   }
+
+  // Pre-validate all required fields
+  const required: Record<string, unknown> = {
+    amount: payload.amount,
+    processor: payload.processor,
+    debitPhone: payload.debitPhone,
+    debitCurrency: payload.debitCurrency,
+    authType: payload.authType,
+    salesOrderTrace: payload.salesOrderTrace,
+  }
+  if (payload.authType === "WEB") {
+    required.returnUrl = payload.returnUrl
+    required.customerEmail = payload.customerEmail
+  }
+  const missing = validateRequiredFields(required, "initiateVelocityTransaction")
+  if (missing.length > 0) {
+    throw new Error(
+      `Velocity initiateTransaction — missing/invalid required fields: ${missing.join(", ")}`,
+    )
+  }
+
+  // Use idempotencyKey as the unique debitRef so Velocity can detect duplicates.
+  // Falls back to the env-configured default.
+  const transactionRef = payload.idempotencyKey || DEBIT_REF
+
   const body: Record<string, unknown> = {
     amount: payload.amount,
     paymentProcessorLabel: payload.processor,
-    debitRegion: "ZW",
+    debitRegion: DEBIT_REGION,
     debitCurrency: payload.debitCurrency,
-    debitRef: "velocityafrica",
+    debitRef: transactionRef,
+    debitPhone: payload.debitPhone,
     creditPhone: MERCHANT_PHONE,
     creditRegion: "ZW",
     creditAccount: MERCHANT_ACCOUNT,
     type: "REQUEST",
     authType: payload.authType,
+    salesOrderTrace: payload.salesOrderTrace,
   }
 
-  // EcoCash (REMOTE) uses salesOrderTrace.
-  // Card (WEB) might use salesOrderId instead.
-  if (payload.authType === "REMOTE") {
-    body.salesOrderTrace = payload.salesOrderTrace
-  } else {
-    body.salesOrderId = payload.salesOrderTrace
-  }
-
-  // REMOTE (EcoCash) requires debitPhone for the USSD push.
-  if (payload.authType === "REMOTE") {
-    body.debitPhone = payload.debitPhone
-  }
-
-  // WEB (card) flows need a callback URL for the hosted checkout.
   if (payload.authType === "WEB" && payload.returnUrl) {
     body.callbackUrl = payload.returnUrl
     body.returnUrl = payload.returnUrl
   }
 
-  // WEB (card) might require customer email for receipt/risk checks.
   if (payload.authType === "WEB" && payload.customerEmail) {
     body.customerEmail = payload.customerEmail
   }
 
-  return velocityFetch<VelocityTransaction>("/transactions", {
-    method: "POST",
-    body: JSON.stringify(body),
+  log.info("velocity — transaction payload", {
+    processor: payload.processor,
+    authType: payload.authType,
+    amount: payload.amount,
+    currency: payload.debitCurrency,
+    hasDebitPhone: !!payload.debitPhone,
+    hasReturnUrl: !!payload.returnUrl,
+    hasCustomerEmail: !!payload.customerEmail,
+    hasSalesOrderTrace: !!payload.salesOrderTrace,
+    hasIdempotencyKey: !!payload.idempotencyKey,
+    maskedMerchantPhone: MERCHANT_PHONE ? maskSecret(MERCHANT_PHONE) : "MISSING",
+    maskedMerchantAccount: MERCHANT_ACCOUNT ? maskSecret(MERCHANT_ACCOUNT) : "MISSING",
   })
+
+  const result = await velocityFetch<Record<string, unknown>>("/transactions", {
+    method: "POST",
+    body: JSON.stringify(sanitizePayload(body)),
+  })
+
+  // Defensively extract transaction trace
+  const trace = (result.trace as string) || (result.transactionTrace as string) || (result.reference as string)
+  const paymentStatus = (result.paymentStatus as string) || result.status as string || ""
+  const pollStatus = (result.pollStatus as "PENDING" | "SUCCESS" | "FAILED") || "PENDING"
+  const redirectUrl = result.redirectUrl as string | undefined
+
+  if (!trace) {
+    log.error("velocity — transaction response missing trace", { responseKeys: Object.keys(result) })
+    throw new Error(`Velocity initiateTransaction — response missing trace. Keys: ${Object.keys(result).join(",")}`)
+  }
+
+  return { trace, paymentStatus, pollStatus, redirectUrl }
 }
 
 export async function pollVelocityTransaction(trace: string): Promise<VelocityPollResult> {
-  return velocityFetch<VelocityPollResult>(`/transactions/poll/${encodeURIComponent(trace)}`, {
+  const result = await velocityFetch<Record<string, unknown>>(`/transactions/poll/${encodeURIComponent(trace)}`, {
     method: "PUT",
   })
+  return {
+    paymentStatus: (result.paymentStatus as string) || "",
+    pollStatus: (result.pollStatus as "PENDING" | "SUCCESS" | "FAILED") || "PENDING",
+  }
 }
 
 export async function completeVelocitySalesOrder(trace: string): Promise<{ status: string }> {
-  return velocityFetch<{ status: string }>(`/sales-orders/update-workflow/${encodeURIComponent(trace)}`, {
+  const result = await velocityFetch<Record<string, unknown>>(`/sales-orders/update-workflow/${encodeURIComponent(trace)}`, {
     method: "PUT",
   })
+  return { status: (result.status as string) || "" }
 }
 
 export function velocityUrls(orderId: string, origin: string) {
