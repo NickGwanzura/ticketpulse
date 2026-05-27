@@ -20,11 +20,11 @@ const POLL_INTERVAL_MS = 4000
 const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money TTL
 
 const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string; icon: typeof Smartphone }[] = [
-  { value: "ecocash", label: "EcoCash", body: "Mobile money. Instant.", icon: Smartphone },
-  { value: "omari", label: "Omari", body: "Mobile money. Instant.", icon: Smartphone },
-  { value: "card", label: "Card", body: "Visa, Mastercard, AmEx.", icon: CreditCard },
-  { value: "velocity-ecocash", label: "EcoCash — Velocity", body: "Mobile money via Velocity Africa.", icon: Smartphone },
-  { value: "velocity-vmc", label: "Card — Velocity", body: "Visa / Mastercard via Velocity Africa.", icon: CreditCard },
+  { value: "ecocash", label: "EcoCash", body: "Pay with mobile money. Instant confirmation.", icon: Smartphone },
+  { value: "omari", label: "Omari", body: "Pay with mobile money. Instant confirmation.", icon: Smartphone },
+  { value: "card", label: "Card", body: "Visa, Mastercard, AmEx — hosted checkout.", icon: CreditCard },
+  { value: "velocity-ecocash", label: "EcoCash (Alternate)", body: "Alternative EcoCash processor for backup coverage.", icon: Smartphone },
+  { value: "velocity-vmc", label: "Card (Alternate)", body: "Alternative card processor for backup coverage.", icon: CreditCard },
 ]
 
 export default function CheckoutPage() {

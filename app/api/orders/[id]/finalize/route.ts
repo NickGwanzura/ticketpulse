@@ -6,6 +6,7 @@ import { events, orders, orderItems, ticketTiers, tickets, users, ticketQuestion
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
 import { sendText, formatChatId } from "@/lib/whatsapp"
+import { log } from "@/lib/logger"
 
 type Params = { id: string }
 
@@ -23,118 +24,121 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)
   if (!order) return NextResponse.redirect(`${origin}/orders?error=not_found`)
 
-  // Email match — protects against a session user clicking someone else's
-  // verification link from their own inbox.
   const userEmail = session.user.email.toLowerCase()
   const guestEmail = order.guestEmail?.toLowerCase()
   if (guestEmail && guestEmail !== userEmail) {
     return NextResponse.redirect(`${origin}/orders?error=mismatch`)
   }
 
-  // Already finalized — just send them to the order page.
   if (order.status !== "awaiting_verification") {
     return NextResponse.redirect(`${origin}/orders/${id}`)
   }
 
-  // Token expiry guard. NextAuth will refuse stale tokens at the callback
-  // step, but if a buyer somehow got here after the window we still fail safe.
   if (order.verificationExpires && order.verificationExpires < new Date()) {
     return NextResponse.redirect(`${origin}/orders/${id}?error=expired`)
   }
 
-  await db
-    .update(orders)
-    .set({
-      status: "paid",
-      userId: session.user.id,
-      verifiedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, id))
-
-  // ── Persist question responses ────────────────────────────────────────────
+  // ── Atomic finalization: tickets created BEFORE order is marked paid ────────
+  // If ticket creation fails, the transaction rolls back and the order stays
+  // `awaiting_verification` — no paid order without deliverable tickets.
   try {
-    const meta = (order.metadata ?? {}) as { questionResponses?: Record<string, string> }
-    if (meta.questionResponses && Object.keys(meta.questionResponses).length > 0) {
-      const eventQuestionsList = await db
-        .select({ id: ticketQuestions.id })
-        .from(ticketQuestions)
-        .where(eq(ticketQuestions.eventId, order.eventId))
+    await db.transaction(async (tx) => {
+      // 1. Persist question responses
+      const meta = (order.metadata ?? {}) as { questionResponses?: Record<string, string> }
+      if (meta.questionResponses && Object.keys(meta.questionResponses).length > 0) {
+        const eventQuestionsList = await tx
+          .select({ id: ticketQuestions.id })
+          .from(ticketQuestions)
+          .where(eq(ticketQuestions.eventId, order.eventId))
 
-      const validQuestionIds = new Set(eventQuestionsList.map((q) => q.id))
-      const responseValues = Object.entries(meta.questionResponses)
-        .filter(([qid]) => validQuestionIds.has(qid))
-        .map(([questionId, response]) => ({
-          questionId,
-          orderId: id,
-          response: response.slice(0, 2000),
-        }))
+        const validQuestionIds = new Set(eventQuestionsList.map((q) => q.id))
+        const responseValues = Object.entries(meta.questionResponses)
+          .filter(([qid]) => validQuestionIds.has(qid))
+          .map(([questionId, response]) => ({
+            questionId,
+            orderId: id,
+            response: response.slice(0, 2000),
+          }))
 
-      if (responseValues.length > 0) {
-        await db.insert(ticketQuestionResponses).values(responseValues)
+        if (responseValues.length > 0) {
+          await tx.insert(ticketQuestionResponses).values(responseValues)
+        }
       }
-    }
-  } catch (err) {
-    console.error("[finalize] failed to persist question responses:", err)
-  }
 
-  // ── Create individual ticket records with QR codes ─────────────────────────
-  // Each ticket-type order item produces one record per quantity.
-  // QR codes use the DB UUID format so they can be looked up server-side.
-  try {
-    const itemsWithIds = await db
-      .select({
-        id: orderItems.id,
-        tierId: orderItems.tierId,
-        quantity: orderItems.quantity,
-      })
-      .from(orderItems)
-      .where(eq(orderItems.orderId, id))
-
-    const ticketValues: {
-      tierId: string
-      eventId: string
-      orderId: string
-      userId: string | null
-      status: "sold"
-      qrCode: string
-    }[] = []
-
-    for (const item of itemsWithIds) {
-      if (!item.tierId) continue
-      for (let i = 0; i < item.quantity; i++) {
-        ticketValues.push({
-          tierId: item.tierId,
-          eventId: order.eventId,
-          orderId: id,
-          userId: session.user.id,
-          status: "sold",
-          qrCode: `${id}-${item.id}-${i}`,
+      // 2. Create individual ticket records with QR codes
+      const itemsWithIds = await tx
+        .select({
+          id: orderItems.id,
+          tierId: orderItems.tierId,
+          quantity: orderItems.quantity,
         })
-      }
-    }
+        .from(orderItems)
+        .where(eq(orderItems.orderId, id))
 
-    if (ticketValues.length > 0) {
-      await db.insert(tickets).values(ticketValues)
+      const ticketValues: {
+        tierId: string
+        eventId: string
+        orderId: string
+        userId: string | null
+        status: "sold"
+        qrCode: string
+      }[] = []
 
-      // Update sold quantities for each tier
-      const tierCounts = new Map<string, number>()
-      for (const t of ticketValues) {
-        tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+      for (const item of itemsWithIds) {
+        if (!item.tierId) continue
+        for (let i = 0; i < item.quantity; i++) {
+          ticketValues.push({
+            tierId: item.tierId,
+            eventId: order.eventId,
+            orderId: id,
+            userId: session.user.id,
+            status: "sold",
+            qrCode: `${id}-${item.id}-${i}`,
+          })
+        }
       }
-      for (const [tierId, count] of tierCounts) {
-        await db
-          .update(ticketTiers)
-          .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
-          .where(eq(ticketTiers.id, tierId))
+
+      if (ticketValues.length > 0) {
+        await tx.insert(tickets).values(ticketValues)
+
+        // Update sold quantities for each tier
+        const tierCounts = new Map<string, number>()
+        for (const t of ticketValues) {
+          tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+        }
+        for (const [tierId, count] of tierCounts) {
+          await tx
+            .update(ticketTiers)
+            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+            .where(eq(ticketTiers.id, tierId))
+        }
       }
-    }
+
+      // 3. Mark order as paid — only after tickets are confirmed in the DB
+      const [updated] = await tx
+        .update(orders)
+        .set({
+          status: "paid",
+          userId: session.user.id,
+          verifiedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, id))
+        .returning({ id: orders.id })
+
+      if (!updated) {
+        throw new Error("Failed to update order status")
+      }
+    })
   } catch (err) {
-    console.error("[finalize] failed to create ticket records:", err)
+    log.error("finalize — atomic ticket creation failed, order remains awaiting_verification", {
+      orderId: id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return NextResponse.redirect(`${origin}/orders/${id}?error=finalization_failed`)
   }
 
-  // Fire the branded ticket confirmation email. Failures here shouldn't
-  // block the user from seeing their order — log and continue.
+  // ── Notifications (non-critical — run after finalization succeeds) ──────────
   let ev: { title: string; startsAt: Date; venue: string | null; organizerId: string } | null = null
   let saleLines: { label: string; qty: number; amount: string }[] = []
   try {
@@ -195,9 +199,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     console.error("[finalize] failed to send order confirmation:", err)
   }
 
-  // ── WhatsApp ticket notification (non-blocking) ───────────────────────────
   if (order.guestPhone) {
-    const origin = new URL(req.url).origin
     fetch(`${origin}/api/whatsapp/send-ticket`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -207,7 +209,6 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     )
   }
 
-  // ── Notify the event organiser about the sale ─────────────────────────────
   if (ev) {
     try {
       const [org] = await db
@@ -235,7 +236,6 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         })
       }
 
-      // WhatsApp alert to the organizer (non-blocking)
       if (org?.phone) {
         const appUrl =
           process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
@@ -261,7 +261,6 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       console.error("[finalize] failed to notify organiser:", err)
     }
 
-    // ── Notify the platform admin about the sale ──────────────────────────────
     try {
       const { html, text } = saleNotificationEmail({
         role: "admin",

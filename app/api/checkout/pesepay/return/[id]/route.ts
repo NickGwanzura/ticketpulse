@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { getPesepay, type OrderMetadata } from "@/lib/pesepay"
@@ -9,9 +9,10 @@ import { log } from "@/lib/logger"
 type Params = { id: string }
 
 // Buyer lands here in the browser after completing PesePay's hosted checkout.
-// We check the payment status, transition the order if PesePay confirms, then
-// forward the buyer to the order page where they'll see the verify-email
-// prompt (or an error state on failure).
+// We check the payment status, transition the order atomically if PesePay
+// confirms, then forward the buyer to the order page. Uses the same atomic
+// idempotency pattern as the webhook — only transitions if still `pending`
+// so that a concurrent webhook or status poll can't race.
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
   const origin = new URL(req.url).origin
@@ -21,39 +22,48 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.redirect(`${origin}/checkout?error=not_found`)
   }
 
-  if (order.status === "pending") {
-    const meta = (order.metadata ?? {}) as OrderMetadata
-    const pollUrl = meta.pesepay?.pollUrl
-    const reference = meta.pesepay?.reference ?? order.paymentRef ?? undefined
+  if (order.status !== "pending") {
+    return NextResponse.redirect(`${origin}/orders/${id}?awaiting=1`)
+  }
 
-    if (pollUrl || reference) {
-      const pesepay = getPesepay()
-      const result = pollUrl
-        ? await pesepay.pollTransaction(pollUrl)
-        : await pesepay.checkPayment(reference!)
+  const meta = (order.metadata ?? {}) as OrderMetadata
+  const pollUrl = meta.pesepay?.pollUrl
+  const reference = meta.pesepay?.reference ?? order.paymentRef ?? undefined
 
-      if (result.success && result.paid && order.guestEmail) {
-        // Mark paidAt before starting verification
-        await db
-          .update(orders)
-          .set({ paidAt: new Date(), updatedAt: new Date() })
-          .where(eq(orders.id, id))
+  if (!pollUrl && !reference) {
+    return NextResponse.redirect(`${origin}/orders/${id}?awaiting=1`)
+  }
 
-        await startOrderVerification({
-          orderId: id,
-          email: order.guestEmail,
-          origin,
-        })
-      } else if (result.success && !result.paid) {
-        // PesePay was reachable but the transaction didn't succeed — flip the
-        // order to cancelled so the buyer can retry without seeing stale state.
-        await db
-          .update(orders)
-          .set({ status: "cancelled", updatedAt: new Date() })
-          .where(eq(orders.id, id))
-        return NextResponse.redirect(`${origin}/orders/${id}?error=payment_failed`)
-      }
+  const pesepay = getPesepay()
+  const result = pollUrl
+    ? await pesepay.pollTransaction(pollUrl)
+    : await pesepay.checkPayment(reference!)
+
+  if (result.success && result.paid && order.guestEmail) {
+    // Atomic idempotency gate — only transitions if still `pending`
+    const [claimed] = await db
+      .update(orders)
+      .set({
+        status: "awaiting_verification",
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(orders.id, id), eq(orders.status, "pending")))
+      .returning({ id: orders.id })
+
+    if (claimed) {
+      await startOrderVerification({
+        orderId: id,
+        email: order.guestEmail,
+        origin,
+      })
     }
+  } else if (result.success && !result.paid) {
+    await db
+      .update(orders)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(orders.id, id))
+    return NextResponse.redirect(`${origin}/orders/${id}?error=payment_failed`)
   }
 
   return NextResponse.redirect(`${origin}/orders/${id}?awaiting=1`)

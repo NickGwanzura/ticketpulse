@@ -66,7 +66,11 @@ export function getPesepay(): Pesepay {
 export function verifyWebhookSecret(requestSignature: string | null): boolean {
   const secret = process.env.PESEPAY_WEBHOOK_SECRET
   if (!secret) {
-    // No secret configured — accept the webhook (backwards-compatible).
+    // In production, webhook secret is required. In dev, accept for backwards
+    // compatibility so local testing doesn't require a configured secret.
+    if (process.env.NODE_ENV === "production") {
+      return false
+    }
     return true
   }
   if (!requestSignature) {

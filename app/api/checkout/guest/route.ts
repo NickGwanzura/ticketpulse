@@ -62,6 +62,11 @@ export async function POST(req: Request) {
   const [event] = await db.select().from(events).where(eq(events.slug, parsed.eventSlug)).limit(1)
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 })
 
+  // ── Event availability check ───────────────────────────────────────────
+  if (event.status !== "published") {
+    return NextResponse.json({ error: "This event is not currently available for purchase" }, { status: 400 })
+  }
+
   // ── Resolve ticket tier prices server-side ──────────────────────────
   const ticketItems = parsed.items.filter((i): i is typeof i & { kind: "ticket" } => i.kind === "ticket")
   const vendorAddonItems = parsed.items.filter((i): i is typeof i & { kind: "vendor_addon" } => i.kind === "vendor_addon")
@@ -72,9 +77,33 @@ export async function POST(req: Request) {
     .where(eq(ticketTiers.eventId, event.id))
   const tierById = new Map(tiers.map((t) => [t.id, t]))
 
+  const now = new Date()
+
   for (const item of ticketItems) {
-    if (!tierById.has(item.tierId)) {
+    const tier = tierById.get(item.tierId)
+    if (!tier) {
       return NextResponse.json({ error: `Tier ${item.tierId} not in event` }, { status: 400 })
+    }
+
+    // Sales window check
+    if (tier.salesStart && new Date(tier.salesStart) > now) {
+      return NextResponse.json({ error: `"${tier.name}" is not yet available for purchase` }, { status: 400 })
+    }
+    if (tier.salesEnd && new Date(tier.salesEnd) < now) {
+      return NextResponse.json({ error: `Sales for "${tier.name}" have ended` }, { status: 400 })
+    }
+
+    // Availability check
+    if (Number(tier.soldQuantity ?? 0) >= Number(tier.totalQuantity ?? 0)) {
+      return NextResponse.json({ error: `"${tier.name}" is sold out` }, { status: 400 })
+    }
+    if (Number(tier.totalQuantity ?? 0) - Number(tier.soldQuantity ?? 0) < item.quantity) {
+      return NextResponse.json({ error: `Only ${Number(tier.totalQuantity ?? 0) - Number(tier.soldQuantity ?? 0)} ticket(s) left for "${tier.name}"` }, { status: 400 })
+    }
+
+    // Max per order check
+    if (tier.maxPerOrder && item.quantity > tier.maxPerOrder) {
+      return NextResponse.json({ error: `Maximum ${tier.maxPerOrder} ticket(s) per order for "${tier.name}"` }, { status: 400 })
     }
   }
 

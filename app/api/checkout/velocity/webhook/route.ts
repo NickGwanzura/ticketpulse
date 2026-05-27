@@ -1,22 +1,38 @@
 import { NextResponse } from "next/server"
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { pollVelocityTransaction, completeVelocitySalesOrder } from "@/lib/velocity"
 import { startOrderVerification } from "@/lib/order-verification"
 import { log } from "@/lib/logger"
 
-// Velocity Africa webhook receiver.
-// Velocity's webhook format is not yet confirmed; this route accepts a POST
-// with { transactionTrace, status } and independently polls Velocity to verify.
-// If Velocity does not support webhooks, this route simply returns 200 and
-// the checkout page relies on client-side polling instead.
+// Timing-safe comparison to prevent timing attacks on webhook secret.
+function verifyWebhookSecret(requestSignature: string | null): boolean {
+  const secret = process.env.VELOCITY_WEBHOOK_SECRET
+  if (!secret) {
+    log.warn("velocity webhook — VELOCITY_WEBHOOK_SECRET not set, accepting all")
+    return true
+  }
+  if (!requestSignature) return false
+  if (requestSignature.length !== secret.length) return false
+  let mismatch = 0
+  for (let i = 0; i < requestSignature.length; i++) {
+    mismatch |= requestSignature.charCodeAt(i) ^ secret.charCodeAt(i)
+  }
+  return mismatch === 0
+}
+
 export async function POST(req: Request) {
+  const signature = req.headers.get("X-Velocity-Signature")
+  if (!verifyWebhookSecret(signature)) {
+    log.warn("velocity webhook — invalid signature")
+    return NextResponse.json({ error: "invalid_signature" }, { status: 401 })
+  }
+
   let body: Record<string, unknown> = {}
   try {
     body = await req.json()
   } catch {
-    // Some gateways send form-encoded or query params — we'll try to read them
     const url = new URL(req.url)
     body = Object.fromEntries(url.searchParams)
   }
@@ -26,12 +42,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "missing_transaction_trace" }, { status: 400 })
   }
 
-  // Find the order by transaction trace stored in metadata
-  const allOrders = await db.select().from(orders).where(eq(orders.status, "pending"))
-  const order = allOrders.find((o) => {
-    const meta = (o.metadata ?? {}) as { velocity?: { transactionTrace: string } }
-    return meta.velocity?.transactionTrace === txTrace
-  })
+  // Find the order by JSON-path query on metadata (O(1) with GIN index)
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "pending"),
+        sql`${orders.metadata}->'velocity'->>'transactionTrace' = ${txTrace}`,
+      ),
+    )
+    .limit(1)
 
   if (!order) {
     return NextResponse.json({ ok: true, note: "order_not_found_or_already_processed" })
@@ -52,7 +73,6 @@ export async function POST(req: Request) {
   try {
     const poll = await pollVelocityTransaction(txTrace)
     if (poll.pollStatus !== "SUCCESS") {
-      // Revert so it can be retried
       await db
         .update(orders)
         .set({ status: "pending", updatedAt: new Date() })
