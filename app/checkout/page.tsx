@@ -14,7 +14,7 @@ type CheckoutResponse =
   | { flow: "seamless"; orderId: string; reference: string; paid: boolean }
   | { flow: "redirect"; orderId: string; redirectUrl: string }
 
-type PaymentMethodValue = "ecocash" | "omari" | "card" | "velocity-ecocash" | "velocity-vmc"
+type PaymentMethodValue = "ecocash" | "omari" | "card"
 
 const POLL_INTERVAL_MS = 4000
 const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money TTL
@@ -23,8 +23,6 @@ const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string;
   { value: "ecocash", label: "EcoCash", body: "Pay with mobile money. Instant confirmation.", icon: Smartphone },
   { value: "omari", label: "Omari", body: "Pay with mobile money. Instant confirmation.", icon: Smartphone },
   { value: "card", label: "Card", body: "Visa, Mastercard, AmEx — hosted checkout.", icon: CreditCard },
-  { value: "velocity-ecocash", label: "EcoCash (Alternate)", body: "Alternative EcoCash processor for backup coverage.", icon: Smartphone },
-  { value: "velocity-vmc", label: "Card (Alternate)", body: "Alternative card processor for backup coverage.", icon: CreditCard },
 ]
 
 export default function CheckoutPage() {
@@ -56,10 +54,7 @@ export default function CheckoutPage() {
     let cancelled = false
     const startedAt = Date.now()
 
-    const isVelocityPoll = pollingContact.current?.method.startsWith("velocity-")
-    const statusEndpoint = isVelocityPoll
-      ? `/api/checkout/velocity/status/${pollingOrderId}`
-      : `/api/checkout/pesepay/status/${pollingOrderId}`
+    const statusEndpoint = `/api/checkout/pesepay/status/${pollingOrderId}`
 
     const tick = async () => {
       if (cancelled) return
@@ -580,14 +575,11 @@ export default function CheckoutPage() {
 function PaymentWaitingOverlay({
   method, phone, onCancel,
 }: { method: string; phone: string; onCancel: () => void }) {
-  const isVelocity = method.startsWith("velocity-")
   const label =
     method === "ecocash" ? "EcoCash"
     : method === "omari" ? "Omari"
-    : method === "velocity-ecocash" ? "EcoCash — Velocity"
-    : method === "velocity-vmc" ? "Card — Velocity"
-    : "Mobile money"
-  const isCard = method === "card" || method === "velocity-vmc"
+    : "Card"
+  const isCard = method === "card"
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm px-4">
       <div className="relative w-full max-w-md rounded-2xl border border-line bg-paper p-7 shadow-xl shadow-ink/10">
