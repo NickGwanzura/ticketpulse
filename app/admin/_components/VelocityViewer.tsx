@@ -222,16 +222,32 @@ export default function VelocityViewer({ initialData }: Props) {
     }
   }, [isLive, query, statusFilter])
 
-  // ── Auto-dismiss toasts after 6s ─────────────────────────────────────
+  // ── Auto-dismiss toasts after 6s (per-toast, independent timers) ────
+  const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
   useEffect(() => {
-    if (toasts.length === 0) return
-    const timers = toasts.map((t) =>
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((x) => x.id !== t.id))
-      }, 6000),
-    )
-    return () => timers.forEach(clearTimeout)
-  }, [toasts.length])
+    const timers = toastTimersRef.current
+
+    // Set a timer for any new toast that doesn't have one
+    for (const t of toasts) {
+      if (!timers.has(t.id)) {
+        const timer = setTimeout(() => {
+          setToasts((prev) => prev.filter((x) => x.id !== t.id))
+          timers.delete(t.id)
+        }, 6000)
+        timers.set(t.id, timer)
+      }
+    }
+
+    // Clean up timers for toasts that were removed (e.g. manually dismissed)
+    const activeIds = new Set(toasts.map((t) => t.id))
+    for (const [id, timer] of timers.entries()) {
+      if (!activeIds.has(id)) {
+        clearTimeout(timer)
+        timers.delete(id)
+      }
+    }
+  }, [toasts])
 
   // ── Manual refresh ──────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
@@ -783,7 +799,7 @@ export default function VelocityViewer({ initialData }: Props) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto animate-in slide-in-from-right-4 fade-in rounded-2xl border p-4 shadow-xl transition-all ${
+            className={`pointer-events-auto rounded-2xl border p-4 shadow-xl transition-all animate-toast-slide ${
               t.type === "paid"
                 ? "border-emerald-200 bg-emerald-50"
                 : t.type === "fixed"
@@ -847,17 +863,16 @@ export default function VelocityViewer({ initialData }: Props) {
                 <X size={12} />
               </button>
             </div>
-            {/* Progress bar for auto-dismiss */}
+            {/* Progress bar for auto-dismiss (CSS keyframe animation) */}
             <div className="mt-2.5 h-1 rounded-full bg-black/5 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-[width] duration-[6000ms] ease-linear ${
+                className={`h-full rounded-full animate-toast-shrink ${
                   t.type === "paid"
                     ? "bg-emerald-300"
                     : t.type === "fixed"
                       ? "bg-blue-300"
                       : "bg-amber-300"
                 }`}
-                style={{ width: "100%" }}
               />
             </div>
           </div>
