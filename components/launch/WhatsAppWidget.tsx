@@ -17,7 +17,7 @@ export default function WhatsAppWidget({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="group fixed bottom-5 right-5 sm:bottom-7 sm:right-7 z-50 inline-flex items-center gap-2.5 rounded-full bg-[#25D366] hover:bg-[#1FBA59] text-white pl-3.5 pr-4 py-3 shadow-[0_18px_40px_-12px_rgba(37,211,102,0.55)] ring-1 ring-white/30 transition-all hover:scale-[1.03] active:scale-[0.99]"
+      className="group fixed bottom-20 right-5 sm:bottom-7 sm:right-7 z-50 inline-flex items-center gap-2.5 rounded-full bg-[#25D366] hover:bg-[#1FBA59] text-white pl-3.5 pr-4 py-3 shadow-[0_18px_40px_-12px_rgba(37,211,102,0.55)] ring-1 ring-white/30 transition-all hover:scale-[1.03] active:scale-[0.99]"
     >
       <span className="relative inline-flex w-7 h-7 items-center justify-center rounded-full bg-white/15">
         <span className="absolute inset-0 rounded-full bg-white/30 animate-ping opacity-60" aria-hidden />
