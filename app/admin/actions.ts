@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, inArray, or, sql } from "drizzle-orm"
+import { eq, and, inArray, or, sql } from "drizzle-orm"
 
 import { auth, signIn } from "@/auth"
 import { db } from "@/db"

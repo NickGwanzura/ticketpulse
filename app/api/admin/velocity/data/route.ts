@@ -1,28 +1,52 @@
-import { redirect } from "next/navigation"
+import { NextResponse } from "next/server"
 import { desc, eq, and, like, or, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events } from "@/db/schema"
 import type { VelocityOrderMetadata } from "@/types/velocity"
-import type { VelocityApiResponse } from "@/app/api/admin/velocity/data/route"
 
-import PageHeader from "@/components/dashboard/PageHeader"
-import VelocityViewer from "@/app/admin/_components/VelocityViewer"
+export type VelocityApiOrder = {
+  id: string
+  status: string | null
+  totalAmount: string | null
+  currency: string | null
+  paymentMethod: string | null
+  paymentRef: string | null
+  metadata: unknown
+  guestEmail: string | null
+  guestName: string | null
+  guestPhone: string | null
+  paidAt: string | null
+  createdAt: string | null
+  verificationSentAt: string | null
+  eventTitle: string | null
+  eventSlug: string | null
+}
 
-export default async function AdminVelocityPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; status?: string }>
-}) {
+export type VelocityApiResponse = {
+  orders: VelocityApiOrder[]
+  stats: {
+    totalRevenue: number
+    totalTransactions: number
+    completed: number
+    pending: number
+    failed: number
+    pollSuccess: number
+    pollFailed: number
+    pollPending: number
+  }
+}
+
+export async function GET(request: Request) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    redirect("/auth/signin?callbackUrl=/admin/velocity")
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
 
-  const sp = await searchParams
-  const query = sp.q?.trim() ?? ""
-  const statusFilter = sp.status ?? "all"
+  const { searchParams } = new URL(request.url)
+  const query = searchParams.get("q")?.trim() ?? ""
+  const statusFilter = searchParams.get("status") ?? "all"
 
   // ── Base condition: must have Velocity metadata ──────────────────────────
   const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
@@ -79,8 +103,8 @@ export default async function AdminVelocityPage({
     .orderBy(desc(orders.createdAt))
     .limit(100)
 
-  // ── Serialize dates to ISO strings for client consumption ─────────────
-  const serializedOrders = orderRows.map((o) => ({
+  // ── Serialize dates to ISO strings ─────────────────────────────────────
+  const serializedOrders: VelocityApiOrder[] = orderRows.map((o) => ({
     ...o,
     paidAt: o.paidAt?.toISOString() ?? null,
     createdAt: o.createdAt?.toISOString() ?? null,
@@ -118,7 +142,7 @@ export default async function AdminVelocityPage({
 
   const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
-  const initialData: VelocityApiResponse = {
+  const response: VelocityApiResponse = {
     orders: serializedOrders,
     stats: {
       totalRevenue,
@@ -132,18 +156,5 @@ export default async function AdminVelocityPage({
     },
   }
 
-  return (
-    <div className="tp-fade-up">
-      <PageHeader
-        eyebrow="Velocity"
-        title="Transaction viewer"
-        subtitle="Monitor, recheck, and manage all Velocity Africa payment transactions."
-        width="full"
-      />
-
-      <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
-        <VelocityViewer initialData={initialData} />
-      </div>
-    </div>
-  )
+  return NextResponse.json(response)
 }
