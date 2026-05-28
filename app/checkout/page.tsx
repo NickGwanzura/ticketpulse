@@ -132,7 +132,7 @@ export default function CheckoutPage() {
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Nothing to check out yet</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">Add tickets to your cart first.</p>
-        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition">
+        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 transition">
           Browse events <ArrowRight size={14} />
         </Link>
       </div>
@@ -295,7 +295,7 @@ export default function CheckoutPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Tendai Moyo"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/15 transition"
                   />
                 </div>
               </div>
@@ -311,7 +311,7 @@ export default function CheckoutPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="you@example.com"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/15 transition"
                   />
                 </div>
               </div>
@@ -327,7 +327,7 @@ export default function CheckoutPage() {
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="+263 77…"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/15 transition"
                   />
                 </div>
               </div>
@@ -356,7 +356,7 @@ export default function CheckoutPage() {
                         setQuestionAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
                       }
                       placeholder="Your answer"
-                      className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                      className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/15 transition"
                     />
                   </div>
                 ))}
@@ -378,7 +378,7 @@ export default function CheckoutPage() {
                       return (
                         <label key={value} className={`relative flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
                           checked
-                            ? "border-navy bg-navy/[0.03] ring-1 ring-navy/10"
+                            ? "border-brand bg-brand/[0.04] ring-1 ring-brand/15"
                             : "border-line bg-paper hover:border-line-2 hover:bg-paper-2"
                         }`}>
                           <input
@@ -392,7 +392,7 @@ export default function CheckoutPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start gap-3">
                               <span className={`shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-xl ring-1 ${
-                                checked ? "bg-navy text-white ring-navy/15" : "bg-paper-2 text-ink-2 ring-line"
+                                checked ? "bg-brand text-white ring-brand/20" : "bg-paper-2 text-ink-2 ring-line"
                               }`}>
                                 <Icon size={16} />
                               </span>
@@ -400,7 +400,7 @@ export default function CheckoutPage() {
                                 <p className="text-[14px] font-semibold tracking-tight text-ink">{label}</p>
                                 <p className="text-[12.5px] text-ink-2 mt-0.5">{body}</p>
                               </div>
-                              {checked && <Check size={16} className="text-navy mt-1 shrink-0" />}
+                              {checked && <Check size={16} className="text-brand mt-1 shrink-0" />}
                             </div>
                           </div>
                         </label>
@@ -419,7 +419,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90"
+            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90"
           >
             {submitting
               ? form.payment === "velocity-card"
@@ -460,7 +460,7 @@ export default function CheckoutPage() {
               {appliedPromo ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-green-700">
+                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-brand">
                       <Tag size={13} /> {appliedPromo.code}
                     </span>
                     <button
@@ -473,7 +473,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex items-baseline justify-between text-[13px]">
                     <span className="text-ink-3">Discount</span>
-                    <span className="font-semibold text-green-600">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
+                    <span className="font-semibold text-brand">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
                   </div>
                 </div>
               ) : (
@@ -484,7 +484,7 @@ export default function CheckoutPage() {
                       value={promoInput}
                       onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                       placeholder="Promo code"
-                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-green-500"
+                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand"
                     />
                     <button
                       type="button"
@@ -520,7 +520,7 @@ export default function CheckoutPage() {
                           setPromoLoading(false)
                         }
                       }}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-70"
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-70"
                     >
                       {promoLoading ? <Loader2 size={13} className="animate-spin" /> : <Percent size={13} />}
                       Apply
@@ -555,7 +555,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
+              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
             >
               {submitting
                 ? form.payment === "velocity-card"
@@ -597,7 +597,7 @@ function PaymentWaitingOverlay({
           <X size={14} />
         </button>
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-navy">
+          <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand">
             {isCard ? <CreditCard size={18} /> : <Smartphone size={18} />}
           </span>
           <div>

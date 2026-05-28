@@ -23,7 +23,6 @@ import {
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
-import { getFeaturedEvents } from "@/lib/events"
 import { db } from "@/db"
 import { events as eventsTable, ticketTiers } from "@/db/schema"
 import { and, asc, eq, inArray, sql } from "drizzle-orm"
@@ -73,9 +72,6 @@ const CTA_STATS = [
 ]
 
 export default async function Home() {
-  const featuredEvents = await getFeaturedEvents(3)
-  const eventsOnSale = featuredEvents.length
-
   // ── Published events starting now or later, soonest first ──
   const allPublished = await db
     .select({
@@ -122,6 +118,8 @@ export default async function Home() {
     if (!eventsByCategory.has(cat)) eventsByCategory.set(cat, [])
     eventsByCategory.get(cat)!.push(ev)
   }
+
+  const eventsOnSale = allPublished.length
 
   const upcoming = allPublished.slice(0, 6).map((e) => {
     const price = priceByEvent.get(e.id)

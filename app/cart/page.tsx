@@ -66,7 +66,7 @@ function EditableQty({ value, min, max, onChange }: {
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false) }}
-        className="w-14 h-8 text-center text-sm font-semibold text-ink border border-navy rounded-md bg-paper outline-none tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="w-14 h-8 text-center text-sm font-semibold text-ink border border-line-2 rounded-md bg-paper outline-none tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         autoFocus
       />
     )
@@ -112,14 +112,14 @@ export default function CartPage() {
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-12 md:py-20 text-center">
         <EmptyTickets />
         <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 text-[10.5px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm shadow-ink/5">
-          <Sparkles size={11} className="text-green-600" /> Your cart is empty
+          <Sparkles size={11} className="text-brand" /> Your cart is empty
         </p>
         <h1 className="mt-5 text-[28px] md:text-[36px] font-bold tracking-tight text-ink">Add a few tickets first.</h1>
         <p className="mt-3 text-[14.5px] text-ink-2 max-w-md mx-auto leading-relaxed">
           Browse events, pick your tier, and they&apos;ll land here for one quick checkout.
         </p>
         <div className="mt-7 flex flex-wrap gap-2 justify-center">
-          <Link href="/events" className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition">
+          <Link href="/events" className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 transition">
             Browse events <ArrowRight size={14} />
           </Link>
           <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-sm font-medium text-ink hover:border-line-2 transition-colors">
@@ -152,11 +152,11 @@ export default function CartPage() {
               <div className="px-5 md:px-6 py-4 border-b border-line flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase">Event</p>
-                  <Link href={`/events/${group.eventSlug}`} className="text-[15px] font-semibold tracking-tight text-ink hover:text-navy-700 transition-colors line-clamp-1">
+                  <Link href={`/events/${group.eventSlug}`} className="text-[15px] font-semibold tracking-tight text-ink hover:text-brand transition-colors line-clamp-1">
                     {group.eventTitle}
                   </Link>
                 </div>
-                <Link href={`/events/${group.eventSlug}`} className="hidden sm:inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all shrink-0">
+                <Link href={`/events/${group.eventSlug}`} className="hidden sm:inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand hover:gap-1.5 transition-all shrink-0">
                   Add more <ArrowRight size={12} />
                 </Link>
               </div>
@@ -221,7 +221,7 @@ export default function CartPage() {
             >
               <Trash2 size={13} /> Clear cart
             </button>
-            <Link href="/events" className="text-[13px] font-semibold text-navy hover:underline">
+            <Link href="/events" className="text-[13px] font-semibold text-brand hover:underline">
               ← Continue shopping
             </Link>
           </div>
@@ -246,23 +246,23 @@ export default function CartPage() {
 
             <div className="flex items-center justify-between text-[12.5px] text-ink-3 pb-4 border-b border-line">
               <span>Booking fees</span>
-              <span className="text-green-700 font-medium">Free</span>
+              <span className="text-brand font-medium">Free</span>
             </div>
 
             <Link
               href="/checkout"
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
+              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 active:scale-[0.99] transition"
             >
               Proceed to checkout <ArrowRight size={15} />
             </Link>
 
             <ul className="mt-5 space-y-2 text-[12px] text-ink-2">
               <li className="flex items-center gap-2">
-                <ShieldCheck size={13} className="text-green-600" />
+                <ShieldCheck size={13} className="text-brand" />
                 Verified organizers · escrowed payments
               </li>
               <li className="flex items-center gap-2">
-                <Sparkles size={13} className="text-green-600" />
+                <Sparkles size={13} className="text-brand" />
                 Refundable up to 24h before the event
               </li>
             </ul>
@@ -294,7 +294,7 @@ export default function CartPage() {
           </div>
           <Link
             href="/checkout"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 active:scale-[0.99] transition shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-brand/20 active:scale-[0.99] transition shrink-0"
           >
             Checkout <ArrowRight size={13} />
           </Link>

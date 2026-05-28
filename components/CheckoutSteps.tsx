@@ -24,9 +24,9 @@ export default function CheckoutSteps({ active }: { active: StepId }) {
               <span
                 className={`relative inline-flex w-7 h-7 md:w-8 md:h-8 items-center justify-center rounded-full text-[11px] font-semibold transition-all duration-300 ${
                   state === "done"
-                    ? "bg-green-500 text-white"
+                    ? "bg-brand text-white"
                     : state === "active"
-                    ? "bg-navy text-white ring-4 ring-navy/15"
+                    ? "bg-brand text-white ring-4 ring-brand/15"
                     : "bg-paper border border-line text-ink-3"
                 }`}
               >
@@ -43,7 +43,7 @@ export default function CheckoutSteps({ active }: { active: StepId }) {
             {i < STEPS.length - 1 && (
               <span className="flex-1 h-px bg-line relative overflow-hidden">
                 <span
-                  className={`absolute inset-y-0 left-0 bg-green-500 transition-all duration-500 ${
+                  className={`absolute inset-y-0 left-0 bg-brand transition-all duration-500 ${
                     state === "done" ? "right-0" : "right-full"
                   }`}
                 />

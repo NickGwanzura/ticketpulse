@@ -175,10 +175,10 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
         {/* KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
-            { label: "Tickets sold", value: `${totalSold.toLocaleString()} / ${totalCapacity.toLocaleString()}`, icon: Ticket, color: "text-navy" },
-            { label: "Revenue", value: formatCurrency(revenue, currency), icon: DollarSign, color: "text-green-700" },
-            { label: "Attendees", value: totalAttendees.toLocaleString(), icon: Users, color: "text-blue" },
-            { label: "Checked in", value: `${checkedIn.toLocaleString()} / ${totalSold.toLocaleString()}`, icon: Activity, color: "text-violet-700" },
+            { label: "Tickets sold", value: `${totalSold.toLocaleString()} / ${totalCapacity.toLocaleString()}`, icon: Ticket, color: "text-ink" },
+            { label: "Revenue", value: formatCurrency(revenue, currency), icon: DollarSign, color: "text-ink" },
+            { label: "Attendees", value: totalAttendees.toLocaleString(), icon: Users, color: "text-ink" },
+            { label: "Checked in", value: `${checkedIn.toLocaleString()} / ${totalSold.toLocaleString()}`, icon: Activity, color: "text-ink" },
           ].map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <div className="flex items-center gap-2 mb-2.5">
@@ -204,7 +204,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                 <h2 className="text-[16px] font-semibold tracking-tight text-ink">Ticket tiers</h2>
                 <Link
                   href={`/organizer/events/${id}/tiers`}
-                  className="text-[12.5px] font-medium text-navy hover:underline"
+                  className="text-[12.5px] font-medium text-brand hover:underline"
                 >
                   Manage
                 </Link>
@@ -235,7 +235,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                           <span>{cap.toLocaleString()} capacity</span>
                         </div>
                         <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
-                          <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-brand tp-progress-fill" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )
@@ -250,7 +250,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                 <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent orders</h2>
                 <Link
                   href={`/organizer/events/${id}/attendees`}
-                  className="text-[12.5px] font-medium text-navy hover:underline"
+                  className="text-[12.5px] font-medium text-brand hover:underline"
                 >
                   View all
                 </Link>

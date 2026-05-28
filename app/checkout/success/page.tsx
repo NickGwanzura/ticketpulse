@@ -66,7 +66,7 @@ function CheckoutSuccessInner() {
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</p>
         <p className="mt-1 text-[13px] text-ink-3">If you just completed a purchase, check your email — it may take a moment to appear here.</p>
-        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">
+        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
           See your orders <ArrowRight size={14} />
         </Link>
       </div>
@@ -106,14 +106,14 @@ function CheckoutSuccessInner() {
       {/* Success hero */}
       <section className="relative overflow-hidden border-b border-line">
         <div className="absolute inset-0 -z-10" style={{
-          background: "radial-gradient(800px 320px at 50% -20%, #DBE8FB 0%, transparent 60%), radial-gradient(600px 240px at 50% 100%, rgba(19,17,50,0.08) 0%, transparent 60%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
+          background: "radial-gradient(800px 320px at 50% -20%, #E0E7FF 0%, transparent 60%), radial-gradient(600px 240px at 50% 100%, rgba(79,70,229,0.07) 0%, transparent 60%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
         }} />
         <div className="max-w-3xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-12 md:pb-16 text-center">
           <div className="mb-6">
             <AnimatedCheck size={64} />
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-4 shadow-sm shadow-ink/5">
-            <Sparkles size={12} className="text-green-600" />
+            <Sparkles size={12} className="text-brand" />
             <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">Order confirmed</span>
           </div>
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
@@ -138,13 +138,13 @@ function CheckoutSuccessInner() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
             >
-              <CalendarPlus size={14} className="text-green-600" /> Add to calendar
+              <CalendarPlus size={14} className="text-brand" /> Add to calendar
             </a>
             <button
               onClick={shareOrder}
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
             >
-              <Share2 size={14} className="text-green-600" /> Share
+              <Share2 size={14} className="text-brand" /> Share
             </button>
           </div>
         </div>
@@ -170,7 +170,7 @@ function CheckoutSuccessInner() {
                         </p>
                         <Link
                           href={`/events/${line.eventSlug}`}
-                          className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all"
+                          className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand hover:gap-1.5 transition-all"
                         >
                           View event <ArrowUpRight size={12} />
                         </Link>
@@ -246,7 +246,7 @@ function CheckoutSuccessInner() {
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/orders/${order.id}`}
-            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-700 transition"
           >
             <Download size={14} /> View / download tickets
           </Link>
