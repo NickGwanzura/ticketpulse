@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, inArray, sql } from "drizzle-orm"
+import { eq, inArray, or, sql } from "drizzle-orm"
 
 import { auth, signIn } from "@/auth"
 import { db } from "@/db"
@@ -394,6 +394,214 @@ export async function cancelTicketsAction(ticketIds: string[]) {
       .update(ticketTiers)
       .set({ soldQuantity: sql`${ticketTiers.soldQuantity} - ${count}` })
       .where(eq(ticketTiers.id, tierId))
+  }
+
+  revalidatePath("/admin/tickets")
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin")
+}
+
+// ── Communication types -------------------------------------------------------
+
+interface CommunicationResult {
+  channel: "email" | "whatsapp"
+  target: string
+  success: boolean
+  error?: string
+}
+
+/**
+ * Send a blast email / WhatsApp to all users matching the target role.
+ *
+ * Returns an array of results (one per recipient per channel).
+ */
+export async function sendCommunicationAction(
+  formData: FormData,
+): Promise<CommunicationResult[]> {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const subject = formData.get("subject") as string
+  const body = formData.get("body") as string
+  const audience = formData.get("audience") as string
+  const channelsRaw = formData.get("channels") as string
+
+  if (!subject?.trim() || !body?.trim()) {
+    throw new Error("Subject and body are required")
+  }
+
+  const channels = channelsRaw.split(",").filter(Boolean)
+  const results: CommunicationResult[] = []
+
+  // ── Fetch target users ──────────────────────────────────────────────────
+  let targetUsers: { id: string; name: string | null; email: string | null; phone: string | null }[]
+
+  if (audience === "attendees") {
+    targetUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, phone: users.phone })
+      .from(users)
+      .where(eq(users.role, "attendee"))
+  } else if (audience === "organizers") {
+    targetUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, phone: users.phone })
+      .from(users)
+      .where(
+        or(eq(users.role, "organizer"), eq(users.role, "admin")),
+      )
+  } else {
+    targetUsers = await db
+      .select({ id: users.id, name: users.name, email: users.email, phone: users.phone })
+      .from(users)
+  }
+
+  if (targetUsers.length === 0) {
+    throw new Error("No users found for the selected audience")
+  }
+
+  // ── Email ───────────────────────────────────────────────────────────────
+  if (channels.includes("email")) {
+    const mailRecipients = targetUsers.filter((u) => u.email)
+
+    const personaliseBody = (name: string | null) => {
+      const first = name?.split(" ")[0]?.trim()
+      return body.replace(/\{name\}/g, first ?? "there").replace(/\{audience\}/g, audience)
+    }
+
+    for (const u of mailRecipients) {
+      try {
+        const personalised = personaliseBody(u.name)
+        const { html, text } = (() => {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+          const paragraphs = personalised
+            .split("\n")
+            .filter(Boolean)
+            .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:24px;color:#384151;">${p.replace(/<[^>]*>/g, "")}</p>`)
+            .join("")
+          const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${subject}</title></head>
+<body style="margin:0;padding:0;background:#F6F9FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1220;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#F6F9FC;"><tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;">
+      <tr><td style="padding-bottom:8px;">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          <td style="vertical-align:middle;padding-right:10px;">
+            <img src="${appUrl}/logo.svg" alt="TicketPulse" width="32" height="32" style="display:block;outline:none;border:none;border-radius:6px;" />
+          </td>
+          <td style="vertical-align:middle;"><span style="font-size:18px;font-weight:700;letter-spacing:-0.01em;color:#0B1220;">TicketPulse</span></td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="background:#FFFFFF;border:1px solid #E6ECF2;border-radius:16px;padding:32px 28px;box-shadow:0 1px 2px rgba(11,18,32,0.04);">
+        <h1 style="margin:0 0 12px;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;color:#0B1220;">${subject}</h1>
+        <div style="font-size:15px;line-height:24px;color:#384151;">${paragraphs}</div>
+      </td></tr>
+      <tr><td style="padding:20px 4px 0;">
+        <hr style="border:none;border-top:1px solid #E6ECF2;margin:0 0 16px;" />
+        <p style="margin:0;font-size:12px;line-height:18px;color:#6B7280;">TicketPulse &middot; Harare, Zimbabwe &middot; <a href="${appUrl}" style="color:#384151;text-decoration:underline;">ticketpulse.tech</a></p>
+        <p style="margin:6px 0 0;font-size:12px;line-height:18px;color:#6B7280;">You are receiving this because of activity on your TicketPulse account.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`
+          return { html, text: personalised }
+        })()
+
+        await sendEmail({ to: u.email!, subject, html, text })
+        results.push({ channel: "email", target: u.email!, success: true })
+      } catch (err) {
+        results.push({
+          channel: "email",
+          target: u.email ?? "unknown",
+          success: false,
+          error: err instanceof Error ? err.message : "unknown error",
+        })
+      }
+    }
+  }
+
+  // ── WhatsApp ────────────────────────────────────────────────────────────
+  if (channels.includes("whatsapp")) {
+    const waRecipients = targetUsers.filter((u) => u.phone)
+
+    for (const u of waRecipients) {
+      try {
+        const { sendText, formatChatId } = await import("@/lib/whatsapp")
+        const first = u.name?.split(" ")[0]?.trim()
+        const personalised = body
+          .replace(/\{name\}/g, first ?? "there")
+          .replace(/\{audience\}/g, audience)
+        await sendText(formatChatId(u.phone!), `${subject}\n\n${personalised}`)
+        results.push({ channel: "whatsapp", target: u.phone!, success: true })
+      } catch (err) {
+        results.push({
+          channel: "whatsapp",
+          target: u.phone ?? "unknown",
+          success: false,
+          error: err instanceof Error ? err.message : "unknown error",
+        })
+      }
+    }
+  }
+
+  revalidatePath("/admin/communications")
+  revalidatePath("/admin")
+
+  return results
+}
+
+/**
+ * Refund a paid order — marks order as refunded, all tickets as refunded,
+ * and restores inventory for each affected tier.
+ */
+export async function refundOrderAction(orderId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [order] = await db
+    .select({ id: orders.id, status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) throw new Error("Order not found")
+  if (order.status !== "paid") {
+    throw new Error("Only paid orders can be refunded")
+  }
+
+  await db
+    .update(orders)
+    .set({ status: "refunded", updatedAt: new Date() })
+    .where(eq(orders.id, orderId))
+
+  const orderTickets = await db
+    .select({ id: tickets.id, tierId: tickets.tierId })
+    .from(tickets)
+    .where(eq(tickets.orderId, orderId))
+
+  if (orderTickets.length > 0) {
+    const ticketIds = orderTickets.map((t) => t.id)
+    const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
+
+    await db
+      .update(tickets)
+      .set({ status: "refunded" })
+      .where(inArray(tickets.id, ticketIds))
+
+    for (const tierId of tierIds) {
+      const refundedCount = orderTickets.filter((t) => t.tierId === tierId).length
+      await db
+        .update(ticketTiers)
+        .set({
+          soldQuantity: sql`${ticketTiers.soldQuantity} - ${refundedCount}`,
+        })
+        .where(eq(ticketTiers.id, tierId))
+    }
   }
 
   revalidatePath("/admin/tickets")

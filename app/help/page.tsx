@@ -1,7 +1,9 @@
+"use client"
 import Link from "next/link"
+import { useState, useRef, useEffect } from "react"
 import {
   Search, Sparkles, Ticket, CreditCard, ShieldCheck, Users, CalendarCog, Store,
-  ArrowRight, Mail, MessageSquare,
+  ArrowRight, Mail, MessageSquare, X,
 } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
@@ -23,6 +25,27 @@ const POPULAR = [
 ]
 
 export default function HelpPage() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<typeof POPULAR>([])
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (searchResults.length > 0) inputRef.current?.focus()
+  }, [searchResults])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) {
+      setSearchResults([])
+      return
+    }
+    const results = POPULAR.filter(
+      ({ q: question }) => question.toLowerCase().includes(q),
+    )
+    setSearchResults(results)
+  }
+
   return (
     <div>
       <section className="relative overflow-hidden border-b border-line">
@@ -39,15 +62,43 @@ export default function HelpPage() {
             Search the help center, or skip ahead to a topic. Still stuck? Live chat is open weekdays, average reply under five minutes.
           </p>
 
-          <form action="/help/search" className="mt-8 max-w-2xl relative">
+          <form onSubmit={handleSearch} className="mt-8 max-w-2xl relative">
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
             <input
+              ref={inputRef}
               type="text"
-              name="q"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search articles, e.g. 'transfer ticket'…"
               className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
             />
           </form>
+
+          {searchResults.length > 0 && (
+            <div className="mt-4 max-w-2xl rounded-xl border border-line bg-paper shadow-sm divide-y divide-line">
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <p className="text-[11px] font-semibold text-ink-3 uppercase tracking-wider">
+                  {searchResults.length} {searchResults.length === 1 ? "result" : "results"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setSearchResults([]); setSearchQuery("") }}
+                  className="text-[11px] font-medium text-ink-3 hover:text-ink flex items-center gap-1 transition"
+                >
+                  <X size={11} /> Clear
+                </button>
+              </div>
+              {searchResults.map(({ q, a }) => (
+                <details key={q} className="group px-4 py-3 cursor-pointer">
+                  <summary className="text-[13.5px] font-medium text-ink list-none flex items-start gap-2 [&::-webkit-details-marker]:hidden">
+                    <span className="shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full bg-green-500/60" />
+                    {q}
+                  </summary>
+                  <p className="mt-2 text-[13px] text-ink-2 leading-relaxed pl-5">{a}</p>
+                </details>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

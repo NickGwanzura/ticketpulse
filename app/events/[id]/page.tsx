@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Calendar, MapPin, Users, Heart, HelpCircle } from "lucide-react"
+import { Calendar, MapPin, Users, HelpCircle } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
 // Cuts DB load by ~95% for the most-hit public pages while
@@ -15,6 +15,7 @@ import MediaSection from "@/components/media/MediaSection"
 import TicketSelector from "@/components/events/TicketSelector"
 import VenueMap from "@/components/events/VenueMap"
 import ShareEventButton from "@/components/events/ShareEventButton"
+import SaveFavoriteButton from "@/components/events/SaveFavoriteButton"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import { db } from "@/db"
 import { events, ticketTiers, users, vendorListings, vendors } from "@/db/schema"
@@ -291,13 +292,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               {/* Share / Save */}
               <div className="flex gap-2">
                 <ShareEventButton eventTitle={row.title} eventDescription={row.description} />
-                <button
-                  type="button"
-                  aria-label="Save to favourites"
-                  className="border border-line bg-paper text-ink-2 rounded-lg p-2.5 hover:text-rose-600 hover:border-line-2 transition-colors"
-                >
-                  <Heart size={15} />
-                </button>
+                <SaveFavoriteButton eventId={row.id} />
               </div>
             </div>
 
@@ -347,7 +342,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
 
-          <div className="lg:col-span-1 pt-10 lg:pt-0">
+          <div className="lg:col-span-1 pt-10 lg:pt-6">
             <TicketSelector
               eventSlug={row.slug}
               eventTitle={row.title}

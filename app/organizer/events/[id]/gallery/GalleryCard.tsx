@@ -41,7 +41,7 @@ export default function GalleryCard({ eventId, gallery, photos }: Props) {
       <div className="relative aspect-[4/1] bg-paper-2">
         {gallery.coverImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={gallery.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={gallery.coverImage} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 grid place-items-center text-[12px] text-ink-3">
             No cover image yet

@@ -1,5 +1,7 @@
+"use client"
 import Link from "next/link"
-import { Mail, MessageSquare, MapPin, Phone, Clock, Sparkles, ArrowRight } from "lucide-react"
+import { useState } from "react"
+import { Mail, MessageSquare, MapPin, Phone, Clock, Sparkles, ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
 import { inputBaseClass } from "@/lib/utils"
 
 const CHANNELS = [
@@ -18,6 +20,32 @@ const TOPICS = [
 ]
 
 export default function ContactPage() {
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle")
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setStatus("sending")
+    const form = e.currentTarget
+    const data = new FormData(form)
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: data.get("name"),
+          email: data.get("email"),
+          topic: data.get("topic"),
+          message: data.get("message"),
+        }),
+      })
+      if (!res.ok) throw new Error("Server error")
+      setStatus("sent")
+      form.reset()
+    } catch {
+      setStatus("error")
+    }
+  }
+
   return (
     <div>
       <section className="relative overflow-hidden border-b border-line">
@@ -43,8 +71,7 @@ export default function ContactPage() {
           <h2 className="text-[24px] md:text-[28px] font-bold tracking-tight text-ink mb-6">How can we help?</h2>
 
           <form
-            action="/api/contact"
-            method="POST"
+            onSubmit={handleSubmit}
             className="rounded-2xl border border-line bg-paper p-6 md:p-7 space-y-4"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -74,9 +101,21 @@ export default function ContactPage() {
                 className={`${inputBaseClass} resize-none`} />
             </div>
 
-            <button type="submit"
-              className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm">
-              Send message <ArrowRight size={15} />
+            {status === "sent" && (
+              <div className="flex items-center gap-2 text-[13px] text-green-700 bg-green-50 border border-green-100 rounded-lg px-4 py-3">
+                <CheckCircle2 size={15} />
+                Message sent. We'll get back to you within 4 hours.
+              </div>
+            )}
+            {status === "error" && (
+              <p className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                Something went wrong. Please try again or email us directly.
+              </p>
+            )}
+
+            <button type="submit" disabled={status === "sending"}
+              className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm disabled:opacity-70">
+              {status === "sending" ? <><Loader2 size={15} className="animate-spin" /> Sending…</> : <>Send message <ArrowRight size={15} /></>}
             </button>
           </form>
         </div>

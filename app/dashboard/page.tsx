@@ -138,7 +138,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <Link
-            href="/referral"
+            href="/contact"
             className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition whitespace-nowrap"
           >
             Refer a friend <ArrowUpRight size={13} />

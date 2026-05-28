@@ -10,7 +10,7 @@ import PwaRegister from "@/components/PwaRegister"
 import WhatsAppWidget from "@/components/launch/WhatsAppWidget"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
-import { clashDisplay, generalSans } from "@/lib/fonts"
+import { clashDisplay, generalSans, polysans, polysansWide } from "@/lib/fonts"
 
 const NAV_CATEGORY_EMOJI: Record<string, string> = {
   concert: "🎵",
@@ -81,7 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" className={`${clashDisplay.variable} ${generalSans.variable}`}>
+    <html lang="en" className={`${clashDisplay.variable} ${generalSans.variable} ${polysans.variable} ${polysansWide.variable}`}>
       <body className="font-body bg-paper text-ink antialiased">
         <Providers>
           {!bare && <TopBar />}

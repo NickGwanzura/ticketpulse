@@ -89,7 +89,7 @@ export default function PhotoManager({ eventId, galleryId, initialPhotos }: Prop
             {photos.map((p) => (
               <li key={p.id} className="relative group rounded-xl overflow-hidden border border-line bg-paper aspect-square">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt={p.caption ?? ""} className="absolute inset-0 w-full h-full object-cover" />
+                <img src={p.url} alt={p.caption ?? ""} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                 {!p.id.startsWith("tmp-") && (
                   <form action={deleteGalleryPhotoAction}>
                     <input type="hidden" name="photoId" value={p.id} />

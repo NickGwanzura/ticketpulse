@@ -9,9 +9,9 @@ const VERIFICATION_TTL_HOURS = 24
 
 // Flips an order to `awaiting_verification` and fires the NextAuth magic-link
 // email so the buyer can claim the order against their account. Used by the
-// offline (pay-at-venue) path on order creation and by the PesePay status /
-// webhook routes once payment is confirmed. Safe to call once per order — the
-// caller should guard against duplicates.
+// offline (pay-at-venue) path on order creation and by the Velocity status /
+// routes once payment is confirmed. Safe to call once per order — the caller
+// should guard against duplicates.
 //
 // If the email fails to send, the order status is reverted to `pending` so the
 // caller can retry without leaving the order in an inconsistent state.

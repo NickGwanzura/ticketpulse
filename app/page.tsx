@@ -26,6 +26,9 @@ import HeroEventCard from "@/components/events/HeroEventCard"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
+import { db } from "@/db"
+import { events as eventsTable, ticketTiers } from "@/db/schema"
+import { and, asc, eq, inArray, sql } from "drizzle-orm"
 
 const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
   concert:    { emoji: "🎵", gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  accent: "text-violet-700" },
@@ -185,6 +188,52 @@ export default async function Home() {
   const heroTickets = buildHeroTickets(featuredEvents)
   const eventsOnSale = featuredEvents.length
 
+  // ── Events by category (for category cards) ──
+  const allPublished = await db
+    .select({
+      id: eventsTable.id,
+      slug: eventsTable.slug,
+      title: eventsTable.title,
+      category: eventsTable.category,
+      venue: eventsTable.venue,
+      city: eventsTable.city,
+      startsAt: eventsTable.startsAt,
+      coverImage: eventsTable.coverImage,
+    })
+    .from(eventsTable)
+    .where(and(
+      eq(eventsTable.status, "published"),
+      sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt} + INTERVAL '6 hours') >= NOW()`,
+    ))
+    .orderBy(asc(eventsTable.startsAt))
+    .limit(30)
+
+  let priceByEvent = new Map<string, { price: number; currency: string }>()
+  if (allPublished.length > 0) {
+    const priceRows = await db
+      .select({
+        eventId: ticketTiers.eventId,
+        price: ticketTiers.price,
+        currency: ticketTiers.currency,
+      })
+      .from(ticketTiers)
+      .where(inArray(ticketTiers.eventId, allPublished.map((e) => e.id)))
+    for (const t of priceRows) {
+      const p = Number(t.price)
+      const c = t.currency ?? "USD"
+      const cur = priceByEvent.get(t.eventId)
+      if (!cur || p < cur.price) priceByEvent.set(t.eventId, { price: p, currency: c })
+    }
+  }
+
+  const eventsByCategory = new Map<string, typeof allPublished>()
+  for (const ev of allPublished) {
+    const cat = ev.category.toLowerCase()
+    if (!eventsByCategory.has(cat)) eventsByCategory.set(cat, [])
+    const list = eventsByCategory.get(cat)!
+    if (list.length < 3) list.push(ev)
+  }
+
   return (
     <main>
       {/* HERO */}
@@ -299,7 +348,7 @@ export default async function Home() {
               <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[40px] leading-[1.05] sm:text-[60px] sm:leading-[1.0] md:text-[76px] md:leading-[0.96] text-ink">
                 Every event.<br />
                 <span className="relative inline-block">
-                  <span className="bg-gradient-to-r from-navy via-navy-700 to-blue bg-clip-text text-transparent">One ticket.</span>
+                  <span className="text-navy">One ticket.</span>
                   <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 200 10" preserveAspectRatio="none" aria-hidden>
                     <path className="tp-stroke-draw" d="M0 5 Q 50 0, 100 5 T 200 5" stroke="#0570DE" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                   </svg>
@@ -489,24 +538,51 @@ export default async function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            {CATEGORIES.map(({ label, value, icon: Icon, gradient, ring, accent }, i) => (
+            {CATEGORIES.map(({ label, value, icon: Icon, gradient, ring, accent }, i) => {
+              const catEvents = eventsByCategory.get(value) ?? []
+              const priceInfo = catEvents.length > 0 ? priceByEvent.get(catEvents[0].id) : null
+              return (
               <Link
                 key={value}
                 href={`/events?category=${value}`}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 h-32 sm:h-36 flex flex-col justify-between hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 hover:ring-1 hover:ring-green-500/15 active:scale-[0.99] transition-all`}
+                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 flex flex-col hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 hover:ring-1 hover:ring-green-500/15 active:scale-[0.99] transition-all`}
               >
-                <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
-                  <Icon size={17} className={accent} />
-                </span>
-                <div>
+                <div className="flex items-start justify-between">
+                  <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
+                    <Icon size={17} className={accent} />
+                  </span>
+                  {catEvents.length > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-ink-3 bg-white/60 rounded-full px-2 py-0.5">
+                      {catEvents.length}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3">
                   <p className="text-[15px] font-semibold tracking-tight text-ink">{label}</p>
-                  <p className="text-[12px] text-ink-3 inline-flex items-center gap-1 mt-0.5 group-hover:text-navy transition-colors">
-                    Explore <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
+                  {catEvents.length > 0 ? (
+                    <ul className="mt-1.5 space-y-1">
+                      {catEvents.slice(0, 2).map((ev) => (
+                        <li key={ev.id} className="text-[11px] text-ink-2 leading-tight line-clamp-1">
+                          {ev.title}
+                          <span className="text-ink-3 ml-1">
+                            {formatDateShort(ev.startsAt)}
+                          </span>
+                        </li>
+                      ))}
+                      {catEvents.length > 2 && (
+                        <li className="text-[10.5px] text-navy font-medium">+{catEvents.length - 2} more</li>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-ink-3 mt-1">No upcoming events</p>
+                  )}
+                  <p className="text-[11px] font-medium text-navy inline-flex items-center gap-1 mt-1.5 group-hover:gap-1.5 transition-all">
+                    Browse {label.toLowerCase()} <ArrowRight size={10} />
                   </p>
                 </div>
               </Link>
-            ))}
+            )})}
           </div>
         </div>
       </section>
@@ -586,7 +662,7 @@ export default async function Home() {
       </section>
 
       {/* ORGANIZER CTA */}
-      <section className="px-5 md:px-8 pb-20 md:pb-28">
+      <section className="px-5 md:px-8 pt-12 md:pt-20 pb-20 md:pb-28">
         <div className="max-w-7xl mx-auto tp-reveal">
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-14">
             {/* One restrained ambient detail: a soft blue glow in the top-right corner. */}

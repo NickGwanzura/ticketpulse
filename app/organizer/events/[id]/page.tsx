@@ -68,7 +68,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
       total: sql<number>`COALESCE(SUM(${orders.totalAmount})::numeric, 0)::int`,
     })
     .from(orders)
-    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "awaiting_verification"])))
+    .where(and(eq(orders.eventId, id), eq(orders.status, "paid")))
 
   const revenue = Number(revenueRow?.total ?? 0)
   const currency = tiers[0]?.currency ?? "USD"
@@ -125,7 +125,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .where(eq(orders.eventId, id))
+    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "awaiting_verification", "refunded"])))
     .orderBy(desc(orders.createdAt))
     .limit(5)
 
@@ -308,6 +308,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
                 {[
                   { label: "Email attendees", href: `/organizer/events/${id}/email`, icon: Mail },
+                  { label: "Sales funnel", href: `/organizer/events/${id}/funnel`, icon: TrendingUp },
                   { label: "WhatsApp broadcast", href: `/organizer/events/${id}/whatsapp`, icon: MessageCircle },
                   { label: "Promo codes", href: `/organizer/events/${id}/promos`, icon: Tag },
                   { label: "Gate scanner", href: `/organizer/scan`, icon: ScanLine },

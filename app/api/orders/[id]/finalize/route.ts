@@ -2,11 +2,12 @@ import { NextResponse } from "next/server"
 import { eq, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, tickets, users, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets, users, ticketQuestions, ticketQuestionResponses, promoCodes } from "@/db/schema"
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
 import { sendText, formatChatId } from "@/lib/whatsapp"
 import { log } from "@/lib/logger"
+import { trackEvent } from "@/lib/analytics"
 
 type Params = { id: string }
 
@@ -114,7 +115,16 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         }
       }
 
-      // 3. Mark order as paid — only after tickets are confirmed in the DB
+      // 3. Increment promo usedCount (if promo was applied)
+      const metaPromo = (order.metadata ?? {}) as { promo?: { id: string; code: string } }
+      if (metaPromo.promo?.id) {
+        await tx
+          .update(promoCodes)
+          .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+          .where(eq(promoCodes.id, metaPromo.promo.id))
+      }
+
+      // 4. Mark order as paid — only after tickets are confirmed in the DB
       const [updated] = await tx
         .update(orders)
         .set({
@@ -129,6 +139,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       if (!updated) {
         throw new Error("Failed to update order status")
       }
+
+      await trackEvent({ event: "TICKET_ISSUED", eventId: order.eventId, orderId: id, ticketType: itemsWithIds.map(i => i.tierId).filter(Boolean).join(","), buyerEmail: order.guestEmail ?? undefined })
     })
   } catch (err) {
     log.error("finalize — atomic ticket creation failed, order remains awaiting_verification", {

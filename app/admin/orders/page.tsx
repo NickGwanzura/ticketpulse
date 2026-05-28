@@ -6,22 +6,25 @@ import {
 } from "lucide-react"
 
 import ResendButton from "@/app/admin/_components/ResendButton"
+import RefundButton from "@/app/admin/_components/RefundButton"
 import { desc, eq, or, like, and } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events } from "@/db/schema"
+import type { VelocityOrderMetadata } from "@/types/velocity"
 
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const STATUS_STYLE: Record<string, string> = {
-  paid:                   "bg-green-50 text-green-700",
+  paid:                   "bg-emerald-50 text-emerald-700",
   pending:                "bg-amber-50 text-amber-700",
-  awaiting_verification:  "bg-green-50 text-navy",
+  awaiting_verification:  "bg-blue-50 text-blue-700 ring-1 ring-blue-200/50",
   refunded:               "bg-rose-50 text-rose-700",
   cancelled:              "bg-paper-2 text-ink-3 ring-1 ring-line",
+  expired:                "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -30,6 +33,7 @@ const STATUS_LABEL: Record<string, string> = {
   awaiting_verification:  "Awaiting verification",
   refunded:               "Refunded",
   cancelled:              "Cancelled",
+  expired:                "Expired",
 }
 
 const FILTER_PILLS = [
@@ -39,6 +43,7 @@ const FILTER_PILLS = [
   { label: "Awaiting verify",  value: "awaiting_verification" },
   { label: "Cancelled",        value: "cancelled" },
   { label: "Refunded",         value: "refunded" },
+  { label: "Expired",          value: "expired" },
 ]
 
 export default async function AdminOrdersPage({
@@ -87,6 +92,7 @@ export default async function AdminOrdersPage({
       currency: orders.currency,
       paymentMethod: orders.paymentMethod,
       paymentRef: orders.paymentRef,
+      metadata: orders.metadata,
       guestEmail: orders.guestEmail,
       guestName: orders.guestName,
       guestPhone: orders.guestPhone,
@@ -229,6 +235,7 @@ export default async function AdminOrdersPage({
                 <Link
                   key={value}
                   href={href}
+                  aria-current={isActive ? "page" : undefined}
                   className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-paper-2 text-ink font-semibold ring-1 ring-line"
@@ -298,6 +305,29 @@ export default async function AdminOrdersPage({
                                   Ref: {o.paymentRef.slice(0, 20)}
                                 </span>
                               )}
+                              {(() => {
+                                const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+                                if (!meta.velocity) return null
+                                return (
+                                  <>
+                                    {meta.velocity.pollStatus && (
+                                      <span className={`text-[10px] font-medium ${meta.velocity.pollStatus === "SUCCESS" ? "text-green-600" : meta.velocity.pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
+                                        {meta.velocity.pollStatus}
+                                      </span>
+                                    )}
+                                    {meta.velocity.salesOrderTrace && (
+                                      <span className="text-[9px] font-mono text-ink-3 truncate max-w-[140px]" title={meta.velocity.salesOrderTrace}>
+                                        SO: {meta.velocity.salesOrderTrace.slice(0, 16)}
+                                      </span>
+                                    )}
+                                    {meta.velocity.transactionTrace && (
+                                      <span className="text-[9px] font-mono text-ink-3 truncate max-w-[140px]" title={meta.velocity.transactionTrace}>
+                                        TX: {meta.velocity.transactionTrace.slice(0, 16)}
+                                      </span>
+                                    )}
+                                  </>
+                                )
+                              })()}
                             </div>
                           ) : (
                             <div className="flex flex-col gap-0.5">
@@ -354,14 +384,17 @@ export default async function AdminOrdersPage({
                               />
                             )}
                             {o.status === "paid" && (
-                              <Link
-                                href={`/orders/${o.id}/print`}
-                                target="_blank"
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-green-700 transition-colors"
-                              >
-                                <Download size={12} />
-                                Tickets
-                              </Link>
+                              <>
+                                <RefundButton orderId={o.id} variant="desktop" />
+                                <Link
+                                  href={`/orders/${o.id}/print`}
+                                  target="_blank"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-green-700 transition-colors"
+                                >
+                                  <Download size={12} />
+                                  Tickets
+                                </Link>
+                              </>
                             )}
                             <Link
                               href={`/orders/${o.id}`}
@@ -424,21 +457,32 @@ export default async function AdminOrdersPage({
                       </p>
                     )}
                     <div className="flex items-center justify-between text-[11.5px] text-ink-3 mt-2">
-                      <span className="inline-flex items-center gap-1.5">
-                        {o.paymentMethod ? (
-                          <>
-                            <Smartphone size={11} className="text-green-700" />
-                            {o.paymentMethod}
-                          </>
-                        ) : (
-                          <span className="italic text-ink-3">No payment method</span>
-                        )}
-                        {o.paymentRef && (
-                          <span className="text-[10px] font-mono text-ink-3 ml-1" title={o.paymentRef}>
-                            #{o.paymentRef.slice(0, 8)}
-                          </span>
-                        )}
-                      </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          {o.paymentMethod ? (
+                            <>
+                              <Smartphone size={11} className="text-green-700" />
+                              {o.paymentMethod}
+                            </>
+                          ) : (
+                            <span className="italic text-ink-3">No payment method</span>
+                          )}
+                          {o.paymentRef && (
+                            <span className="text-[10px] font-mono text-ink-3 ml-1" title={o.paymentRef}>
+                              #{o.paymentRef.slice(0, 8)}
+                            </span>
+                          )}
+                          {(() => {
+                            const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+                            if (!meta.velocity) return null
+                            const v = meta.velocity
+                            return (
+                              <>
+                                {v.pollStatus === "SUCCESS" && <span className="text-[9px] text-green-600">✓</span>}
+                                {v.pollStatus === "FAILED" && <span className="text-[9px] text-red-600">✗</span>}
+                              </>
+                            )
+                          })()}
+                        </span>
                       <div className="text-right">
                         <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
                         {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
@@ -457,14 +501,17 @@ export default async function AdminOrdersPage({
                         />
                       )}
                       {o.status === "paid" && (
-                        <Link
-                          href={`/orders/${o.id}/print`}
-                          target="_blank"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-green-700 transition-colors"
-                        >
-                          <Download size={12} />
-                          Download tickets
-                        </Link>
+                        <>
+                          <RefundButton orderId={o.id} variant="mobile" />
+                          <Link
+                            href={`/orders/${o.id}/print`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-green-700 transition-colors"
+                          >
+                            <Download size={12} />
+                            Download tickets
+                          </Link>
+                        </>
                       )}
                       <Link
                         href={`/orders/${o.id}`}

@@ -234,6 +234,7 @@ export default async function EventsPage({
                   <Link
                     key={cat}
                     href={`/events${val === "all" ? "" : `?category=${val}`}`}
+                    aria-current={isActive ? "page" : undefined}
                     className={`text-sm px-4 py-2 rounded-full border transition-all ${
                       isActive
                         ? "bg-navy text-white border-navy shadow-sm shadow-green-600/20"

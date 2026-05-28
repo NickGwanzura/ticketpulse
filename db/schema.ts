@@ -39,6 +39,20 @@ export const orderStatusEnum = pgEnum("order_status", [
   "paid",
   "cancelled",
   "refunded",
+  "expired",
+])
+
+export const analyticsEventEnum = pgEnum("analytics_event", [
+  "EVENT_VIEWED",
+  "CHECKOUT_STARTED",
+  "BUYER_DETAILS_SUBMITTED",
+  "PAYMENT_METHOD_SELECTED",
+  "PAYMENT_INITIATED",
+  "PAYMENT_CONFIRMED",
+  "PAYMENT_FAILED",
+  "ORDER_ABANDONED",
+  "TICKET_ISSUED",
+  "TICKET_CHECKED_IN",
 ])
 
 export const vehicleTypeEnum = pgEnum("vehicle_type", [
@@ -562,6 +576,31 @@ export const ticketQuestionResponsesRelations = relations(ticketQuestionResponse
   question: one(ticketQuestions, { fields: [ticketQuestionResponses.questionId], references: [ticketQuestions.id] }),
   order: one(orders, { fields: [ticketQuestionResponses.orderId], references: [orders.id] }),
 }))
+
+// ─── Analytics / Funnel Events ───────────────────────────────────────────────
+
+export const analyticsEvents = pgTable("analytics_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  event: analyticsEventEnum("event").notNull(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  organizerId: text("organizer_id"),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  sessionId: text("session_id"),
+  buyerEmail: text("buyer_email"),
+  paymentMethod: text("payment_method"),
+  ticketType: text("ticket_type"),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  source: text("source"),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("analytics_events_event_id_idx").on(table.eventId),
+  index("analytics_events_order_id_idx").on(table.orderId),
+  index("analytics_events_session_id_idx").on(table.sessionId),
+  index("analytics_events_event_type_idx").on(table.event, table.createdAt),
+])
 
 export const galleryRelations = relations(eventGalleries, ({ one, many }) => ({
   event: one(events, { fields: [eventGalleries.eventId], references: [events.id] }),

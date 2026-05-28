@@ -64,7 +64,7 @@ export default function VendorListingCard({
         <div className="relative w-full sm:w-28 aspect-square shrink-0 bg-paper-2 grid place-items-center">
           {listing.vendor.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <img loading="lazy"
               src={listing.vendor.logo}
               alt={listing.vendor.businessName}
               className="absolute inset-0 w-full h-full object-cover"

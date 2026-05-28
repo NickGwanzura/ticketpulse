@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   CalendarCheck, FileText, XCircle, PackageCheck,
-  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle, TrendingUp,
 } from "lucide-react"
 import { desc, eq, sql } from "drizzle-orm"
 
@@ -279,6 +279,13 @@ export default async function AdminEventsPage({
                                 <HelpCircle size={14} />
                               </Link>
                               <Link
+                                href={`/organizer/events/${e.id}/funnel`}
+                                aria-label="Sales funnel"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
+                              >
+                                <TrendingUp size={14} />
+                              </Link>
+                              <Link
                                 href={`/organizer/events/${e.id}/gallery`}
                                 aria-label="Gallery"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
@@ -360,6 +367,9 @@ export default async function AdminEventsPage({
                         </Link>
                         <Link href={`/organizer/events/${e.id}/questions`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <HelpCircle size={12} /> Questions
+                        </Link>
+                        <Link href={`/organizer/events/${e.id}/funnel`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
+                          <TrendingUp size={12} /> Funnel
                         </Link>
                         <Link href={`/organizer/events/${e.id}/gallery`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <ImageIcon size={12} /> Gallery

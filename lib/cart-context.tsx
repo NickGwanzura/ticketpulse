@@ -29,7 +29,7 @@ export type CartLineInput =
 export interface OrderRecord {
   id: string
   createdAt: string
-  status: "paid" | "pending" | "refunded"
+  status: "paid" | "pending" | "awaiting_verification" | "refunded"
   items: CartLine[]
   totalsByCurrency: Record<string, number>
   contact: { name: string; email: string; phone: string }
@@ -45,7 +45,7 @@ interface CartContextValue {
   removeItem: (key: string) => void
   updateQty: (key: string, qty: number) => void
   clear: () => void
-  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string) => OrderRecord
+  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]) => OrderRecord
   getOrders: () => OrderRecord[]
   getOrder: (id: string) => OrderRecord | null
 }
@@ -130,11 +130,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [getOrders])
 
   const placeOrder = useCallback(
-    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string): OrderRecord => {
+    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]): OrderRecord => {
       const order: OrderRecord = {
         id: orderId ?? makeOrderId(),
         createdAt: new Date().toISOString(),
-        status: "paid",
+        status: status ?? "paid",
         items: [...items],
         totalsByCurrency: { ...totalsByCurrency },
         contact,

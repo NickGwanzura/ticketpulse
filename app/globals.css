@@ -4,6 +4,8 @@
   /* Font families — CSS variables set by next/font/local in layout.tsx */
   --font-heading: "Clash Display", "system-ui", sans-serif;
   --font-body: "General Sans", "system-ui", sans-serif;
+  --font-polysans: "PolySans", "system-ui", sans-serif;
+  --font-polysans-wide: "PolySans Wide", "system-ui", sans-serif;
   --font-sans: var(--font-body);
 
   --color-paper: #ffffff;
@@ -21,7 +23,11 @@
   --color-navy-700: #143d6b;
   --color-navy-600: #1a4f8c;
 
-  --color-success: #131132;
+  --color-success: #10B981;
+  --color-emerald: #10B981;
+  --color-emerald-50: #ECFDF5;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
 
   --color-green: #131132;
   --color-green-50: #EEEDF3;

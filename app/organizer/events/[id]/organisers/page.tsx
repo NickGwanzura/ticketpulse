@@ -175,7 +175,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
                     <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center shrink-0 overflow-hidden">
                       {org.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={org.image} alt="" className="w-full h-full object-cover" />
+                        <img src={org.image} alt="" loading="lazy" className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-[13px] font-semibold text-blue">
                           {(org.name ?? org.email ?? "?")[0].toUpperCase()}

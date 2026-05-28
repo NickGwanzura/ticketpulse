@@ -123,7 +123,7 @@ export default function OrganizerScanPage() {
       const parsed = parseTicketCode(code)
       if (parsed) {
         const order = ready ? getOrder(parsed.orderId) : null
-        if (order) {
+        if (order && order.status === "paid") {
           const ticket = order.items.find((it) => it.kind === "ticket" && it.key === parsed.lineKey)
           if (ticket && ticket.kind === "ticket" && parsed.idx < ticket.qty) {
             eventTitle = ticket.eventTitle

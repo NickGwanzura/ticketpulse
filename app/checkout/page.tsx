@@ -9,20 +9,27 @@ import {
 } from "lucide-react"
 import CheckoutSteps from "@/components/CheckoutSteps"
 
-type CheckoutResponse =
-  | { flow: "offline"; orderId: string; status: string; sentTo: string; expiresAt: string }
-  | { flow: "seamless"; orderId: string; reference: string; paid: boolean }
-  | { flow: "redirect"; orderId: string; redirectUrl: string }
+type CheckoutResponse = {
+  success: true
+  paymentMethod: "CARD" | "ECOCASH"
+  flow: "velocity-seamless" | "velocity-redirect"
+  orderId: string
+  salesOrderTrace: string
+  transactionTrace: string
+  pollRequired?: true
+  redirectUrl?: string | null
+  amount: number
+  currency: string
+}
 
-type PaymentMethodValue = "ecocash" | "omari" | "card"
+type PaymentMethodValue = "velocity-ecocash" | "velocity-card"
 
 const POLL_INTERVAL_MS = 4000
 const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money TTL
 
 const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string; icon: typeof Smartphone }[] = [
-  { value: "ecocash", label: "EcoCash", body: "Pay with mobile money. Instant confirmation.", icon: Smartphone },
-  { value: "omari", label: "Omari", body: "Pay with mobile money. Instant confirmation.", icon: Smartphone },
-  { value: "card", label: "Card", body: "Visa, Mastercard, AmEx — hosted checkout.", icon: CreditCard },
+  { value: "velocity-ecocash", label: "EcoCash", body: "Pay with EcoCash via mobile money. Instant confirmation.", icon: Smartphone },
+  { value: "velocity-card", label: "Card", body: "Pay with Visa/Mastercard via secure hosted checkout.", icon: CreditCard },
 ]
 
 export default function CheckoutPage() {
@@ -36,7 +43,7 @@ export default function CheckoutPage() {
     name: "",
     email: "",
     phone: "",
-    payment: "ecocash" as PaymentMethodValue,
+    payment: "velocity-ecocash" as PaymentMethodValue,
   })
   const [eventQuestions, setEventQuestions] = useState<{ id: string; question: string; required: boolean }[]>([])
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({})
@@ -46,15 +53,13 @@ export default function CheckoutPage() {
   const [promoLoading, setPromoLoading] = useState(false)
 
   // Drives the "Check your phone" overlay for seamless mobile-money payments.
-  // Each tick asks our server to consult PesePay; once status flips to
-  // `awaiting_verification` we mirror the order client-side and hand off to
-  // the existing order page (which already drives the email-verify UI).
+  // Polls the Velocity transaction status until it flips to SUCCESS / FAILED.
   useEffect(() => {
     if (!pollingOrderId) return
     let cancelled = false
     const startedAt = Date.now()
 
-    const statusEndpoint = `/api/checkout/pesepay/status/${pollingOrderId}`
+    const statusEndpoint = `/api/checkout/velocity/status/${pollingOrderId}`
 
     const tick = async () => {
       if (cancelled) return
@@ -66,11 +71,12 @@ export default function CheckoutPage() {
             { name: pollingContact.current.name, email: pollingContact.current.email, phone: pollingContact.current.phone },
             { method: pollingContact.current.method },
             pollingOrderId,
+            "awaiting_verification",
           )
           router.push(`/orders/${pollingOrderId}?awaiting=1`)
           return
         }
-        if (data.status === "cancelled") {
+        if (data.status === "cancelled" || data.pollStatus === "FAILED") {
           if (!cancelled) {
             setPollingOrderId(null)
             setSubmitError("Payment was cancelled or declined. Please try again.")
@@ -184,7 +190,8 @@ export default function CheckoutPage() {
       if (eventQuestions.length > 0) {
         body.questionResponses = questionAnswers
       }
-      const res = await fetch("/api/checkout/guest", {
+      const checkoutEndpoint = "/api/checkout/velocity"
+      const res = await fetch(checkoutEndpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
@@ -195,42 +202,28 @@ export default function CheckoutPage() {
       }
       const data = (await res.json()) as CheckoutResponse
 
-      if (data.flow === "redirect") {
-        // PesePay hosted checkout (card / paynow) — let them complete on the
-        // provider's page. We mirror the order locally first so the success
-        // page can render when the buyer comes back.
-        placeOrder(
-          { name: form.name, email: form.email, phone: form.phone },
-          { method: form.payment },
-          data.orderId,
-        )
-        window.location.href = data.redirectUrl
-        return
-      }
-
-      if (data.flow === "seamless") {
-        if (data.paid) {
-          // Innbucks-style flows can resolve on the first call.
-          placeOrder(
-            { name: form.name, email: form.email, phone: form.phone },
-            { method: form.payment },
-            data.orderId,
-          )
-          router.push(`/orders/${data.orderId}?awaiting=1`)
-          return
-        }
+      if (data.flow === "velocity-seamless") {
         pollingContact.current = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
         setPollingOrderId(data.orderId)
         return
       }
 
-      // Offline (pay-at-venue) — original magic-link flow.
-      placeOrder(
-        { name: form.name, email: form.email, phone: form.phone },
-        { method: form.payment },
-        data.orderId,
-      )
-      router.push(`/orders/${data.orderId}?awaiting=1`)
+      if (data.flow === "velocity-redirect") {
+        if (data.redirectUrl) {
+          placeOrder(
+            { name: form.name, email: form.email, phone: form.phone },
+            { method: form.payment },
+            data.orderId,
+            "pending",
+          )
+          window.location.href = data.redirectUrl
+          return
+        }
+        // Fallback: poll if no redirect URL (unlikely for card, expected for Ecocash)
+        pollingContact.current = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
+        setPollingOrderId(data.orderId)
+        return
+      }
     } catch (err) {
       setSubmitError(
         err instanceof Error
@@ -380,38 +373,39 @@ export default function CheckoutPage() {
             <p className="text-xs text-ink-3 mb-5">Choose your method, we&apos;ll redirect to confirm.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
-                const checked = form.payment === value
-                return (
-                  <label
-                    key={value}
-                    className={`relative cursor-pointer rounded-xl border p-4 transition-all ${
-                      checked ? "border-navy bg-green-50/40 ring-2 ring-navy/40" : "border-line bg-paper hover:border-line-2"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment"
-                      value={value}
-                      checked={checked}
-                      onChange={(e) => setForm({ ...form, payment: e.target.value as PaymentMethodValue })}
-                      className="sr-only"
-                    />
-                    <div className="flex items-start gap-3">
-                      <span className={`shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-xl ring-1 ${
-                        checked ? "bg-navy text-white ring-navy/15" : "bg-paper-2 text-ink-2 ring-line"
-                      }`}>
-                        <Icon size={16} />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold tracking-tight text-ink">{label}</p>
-                        <p className="text-[12.5px] text-ink-2 mt-0.5">{body}</p>
-                      </div>
-                      {checked && <Check size={16} className="text-navy mt-1 shrink-0" />}
-                    </div>
-                  </label>
-                )
-              })}
+                    {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
+                      const checked = form.payment === value
+                      return (
+                        <label key={value} className={`relative flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                          checked
+                            ? "border-navy bg-navy/[0.03] ring-1 ring-navy/10"
+                            : "border-line bg-paper hover:border-line-2 hover:bg-paper-2"
+                        }`}>
+                          <input
+                            type="radio"
+                            name="payment"
+                            value={value}
+                            checked={checked}
+                            onChange={(e) => setForm({ ...form, payment: e.target.value as PaymentMethodValue })}
+                            className="sr-only"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3">
+                              <span className={`shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-xl ring-1 ${
+                                checked ? "bg-navy text-white ring-navy/15" : "bg-paper-2 text-ink-2 ring-line"
+                              }`}>
+                                <Icon size={16} />
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[14px] font-semibold tracking-tight text-ink">{label}</p>
+                                <p className="text-[12.5px] text-ink-2 mt-0.5">{body}</p>
+                              </div>
+                              {checked && <Check size={16} className="text-navy mt-1 shrink-0" />}
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
             </div>
           </section>
 
@@ -427,7 +421,11 @@ export default function CheckoutPage() {
             disabled={submitting}
             className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90"
           >
-            {submitting ? <><Loader2 size={14} className="animate-spin" /> Processing payment…</> : <><Lock size={14} /> Place order</>}
+            {submitting
+              ? form.payment === "velocity-card"
+                ? <><Loader2 size={14} className="animate-spin" /> Redirecting to secure card payment…</>
+                : <><Loader2 size={14} className="animate-spin" /> Processing payment…</>
+              : <><Lock size={14} /> Place order</>}
           </button>
         </div>
 
@@ -559,7 +557,11 @@ export default function CheckoutPage() {
               disabled={submitting}
               className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
             >
-              {submitting ? <><Loader2 size={14} className="animate-spin" /> Processing payment…</> : <><Lock size={14} /> Place order</>}
+              {submitting
+                ? form.payment === "velocity-card"
+                  ? <><Loader2 size={14} className="animate-spin" /> Redirecting to secure card payment…</>
+                  : <><Loader2 size={14} className="animate-spin" /> Processing payment…</>
+                : <><Lock size={14} /> Place order</>}
             </button>
 
             <p className="mt-3 text-[11.5px] text-ink-3 text-center inline-flex items-center justify-center gap-1.5 w-full">
@@ -575,11 +577,14 @@ export default function CheckoutPage() {
 function PaymentWaitingOverlay({
   method, phone, onCancel,
 }: { method: string; phone: string; onCancel: () => void }) {
-  const label =
-    method === "ecocash" ? "EcoCash"
-    : method === "omari" ? "Omari"
-    : "Card"
-  const isCard = method === "card"
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel() }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [onCancel])
+
+  const label = method === "velocity-ecocash" ? "EcoCash" : "Card"
+  const isCard = method === "velocity-card"
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm px-4">
       <div className="relative w-full max-w-md rounded-2xl border border-line bg-paper p-7 shadow-xl shadow-ink/10">
@@ -605,7 +610,7 @@ function PaymentWaitingOverlay({
         <p className="mt-4 text-[13.5px] text-ink-2 leading-relaxed">
           {isCard
             ? "We're redirecting you to complete the payment. Once confirmed, you'll be moved forward automatically."
-            : <>We sent a payment prompt to <span className="font-semibold text-ink">{phone}</span>. Open the prompt and enter your PIN to confirm. We&apos;ll move you forward as soon as it clears.</>}
+            : <>Processing payment through Velocity. Waiting for <span className="font-semibold text-ink">{phone}</span> to approve the EcoCash prompt. We&apos;ll move you forward as soon as it clears.</>}
         </p>
         <div className="mt-5 inline-flex items-center gap-2 text-[12.5px] text-ink-3">
           <Loader2 size={13} className="animate-spin text-blue" />

@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Zap, Mail, ShieldCheck, Sparkles, X } from "lucide-react"
 
 const MESSAGES = [
@@ -14,16 +14,24 @@ const STORAGE_KEY = "tp:topbar:dismissed:v2"
 export default function TopBar() {
   const [hidden, setHidden] = useState(true)
   const [idx, setIdx] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     setHidden(typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY) === "1")
   }, [])
 
   useEffect(() => {
-    if (hidden) return
-    const id = setInterval(() => setIdx((i) => (i + 1) % MESSAGES.length), 5500)
-    return () => clearInterval(id)
-  }, [hidden])
+    if (hidden || paused) {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      intervalRef.current = null
+      return
+    }
+    intervalRef.current = setInterval(() => setIdx((i) => (i + 1) % MESSAGES.length), 5500)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [hidden, paused])
 
   if (hidden) return null
 
@@ -63,7 +71,7 @@ export default function TopBar() {
         </span>
 
         {/* Rotating message */}
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-hidden" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
           <div className="relative h-9">
             {MESSAGES.map(({ icon: Icon, text }, i) => (
               <p

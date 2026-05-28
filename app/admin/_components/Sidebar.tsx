@@ -3,18 +3,19 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
-  LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Ticket, Settings, LogOut, Shield,
+  LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Ticket, Settings, LogOut, Shield, Megaphone,
 } from "lucide-react"
 
 const NAV = [
-  { label: "Overview",  href: "/admin",           icon: LayoutGrid },
-  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { label: "Payouts",   href: "/admin/payouts",   icon: Wallet },
-  { label: "Users",     href: "/admin/users",     icon: Users },
-  { label: "Events",    href: "/admin/events",    icon: Calendar },
-  { label: "Orders",    href: "/admin/orders",    icon: Receipt },
-  { label: "Tickets",   href: "/admin/tickets",   icon: Ticket },
-  { label: "Settings",  href: "/admin/settings",  icon: Settings },
+  { label: "Overview",       href: "/admin",                icon: LayoutGrid },
+  { label: "Communications", href: "/admin/communications", icon: Megaphone },
+  { label: "Analytics",      href: "/admin/analytics",      icon: BarChart3 },
+  { label: "Payouts",        href: "/admin/payouts",        icon: Wallet },
+  { label: "Users",          href: "/admin/users",          icon: Users },
+  { label: "Events",         href: "/admin/events",         icon: Calendar },
+  { label: "Orders",         href: "/admin/orders",         icon: Receipt },
+  { label: "Tickets",        href: "/admin/tickets",        icon: Ticket },
+  { label: "Settings",       href: "/admin/settings",       icon: Settings },
 ] as const
 
 export default function Sidebar({ name, email }: { name: string; email: string }) {

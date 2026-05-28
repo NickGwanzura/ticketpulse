@@ -75,3 +75,33 @@ export const generalSans = localFont({
   fallback: ["system-ui", "sans-serif"],
   variable: "--font-body",
 })
+
+/**
+ * PolySans — a geometric sans-serif with soft-edge inktrap details,
+ * designed by Gradient. Trial weights from fontshare-gradeint.
+ */
+export const polysans = localFont({
+  src: [
+    { path: "../public/fonts/polysans-Slim.woff2", weight: "300", style: "normal" },
+    { path: "../public/fonts/polysans-Neutral.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/polysans-Median.woff2", weight: "500", style: "normal" },
+    { path: "../public/fonts/polysans-Bulky.woff2", weight: "700", style: "normal" },
+  ],
+  display: "swap",
+  preload: true,
+  fallback: ["system-ui", "sans-serif"],
+  variable: "--font-polysans",
+})
+
+export const polysansWide = localFont({
+  src: [
+    { path: "../public/fonts/polysans-SlimWide.woff2", weight: "300", style: "normal" },
+    { path: "../public/fonts/polysans-NeutralWide.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/polysans-MedianWide.woff2", weight: "500", style: "normal" },
+    { path: "../public/fonts/polysans-BulkyWide.woff2", weight: "700", style: "normal" },
+  ],
+  display: "swap",
+  preload: true,
+  fallback: ["system-ui", "sans-serif"],
+  variable: "--font-polysans-wide",
+})

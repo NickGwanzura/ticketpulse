@@ -212,7 +212,7 @@ async function getEventSales(eventIds: string[]) {
       status: orders.status,
     })
     .from(orders)
-    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "awaiting_verification"])))
+    .where(and(inArray(orders.eventId, eventIds), eq(orders.status, "paid")))
 
   return { tiers, orders: ordersRows }
 }
@@ -231,7 +231,7 @@ async function getRecentOrders(eventIds: string[], limit = 8) {
       eventId: orders.eventId,
     })
     .from(orders)
-    .where(inArray(orders.eventId, eventIds))
+    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "awaiting_verification", "refunded"])))
     .orderBy(desc(orders.createdAt))
     .limit(limit)
 

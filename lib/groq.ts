@@ -481,6 +481,60 @@ Output ONLY the post text, no quotes, no markdown.`
   }
 }
 
+/* ─── 10. Admin Announcement Draft ────────────────────────────────────── */
+
+/**
+ * Generate a platform-wide announcement subject and body for admin
+ * communications (email / WhatsApp).
+ */
+export async function generateAnnouncementContent(
+  topic: string,
+  audience: "attendees" | "organizers" | "all_users",
+  tone: "friendly" | "professional" | "urgent",
+): Promise<EmailSuggestion> {
+  const audienceDescriptions: Record<string, string> = {
+    attendees: "ticket buyers and event attendees",
+    organizers: "event organisers who create and manage events on the platform",
+    all_users: "all registered users (both ticket buyers and event organisers)",
+  }
+
+  const toneDescriptions: Record<string, string> = {
+    friendly: "warm and approachable, like a note from a friend",
+    professional: "polish and business-like, suitable for official updates",
+    urgent: "direct and time-sensitive, conveying importance without being alarmist",
+  }
+
+  const systemPrompt = `You are a communications copywriter for TicketPulse, a Zimbabwe-based event ticketing platform.
+Write a platform-wide announcement email. Use UK English spelling.
+Respond with ONLY a JSON object:
+{ "subject": "email subject (max 60 chars, attention-grabbing)", "body": "email body (3-4 short paragraphs, warm professional tone, no markdown, max 400 words)" }
+Do not include any explanation or markdown. Only valid JSON.`
+
+  const userPrompt = `Topic: ${topic}
+Audience: ${audienceDescriptions[audience]}
+Tone: ${toneDescriptions[tone]}
+
+Write the announcement content. Start the body with "Hi there," and end with a clear call to action and "Best,\nThe TicketPulse Team".`
+
+  try {
+    const raw = await groqCompletion(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      0.6,
+      600,
+    )
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    return JSON.parse(jsonMatch?.[0] ?? raw) as EmailSuggestion
+  } catch {
+    return {
+      subject: "Important update from TicketPulse",
+      body: "Hi there,\n\nWe have an important update about TicketPulse. Check your dashboard for the latest information.\n\nBest,\nThe TicketPulse Team",
+    }
+  }
+}
+
 /* ─── 9. Narrative Analytics Summary ────────────────────────────────────── */
 
 /**

@@ -87,8 +87,8 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-paper/85 backdrop-blur-xl border-b border-line shadow-[0_1px_0_rgba(10,37,64,0.04),0_8px_24px_-12px_rgba(10,37,64,0.10)]"
-          : "bg-paper/70 backdrop-blur-xl border-b border-transparent"
+          ? "bg-paper/85 backdrop-blur-sm md:backdrop-blur-xl border-b border-line shadow-[0_1px_0_rgba(10,37,64,0.04),0_8px_24px_-12px_rgba(10,37,64,0.10)]"
+          : "bg-paper/70 backdrop-blur-sm md:backdrop-blur-xl border-b border-transparent"
       }`}
     >
       {/* Hairline gradient under header (only when scrolled) */}
@@ -293,7 +293,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
       {eventsOpen && (
         <>
           <div className="fixed inset-0 z-30 bg-ink/10 backdrop-blur-[1px]" onClick={() => setEventsOpen(false)} aria-hidden />
-          <div className="absolute left-0 right-0 top-16 md:top-24 z-40 border-t border-line bg-paper/95 backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
+          <div role="dialog" aria-modal="true" aria-label="Event categories" className="absolute left-0 right-0 top-16 md:top-24 z-40 border-t border-line bg-paper/95 backdrop-blur-sm md:backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
             <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8">
               <div>
                 <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">By category</p>
@@ -368,7 +368,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
       {menuOpen && (
         <>
           <div className="md:hidden fixed inset-0 z-30 bg-ink/20 backdrop-blur-[1px]" onClick={() => setMenuOpen(false)} aria-hidden />
-          <div className="md:hidden relative z-40 border-t border-line bg-paper">
+          <div role="dialog" aria-modal="true" aria-label="Navigation menu" className="md:hidden relative z-40 border-t border-line bg-paper">
           <div className="max-w-7xl mx-auto px-5 py-4 space-y-5">
             {/* Search */}
             <Link href="/events" className="flex items-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm text-ink-2">

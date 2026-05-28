@@ -97,7 +97,7 @@ export default async function SignUpPage({
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I'm signing up as</p>
             <div className="grid grid-cols-3 gap-2">
-              {ROLES.map(({ value, label, icon: Icon }) => (
+              {ROLES.map(({ value, label, body, icon: Icon }) => (
                 <label
                   key={value}
                   className="relative cursor-pointer rounded-xl border border-line-2 bg-paper p-3 text-center hover:border-line-2 transition-colors has-[:checked]:border-navy has-[:checked]:bg-green-50 has-[:checked]:ring-1 has-[:checked]:ring-navy/15"
@@ -111,6 +111,7 @@ export default async function SignUpPage({
                   />
                   <Icon size={16} className="mx-auto text-ink-2 peer-checked:text-navy mb-1.5" />
                   <span className="block text-[12.5px] font-semibold text-ink">{label}</span>
+                  <span className="block text-[10px] text-ink-3 mt-0.5 leading-tight">{body}</span>
                 </label>
               ))}
             </div>

@@ -34,7 +34,7 @@ export default function MerchCard({ eventId, merch }: { eventId: string; merch: 
         <div className="relative w-full sm:w-44 aspect-square shrink-0 bg-paper-2">
           {primary ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={primary} alt={merch.name} className="absolute inset-0 w-full h-full object-cover" />
+            <img src={primary} alt={merch.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 grid place-items-center text-[12px] text-ink-3">No image</div>
           )}
