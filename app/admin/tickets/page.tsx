@@ -378,11 +378,13 @@ export default async function AdminTicketsPage({
                           </td>
                           <td className="px-5 py-3.5 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <ResendButton
-                                orderId={o.id}
-                                status={o.status ?? ""}
-                                variant="desktop"
-                              />
+                              {(o.status === "paid" || o.status === "awaiting_verification") && (
+                                <ResendButton
+                                  orderId={o.id}
+                                  status={o.status ?? ""}
+                                  variant="desktop"
+                                />
+                              )}
                               {o.status === "paid" && (
                                 <Link
                                   href={`/orders/${o.id}/print`}
@@ -494,11 +496,13 @@ export default async function AdminTicketsPage({
                         </span>
                       </div>
                       <div className="mt-3 flex items-center gap-2">
-                        <ResendButton
-                          orderId={o.id}
-                          status={o.status ?? ""}
-                          variant="mobile"
-                        />
+                        {(o.status === "paid" || o.status === "awaiting_verification") && (
+                          <ResendButton
+                            orderId={o.id}
+                            status={o.status ?? ""}
+                            variant="mobile"
+                          />
+                        )}
                         {o.status === "paid" && (
                           <Link
                             href={`/orders/${o.id}/print`}

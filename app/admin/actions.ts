@@ -181,6 +181,10 @@ export async function resendOrderEmailAction(orderId: string) {
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
 
+  if (order.status === "pending") {
+    throw new Error("Cannot resend email for order with status \"pending\". Only paid or awaiting-verification orders are supported.")
+  }
+
   // ── Awaiting verification → resend magic link ───────────────────────────
   if (order.status === "awaiting_verification") {
     const finalizeUrl = `${appUrl}/api/orders/${orderId}/finalize`

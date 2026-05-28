@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import {
   Search, RefreshCw, Activity, Smartphone,
-  ExternalLink, DollarSign, ShoppingCart,
+  ExternalLink, DollarSign, ShoppingCart, X,
   CheckCircle, XCircle, AlertTriangle,
 } from "lucide-react"
 
@@ -63,6 +63,101 @@ type Props = {
   initialData: VelocityApiResponse
 }
 
+// ── Toast types and helpers ────────────────────────────────────────────
+
+type Toast = {
+  id: string
+  orderId: string
+  label: string
+  customerName: string
+  eventTitle: string
+  amount: string
+  type: "fixed" | "paid" | "poll_success"
+  message: string
+  createdAt: number
+}
+
+/** Build a serialized snapshot key for quick comparison. */
+function buildSnapshot(data: VelocityApiResponse): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const o of data.orders) {
+    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    const v = meta.velocity
+    // Composite key: local status + poll status + invoice ref
+    map.set(o.id, `${o.status ?? ""}|${v?.pollStatus ?? ""}|${v?.invoiceRef ?? ""}`)
+  }
+  return map
+}
+
+/** Compare snapshots and return toasts for newly-fixed orders. */
+function detectFixes(
+  prev: Map<string, string>,
+  fresh: VelocityApiResponse,
+): Toast[] {
+  const toasts: Toast[] = []
+  const now = Date.now()
+
+  for (const o of fresh.orders) {
+    const prevKey = prev.get(o.id)
+    if (!prevKey) continue // new order, not a fix
+
+    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    const v = meta.velocity
+    const currentKey = `${o.status ?? ""}|${v?.pollStatus ?? ""}|${v?.invoiceRef ?? ""}`
+    if (currentKey === prevKey) continue
+
+    // Parse previous state
+    const [prevStatus, prevPollStatus, prevInvoice] = prevKey.split("|")
+
+    // Detect: local status improved from pending → awaiting_verification/paid
+    const isFixedStatus =
+      (prevStatus === "pending" || prevStatus === "awaiting_verification") &&
+      (o.status === "paid" || o.status === "awaiting_verification")
+
+    // Detect: poll status just became SUCCESS
+    const isPollSuccess = prevPollStatus !== "SUCCESS" && v?.pollStatus === "SUCCESS"
+
+    // Detect: invoice ref appeared (means finalization completed)
+    const isFinalized = !prevInvoice && !!v?.invoiceRef
+
+    if (isFixedStatus || isPollSuccess || isFinalized) {
+      const customer = o.guestName ?? o.guestEmail?.split("@")[0] ?? "—"
+      const eventTitle = o.eventTitle ?? "—"
+      const amount = formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")
+
+      let type: Toast["type"] = "poll_success"
+      let message = `Poll status changed to ${v?.pollStatus ?? "SUCCESS"}`
+
+      if (isFixedStatus && o.status === "paid") {
+        type = "paid"
+        message = `Order moved to Paid`
+      } else if (isFixedStatus && o.status === "awaiting_verification") {
+        type = "fixed"
+        message = `Order moved to awaiting verification`
+      } else if (isFinalized) {
+        type = "paid"
+        message = `Payment finalized — Invoice: ${v?.invoiceRef?.slice(0, 10)}`
+      }
+
+      toasts.push({
+        id: `${o.id}-${now}-${Math.random().toString(36).slice(2, 6)}`,
+        orderId: o.id,
+        label: `#${o.id.slice(0, 8)}`,
+        customerName: customer,
+        eventTitle,
+        amount,
+        type,
+        message,
+        createdAt: now,
+      })
+    }
+  }
+
+  return toasts
+}
+
+// ── Component ────────────────────────────────────────────────────────────
+
 function getPollCounts(data: VelocityApiResponse) {
   let pollSuccess = 0
   let pollFailed = 0
@@ -84,7 +179,9 @@ export default function VelocityViewer({ initialData }: Props) {
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [toasts, setToasts] = useState<Toast[]>([])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const prevSnapshotRef = useRef<Map<string, string>>(new Map())
 
   // ── Poll every 15s ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -104,6 +201,11 @@ export default function VelocityViewer({ initialData }: Props) {
         const res = await fetch(`/api/admin/velocity/data?${params.toString()}`)
         if (res.ok) {
           const fresh: VelocityApiResponse = await res.json()
+          const newToasts = detectFixes(prevSnapshotRef.current, fresh)
+          if (newToasts.length > 0) {
+            setToasts((prev) => [...prev, ...newToasts].slice(-5)) // max 5 toasts
+          }
+          prevSnapshotRef.current = buildSnapshot(fresh)
           setData(fresh)
           setLastRefreshed(new Date())
         }
@@ -120,6 +222,17 @@ export default function VelocityViewer({ initialData }: Props) {
     }
   }, [isLive, query, statusFilter])
 
+  // ── Auto-dismiss toasts after 6s ─────────────────────────────────────
+  useEffect(() => {
+    if (toasts.length === 0) return
+    const timers = toasts.map((t) =>
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((x) => x.id !== t.id))
+      }, 6000),
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [toasts.length])
+
   // ── Manual refresh ──────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
@@ -130,6 +243,11 @@ export default function VelocityViewer({ initialData }: Props) {
       const res = await fetch(`/api/admin/velocity/data?${params.toString()}`)
       if (res.ok) {
         const fresh: VelocityApiResponse = await res.json()
+        const newToasts = detectFixes(prevSnapshotRef.current, fresh)
+        if (newToasts.length > 0) {
+          setToasts((prev) => [...prev, ...newToasts].slice(-5))
+        }
+        prevSnapshotRef.current = buildSnapshot(fresh)
         setData(fresh)
         setLastRefreshed(new Date())
       }
@@ -659,6 +777,92 @@ export default function VelocityViewer({ initialData }: Props) {
           </button>
         </p>
       )}
+
+      {/* ── Toast notifications ── */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto animate-in slide-in-from-right-4 fade-in rounded-2xl border p-4 shadow-xl transition-all ${
+              t.type === "paid"
+                ? "border-emerald-200 bg-emerald-50"
+                : t.type === "fixed"
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className={`inline-flex mt-0.5 w-7 h-7 items-center justify-center rounded-lg shrink-0 ${
+                  t.type === "paid"
+                    ? "bg-emerald-200"
+                    : t.type === "fixed"
+                      ? "bg-blue-200"
+                      : "bg-amber-200"
+                }`}
+              >
+                {t.type === "paid" ? (
+                  <CheckCircle size={14} className="text-emerald-700" />
+                ) : t.type === "fixed" ? (
+                  <CheckCircle size={14} className="text-blue-700" />
+                ) : (
+                  <RefreshCw size={14} className="text-amber-700" />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-mono font-semibold text-ink-2">
+                    {t.label}
+                  </span>
+                  <span
+                    className={`inline-block px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider rounded-full ${
+                      t.type === "paid"
+                        ? "bg-emerald-200 text-emerald-800"
+                        : t.type === "fixed"
+                          ? "bg-blue-200 text-blue-800"
+                          : "bg-amber-200 text-amber-800"
+                    }`}
+                  >
+                    {t.type === "paid" ? "Paid" : t.type === "fixed" ? "Fixed" : "Poll update"}
+                  </span>
+                </div>
+                <p className="text-[13px] font-semibold text-ink mt-0.5 leading-tight truncate">
+                  {t.customerName}
+                </p>
+                <p className="text-[11.5px] text-ink-3 truncate mt-0.5">
+                  {t.eventTitle}
+                </p>
+                <p className="text-[12px] text-ink-2 mt-1">
+                  <span className="font-semibold">{t.amount}</span>
+                  {t.message && (
+                    <span className="ml-1.5 text-ink-3">&middot; {t.message}</span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+                className="shrink-0 mt-0.5 w-5 h-5 flex items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-black/5 transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            {/* Progress bar for auto-dismiss */}
+            <div className="mt-2.5 h-1 rounded-full bg-black/5 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-[width] duration-[6000ms] ease-linear ${
+                  t.type === "paid"
+                    ? "bg-emerald-300"
+                    : t.type === "fixed"
+                      ? "bg-blue-300"
+                      : "bg-amber-300"
+                }`}
+                style={{ width: "100%" }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   )
 }
