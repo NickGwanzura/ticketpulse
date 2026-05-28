@@ -177,10 +177,81 @@ export async function initiateTransaction(
 export async function pollTransaction(
   transactionTrace: string,
 ): Promise<PollTransactionResponse> {
-  return velocityRequest<PollTransactionResponse>(
-    `/transactions/poll/${transactionTrace}`,
-    { method: "PUT" },
-  )
+  const config = getConfig()
+  const url = `${config.baseUrl}/transactions/poll/${transactionTrace}`
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "x-api-key": config.apiKey,
+  }
+
+  log.info("velocity request", { method: "PUT", path: `/transactions/poll/${transactionTrace}` })
+  const start = Date.now()
+
+  try {
+    const response = await fetch(url, {
+      method: "PUT",
+      headers,
+      next: { revalidate: 0 },
+    })
+    const elapsed = Date.now() - start
+
+    const responseText = await response.text()
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(responseText) as Record<string, unknown>
+    } catch {
+      parsed = {}
+    }
+
+    // Ensure the response has a body property at the top level.
+    // If the parsed JSON doesn't have "body" (e.g. error responses like
+    // { message: "Transaction failed" }), construct a synthetic body.
+    const responseBody =
+      (parsed.body as PollTransactionResponse["body"]) ?? {
+        id: "",
+        trace: transactionTrace,
+        amount: 0,
+        paymentStatus: response.ok ? "UNKNOWN" : "FAILED",
+        pollStatus: "UNKNOWN",
+      }
+
+    const data: PollTransactionResponse = {
+      state: (parsed.state as string) ?? (response.ok ? "unknown" : "error"),
+      status: (parsed.status as string) ?? (response.ok ? "unknown" : "error"),
+      body: responseBody,
+      workflowId: (parsed.workflowId as string) ?? "",
+    }
+
+    log.info("velocity response", {
+      path: `/transactions/poll/${transactionTrace}`,
+      httpStatus: response.status,
+      elapsed,
+      body: JSON.stringify(data).slice(0, 2000),
+    })
+
+    return data
+  } catch (err) {
+    const elapsed = Date.now() - start
+    log.error("pollTransaction - network error", {
+      transactionTrace,
+      elapsed,
+      error: err instanceof Error ? err.message : String(err),
+    })
+
+    return {
+      state: "network_error",
+      status: "error",
+      body: {
+        id: "",
+        trace: transactionTrace,
+        amount: 0,
+        paymentStatus: "UNKNOWN",
+        pollStatus: "UNKNOWN",
+      },
+      workflowId: "",
+    } as PollTransactionResponse
+  }
 }
 
 export async function finalizeWorkflow(
@@ -210,12 +281,77 @@ export function getProcessorLabel(paymentMethod: string): string {
 }
 
 /**
- * Normalize Velocity poll status values to ensure consistent comparison.
- * Velocity may return "SUCCESS", "FAILED", or "PENDING" (case-sensitive).
- * This function validates and normalizes the status, returning a known value
- * or throwing if the status is unrecognized.
+ * Normalize the full Velocity poll response into a local payment status.
+ *
+ * Priority order:
+ *   1. body.pollStatus === "SUCCESS" => PAID
+ *   2. body.pollStatus === "FAILED"  => FAILED
+ *   3. body.pollStatus === "PENDING" => PENDING
+ *   4. pollStatus missing / unexpected:
+ *        - check paymentStatus as diagnostic
+ *        - mark UNKNOWN (require admin recheck)
+ *   5. null/undefined response => UNKNOWN
+ *
+ * Never throws.
  */
-export function normalizeVelocityPollStatus(status: string | undefined | null): "SUCCESS" | "FAILED" | "PENDING" {
+export function normalizeVelocityPollResponse(
+  response: PollTransactionResponse | null | undefined,
+): NormalizedPollResponse {
+  if (!response) {
+    return {
+      localStatus: "UNKNOWN",
+      velocityPaymentStatus: null,
+      velocityPollStatus: null,
+      velocityWorkflowStatus: null,
+      rawResponse: null,
+    }
+  }
+
+  const pollStatus = response.body?.pollStatus
+  const paymentStatus = response.body?.paymentStatus
+  const workflowStatus = response.status
+
+  let localStatus: NormalizedPollResponse["localStatus"]
+
+  if (pollStatus === "SUCCESS") {
+    localStatus = "PAID"
+  } else if (pollStatus === "FAILED") {
+    localStatus = "FAILED"
+  } else if (pollStatus === "PENDING") {
+    localStatus = "PENDING"
+  } else if (paymentStatus === "SUCCESS") {
+    log.warn("normalizeVelocityPollResponse - pollStatus missing but paymentStatus is SUCCESS, treating as UNKNOWN", {
+      pollStatus,
+      paymentStatus,
+    })
+    localStatus = "UNKNOWN"
+  } else if (paymentStatus === "FAILED") {
+    log.warn("normalizeVelocityPollResponse - pollStatus missing but paymentStatus is FAILED, treating as UNKNOWN", {
+      pollStatus,
+      paymentStatus,
+    })
+    localStatus = "UNKNOWN"
+  } else {
+    localStatus = "UNKNOWN"
+  }
+
+  return {
+    localStatus,
+    velocityPaymentStatus: paymentStatus ?? null,
+    velocityPollStatus: pollStatus ?? null,
+    velocityWorkflowStatus: workflowStatus ?? null,
+    rawResponse: response,
+  }
+}
+
+/**
+ * Legacy normalizer – prefer normalizeVelocityPollResponse.
+ * Normalizes a single status string. Treats anything other than
+ * SUCCESS/FAILED as PENDING.
+ */
+export function normalizeVelocityPollStatus(
+  status: string | undefined | null,
+): "SUCCESS" | "FAILED" | "PENDING" {
   if (!status) return "PENDING"
   const upper = status.toUpperCase()
   if (upper === "SUCCESS") return "SUCCESS"

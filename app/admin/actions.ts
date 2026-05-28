@@ -12,6 +12,7 @@ import {
   sendOrderConfirmationEmail,
 } from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
+import { log } from "@/lib/logger"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 /**
@@ -556,13 +557,18 @@ export async function sendCommunicationAction(
 
 /**
  * Re-check a pending/awaiting_verification order against Velocity.
- * Polls the transaction and, if SUCCESS, re-finalizes the workflow.
- * If the order is already paid, returns early.
+ * Polls the transaction using the stored transactionTrace and, if SUCCESS,
+ * re-finalizes the workflow and updates the local DB.
  *
  * This is the admin recovery tool for stuck transactions:
  * payments confirmed in Velocity but not reflected locally.
+ *
+ * On FAILED/UNKNOWN, stores failure details without deleting the order.
+ * On SUCCESS, issues ticket verification email if not already sent.
  */
-export async function recheckPaymentAction(orderId: string): Promise<{ fixed: boolean; message: string; details?: Record<string, unknown> }> {
+export async function recheckPaymentAction(
+  orderId: string,
+): Promise<{ fixed: boolean; message: string; details?: Record<string, unknown> }> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     throw new Error("Unauthorized")
@@ -576,7 +582,6 @@ export async function recheckPaymentAction(orderId: string): Promise<{ fixed: bo
 
   if (!order) throw new Error("Order not found")
 
-  // Already paid — nothing to do.
   if (order.status === "paid") {
     return { fixed: false, message: "Order is already paid." }
   }
@@ -588,26 +593,77 @@ export async function recheckPaymentAction(orderId: string): Promise<{ fixed: bo
     return { fixed: false, message: "No Velocity transaction traces found on this order." }
   }
 
-  const { pollTransaction, finalizeWorkflow, normalizeVelocityPollStatus } = await import("@/services/velocity")
+  const { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } = await import(
+    "@/services/velocity"
+  )
 
   // ── Step 1: Poll the transaction ────────────────────────────────────────
-  let pollResult
-  try {
-    pollResult = await pollTransaction(velocityMeta.transactionTrace)
-  } catch (err) {
-    return {
-      fixed: false,
-      message: `Failed to poll Velocity transaction: ${err instanceof Error ? err.message : String(err)}`,
+  // pollTransaction no longer throws — it always returns a structured response.
+  const pollResult = await pollTransaction(velocityMeta.transactionTrace)
+  const normalized = normalizeVelocityPollResponse(pollResult)
+
+  log.info("recheckPaymentAction - poll result", {
+    orderId,
+    transactionTrace: velocityMeta.transactionTrace,
+    localStatus: normalized.localStatus,
+    velocityPollStatus: normalized.velocityPollStatus,
+    velocityPaymentStatus: normalized.velocityPaymentStatus,
+    velocityWorkflowStatus: normalized.velocityWorkflowStatus,
+    fullBody: JSON.stringify(pollResult).slice(0, 3000),
+  })
+
+  // ── Not SUCCESS → store failure, do not delete order ────────────────────
+  if (normalized.localStatus !== "PAID") {
+    const failureReason =
+      normalized.localStatus === "FAILED"
+        ? `Velocity returned pollStatus: ${normalized.velocityPollStatus}, paymentStatus: ${normalized.velocityPaymentStatus}`
+        : normalized.localStatus === "UNKNOWN"
+          ? `Unknown payment status – pollStatus: ${normalized.velocityPollStatus ?? "missing"}, paymentStatus: ${normalized.velocityPaymentStatus ?? "missing"}`
+          : "Payment still pending in Velocity"
+
+    const failedMeta = {
+      ...meta,
+      velocity: {
+        ...velocityMeta,
+        pollStatus: (normalized.velocityPollStatus as VelocityOrderMetadata["pollStatus"]) ?? "UNKNOWN",
+        failedAt: new Date().toISOString(),
+        failureReason,
+        recheckedAt: new Date().toISOString(),
+        recheckedBy: session.user.email,
+        velocityRawPollResponse: {
+          state: pollResult.state,
+          status: pollResult.status,
+          body: {
+            trace: pollResult.body?.trace,
+            amount: pollResult.body?.amount,
+            paymentStatus: pollResult.body?.paymentStatus,
+            pollStatus: pollResult.body?.pollStatus,
+          },
+        },
+      },
     }
-  }
 
-  const pollStatus = normalizeVelocityPollStatus(pollResult.body.pollStatus)
+    await db
+      .update(orders)
+      .set({ metadata: failedMeta, updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
 
-  if (pollStatus !== "SUCCESS") {
+    revalidatePath("/admin/orders")
+    revalidatePath("/admin")
+
     return {
       fixed: false,
-      message: `Payment status in Velocity is "${pollResult.body.pollStatus}" (normalized: "${pollStatus}"). Not confirmed yet.`,
-      details: { pollStatus, paymentStatus: pollResult.body.paymentStatus, amount: pollResult.body.amount },
+      message:
+        normalized.localStatus === "PENDING"
+          ? `Payment is still pending in Velocity (pollStatus: ${normalized.velocityPollStatus}). Try again later.`
+          : `Payment status in Velocity is "${normalized.velocityPollStatus}" (${normalized.localStatus}). Not confirmed yet. Admin recheck recorded.`,
+      details: {
+        localStatus: normalized.localStatus,
+        pollStatus: normalized.velocityPollStatus,
+        paymentStatus: normalized.velocityPaymentStatus,
+        amount: pollResult.body?.amount,
+        failureReason,
+      },
     }
   }
 
@@ -619,7 +675,7 @@ export async function recheckPaymentAction(orderId: string): Promise<{ fixed: bo
     return {
       fixed: false,
       message: `Poll succeeded but workflow finalization failed: ${err instanceof Error ? err.message : String(err)}. You can retry.`,
-      details: { pollStatus: "SUCCESS", salesOrderTrace: velocityMeta.salesOrderTrace },
+      details: { localStatus: "PAID", salesOrderTrace: velocityMeta.salesOrderTrace },
     }
   }
 
@@ -670,7 +726,7 @@ export async function recheckPaymentAction(orderId: string): Promise<{ fixed: bo
     }
   }
 
-  // ── Step 4: Send verification email if not already done ─────────────────
+  // ── Step 4: Issue ticket verification if not already sent ───────────────
   if (order.guestEmail && order.status !== "awaiting_verification") {
     try {
       const { startOrderVerification } = await import("@/lib/order-verification")
@@ -678,6 +734,7 @@ export async function recheckPaymentAction(orderId: string): Promise<{ fixed: bo
       await startOrderVerification({ orderId, email: order.guestEmail, origin })
     } catch {
       // Non-critical — email send failure won't block the fix.
+      // Admin can resend verification email from the dashboard.
     }
   }
 

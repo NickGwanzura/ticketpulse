@@ -2,13 +2,14 @@ import { NextResponse } from "next/server"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
-import { pollTransaction, finalizeWorkflow, normalizeVelocityPollStatus } from "@/services/velocity"
+import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
 import { startOrderVerification } from "@/lib/order-verification"
 import { notifyPaymentSuccess } from "@/lib/payment-notifications"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
+import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
-import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
+import type { VelocityOrderMetadata, VelocityPollStatus, LocalPaymentStatus } from "@/types/velocity"
 
 const POLL_TIMEOUT_MS = 5 * 60 * 1000
 const PAID_STATUSES = new Set(["paid", "awaiting_verification"])
@@ -45,6 +46,14 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.json({ error: "missing_velocity_transaction" }, { status: 400 })
   }
 
+  // ── Validate transactionTrace is a UUID ──────────────────────────────────
+  if (!isValidUUID(velocityMeta.transactionTrace)) {
+    log.error("velocity status - transactionTrace is not a valid UUID", {
+      localOrderId: id,
+      transactionTrace: velocityMeta.transactionTrace,
+    })
+  }
+
   const createdAt = order.createdAt ? new Date(order.createdAt).getTime() : Date.now()
   if (Date.now() - createdAt > POLL_TIMEOUT_MS) {
     return NextResponse.json({
@@ -58,38 +67,62 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
   try {
     // ── 1. Poll Velocity ──────────────────────────────────────────────────
-    const pollUrl = `/transactions/poll/${velocityMeta.transactionTrace}`
     log.info("velocity status - polling transaction", {
       localOrderId: id,
       localPaymentMethod: order.paymentMethod,
       velocityTransactionTrace: velocityMeta.transactionTrace,
       velocitySalesOrderTrace: velocityMeta.salesOrderTrace,
-      pollUrl,
+      pollUrl: `/transactions/poll/${velocityMeta.transactionTrace}`,
     })
 
     const pollResult = await pollTransaction(velocityMeta.transactionTrace)
-    const rawPollStatus = pollResult.body.pollStatus
-    const pollStatus = normalizeVelocityPollStatus(rawPollStatus)
-    const pollPaymentStatus = pollResult.body.paymentStatus
 
+    // ── Log full sanitized response ───────────────────────────────────────
     log.info("velocity status - poll response received", {
-      localOrderId: id,
-      velocityTransactionTrace: velocityMeta.transactionTrace,
-      rawPollStatus,
-      normalizedPollStatus: pollStatus,
-      pollPaymentStatus,
-      pollAmount: pollResult.body.amount,
-      pollTrace: pollResult.body.trace,
-      pollResponseState: pollResult.state,
-      pollResponseStatus: pollResult.status,
+      transactionTrace: velocityMeta.transactionTrace,
+      httpStatus: pollResult.state === "network_error" ? 0 : undefined,
+      velocityState: pollResult.state,
+      velocityStatus: pollResult.status,
+      paymentStatus: pollResult.body?.paymentStatus,
+      pollStatus: pollResult.body?.pollStatus,
+      amount: pollResult.body?.amount,
+      fullBody: JSON.stringify(pollResult).slice(0, 5000),
     })
 
-    // Always persist the latest poll status into metadata.
+    // ── 2. Normalize the poll response ────────────────────────────────────
+    const normalized = normalizeVelocityPollResponse(pollResult)
+
+    log.info("velocity status - normalized", {
+      localOrderId: id,
+      localStatus: normalized.localStatus,
+      velocityPollStatus: normalized.velocityPollStatus,
+      velocityPaymentStatus: normalized.velocityPaymentStatus,
+    })
+
+    // ── 3. Build updated metadata ─────────────────────────────────────────
     const updatedMeta = {
       ...meta,
       velocity: {
         ...velocityMeta,
-        pollStatus,
+        pollStatus: normalized.velocityPollStatus as VelocityPollStatus | null ?? "PENDING",
+        ...(normalized.localStatus === "FAILED" || normalized.localStatus === "UNKNOWN"
+          ? {
+              failedAt: new Date().toISOString(),
+              failureReason: normalized.localStatus === "FAILED"
+                ? `Velocity returned pollStatus: ${normalized.velocityPollStatus}, paymentStatus: ${normalized.velocityPaymentStatus}`
+                : `Unknown payment status – Velocity pollStatus: ${normalized.velocityPollStatus ?? "missing"}, paymentStatus: ${normalized.velocityPaymentStatus ?? "missing"}`,
+              velocityRawPollResponse: {
+                state: pollResult.state,
+                status: pollResult.status,
+                body: {
+                  trace: pollResult.body?.trace,
+                  amount: pollResult.body?.amount,
+                  paymentStatus: pollResult.body?.paymentStatus,
+                  pollStatus: pollResult.body?.pollStatus,
+                },
+              },
+            }
+          : {}),
       },
     }
 
@@ -98,33 +131,61 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       .set({ metadata: updatedMeta, updatedAt: new Date() })
       .where(eq(orders.id, id))
 
-    // ── 2. Payment confirmed → finalize workflow ──────────────────────────
-    if (pollStatus === "SUCCESS") {
+    // ── 4. Payment confirmed → finalize workflow ──────────────────────────
+    if (normalized.localStatus === "PAID") {
       return await handlePollSuccess(req, order, meta, velocityMeta, id, pollResult)
     }
 
-    // ── 3. Payment failed ─────────────────────────────────────────────────
-    if (pollStatus === "FAILED") {
+    // ── 5. Payment failed ─────────────────────────────────────────────────
+    if (normalized.localStatus === "FAILED") {
       log.warn("velocity status - payment failed", {
         localOrderId: id,
         velocityTransactionTrace: velocityMeta.transactionTrace,
-        pollStatus,
+        pollStatus: normalized.velocityPollStatus,
+        paymentStatus: normalized.velocityPaymentStatus,
+        failureReason: updatedMeta.velocity.failureReason,
       })
-      trackEvent({ event: "PAYMENT_FAILED", eventId: order.eventId, orderId: id, paymentMethod: order.paymentMethod, amount: Number(order.totalAmount) })
+      trackEvent({
+        event: "PAYMENT_FAILED",
+        eventId: order.eventId,
+        orderId: id,
+        paymentMethod: order.paymentMethod,
+        amount: Number(order.totalAmount),
+      })
       return NextResponse.json({
         orderId: id,
         status: "pending",
         paid: false,
         pollStatus: "FAILED",
+        failureReason: updatedMeta.velocity.failureReason,
       })
     }
 
-    // ── 4. Still pending ──────────────────────────────────────────────────
+    // ── 6. Unknown status – requires admin recheck ───────────────────────
+    if (normalized.localStatus === "UNKNOWN") {
+      log.warn("velocity status - unknown payment status", {
+        localOrderId: id,
+        velocityTransactionTrace: velocityMeta.transactionTrace,
+        pollStatus: normalized.velocityPollStatus,
+        paymentStatus: normalized.velocityPaymentStatus,
+        state: pollResult.state,
+        status: pollResult.status,
+      })
+      return NextResponse.json({
+        orderId: id,
+        status: "pending",
+        paid: false,
+        pollStatus: "UNKNOWN",
+        message: "Payment status could not be determined. An admin can recheck using the dashboard.",
+      })
+    }
+
+    // ── 7. Still pending ──────────────────────────────────────────────────
     return NextResponse.json({
       orderId: id,
       status: "pending",
       paid: false,
-      pollStatus: pollStatus ?? "PENDING",
+      pollStatus: "PENDING",
     })
   } catch (err) {
     log.error("velocity status polling error", {

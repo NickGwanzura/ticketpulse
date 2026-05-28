@@ -75,6 +75,108 @@ describe("velocity service", () => {
     })
   })
 
+  // ─── NORMALIZE VELOCITY POLL RESPONSE ────────────────────────────────
+
+  describe("normalizeVelocityPollResponse", () => {
+    it("returns PAID when body.pollStatus is SUCCESS", () => {
+      const result = mod.normalizeVelocityPollResponse({
+        state: "done",
+        status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "SUCCESS", pollStatus: "SUCCESS",
+        },
+        workflowId: "617",
+      } as any)
+      expect(result.localStatus).toBe("PAID")
+      expect(result.velocityPollStatus).toBe("SUCCESS")
+    })
+
+    it("returns FAILED when body.pollStatus is FAILED", () => {
+      const result = mod.normalizeVelocityPollResponse({
+        state: "done", status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "FAILED", pollStatus: "FAILED",
+        },
+        workflowId: "617",
+      } as any)
+      expect(result.localStatus).toBe("FAILED")
+    })
+
+    it("returns PENDING when body.pollStatus is PENDING", () => {
+      const result = mod.normalizeVelocityPollResponse({
+        state: "done", status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "PENDING", pollStatus: "PENDING",
+        },
+        workflowId: "617",
+      } as any)
+      expect(result.localStatus).toBe("PENDING")
+    })
+
+    it("returns UNKNOWN when body.pollStatus is missing despite paymentStatus SUCCESS", () => {
+      const result = mod.normalizeVelocityPollResponse({
+        state: "done", status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "SUCCESS", pollStatus: undefined,
+        },
+        workflowId: "617",
+      } as any)
+      expect(result.localStatus).toBe("UNKNOWN")
+      expect(result.velocityPaymentStatus).toBe("SUCCESS")
+    })
+
+    it("returns UNKNOWN when body.pollStatus is missing despite paymentStatus FAILED", () => {
+      const result = mod.normalizeVelocityPollResponse({
+        state: "done", status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "FAILED", pollStatus: undefined,
+        },
+        workflowId: "617",
+      } as any)
+      expect(result.localStatus).toBe("UNKNOWN")
+    })
+
+    it("returns UNKNOWN for null/undefined response", () => {
+      const result = mod.normalizeVelocityPollResponse(null)
+      expect(result.localStatus).toBe("UNKNOWN")
+      expect(result.rawResponse).toBeNull()
+
+      const result2 = mod.normalizeVelocityPollResponse(undefined)
+      expect(result2.localStatus).toBe("UNKNOWN")
+    })
+
+    it("returns UNKNOWN for unexpected pollStatus value", () => {
+      const result = mod.normalizeVelocityPollResponse({
+        state: "done", status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "SOME_WEIRD_STATUS", pollStatus: "COMPLETED",
+        },
+        workflowId: "617",
+      } as any)
+      expect(result.localStatus).toBe("UNKNOWN")
+      expect(result.velocityPollStatus).toBe("COMPLETED")
+    })
+
+    it("includes rawResponse in the result", () => {
+      const raw = {
+        state: "done", status: "finished",
+        body: {
+          id: "txn-1", trace: "trace-1", amount: 50,
+          paymentStatus: "SUCCESS", pollStatus: "SUCCESS",
+        },
+        workflowId: "617",
+      } as any
+      const result = mod.normalizeVelocityPollResponse(raw)
+      expect(result.rawResponse).toBe(raw)
+    })
+  })
+
   // ─── FULL FLOW INTEGRATION TESTS ──────────────────────────────────────
 
   describe("createSalesOrder", () => {
@@ -228,6 +330,41 @@ describe("velocity service", () => {
 
       const result = await mod.pollTransaction(MOCK_TRANSACTION_TRACE)
       expect(result.body.pollStatus).toBe("PENDING")
+    })
+
+    it("does NOT throw on HTTP 400 error – returns structured response", async () => {
+      mockFetch({ status: 400, body: { message: "Transaction failed" } })
+
+      const result = await mod.pollTransaction("bad-trace")
+      expect(result.body.pollStatus).toBe("UNKNOWN")
+      expect(result.body.paymentStatus).toBe("FAILED")
+    })
+
+    it("does NOT throw on HTTP 500 error – returns structured response", async () => {
+      mockFetch({ status: 500, body: { message: "Internal server error" } })
+
+      const result = await mod.pollTransaction("error-trace")
+      expect(result.body.pollStatus).toBe("UNKNOWN")
+    })
+
+    it("handles network errors gracefully – returns structured response", async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"))
+
+      const result = await mod.pollTransaction("network-fail")
+      expect(result.state).toBe("network_error")
+      expect(result.body.pollStatus).toBe("UNKNOWN")
+    })
+
+    it("handles non-JSON response gracefully", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: () => Promise.reject(new Error("not json")),
+        text: () => Promise.resolve("Bad Gateway HTML"),
+      })
+
+      const result = await mod.pollTransaction("bad-response")
+      expect(result.body.pollStatus).toBe("UNKNOWN")
     })
   })
 

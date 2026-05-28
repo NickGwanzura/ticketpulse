@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   ArrowUpRight, ArrowDownRight,
-  AlertCircle, CalendarCheck, LayoutList, CreditCard, ShoppingCart,
+  AlertCircle, CalendarCheck, LayoutList, CreditCard, ShoppingCart, Activity,
 } from "lucide-react"
 import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
 
@@ -96,6 +96,32 @@ export default async function AdminOverviewPage() {
     { label: "Active events", value: activeEvents, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
     { label: "New users (month)", value: newUsers, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
   ]
+
+  // ── Velocity stats ──────────────────────────────────────────────────────
+
+  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
+
+  const [velocityRevenueRow] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(and(hasVelocity, eq(orders.status, "paid")))
+
+  const [velocityCountRow] = await db
+    .select({
+      total: sql<number>`COUNT(*)::int`,
+      pending: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'pending')::int`,
+      awaiting: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'awaiting_verification')::int`,
+      paid: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'paid')::int`,
+    })
+    .from(orders)
+    .where(hasVelocity)
+
+  const velocityRevenue = Number(velocityRevenueRow?.total ?? 0)
+  const velocityTotal = velocityCountRow?.total ?? 0
+  const velocityPending = (velocityCountRow?.pending ?? 0) + (velocityCountRow?.awaiting ?? 0)
+  const velocityPaid = velocityCountRow?.paid ?? 0
 
   // ── Top category & city (for AI brief) ──────────────────────────────────
 
@@ -297,6 +323,61 @@ export default async function AdminOverviewPage() {
               ))}
             </>
           )}
+        </div>
+
+        {/* Velocity summary */}
+        <div className="tp-fade-up-1">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-indigo-50">
+                <Activity size={12} className="text-indigo-600" />
+              </span>
+              <h2 className="text-[13px] font-semibold tracking-tight text-ink">Velocity payments</h2>
+            </div>
+            <Link href="/admin/velocity" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              Transaction viewer <ArrowUpRight size={12} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
+              <p className="text-[11.5px] text-ink-3 mb-2.5">Velocity revenue</p>
+              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
+                {formatCurrency(velocityRevenue, "USD")}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
+              <p className="text-[11.5px] text-ink-3 mb-2.5">Total transactions</p>
+              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
+                {velocityTotal.toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
+              <p className="text-[11.5px] text-ink-3 mb-2.5">Pending / awaiting</p>
+              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
+                {velocityPending.toLocaleString()}
+              </p>
+              {velocityPending > 0 && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-[10px] font-semibold">
+                    <AlertCircle size={10} /> Needs recheck
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
+              <p className="text-[11.5px] text-ink-3 mb-2.5">Completed</p>
+              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
+                {velocityPaid.toLocaleString()}
+              </p>
+              {velocityPaid > 0 && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-semibold">
+                    <CreditCard size={10} /> Settled
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Purchase journey funnel + AI Brief */}
