@@ -1,7 +1,9 @@
 export type VelocityPaymentProcessor = "ECOCASH" | "VMC" | "CASH"
 export type VelocityCurrency = "USD" | "ZWG"
 export type VelocityAuthType = "REMOTE" | "WEB"
-export type VelocityPollStatus = "SUCCESS" | "FAILED" | "PENDING" | "TIMEOUT" | "INITIATED_BUT_NO_REDIRECT"
+export type VelocityPollStatus = "SUCCESS" | "FAILED" | "PENDING" | "TIMEOUT" | "INITIATED_BUT_NO_REDIRECT" | "UNKNOWN"
+
+export type LocalPaymentStatus = "PAID" | "FAILED" | "PENDING" | "UNKNOWN"
 
 export type PaymentState = "PENDING" | "UNPAID" | "PARTIAL" | "PAID" | "FAILED" | "EXPIRED"
 
@@ -141,6 +143,14 @@ export interface VelocityErrorResponse {
   details?: Record<string, unknown>
 }
 
+export interface NormalizedPollResponse {
+  localStatus: LocalPaymentStatus
+  velocityPaymentStatus: string | null
+  velocityPollStatus: string | null
+  velocityWorkflowStatus: string | null
+  rawResponse: PollTransactionResponse | null
+}
+
 export interface VelocityOrderMetadata {
   salesOrderTrace: string
   transactionTrace: string | null
@@ -151,6 +161,11 @@ export interface VelocityOrderMetadata {
   invoiceRef: string | null
   initiatedAt: string | null
   finalizedAt: string | null
+  failedAt?: string | null
+  failureReason?: string | null
+  velocityRawPollResponse?: Record<string, unknown> | null
+  recheckedAt?: string | null
+  recheckedBy?: string | null
 }
 
 export interface VelocityCheckoutResponse {

@@ -7,6 +7,7 @@ import {
 
 import ResendButton from "@/app/admin/_components/ResendButton"
 import RefundButton from "@/app/admin/_components/RefundButton"
+import RecheckButton from "@/app/admin/_components/RecheckButton"
 import { desc, eq, or, like, and } from "drizzle-orm"
 
 import { auth } from "@/auth"
@@ -383,6 +384,9 @@ export default async function AdminOrdersPage({
                                 variant="desktop"
                               />
                             )}
+                            {o.status === "pending" && (
+                              <RecheckButton orderId={o.id} variant="desktop" />
+                            )}
                             {o.status === "paid" && (
                               <>
                                 <RefundButton orderId={o.id} variant="desktop" />
@@ -499,6 +503,9 @@ export default async function AdminOrdersPage({
                           status={o.status ?? ""}
                           variant="mobile"
                         />
+                      )}
+                      {o.status === "pending" && (
+                        <RecheckButton orderId={o.id} variant="mobile" />
                       )}
                       {o.status === "paid" && (
                         <>

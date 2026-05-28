@@ -1,5 +1,5 @@
 import "server-only"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { signIn } from "@/auth"
@@ -13,8 +13,11 @@ const VERIFICATION_TTL_HOURS = 24
 // routes once payment is confirmed. Safe to call once per order — the caller
 // should guard against duplicates.
 //
-// If the email fails to send, the order status is reverted to `pending` so the
-// caller can retry without leaving the order in an inconsistent state.
+// IMPORTANT: If the email fails to send, the order REMAINS at
+// `awaiting_verification`. The payment has already been confirmed in Velocity
+// and the workflow finalized — reverting to `pending` would orphan a valid
+// payment. Instead, a `verificationError` is stored in metadata so admins can
+// see the issue and resend the verification email manually.
 export async function startOrderVerification(opts: {
   orderId: string
   email: string
@@ -40,14 +43,20 @@ export async function startOrderVerification(opts: {
       redirect: false,
     })
   } catch (err) {
-    // Email sending failed — revert the order status so it can be re-processed
-    log.error("order-verification — email send failed, reverting status", {
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    log.error("order-verification — email send failed, order remains awaiting_verification", {
       orderId: opts.orderId,
-      error: err instanceof Error ? err.message : String(err),
+      error: errorMessage,
     })
+    // Store the error in metadata but do NOT revert status —
+    // the payment was already confirmed in Velocity.
+    // Admin can resend verification via the admin panel.
     await db
       .update(orders)
-      .set({ status: "pending", updatedAt: new Date() })
+      .set({
+        updatedAt: new Date(),
+        metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{verificationError}', ${JSON.stringify(errorMessage)}::jsonb)`,
+      })
       .where(eq(orders.id, opts.orderId))
     throw err
   }

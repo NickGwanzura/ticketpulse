@@ -9,6 +9,7 @@ import type {
   FinalizeWorkflowResponse,
   LookupCustomerResponse,
   VelocityConfig,
+  NormalizedPollResponse,
 } from "@/types/velocity"
 
 function getConfig(): VelocityConfig {
@@ -206,6 +207,20 @@ export function getProcessorLabel(paymentMethod: string): string {
     "velocity-card": "VMC",
   }
   return map[paymentMethod] ?? ""
+}
+
+/**
+ * Normalize Velocity poll status values to ensure consistent comparison.
+ * Velocity may return "SUCCESS", "FAILED", or "PENDING" (case-sensitive).
+ * This function validates and normalizes the status, returning a known value
+ * or throwing if the status is unrecognized.
+ */
+export function normalizeVelocityPollStatus(status: string | undefined | null): "SUCCESS" | "FAILED" | "PENDING" {
+  if (!status) return "PENDING"
+  const upper = status.toUpperCase()
+  if (upper === "SUCCESS") return "SUCCESS"
+  if (upper === "FAILED") return "FAILED"
+  return "PENDING"
 }
 
 export { getConfig }

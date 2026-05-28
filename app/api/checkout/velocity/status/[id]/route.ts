@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
-import { pollTransaction, finalizeWorkflow } from "@/services/velocity"
+import { pollTransaction, finalizeWorkflow, normalizeVelocityPollStatus } from "@/services/velocity"
 import { startOrderVerification } from "@/lib/order-verification"
 import { notifyPaymentSuccess } from "@/lib/payment-notifications"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
@@ -11,6 +11,7 @@ import { trackEvent } from "@/lib/analytics"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
 
 const POLL_TIMEOUT_MS = 5 * 60 * 1000
+const PAID_STATUSES = new Set(["paid", "awaiting_verification"])
 
 type Params = { id: string }
 
@@ -20,8 +21,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)
   if (!order) return NextResponse.json({ error: "not_found" }, { status: 404 })
 
-  const paidStatuses = new Set(["paid", "awaiting_verification"])
-  if (paidStatuses.has(order.status ?? "")) {
+  if (PAID_STATUSES.has(order.status ?? "")) {
     return NextResponse.json({
       orderId: id,
       status: order.status,
@@ -57,9 +57,34 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   }
 
   try {
-    const pollResult = await pollTransaction(velocityMeta.transactionTrace)
-    const pollStatus = pollResult.body.pollStatus
+    // ── 1. Poll Velocity ──────────────────────────────────────────────────
+    const pollUrl = `/transactions/poll/${velocityMeta.transactionTrace}`
+    log.info("velocity status - polling transaction", {
+      localOrderId: id,
+      localPaymentMethod: order.paymentMethod,
+      velocityTransactionTrace: velocityMeta.transactionTrace,
+      velocitySalesOrderTrace: velocityMeta.salesOrderTrace,
+      pollUrl,
+    })
 
+    const pollResult = await pollTransaction(velocityMeta.transactionTrace)
+    const rawPollStatus = pollResult.body.pollStatus
+    const pollStatus = normalizeVelocityPollStatus(rawPollStatus)
+    const pollPaymentStatus = pollResult.body.paymentStatus
+
+    log.info("velocity status - poll response received", {
+      localOrderId: id,
+      velocityTransactionTrace: velocityMeta.transactionTrace,
+      rawPollStatus,
+      normalizedPollStatus: pollStatus,
+      pollPaymentStatus,
+      pollAmount: pollResult.body.amount,
+      pollTrace: pollResult.body.trace,
+      pollResponseState: pollResult.state,
+      pollResponseStatus: pollResult.status,
+    })
+
+    // Always persist the latest poll status into metadata.
     const updatedMeta = {
       ...meta,
       velocity: {
@@ -73,76 +98,18 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       .set({ metadata: updatedMeta, updatedAt: new Date() })
       .where(eq(orders.id, id))
 
+    // ── 2. Payment confirmed → finalize workflow ──────────────────────────
     if (pollStatus === "SUCCESS") {
-      const lockKey = `velocity-finalize:${velocityMeta.salesOrderTrace}`
-      if (!acquireLock(lockKey)) {
-        return NextResponse.json({
-          orderId: id,
-          status: "pending",
-          paid: false,
-          pollStatus: "PENDING",
-          message: "Finalization in progress",
-        })
-      }
-
-      try {
-        log.info("velocity status - poll success, finalizing workflow", {
-          orderId: id,
-          salesOrderTrace: velocityMeta.salesOrderTrace,
-        })
-
-        const finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
-        const invoiceId = finalizeResult.body.invoice.id
-
-        trackEvent({ event: "PAYMENT_CONFIRMED", eventId: order.eventId, orderId: id, paymentMethod: order.paymentMethod, amount: Number(order.totalAmount) })
-
-        const finalMeta = {
-          ...meta,
-          velocity: {
-            ...velocityMeta,
-            pollStatus: "SUCCESS" as VelocityPollStatus,
-            paymentRef: invoiceId,
-            invoiceRef: invoiceId,
-            finalizedAt: new Date().toISOString(),
-          },
-        }
-
-        const [claimed] = await db
-          .update(orders)
-          .set({
-            status: "awaiting_verification",
-            paidAt: new Date(),
-            paymentRef: invoiceId,
-            metadata: finalMeta,
-            updatedAt: new Date(),
-          })
-          .where(and(eq(orders.id, id), eq(orders.status, "pending")))
-          .returning({ id: orders.id })
-
-        if (claimed && order.guestEmail) {
-          const origin = new URL(req.url).origin
-          await startOrderVerification({
-            orderId: id,
-            email: order.guestEmail,
-            origin,
-          })
-          notifyPaymentSuccess(id)
-        }
-
-        return NextResponse.json({
-          orderId: id,
-          status: "awaiting_verification",
-          paid: true,
-          pollStatus: "SUCCESS",
-          sentTo: order.guestEmail,
-          invoiceRef: invoiceId,
-        })
-      } finally {
-        releaseLock(lockKey)
-      }
+      return await handlePollSuccess(req, order, meta, velocityMeta, id, pollResult)
     }
 
+    // ── 3. Payment failed ─────────────────────────────────────────────────
     if (pollStatus === "FAILED") {
+      log.warn("velocity status - payment failed", {
+        localOrderId: id,
+        velocityTransactionTrace: velocityMeta.transactionTrace,
+        pollStatus,
+      })
       trackEvent({ event: "PAYMENT_FAILED", eventId: order.eventId, orderId: id, paymentMethod: order.paymentMethod, amount: Number(order.totalAmount) })
       return NextResponse.json({
         orderId: id,
@@ -152,6 +119,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       })
     }
 
+    // ── 4. Still pending ──────────────────────────────────────────────────
     return NextResponse.json({
       orderId: id,
       status: "pending",
@@ -159,7 +127,11 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       pollStatus: pollStatus ?? "PENDING",
     })
   } catch (err) {
-    log.error("velocity status polling error", { orderId: id, error: String(err) })
+    log.error("velocity status polling error", {
+      localOrderId: id,
+      velocityTransactionTrace: velocityMeta?.transactionTrace,
+      error: String(err),
+    })
     return NextResponse.json({
       orderId: id,
       status: "pending",
@@ -167,5 +139,168 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       pollStatus: "PENDING",
       message: err instanceof Error ? err.message : "Polling failed",
     })
+  }
+}
+
+/**
+ * Handle the SUCCESS poll status: finalize workflow, update DB, send verification.
+ * Extracted into a separate function for clarity and to keep GET() readable.
+ */
+async function handlePollSuccess(
+  req: Request,
+  order: typeof orders.$inferSelect,
+  meta: Record<string, unknown>,
+  velocityMeta: VelocityOrderMetadata,
+  id: string,
+  pollResult: Awaited<ReturnType<typeof pollTransaction>>,
+) {
+  const lockKey = `velocity-finalize:${velocityMeta.salesOrderTrace}`
+  if (!acquireLock(lockKey)) {
+    log.info("velocity status - finalization lock contended", {
+      localOrderId: id,
+      salesOrderTrace: velocityMeta.salesOrderTrace,
+    })
+    return NextResponse.json({
+      orderId: id,
+      status: "pending",
+      paid: false,
+      pollStatus: "PENDING",
+      message: "Finalization in progress",
+    })
+  }
+
+  try {
+    log.info("velocity status - poll success, finalizing workflow", {
+      localOrderId: id,
+      velocitySalesOrderTrace: velocityMeta.salesOrderTrace,
+      updateWorkflowUrl: `/sales-orders/update-workflow/${velocityMeta.salesOrderTrace}`,
+    })
+
+    // ── Finalize workflow ─────────────────────────────────────────────────
+    const finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
+
+    log.info("velocity status - finalize workflow response", {
+      localOrderId: id,
+      velocitySalesOrderTrace: velocityMeta.salesOrderTrace,
+      finalizeState: finalizeResult.state,
+      finalizeStatus: finalizeResult.status,
+      finalizeSalesOrderStatus: finalizeResult.body.salesOrder.status,
+      finalizeInvoiceId: finalizeResult.body.invoice.id,
+      finalizeSalesOrderId: finalizeResult.body.salesOrder.id,
+    })
+
+    // Validate that Velocity actually marked the sales order as PAID.
+    const salesOrderStatus = finalizeResult.body.salesOrder.status
+    if (salesOrderStatus !== "PAID") {
+      log.error("velocity status - finalize returned non-PAID status", {
+        localOrderId: id,
+        velocitySalesOrderTrace: velocityMeta.salesOrderTrace,
+        salesOrderStatus,
+        outstandingAmount: finalizeResult.body.salesOrder.outstandingAmount,
+        paidAmount: finalizeResult.body.salesOrder.paidAmount,
+      })
+      return NextResponse.json({
+        orderId: id,
+        status: "pending",
+        paid: false,
+        pollStatus: "SUCCESS",
+        message: `Workflow finalization returned status "${salesOrderStatus}" instead of "PAID"`,
+      })
+    }
+
+    const invoiceId = finalizeResult.body.invoice.id
+
+    trackEvent({ event: "PAYMENT_CONFIRMED", eventId: order.eventId, orderId: id, paymentMethod: order.paymentMethod, amount: Number(order.totalAmount) })
+
+    const finalMeta = {
+      ...meta,
+      velocity: {
+        ...velocityMeta,
+        pollStatus: "SUCCESS" as VelocityPollStatus,
+        paymentRef: invoiceId,
+        invoiceRef: invoiceId,
+        finalizedAt: new Date().toISOString(),
+      },
+    }
+
+    // ── Update local DB ───────────────────────────────────────────────────
+    const [claimed] = await db
+      .update(orders)
+      .set({
+        status: "awaiting_verification",
+        paidAt: new Date(),
+        paymentRef: invoiceId,
+        metadata: finalMeta,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(orders.id, id), eq(orders.status, "pending")))
+      .returning({ id: orders.id, status: orders.status })
+
+    log.info("velocity status - DB update result", {
+      localOrderId: id,
+      claimed: !!claimed,
+      claimedId: claimed?.id ?? null,
+      claimedStatus: claimed?.status ?? null,
+    })
+
+    // If the WHERE clause didn't match (race condition), re-read the actual status.
+    if (!claimed) {
+      const [reRead] = await db
+        .select({ id: orders.id, status: orders.status })
+        .from(orders)
+        .where(eq(orders.id, id))
+        .limit(1)
+
+      log.warn("velocity status - DB update skipped (status no longer pending), actual status", {
+        localOrderId: id,
+        actualStatus: reRead?.status ?? "unknown",
+      })
+
+      if (reRead) {
+        const isPaid = PAID_STATUSES.has(reRead.status ?? "")
+        return NextResponse.json({
+          orderId: id,
+          status: reRead.status,
+          paid: isPaid,
+          pollStatus: "SUCCESS",
+          invoiceRef: invoiceId,
+          note: isPaid ? "Already confirmed" : "Already processed, status unchanged",
+        })
+      }
+    }
+
+    // ── Send verification email ──────────────────────────────────────────
+    if (order.guestEmail) {
+      const origin = new URL(req.url).origin
+      try {
+        await startOrderVerification({
+          orderId: id,
+          email: order.guestEmail,
+          origin,
+        })
+      } catch (err) {
+        // Verification email failed — order stays at awaiting_verification.
+        // Admin can resend via the admin panel.
+        log.warn("velocity status - verification email send failed, payment confirmed but email pending", {
+          localOrderId: id,
+          error: String(err),
+        })
+      }
+      // Fire-and-forget the payment notification (non-critical)
+      notifyPaymentSuccess(id).catch((err) => {
+        log.warn("velocity status - notifyPaymentSuccess failed", { localOrderId: id, error: String(err) })
+      })
+    }
+
+    return NextResponse.json({
+      orderId: id,
+      status: "awaiting_verification",
+      paid: true,
+      pollStatus: "SUCCESS",
+      sentTo: order.guestEmail,
+      invoiceRef: invoiceId,
+    })
+  } finally {
+    releaseLock(lockKey)
   }
 }

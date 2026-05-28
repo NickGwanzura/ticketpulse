@@ -12,6 +12,7 @@ import {
   sendOrderConfirmationEmail,
 } from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
+import type { VelocityOrderMetadata } from "@/types/velocity"
 
 /**
  * Toggle an event between "draft" and "published".
@@ -551,6 +552,143 @@ export async function sendCommunicationAction(
   revalidatePath("/admin")
 
   return results
+}
+
+/**
+ * Re-check a pending/awaiting_verification order against Velocity.
+ * Polls the transaction and, if SUCCESS, re-finalizes the workflow.
+ * If the order is already paid, returns early.
+ *
+ * This is the admin recovery tool for stuck transactions:
+ * payments confirmed in Velocity but not reflected locally.
+ */
+export async function recheckPaymentAction(orderId: string): Promise<{ fixed: boolean; message: string; details?: Record<string, unknown> }> {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) throw new Error("Order not found")
+
+  // Already paid — nothing to do.
+  if (order.status === "paid") {
+    return { fixed: false, message: "Order is already paid." }
+  }
+
+  const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+  const velocityMeta = meta.velocity
+
+  if (!velocityMeta?.transactionTrace || !velocityMeta?.salesOrderTrace) {
+    return { fixed: false, message: "No Velocity transaction traces found on this order." }
+  }
+
+  const { pollTransaction, finalizeWorkflow, normalizeVelocityPollStatus } = await import("@/services/velocity")
+
+  // ── Step 1: Poll the transaction ────────────────────────────────────────
+  let pollResult
+  try {
+    pollResult = await pollTransaction(velocityMeta.transactionTrace)
+  } catch (err) {
+    return {
+      fixed: false,
+      message: `Failed to poll Velocity transaction: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+
+  const pollStatus = normalizeVelocityPollStatus(pollResult.body.pollStatus)
+
+  if (pollStatus !== "SUCCESS") {
+    return {
+      fixed: false,
+      message: `Payment status in Velocity is "${pollResult.body.pollStatus}" (normalized: "${pollStatus}"). Not confirmed yet.`,
+      details: { pollStatus, paymentStatus: pollResult.body.paymentStatus, amount: pollResult.body.amount },
+    }
+  }
+
+  // ── Step 2: Finalize the workflow ───────────────────────────────────────
+  let finalizeResult
+  try {
+    finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
+  } catch (err) {
+    return {
+      fixed: false,
+      message: `Poll succeeded but workflow finalization failed: ${err instanceof Error ? err.message : String(err)}. You can retry.`,
+      details: { pollStatus: "SUCCESS", salesOrderTrace: velocityMeta.salesOrderTrace },
+    }
+  }
+
+  if (finalizeResult.body.salesOrder.status !== "PAID") {
+    return {
+      fixed: false,
+      message: `Workflow finalization returned status "${finalizeResult.body.salesOrder.status}" instead of "PAID".`,
+      details: {
+        salesOrderStatus: finalizeResult.body.salesOrder.status,
+        outstandingAmount: finalizeResult.body.salesOrder.outstandingAmount,
+        paidAmount: finalizeResult.body.salesOrder.paidAmount,
+      },
+    }
+  }
+
+  const invoiceId = finalizeResult.body.invoice.id
+
+  // ── Step 3: Update local DB ─────────────────────────────────────────────
+  const finalMeta = {
+    ...meta,
+    velocity: {
+      ...velocityMeta,
+      pollStatus: "SUCCESS" as const,
+      paymentRef: invoiceId,
+      invoiceRef: invoiceId,
+      finalizedAt: new Date().toISOString(),
+      recheckedAt: new Date().toISOString(),
+      recheckedBy: session.user.email,
+    },
+  }
+
+  try {
+    await db
+      .update(orders)
+      .set({
+        status: "awaiting_verification",
+        paidAt: new Date(),
+        paymentRef: invoiceId,
+        metadata: finalMeta,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+  } catch (err) {
+    return {
+      fixed: true,
+      message: `Payment confirmed in Velocity and workflow finalized, but local DB update failed: ${err instanceof Error ? err.message : String(err)}. Please try again or check logs.`,
+      details: { salesOrderTrace: velocityMeta.salesOrderTrace, invoiceId },
+    }
+  }
+
+  // ── Step 4: Send verification email if not already done ─────────────────
+  if (order.guestEmail && order.status !== "awaiting_verification") {
+    try {
+      const { startOrderVerification } = await import("@/lib/order-verification")
+      const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+      await startOrderVerification({ orderId, email: order.guestEmail, origin })
+    } catch {
+      // Non-critical — email send failure won't block the fix.
+    }
+  }
+
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin")
+
+  return {
+    fixed: true,
+    message: `Payment confirmed, workflow finalized, order moved to awaiting_verification. Invoice: ${invoiceId}.`,
+    details: { salesOrderTrace: velocityMeta.salesOrderTrace, invoiceId, pollStatus: "SUCCESS" },
+  }
 }
 
 /**
