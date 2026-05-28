@@ -749,6 +749,160 @@ export async function recheckPaymentAction(
 }
 
 /**
+ * Poll all pending/awaiting_verification Velocity orders and fix any
+ * transactions that have completed in Velocity but not locally.
+ *
+ * Returns a summary of checked, fixed, and failed orders.
+ */
+export async function pollAllVelocityOrdersAction(): Promise<{
+  checked: number
+  fixed: number
+  errors: number
+  results: Array<{ orderId: string; action: string; message: string }>
+}> {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
+
+  const targetOrders = await db
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, guestEmail: orders.guestEmail })
+    .from(orders)
+    .where(
+      and(hasVelocity, inArray(orders.status, ["pending", "awaiting_verification"])),
+    )
+    .limit(30)
+
+  const results: Array<{ orderId: string; action: string; message: string }> = []
+  let fixedCount = 0
+  let errorCount = 0
+
+  for (const order of targetOrders) {
+    try {
+      const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+      const velocityMeta = meta.velocity
+
+      if (!velocityMeta?.transactionTrace || !velocityMeta?.salesOrderTrace) {
+        results.push({
+          orderId: order.id,
+          action: "skipped",
+          message: "No Velocity traces in metadata",
+        })
+        continue
+      }
+
+      const { pollTransaction, finalizeWorkflow } = await import("@/services/velocity")
+
+      const pollResult = await pollTransaction(velocityMeta.transactionTrace)
+      const rawStatus = pollResult.body?.pollStatus
+      const paymentStatus = pollResult.body?.paymentStatus
+
+      log.info("pollAllVelocityOrdersAction — poll result", {
+        orderId: order.id,
+        rawStatus,
+        paymentStatus,
+      })
+
+      if (rawStatus !== "SUCCESS" && paymentStatus !== "SUCCESS") {
+        // Update metadata with latest poll status even when not confirmed
+        await db
+          .update(orders)
+          .set({
+            updatedAt: new Date(),
+            metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,pollStatus}', ${JSON.stringify(rawStatus ?? "PENDING")}::jsonb)`,
+          })
+          .where(eq(orders.id, order.id))
+
+        results.push({
+          orderId: order.id,
+          action: "pending",
+          message: `Status: ${rawStatus ?? paymentStatus ?? "unknown"}`,
+        })
+        continue
+      }
+
+      // Finalize the workflow
+      const finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
+      const salesOrderStatus = finalizeResult.body.salesOrder.status
+
+      if (salesOrderStatus !== "PAID") {
+        results.push({
+          orderId: order.id,
+          action: "skipped",
+          message: `Finalization returned ${salesOrderStatus} instead of PAID`,
+        })
+        continue
+      }
+
+      const invoiceId = finalizeResult.body.invoice.id
+
+      // Update local DB
+      const updatedMeta = {
+        ...meta,
+        velocity: {
+          ...velocityMeta,
+          pollStatus: "SUCCESS" as const,
+          paymentRef: invoiceId,
+          invoiceRef: invoiceId,
+          finalizedAt: new Date().toISOString(),
+          recheckedAt: new Date().toISOString(),
+          polledNow: true,
+        },
+      }
+
+      await db
+        .update(orders)
+        .set({
+          status: "awaiting_verification",
+          paidAt: new Date(),
+          paymentRef: invoiceId,
+          metadata: updatedMeta,
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, order.id))
+
+      fixedCount++
+      results.push({
+        orderId: order.id,
+        action: "fixed",
+        message: `Confirmed — moved to awaiting_verification`,
+      })
+
+      // Send verification email if needed
+      if (order.guestEmail && order.status !== "awaiting_verification") {
+        try {
+          const { startOrderVerification } = await import("@/lib/order-verification")
+          const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+          await startOrderVerification({ orderId: order.id, email: order.guestEmail, origin })
+        } catch {
+          // Non-critical
+        }
+      }
+    } catch (err) {
+      errorCount++
+      results.push({
+        orderId: order.id,
+        action: "error",
+        message: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
+  revalidatePath("/admin")
+  revalidatePath("/admin/velocity")
+  revalidatePath("/admin/orders")
+
+  return {
+    checked: targetOrders.length,
+    fixed: fixedCount,
+    errors: errorCount,
+    results,
+  }
+}
+
+/**
  * Refund a paid order — marks order as refunded, all tickets as refunded,
  * and restores inventory for each affected tier.
  */

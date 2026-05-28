@@ -13,6 +13,7 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { publishEventAction, verifyUserEmailAction } from "@/app/admin/actions"
+import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import AiModerateButton from "@/components/ai/AiModerateButton"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
@@ -334,9 +335,12 @@ export default async function AdminOverviewPage() {
               </span>
               <h2 className="text-[13px] font-semibold tracking-tight text-ink">Velocity payments</h2>
             </div>
-            <Link href="/admin/velocity" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
-              Transaction viewer <ArrowUpRight size={12} />
-            </Link>
+            <div className="flex items-center gap-3">
+              <PollNowButton />
+              <Link href="/admin/velocity" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+                Transaction viewer <ArrowUpRight size={12} />
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
