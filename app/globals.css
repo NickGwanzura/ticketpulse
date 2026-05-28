@@ -40,6 +40,17 @@
   --color-green-700: #09071A;
   --color-green-800: #060410;
   --color-green-900: #030207;
+
+  /* Brand accent — indigo. Drives primary CTAs, active states, dates, focus. */
+  --color-brand: #4F46E5;
+  --color-brand-50: #EEF2FF;
+  --color-brand-100: #E0E7FF;
+  --color-brand-soft: #E0E7FF;
+  --color-brand-500: #6366F1;
+  --color-brand-600: #4F46E5;
+  --color-brand-700: #4338CA;
+
+  --color-blue: #4F46E5;
 }
 
 html { color-scheme: light; }

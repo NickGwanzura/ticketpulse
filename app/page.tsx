@@ -17,44 +17,16 @@ export const metadata: Metadata = {
   },
 }
 import {
-  ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
+  ArrowRight, ArrowUpRight, Search, Ticket, Smartphone,
   Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,
-  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
+  FileText, ScanLine,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
-import HeroEventCard from "@/components/events/HeroEventCard"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
-import { formatCurrency, formatDateShort } from "@/lib/utils"
-import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
+import { getFeaturedEvents } from "@/lib/events"
 import { db } from "@/db"
 import { events as eventsTable, ticketTiers } from "@/db/schema"
 import { and, asc, eq, inArray, sql } from "drizzle-orm"
-
-const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
-  concert:    { emoji: "🎵", gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  accent: "text-violet-700" },
-  marathon:   { emoji: "🏃", gradient: "from-sky-100 via-blue-50 to-cyan-50",        accent: "text-sky-700" },
-  walkathon:  { emoji: "🚶", gradient: "from-green-100 via-teal-50 to-cyan-50",    accent: "text-green-700" },
-  film:       { emoji: "🎬", gradient: "from-amber-100 via-orange-50 to-rose-50",    accent: "text-amber-700" },
-  exhibition: { emoji: "🏢", gradient: "from-slate-100 via-blue-50 to-indigo-50",    accent: "text-slate-700" },
-  expedition: { emoji: "⛰️", gradient: "from-lime-100 via-green-50 to-teal-50",    accent: "text-green-800" },
-}
-
-interface HeroTicket {
-  slug: string
-  title: string
-  venue: string
-  date: Date
-  price: number
-  currency: string
-  emoji: string
-  gradient: string
-  accent: string
-  badge: { label: string; color: string }
-  coverImage?: string | null
-  rotate?: string
-  placement?: string
-  z?: string
-}
 
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay first with just your name, email, and phone. We hold your seat and email a magic link. One click verifies the email, releases your tickets, and creates your account passwordless. You can set a password later from your account settings, or never. The tickets work either way." },
@@ -67,128 +39,44 @@ const FAQ = [
   { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event, no extra integrations." },
 ]
 
-const HERO_PLACEMENTS = [
-  { rotate: "lg:-rotate-[2deg]", placement: "lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2", z: "z-30" },
-  { rotate: "lg:rotate-[3deg]",  placement: "lg:top-[12%] lg:right-[6%]",                                      z: "z-20" },
-  { rotate: "lg:-rotate-[4deg]", placement: "lg:bottom-[8%] lg:left-[6%]",                                     z: "z-10" },
-] as const
-
-function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
-  return featured.slice(0, HERO_PLACEMENTS.length).map((event, i) => {
-    const visual = CATEGORY_HERO_VISUAL[event.category.toLowerCase()] ?? {
-      emoji: "🎫",
-      gradient: "from-slate-100 via-blue-50 to-indigo-50",
-      accent: "text-slate-700",
-    }
-    const placement = HERO_PLACEMENTS[i]
-    return {
-      slug: event.slug,
-      title: event.title,
-      venue: `${event.venue} · ${event.city}`,
-      date: event.startsAt,
-      price: event.lowestPrice ?? 0,
-      currency: event.currency,
-      emoji: visual.emoji,
-      gradient: visual.gradient,
-      accent: visual.accent,
-      coverImage: event.coverImage,
-      badge: event.status === "sold_out"
-        ? { label: "SOLD OUT", color: "bg-rose-600 text-white" }
-        : { label: "ON SALE", color: "bg-green-600 text-white" },
-      rotate: placement.rotate,
-      placement: placement.placement,
-      z: placement.z,
-    }
-  })
-}
-
 const CATEGORIES = [
-  { label: "Concerts",    value: "concert",    icon: Music,      gradient: "from-violet-50 to-fuchsia-50",   ring: "ring-violet-200/60",   accent: "text-violet-700" },
-  { label: "Marathons",   value: "marathon",   icon: Trophy,     gradient: "from-sky-50 to-blue-50",         ring: "ring-sky-200/60",      accent: "text-sky-700" },
-  { label: "Walkathons",  value: "walkathon",  icon: Footprints, gradient: "from-green-50 to-teal-50",     ring: "ring-green-200/60",  accent: "text-green-700" },
-  { label: "Film",        value: "film",       icon: Film,       gradient: "from-amber-50 to-orange-50",     ring: "ring-amber-200/60",    accent: "text-amber-700" },
-  { label: "Exhibitions", value: "exhibition", icon: Building2,  gradient: "from-slate-50 to-indigo-50",     ring: "ring-indigo-200/60",   accent: "text-indigo-700" },
-  { label: "Expeditions", value: "expedition", icon: Mountain,   gradient: "from-lime-50 to-green-50",     ring: "ring-lime-200/60",     accent: "text-lime-700" },
+  { label: "Concerts",    value: "concert",    icon: Music },
+  { label: "Marathons",   value: "marathon",   icon: Trophy },
+  { label: "Film",        value: "film",       icon: Film },
+  { label: "Exhibitions", value: "exhibition", icon: Building2 },
+  { label: "Expeditions", value: "expedition", icon: Mountain },
+  { label: "Walkathons",  value: "walkathon",  icon: Footprints },
 ]
 
-function buildStats(eventsOnSale: number) {
-  return [
-    { value: "Live",    label: "Launched May 2026" },
-    { value: String(eventsOnSale), label: eventsOnSale === 1 ? "Event on sale today" : "Events on sale today" },
-    { value: "2 ways",  label: "EcoCash · Visa" },
-    { value: "5%",      label: "Organizer fee, pay as you sell" },
-  ]
-}
+const FILTER_CHIPS = [
+  { label: "All",         value: "all" },
+  { label: "Concerts",    value: "concert" },
+  { label: "Marathons",   value: "marathon" },
+  { label: "Film",        value: "film" },
+  { label: "Exhibitions", value: "exhibition" },
+  { label: "Expeditions", value: "expedition" },
+  { label: "Walkathons",  value: "walkathon" },
+]
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
-  { icon: FileText,          title: "One-click verify",     body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in. Your ticket also arrives by WhatsApp — all at once. Your account is created and signed in. Set a password later if you want." },
-  { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Your ticket QR and event details land directly on your phone via WhatsApp after purchase. No app to download, no email to search for — it's right in your chat." },
-  { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, wallet pass, or your WhatsApp chat. End to end on TicketPulse. No third-party scanners." },
+  { icon: MousePointerClick, title: "Browse & buy in 60s", body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction — just an email and a phone number." },
+  { icon: FileText,          title: "One-click verify",    body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in, and your account is created and signed in." },
+  { icon: Smartphone,        title: "Tickets on WhatsApp", body: "Your ticket QR and event details land directly on your phone via WhatsApp after purchase. No app to download, no email to search for." },
+  { icon: ScanLine,          title: "We scan you in",      body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, wallet pass, or your WhatsApp chat. End to end on TicketPulse." },
 ]
 
-const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
-
-function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: number }) {
-  return (
-    <div
-      style={{ animationDelay: FADE_DELAY[index] ?? "0ms" }}
-      className={`tp-fade-up relative lg:absolute ${ticket.placement ?? ""} ${ticket.rotate ?? ""} ${ticket.z ?? ""} w-full max-w-[280px] rounded-2xl border border-line bg-paper shadow-[0_24px_60px_-24px_rgba(10,37,64,0.25)] overflow-hidden transition-transform duration-500 hover:rotate-0 hover:scale-[1.02] hover:z-40`}
-    >
-      <div className={`relative h-24 overflow-hidden ${ticket.coverImage ? "" : `bg-gradient-to-br ${ticket.gradient}`} flex items-center justify-center`}>
-        {ticket.coverImage ? (
-          <>
-            <img
-              src={ticket.coverImage}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-          </>
-        ) : (
-          <div className="absolute inset-0 [background:radial-gradient(400px_circle_at_30%_20%,rgba(255,255,255,0.65),transparent_60%)]" />
-        )}
-        {!ticket.coverImage && <span className="text-3xl relative">{ticket.emoji}</span>}
-        <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 ${ticket.badge.color} text-[9.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full`}>
-          {ticket.badge.label}
-        </span>
-      </div>
-      <div className="p-3.5">
-        <p className={`text-[9.5px] font-semibold tracking-[0.18em] uppercase ${ticket.accent} mb-1`}>Ticket</p>
-        <p className="text-[13px] font-semibold tracking-tight text-ink line-clamp-1">{ticket.title}</p>
-        <div className="mt-2 space-y-1 text-[11.5px] text-ink-2">
-          <p className="inline-flex items-center gap-1.5"><Calendar size={11} className="text-ink-3" /> {formatDateShort(ticket.date)}</p>
-          <p className="inline-flex items-center gap-1.5 truncate"><MapPin size={11} className="text-ink-3 shrink-0" /> <span className="truncate">{ticket.venue}</span></p>
-        </div>
-        <div className="mt-3 pt-3 border-t border-dashed border-line flex items-center justify-between">
-          <span className="text-[13px] font-semibold tracking-tight text-ink">
-            {ticket.price > 0 ? (
-              <>
-                <span className="text-[10px] text-ink-3 font-normal mr-1">From</span>
-                {formatCurrency(ticket.price, ticket.currency)}
-              </>
-            ) : (
-              <span className="text-green-700">Free entry</span>
-            )}
-          </span>
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-navy">
-            View <ArrowUpRight size={11} />
-          </span>
-        </div>
-      </div>
-      {/* Ticket notch */}
-      <div className="absolute top-[105px] -left-1.5 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
-      <div className="absolute top-[105px] -right-1.5 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
-    </div>
-  )
-}
+const CTA_STATS = [
+  { k: "0%",       l: "Setup fees" },
+  { k: "24h",      l: "To payout" },
+  { k: "EcoCash",  l: "+ Visa accepted" },
+  { k: "Built-in", l: "Gate scanner" },
+]
 
 export default async function Home() {
   const featuredEvents = await getFeaturedEvents(3)
-  const heroTickets = buildHeroTickets(featuredEvents)
   const eventsOnSale = featuredEvents.length
 
-  // ── Events by category (for category cards) ──
+  // ── Published events starting now or later, soonest first ──
   const allPublished = await db
     .select({
       id: eventsTable.id,
@@ -199,6 +87,8 @@ export default async function Home() {
       city: eventsTable.city,
       startsAt: eventsTable.startsAt,
       coverImage: eventsTable.coverImage,
+      featured: eventsTable.featured,
+      status: eventsTable.status,
     })
     .from(eventsTable)
     .where(and(
@@ -208,7 +98,7 @@ export default async function Home() {
     .orderBy(asc(eventsTable.startsAt))
     .limit(30)
 
-  let priceByEvent = new Map<string, { price: number; currency: string }>()
+  const priceByEvent = new Map<string, { price: number; currency: string }>()
   if (allPublished.length > 0) {
     const priceRows = await db
       .select({
@@ -230,506 +120,240 @@ export default async function Home() {
   for (const ev of allPublished) {
     const cat = ev.category.toLowerCase()
     if (!eventsByCategory.has(cat)) eventsByCategory.set(cat, [])
-    const list = eventsByCategory.get(cat)!
-    if (list.length < 3) list.push(ev)
+    eventsByCategory.get(cat)!.push(ev)
   }
 
+  const upcoming = allPublished.slice(0, 6).map((e) => {
+    const price = priceByEvent.get(e.id)
+    return {
+      id: e.id,
+      slug: e.slug,
+      title: e.title,
+      category: e.category,
+      venue: e.venue,
+      city: e.city,
+      startsAt: e.startsAt,
+      coverImage: e.coverImage,
+      featured: e.featured ?? false,
+      lowestPrice: price?.price ?? null,
+      currency: price?.currency ?? "USD",
+      status: e.status ?? "published",
+    }
+  })
+
   return (
-    <main>
-      {/* HERO */}
-      <section className="relative overflow-hidden">
-        {/* Layer 1: base mesh, multiple radial gradients */}
+    <main className="bg-paper text-ink">
+      {/* ── HERO ────────────────────────────────────────────────────────── */}
+      <section className="relative border-b border-line overflow-hidden">
+        {/* subtle grid backdrop, faded toward the bottom */}
         <div
           className="absolute inset-0 -z-10"
           style={{
-            background: [
-              "radial-gradient(1200px 540px at 88% -8%, #C7DBF5 0%, transparent 58%)",
-              "radial-gradient(900px 460px at -6% 8%, #E5EFFA 0%, transparent 55%)",
-              "radial-gradient(680px 380px at 55% 110%, rgba(254,235,200,0.55) 0%, transparent 60%)",
-              "radial-gradient(420px 280px at 22% 60%, rgba(167,139,250,0.18) 0%, transparent 65%)",
-              "linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
-            ].join(", "),
-          }}
-          aria-hidden
-        />
-
-        {/* Layer 2: vivid accent orb, top right, animated pulse */}
-        <div
-          className="absolute -top-20 right-[10%] -z-10 w-72 h-72 rounded-full blur-3xl pointer-events-none animate-[pulse_6s_ease-in-out_infinite]"
-          style={{ background: "radial-gradient(closest-side, rgba(5,112,222,0.25), transparent)" }}
-          aria-hidden
-        />
-
-        {/* Layer 3: secondary orb, left mid */}
-        <div
-          className="absolute top-[40%] -left-16 -z-10 w-64 h-64 rounded-full blur-3xl pointer-events-none"
-          style={{ background: "radial-gradient(closest-side, rgba(45,184,160,0.18), transparent)" }}
-          aria-hidden
-        />
-
-        {/* Layer 4: warm orb, bottom right */}
-        <div
-          className="absolute bottom-0 right-[20%] -z-10 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-70"
-          style={{ background: "radial-gradient(closest-side, rgba(251,191,36,0.16), transparent)" }}
-          aria-hidden
-        />
-
-        {/* Layer 5: dotted pattern, softly fading */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[560px] opacity-60"
-          style={{
-            backgroundImage: "radial-gradient(rgba(10,37,64,0.13) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-            maskImage: "radial-gradient(80% 70% at 50% 0%, black 0%, transparent 80%)",
-            WebkitMaskImage: "radial-gradient(80% 70% at 50% 0%, black 0%, transparent 80%)",
-          }}
-          aria-hidden
-        />
-
-        {/* Layer 6: faint grid for structure */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[420px] opacity-[0.07]"
-          style={{
             backgroundImage:
-              "linear-gradient(to right, #0a2540 1px, transparent 1px), linear-gradient(to bottom, #0a2540 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-            maskImage: "linear-gradient(to bottom, black, transparent)",
-            WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+              "linear-gradient(to right, rgba(11,15,25,0.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(11,15,25,0.035) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+            maskImage: "linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
           }}
           aria-hidden
         />
 
-        {/* Layer 7: decorative ring SVG */}
-        <svg
-          className="absolute -top-24 right-[2%] -z-10 w-[420px] h-[420px] opacity-30 pointer-events-none hidden md:block"
-          viewBox="0 0 200 200"
-          aria-hidden
-        >
-          <defs>
-            <linearGradient id="ringStroke" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#0570DE" stopOpacity="0.6" />
-              <stop offset="1" stopColor="#0570DE" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <circle cx="100" cy="100" r="92" fill="none" stroke="url(#ringStroke)" strokeWidth="0.5" strokeDasharray="2 4" />
-          <circle cx="100" cy="100" r="70" fill="none" stroke="url(#ringStroke)" strokeWidth="0.4" strokeDasharray="1 3" />
-        </svg>
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-20 md:pt-28 pb-16 md:pb-20 text-center">
+          <span className="tp-fade-up inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 border border-line rounded-full px-3.5 py-1.5 bg-paper">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+            Now live in Harare, Bulawayo, Vic Falls &amp; 3 more
+          </span>
 
-        {/* Layer 8: floating sparkles */}
-        <div className="absolute top-[18%] left-[44%] -z-10 w-1.5 h-1.5 rounded-full bg-green-500/70 shadow-[0_0_18px_4px_rgba(5,112,222,0.4)] animate-pulse" aria-hidden />
-        <div className="absolute top-[58%] left-[12%] -z-10 w-1 h-1 rounded-full bg-green-500/70 shadow-[0_0_12px_3px_rgba(19,17,50,0.25)] animate-pulse [animation-delay:1.2s]" aria-hidden />
-        <div className="absolute top-[35%] right-[6%] -z-10 w-1 h-1 rounded-full bg-amber-400/80 shadow-[0_0_10px_3px_rgba(245,158,11,0.3)] animate-pulse [animation-delay:2.4s] hidden md:block" aria-hidden />
+          <h1 className="tp-fade-up-1 mx-auto mt-7 max-w-3xl font-bold tracking-[-0.03em] text-[42px] leading-[1.04] sm:text-[58px] md:text-[68px] md:leading-[1.02] text-ink">
+            Tickets, done<br className="hidden sm:block" /> properly.
+          </h1>
 
-        {/* Layer 9: bottom curve fade */}
-        <svg
-          className="absolute bottom-0 left-0 right-0 -z-10 w-full h-12 pointer-events-none"
-          viewBox="0 0 1200 60"
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <path d="M0 60 Q 300 0, 600 30 T 1200 60 Z" fill="rgba(5,112,222,0.06)" />
-        </svg>
+          <p className="tp-fade-up-2 mx-auto mt-6 max-w-xl text-[16px] md:text-[17px] leading-relaxed text-ink-2">
+            Discover and buy tickets to Zimbabwe&apos;s best events — concerts, marathons, premieres and more. Plus merch, shuttle passes and photo packs, all in one checkout.
+          </p>
 
-        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-12 md:pb-24">
-          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-16 items-center">
-            {/* LEFT. Text */}
-            <div>
-              <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/80 backdrop-blur pl-2.5 pr-3.5 py-1.5 mb-8 md:mb-7 shadow-sm shadow-ink/5">
-                <span className="relative flex w-2 h-2">
-                  <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
-                  <span className="relative block w-2 h-2 rounded-full bg-green-500" />
-                </span>
-                <span className="text-[11.5px] font-semibold tracking-[0.04em] text-ink">
-                  <span className="text-green-700">Live</span>
-                  <span className="text-ink-3"> · launched May 2026</span>
-                </span>
-              </div>
-
-              <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[40px] leading-[1.05] sm:text-[60px] sm:leading-[1.0] md:text-[76px] md:leading-[0.96] text-ink">
-                Every event.<br />
-                <span className="relative inline-block">
-                  <span className="text-navy">One ticket.</span>
-                  <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 200 10" preserveAspectRatio="none" aria-hidden>
-                    <path className="tp-stroke-draw" d="M0 5 Q 50 0, 100 5 T 200 5" stroke="#0570DE" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-                  </svg>
-                </span>
-              </h1>
-
-              <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
-                Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
-              </p>
-
-              <form action="/events" className="tp-fade-up-3 mt-10 md:mt-9 flex flex-col sm:flex-row gap-3 md:gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">
-                <div className="relative flex-1 group">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none transition-colors group-focus-within:text-blue" />
-                  <input
-                    type="text"
-                    name="q"
-                    placeholder="Search events, venues, cities…"
-                    aria-label="Search events"
-                    className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 text-[15px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition group"
-                >
-                  Find tickets
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-                </button>
-              </form>
-
-              <div className="tp-fade-up-4 mt-7 md:mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-2 md:py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
-                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-green-600" /> No signup to buy</span>
-                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-green-600" /> PDF + mobile QR</span>
-                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-green-600" /> Delivered on WhatsApp</span>
-                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-green-600" /> Our gate scanner</span>
-              </div>
-
-              {/* Launch credibility */}
-              <div className="tp-fade-up-5 mt-10 md:mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-3 md:py-2.5">
-                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
-                  <ShieldCheck size={16} className="text-green-600" />
-                </span>
-                <div className="leading-tight">
-                  <p className="text-[12.5px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
-                  <p className="text-[11.5px] text-ink-3 mt-0.5">Sell, deliver, scan: one platform, no third-party stack.</p>
-                </div>
-              </div>
+          {/* search */}
+          <form
+            action="/events"
+            method="get"
+            className="tp-fade-up-3 mx-auto mt-9 flex items-center gap-2 max-w-xl bg-paper border border-line-2 rounded-xl p-1.5 shadow-sm shadow-ink/[0.03]"
+          >
+            <div className="flex-1 flex items-center gap-2.5 pl-3">
+              <Search size={18} className="text-ink-3 shrink-0" />
+              <input
+                type="text"
+                name="q"
+                placeholder="Search events, venues, artists…"
+                className="bg-transparent outline-none text-[15px] w-full placeholder:text-ink-3 py-2.5 text-ink"
+              />
             </div>
+            <button
+              type="submit"
+              className="bg-brand text-white font-semibold text-[15px] px-6 py-2.5 rounded-lg hover:bg-brand-700 active:scale-[0.99] transition-all"
+            >
+              Search
+            </button>
+          </form>
 
-            {/* RIGHT. Floating ticket cards */}
-            <div className="hidden md:block relative min-h-[280px] md:min-h-[320px] lg:h-[480px]">
-              {/* Decorative glow */}
-              <div className="absolute inset-0 -z-10 [background:radial-gradient(500px_circle_at_50%_45%,rgba(5,112,222,0.10),transparent_60%)] pointer-events-none" />
-
-              {heroTickets.length > 0 ? (
-                <>
-                  {/* Mobile/tablet: stack horizontally with snap */}
-                  <div className="lg:hidden flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-5 px-5 no-scrollbar">
-                    {heroTickets.map((t) => (
-                      <div key={t.slug} className="snap-center shrink-0 w-[260px] sm:w-[280px]">
-                        <HeroTicketCard ticket={t} />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Desktop: absolute floating (2-3 cards) OR large centered card (1 card) */}
-                  <div className="hidden lg:block relative h-full">
-                    {heroTickets.length === 1 ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-full max-w-[380px]">
-                          <HeroTicketCard ticket={heroTickets[0]} index={0} />
-                        </div>
-                      </div>
-                    ) : (
-                      heroTickets.map((t, i) => (
-                        <HeroTicketCard key={t.slug} ticket={t} index={i} />
-                      ))
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="rounded-2xl border border-dashed border-line bg-paper/70 backdrop-blur p-8 text-center max-w-sm">
-                    <p className="text-[13.5px] font-semibold tracking-tight text-ink">Events drop soon.</p>
-                    <p className="mt-1.5 text-[12.5px] text-ink-2">The first tickets land here the moment organizers go live.</p>
-                  </div>
+          {/* stats */}
+          <div className="tp-fade-up-4 mt-12 flex items-center justify-center gap-8 md:gap-10">
+            {[
+              { v: eventsOnSale > 0 ? `${eventsOnSale}` : "Live", l: eventsOnSale === 1 ? "Event on sale" : "Events on sale" },
+              { v: "EcoCash · Visa", l: "Pay your way" },
+              { v: "24h", l: "Organiser payouts" },
+            ].map((s, i) => (
+              <div key={s.l} className="flex items-center gap-8 md:gap-10">
+                {i > 0 && <span className="w-px h-8 bg-line" aria-hidden />}
+                <div>
+                  <div className="font-bold text-[18px] md:text-[20px] tracking-tight tabular-nums text-ink">{s.v}</div>
+                  <div className="text-[13px] text-ink-3">{s.l}</div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile: event cards below hero content */}
-          <div className="md:hidden mt-10 -mx-5 px-5">
-            {heroTickets.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 no-scrollbar">
-                {heroTickets.map((t) => (
-                  <div key={t.slug} className="snap-center shrink-0 w-[260px] sm:w-[280px]">
-                    <HeroTicketCard ticket={t} />
-                  </div>
-                ))}
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-line bg-paper/70 backdrop-blur p-8 text-center max-w-sm mx-auto">
-                <p className="text-[13.5px] font-semibold tracking-tight text-ink">Events drop soon.</p>
-                <p className="mt-1.5 text-[12.5px] text-ink-2">The first tickets land here the moment organizers go live.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Stats strip */}
-        <div className="border-t border-line bg-paper/60 backdrop-blur">
-          <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 md:py-9">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-line">
-              {buildStats(eventsOnSale).map((s, i) => (
-                <div
-                  key={i}
-                  style={{ animationDelay: `${300 + i * 70}ms` }}
-                  className="tp-fade-up md:px-6 md:first:pl-0 md:last:pr-0"
-                >
-                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none pb-0.5">
-                    {s.value}
-                  </p>
-                  <p className="mt-1.5 text-[12.5px] text-ink-3">{s.label}</p>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* FEATURED */}
-      {featuredEvents.length > 0 && (
-        <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div className="tp-reveal mb-8 md:mb-10 max-w-2xl">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
-            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">
-              {featuredEvents.length === 1 ? "Our launch event." : "What's on."}
+      {/* ── UPCOMING EVENTS ─────────────────────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-20">
+        <div className="flex items-end justify-between gap-4 mb-7">
+          <div>
+            <h2 className="font-bold tracking-tight text-[28px] md:text-[34px] leading-tight text-ink">
+              {upcoming.length <= 1 ? "On sale now" : "Upcoming events"}
             </h2>
-            <p className="mt-3 text-[15px] text-ink-2">
-              {featuredEvents.length === 1
-                ? "The first of many. Grab your spot before it sells out."
-                : "The calendar is filling up fast."}{" "}
-              <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.
+            <p className="text-ink-3 mt-1.5 text-[15px]">
+              {upcoming.length === 0
+                ? "No events live yet — check back soon."
+                : "Showing events near you, soonest first."}
             </p>
           </div>
+          <Link href="/events" className="hidden sm:inline-flex items-center gap-1 text-[14px] text-brand font-semibold hover:gap-1.5 transition-all">
+            View all <ArrowRight size={14} />
+          </Link>
+        </div>
 
-          {featuredEvents.length === 1 ? (
-            <div className="tp-fade-up">
-              <HeroEventCard
-                slug={featuredEvents[0].slug}
-                title={featuredEvents[0].title}
-                category={featuredEvents[0].category}
-                venue={featuredEvents[0].venue}
-                city={featuredEvents[0].city}
-                startsAt={featuredEvents[0].startsAt}
-                coverImage={featuredEvents[0].coverImage}
-                lowestPrice={featuredEvents[0].lowestPrice}
-                currency={featuredEvents[0].currency}
-                soldQuantity={featuredEvents[0].soldQuantity}
-                totalQuantity={featuredEvents[0].totalQuantity}
-              />
-            </div>
-          ) : (
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 md:gap-6 space-y-5 md:space-y-6">
-              {featuredEvents.map((e, i) => (
-                <div
-                  key={e.id}
-                  style={{ animationDelay: `${i * 90}ms` }}
-                  className="tp-fade-up break-inside-avoid"
-                >
-                  <EventCard {...e} />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+        {/* filter chips */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {FILTER_CHIPS.map((chip) => (
+            <Link
+              key={chip.value}
+              href={chip.value === "all" ? "/events" : `/events?category=${chip.value}`}
+              className={`text-[13px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${
+                chip.value === "all"
+                  ? "bg-ink text-white border-ink"
+                  : "bg-paper-2 border-line text-ink-2 hover:text-ink hover:border-line-2"
+              }`}
+            >
+              {chip.label}
+            </Link>
+          ))}
+        </div>
 
-      {/* CATEGORIES */}
-      <section className="bg-paper-2 border-y border-line">
-        <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div className="tp-reveal mb-8 md:mb-10">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Browse</p>
-            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">By category</h2>
-            <p className="mt-3 text-[15px] text-ink-2 max-w-xl">Find the experience you&apos;re after, from sold-out concerts to local marathons and premieres.</p>
+        {upcoming.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {upcoming.map((e, i) => (
+              <div key={e.id} style={{ animationDelay: `${i * 70}ms` }} className="tp-fade-up">
+                <EventCard {...e} />
+              </div>
+            ))}
           </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-line bg-paper-2 p-12 text-center">
+            <p className="text-[15px] font-medium text-ink mb-1">No events yet</p>
+            <p className="text-sm text-ink-2">Check back soon — organisers are coming online.</p>
+          </div>
+        )}
+      </section>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            {CATEGORIES.map(({ label, value, icon: Icon, gradient, ring, accent }, i) => {
-              const catEvents = eventsByCategory.get(value) ?? []
-              const priceInfo = catEvents.length > 0 ? priceByEvent.get(catEvents[0].id) : null
-              return (
+      {/* ── CATEGORIES ──────────────────────────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-20">
+        <h2 className="font-bold tracking-tight text-[28px] md:text-[34px] leading-tight text-ink mb-7">Browse by category</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+          {CATEGORIES.map(({ label, value, icon: Icon }) => {
+            const count = eventsByCategory.get(value)?.length ?? 0
+            return (
               <Link
                 key={value}
                 href={`/events?category=${value}`}
-                style={{ animationDelay: `${i * 60}ms` }}
-                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 flex flex-col hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 hover:ring-1 hover:ring-green-500/15 active:scale-[0.99] transition-all`}
+                className="group rounded-xl border border-line bg-paper p-5 hover:border-brand/40 hover:shadow-[0_12px_40px_-16px_rgba(11,15,25,0.18)] hover:-translate-y-0.5 transition-all"
               >
-                <div className="flex items-start justify-between">
-                  <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
-                    <Icon size={17} className={accent} />
-                  </span>
-                  {catEvents.length > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-ink-3 bg-white/60 rounded-full px-2 py-0.5">
-                      {catEvents.length}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-3">
-                  <p className="text-[15px] font-semibold tracking-tight text-ink">{label}</p>
-                  {catEvents.length > 0 ? (
-                    <ul className="mt-1.5 space-y-1">
-                      {catEvents.slice(0, 2).map((ev) => (
-                        <li key={ev.id} className="text-[11px] text-ink-2 leading-tight line-clamp-1">
-                          {ev.title}
-                          <span className="text-ink-3 ml-1">
-                            {formatDateShort(ev.startsAt)}
-                          </span>
-                        </li>
-                      ))}
-                      {catEvents.length > 2 && (
-                        <li className="text-[10.5px] text-navy font-medium">+{catEvents.length - 2} more</li>
-                      )}
-                    </ul>
-                  ) : (
-                    <p className="text-[11px] text-ink-3 mt-1">No upcoming events</p>
-                  )}
-                  <p className="text-[11px] font-medium text-navy inline-flex items-center gap-1 mt-1.5 group-hover:gap-1.5 transition-all">
-                    Browse {label.toLowerCase()} <ArrowRight size={10} />
-                  </p>
-                </div>
-              </Link>
-            )})}
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24 border-t border-line">
-        <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
-          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout. No third-party scanner contracts.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {STEPS.map(({ icon: Icon, title, body }, i) => (
-            <div
-              key={title}
-              style={{ animationDelay: `${i * 100}ms` }}
-              className="tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-paper p-6 md:p-7 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-28px_rgba(10,37,64,0.18)] transition-all duration-300"
-            >
-              <span
-                className="pointer-events-none absolute -top-2 -right-3 select-none text-[72px] md:text-[96px] font-bold tracking-tighter leading-none text-paper-3 group-hover:text-blue-soft group-hover:scale-110 group-hover:translate-x-0.5 transition-all duration-300"
-                aria-hidden
-              >
-                0{i + 1}
-              </span>
-
-              <div className="relative flex items-center gap-3 mb-5">
-                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/15 group-hover:bg-green-100 group-hover:ring-green-500/25 transition-all duration-300">
-                  <Icon size={22} className="text-green-600" />
+                <span className="inline-flex w-10 h-10 items-center justify-center rounded-lg bg-brand-50 text-brand">
+                  <Icon size={18} />
                 </span>
-                <span className="text-[10.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
-              </div>
-
-              <h3 className="relative text-[19px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
-              <p className="relative text-[14.5px] leading-relaxed text-ink-2">{body}</p>
-
-              <div className="pointer-events-none absolute -bottom-16 -right-12 w-40 h-40 rounded-full bg-green-500/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden />
-            </div>
-          ))}
+                <p className="mt-3 text-[15px] font-semibold tracking-tight text-ink">{label}</p>
+                <p className="text-[12.5px] text-ink-3 mt-0.5">{count > 0 ? `${count} upcoming` : "Browse"}</p>
+              </Link>
+            )
+          })}
         </div>
+      </section>
 
-        {/* End-to-end strip */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-          {[
-            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-green-500/15",   accent: "text-green-600" },
-            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-green-50 to-paper-2", ring: "ring-green-200/60", accent: "text-green-700" },
-            { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
-          ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (
-            <div
-              key={k}
-              style={{ animationDelay: `${i * 80}ms` }}
-              className="tp-fade-up group relative rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(10,37,64,0.12)] transition-all duration-300"
-            >
-              <span className={`inline-flex w-11 h-11 items-center justify-center rounded-xl bg-gradient-to-br ${tone} ring-1 ${ring} shrink-0 mb-3.5`}>
-                <Icon size={18} className={accent} />
-              </span>
-              <p className="text-[14.5px] font-semibold tracking-tight text-ink">{k}</p>
-              <p className="mt-1 text-[12.5px] text-ink-2 leading-relaxed">{v}</p>
+      {/* ── HOW IT WORKS ────────────────────────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24">
+        <div className="max-w-2xl mb-10">
+          <h2 className="font-bold tracking-tight text-[28px] md:text-[34px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
+          <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {STEPS.map(({ icon: Icon, title, body }, i) => (
+            <div key={title} className="rounded-2xl border border-line bg-paper p-6 hover:border-line-2 transition-colors">
+              <div className="flex items-center justify-between mb-5">
+                <span className="inline-flex w-11 h-11 items-center justify-center rounded-xl bg-brand-50 text-brand">
+                  <Icon size={20} />
+                </span>
+                <span className="text-[12px] font-semibold tracking-[0.16em] text-ink-3 uppercase tabular-nums">0{i + 1}</span>
+              </div>
+              <h3 className="text-[17px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
+              <p className="text-[14px] leading-relaxed text-ink-2">{body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="bg-paper-2 border-y border-line">
-        <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div className="tp-reveal mb-10 max-w-xl">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
-            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Quick answers.</h2>
-            <p className="mt-3 text-[15px] text-ink-2">Still wondering? <Link href="/help" className="text-navy font-semibold hover:underline">Browse the help center</Link> or <Link href="/contact" className="text-navy font-semibold hover:underline">talk to a human</Link>.</p>
-          </div>
-
-          <div className="tp-reveal">
-            <FAQSection items={FAQ} />
-          </div>
+      {/* ── FAQ ─────────────────────────────────────────────────────────── */}
+      <section className="max-w-3xl mx-auto px-5 md:px-8 pt-16 md:pt-24">
+        <div className="mb-8 max-w-xl">
+          <h2 className="font-bold tracking-tight text-[28px] md:text-[34px] leading-tight text-ink">Quick answers.</h2>
+          <p className="mt-3 text-[15px] text-ink-2">Still wondering? <Link href="/help" className="text-brand font-semibold hover:underline">Browse the help center</Link> or <Link href="/contact" className="text-brand font-semibold hover:underline">talk to a human</Link>.</p>
         </div>
+        <FAQSection items={FAQ} />
       </section>
 
-      {/* ORGANIZER CTA */}
-      <section className="px-5 md:px-8 pt-12 md:pt-20 pb-20 md:pb-28">
-        <div className="max-w-7xl mx-auto tp-reveal">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-14">
-            {/* One restrained ambient detail: a soft blue glow in the top-right corner. */}
-            <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" aria-hidden />
-            <div
-              className="absolute inset-0 opacity-[0.07] pointer-events-none"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to right, #ffffff20 1px, transparent 1px), linear-gradient(to bottom, #ffffff20 1px, transparent 1px)",
-                backgroundSize: "32px 32px",
-              }}
-              aria-hidden
-            />
-
-            <div className="relative grid md:grid-cols-2 gap-10 md:gap-12 items-start">
-              <div>
-                <p className="tp-fade-up text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase mb-3">For organizers</p>
-                <h2 className="tp-fade-up-1 font-bold tracking-[-0.02em] text-[28px] md:text-[44px] leading-[1.05]">
-                  Sell out your next event.
-                </h2>
-                <p className="tp-fade-up-2 mt-4 text-[15.5px] md:text-[17px] leading-relaxed text-white/80 max-w-lg">
-                  Launch in minutes. Verified payouts, mobile QR entry, and built-in shuttle, merch, and photo bundles. Keep more of every ticket.
-                </p>
-                <div className="tp-fade-up-3 mt-7 flex flex-wrap gap-3">
-                  <Link
-                    href="/auth/signup?role=organizer"
-                    className="group inline-flex items-center gap-2 rounded-xl bg-white text-navy font-semibold px-5 py-3.5 text-sm shadow-sm shadow-black/10 hover:bg-paper-2 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/20 active:scale-[0.99] active:translate-y-0 transition-all"
-                  >
-                    <Ticket size={15} /> Start selling
-                    <ArrowRight size={14} className="opacity-0 -ml-1 transition-all group-hover:opacity-100 group-hover:ml-0" />
-                  </Link>
-                  <Link
-                    href="/events"
-                    className="group inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 text-white font-semibold px-5 py-3.5 text-sm hover:bg-white/10 hover:border-white/30 active:scale-[0.99] transition-all"
-                  >
-                    See live events <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Stats: align the grid's top edge to the heading on md+ so the eye reads
-                  eyebrow → heading || stat-row, side by side. On mobile, natural flow. */}
-              <div className="grid grid-cols-2 gap-3 md:gap-4 md:mt-7">
-                {[
-                  { k: "98%",      l: "Payout success" },
-                  { k: "<2 min",   l: "Setup time" },
-                  { k: "0%",       l: "Booking fees on you" },
-                  { k: "Included", l: "Gate scanner & PDF tickets" },
-                ].map(({ k, l }, i) => (
-                  <div
-                    key={l}
-                    style={{ animationDelay: `${120 + i * 80}ms` }}
-                    className="tp-fade-up group relative overflow-hidden rounded-2xl bg-white/[0.06] border border-white/10 px-4 pt-5 pb-4 backdrop-blur hover:bg-white/[0.09] hover:border-white/20 hover:-translate-y-0.5 transition-all duration-200"
-                  >
-                    {/* Delicate accent bar — tells the eye these are stats, not links. */}
-                    <span
-                      className="absolute left-4 top-0 h-px w-8 bg-gradient-to-r from-blue/60 to-transparent group-hover:w-12 transition-all duration-300"
-                      aria-hidden
-                    />
-                    <p className="text-[22px] md:text-[26px] font-bold tracking-tight leading-none pb-1">
-                      {k}
-                    </p>
-                    <p className="text-[12.5px] text-white/70 mt-1.5 leading-snug">{l}</p>
-                  </div>
-                ))}
-              </div>
+      {/* ── ORGANIZER CTA ───────────────────────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-20 md:pb-28">
+        <div className="rounded-2xl border border-line bg-paper p-8 md:p-14 grid md:grid-cols-2 gap-10 items-center">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-brand uppercase mb-3">For organizers</p>
+            <h2 className="font-bold tracking-[-0.02em] text-[28px] md:text-[40px] leading-[1.06] text-ink">
+              Sell tickets to your event. Get paid in 24 hours.
+            </h2>
+            <p className="mt-4 text-[15px] md:text-[16px] leading-relaxed text-ink-2 max-w-lg">
+              Build your event, sell tickets, merch and shuttle passes, scan at the gate with our built-in app, and get paid out within a day of the show ending.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/auth/signup?role=organizer"
+                className="group inline-flex items-center gap-2 rounded-lg bg-brand text-white font-semibold px-5 py-3 text-sm hover:bg-brand-700 active:scale-[0.99] transition-all"
+              >
+                <Ticket size={15} /> Become an organiser
+                <ArrowRight size={14} className="opacity-0 -ml-1 transition-all group-hover:opacity-100 group-hover:ml-0" />
+              </Link>
+              <Link
+                href="/events"
+                className="group inline-flex items-center gap-2 rounded-lg border border-line-2 bg-paper text-ink font-semibold px-5 py-3 text-sm hover:border-ink/30 active:scale-[0.99] transition-all"
+              >
+                See live events <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </Link>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {CTA_STATS.map(({ k, l }) => (
+              <div key={l} className="rounded-xl border border-line p-5">
+                <div className="font-bold text-[22px] tracking-tight text-ink">{k}</div>
+                <div className="text-[13px] text-ink-3 mt-1">{l}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
