@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -15,6 +16,12 @@ import {
   CalendarCheck,
   Smartphone,
 } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "How it works",
+  description: "Buy tickets in under a minute, no signup needed. Or sell tickets to your event with our all-in-one platform. TicketPulse.",
+  alternates: { canonical: "/how-it-works" },
+}
 
 const ATTENDEE_STEPS = [
   {

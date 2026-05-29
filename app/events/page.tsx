@@ -6,8 +6,8 @@ import Link from "next/link"
 import { Search, Ticket, Users, Store, Calendar } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "Events",
-  description: "Browse upcoming events in Zimbabwe — concerts, marathons, film premieres, exhibitions, and more. Find your next experience on TicketPulse.",
+  title: "Upcoming events in Zimbabwe",
+  description: "Browse upcoming events in Zimbabwe — concerts, marathons, film premieres, exhibitions, and more. Buy tickets with EcoCash or Visa on TicketPulse.",
   alternates: {
     canonical: "/events",
   },

@@ -1,9 +1,16 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Search, ShieldCheck, Sparkles, ArrowRight, SearchX } from "lucide-react"
 import VendorCard from "@/components/vendors/VendorCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { VENDORS, VENDOR_VISUAL } from "@/lib/vendors"
 import type { VendorCategory } from "@/types"
+
+export const metadata: Metadata = {
+  title: "Vendor marketplace",
+  description: "Find and book verified vendors for your event in Zimbabwe — catering, photography, sound, security, decor and more.",
+  alternates: { canonical: "/vendors" },
+}
 
 const CATEGORIES: { label: string; value: "all" | VendorCategory }[] = [
   { label: "All",         value: "all" },

@@ -1,5 +1,13 @@
+import type { Metadata } from "next"
 import { Camera, Download, ImageOff, Sparkles } from "lucide-react"
 import EmptyState from "@/components/dashboard/EmptyState"
+
+export const metadata: Metadata = {
+  title: "Photo gallery",
+  description: "High-resolution photo packs from every TicketPulse event. Free to browse, pay only if you want to download.",
+  alternates: { canonical: "/media" },
+  robots: { index: false, follow: true },
+}
 
 const GALLERIES: never[] = []
 

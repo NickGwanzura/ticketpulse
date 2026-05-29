@@ -140,7 +140,7 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: num
           <>
             <img
               src={ticket.coverImage}
-              alt=""
+              alt={`${ticket.title} — ${ticket.venue}`}
               className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
@@ -649,6 +649,23 @@ export default async function Home() {
       {/* FAQ */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: FAQ.map(({ q, a }) => ({
+                  "@type": "Question",
+                  name: q,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: a,
+                  },
+                })),
+              }),
+            }}
+          />
           <div className="tp-reveal mb-10 max-w-xl">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
             <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Quick answers.</h2>

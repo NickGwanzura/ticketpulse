@@ -129,6 +129,23 @@ export default function HelpPage() {
       {/* Popular */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-14 md:py-20">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: POPULAR.map(({ q, a }) => ({
+                  "@type": "Question",
+                  name: q,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: a,
+                  },
+                })),
+              }),
+            }}
+          />
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Popular</p>
           <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">Most-asked questions</h2>
           <FAQSection items={POPULAR} />

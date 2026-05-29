@@ -150,6 +150,23 @@ export default function PricingPage() {
       {/* FAQ */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-20">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: FAQ.map(({ q, a }) => ({
+                  "@type": "Question",
+                  name: q,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: a,
+                  },
+                })),
+              }),
+            }}
+          />
           <div className="mb-10">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
             <h2 className="text-[28px] md:text-[36px] font-bold tracking-tight leading-tight text-ink">Pricing questions, answered.</h2>

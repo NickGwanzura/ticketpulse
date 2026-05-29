@@ -39,11 +39,11 @@ export default async function DashboardPage() {
           ].map(({ l, v, i: Icon, trend }) => (
             <div key={l} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <div className="flex items-center gap-2 mb-2.5">
-                <Icon size={14} className="text-ink-3" />
-                <span className="text-[11.5px] text-ink-3">{l}</span>
+                <Icon size={15} className="text-ink-3" />
+                <span className="text-[13px] text-ink-3">{l}</span>
               </div>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
-              <p className="text-[11.5px] text-ink-3 mt-2">{trend}</p>
+              <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
+              <p className="text-[13px] text-ink-3 mt-2">{trend}</p>
             </div>
           ))}
         </div>
@@ -65,7 +65,7 @@ export default async function DashboardPage() {
           {/* Upcoming tickets list */}
           <div className="col-span-12 md:col-span-5 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[16px] font-semibold tracking-tight text-ink">Upcoming tickets</h2>
+              <h2 className="text-[18px] font-semibold tracking-tight text-ink">Upcoming tickets</h2>
             </div>
             <EmptyState
               icon={Ticket}
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
         {/* Recent activity */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="px-5 md:px-6 py-4 border-b border-line">
-            <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent activity</h2>
+            <h2 className="text-[18px] font-semibold tracking-tight text-ink">Recent activity</h2>
           </div>
           <EmptyState
             icon={Activity}
@@ -115,9 +115,9 @@ export default async function DashboardPage() {
               <div className="w-8 h-8 rounded-lg bg-paper-2 border border-line flex items-center justify-center mb-3">
                 <Icon size={15} className="text-ink-2" />
               </div>
-              <p className="text-[14px] font-semibold tracking-tight text-ink">{title}</p>
-              <p className="text-[12.5px] text-ink-2 mt-1">{body}</p>
-              <p className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy group-hover:gap-1.5 transition-all">
+              <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
+              <p className="text-[13.5px] text-ink-2 mt-1">{body}</p>
+              <p className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-navy group-hover:gap-1.5 transition-all">
                 Open <ArrowUpRight size={12} />
               </p>
             </Link>
@@ -131,15 +131,15 @@ export default async function DashboardPage() {
               <Star size={15} className="text-green-600" />
             </div>
             <div>
-              <p className="text-[14px] font-semibold text-ink">You have 0 loyalty points</p>
-              <p className="text-[12.5px] text-ink-2 mt-0.5">
+              <p className="text-[15px] font-semibold text-ink">You have 0 loyalty points</p>
+              <p className="text-[13.5px] text-ink-2 mt-0.5">
                 Earn 50 points for every friend you refer. Redeem for ticket discounts.
               </p>
             </div>
           </div>
           <Link
             href="/contact"
-            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition whitespace-nowrap"
+            className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition whitespace-nowrap"
           >
             Refer a friend <ArrowUpRight size={13} />
           </Link>

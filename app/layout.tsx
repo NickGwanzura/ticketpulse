@@ -12,15 +12,6 @@ import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
 import { clashDisplay, generalSans, polysans, polysansWide } from "@/lib/fonts"
 
-const NAV_CATEGORY_EMOJI: Record<string, string> = {
-  concert: "🎵",
-  marathon: "🏃",
-  walkathon: "🚶",
-  film: "🎬",
-  exhibition: "🏢",
-  expedition: "⛰️",
-}
-
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"),
   title: {
@@ -54,6 +45,10 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "/",
+    languages: {
+      "en-ZW": "/",
+      "x-default": "/",
+    },
   },
 }
 
@@ -75,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     featured = events.map((e) => ({
       slug: e.slug,
       title: e.title,
-      emoji: NAV_CATEGORY_EMOJI[e.category.toLowerCase()] ?? "🎫",
+      category: e.category.toLowerCase(),
       date: `${formatDateShort(e.startsAt)} · ${e.venue}, ${e.city}`,
     }))
   }
@@ -83,6 +78,44 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${clashDisplay.variable} ${generalSans.variable} ${polysans.variable} ${polysansWide.variable}`}>
       <body className="font-body bg-paper text-ink antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "TicketPulse",
+              url: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech",
+              logo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/ticketpulse-logo.svg`,
+              sameAs: ["https://www.instagram.com/ticketpulsezw"],
+              address: {
+                "@type": "PostalAddress",
+                addressLocality: "Harare",
+                addressCountry: "ZW",
+              },
+              description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more.",
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "TicketPulse",
+              url: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech",
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/events?q={search_term_string}`,
+                },
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
         <Providers>
           {!bare && <TopBar />}
           {!bare && <Navbar featured={featured} />}

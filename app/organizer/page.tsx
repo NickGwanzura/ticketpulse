@@ -525,7 +525,7 @@ export default async function OrganizerPage({
                     <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-paper-2 ring-1 ring-line">
                       <Icon size={13} className="text-ink-2" />
                     </span>
-                    <span className="text-[11.5px] text-ink-3">{l}</span>
+                    <span className="text-[13px] text-ink-3">{l}</span>
                   </div>
                   <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
                 </div>
@@ -540,7 +540,7 @@ export default async function OrganizerPage({
         {/* Revenue chart */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-2">
           <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-            <h2 className="text-[16px] font-semibold tracking-tight text-ink">Revenue (last {revDays} days)</h2>
+            <h2 className="text-[18px] font-semibold tracking-tight text-ink">Revenue (last {revDays} days)</h2>
             <div className="flex items-center gap-1">
               {[
                 { label: "7d", days: 7 },
@@ -573,8 +573,8 @@ export default async function OrganizerPage({
               { label: "Avg order value", value: formatCurrency(avgOrder, "USD") },
             ].map(({ label, value }) => (
               <div key={label} className="px-5 md:px-6 py-4">
-                <p className="text-[11px] text-ink-3 mb-1">{label}</p>
-                <p className="text-[18px] font-bold tracking-tight text-ink tabular-nums">{value}</p>
+                <p className="text-[12.5px] text-ink-3 mb-1">{label}</p>
+                <p className="text-[20px] font-bold tracking-tight text-ink tabular-nums">{value}</p>
               </div>
             ))}
           </div>
@@ -591,7 +591,7 @@ export default async function OrganizerPage({
           {/* Events table */}
           <div className="col-span-12 lg:col-span-8 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[16px] font-semibold tracking-tight text-ink">All events</h2>
+              <h2 className="text-[18px] font-semibold tracking-tight text-ink">All events</h2>
               <div className="flex items-center gap-1.5">
                 {[
                   { label: "All", value: "all" },
@@ -661,7 +661,7 @@ export default async function OrganizerPage({
                 {/* Desktop table */}
                 <table className="hidden md:table w-full">
                   <thead>
-                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <tr className="border-b border-line text-[12px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-6 py-3 font-semibold">Event</th>
                       <th className="text-left px-3 py-3 font-semibold">Date</th>
                       <th className="text-left px-3 py-3 font-semibold">Status</th>
@@ -677,23 +677,23 @@ export default async function OrganizerPage({
                         <tr key={e.id} className="tp-row-accent hover:bg-paper-2 transition-colors">
                           <td className="px-6 py-4 max-w-xs">
                             <Link href={`/organizer/events/${e.id}`} className="block">
-                              <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
-                              <p className="text-[12px] text-ink-3 mt-0.5">{e.venue}</p>
+                              <p className="text-[15px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
+                              <p className="text-[13px] text-ink-3 mt-0.5">{e.venue}</p>
                             </Link>
                           </td>
-                          <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{e.startsAt.toLocaleDateString()}</td>
+                          <td className="px-3 py-4 text-[14px] text-ink-2 whitespace-nowrap">{e.startsAt.toLocaleDateString()}</td>
                           <td className="px-3 py-4">
                             <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[e.status] ?? STATUS_STYLE.draft}`}>
                               {e.status}
                             </span>
                           </td>
                           <td className="px-3 py-4 text-right whitespace-nowrap">
-                            <p className="text-[13px] font-semibold text-ink">{e.sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {e.capacity.toLocaleString()}</span></p>
+                            <p className="text-[14px] font-semibold text-ink">{e.sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {e.capacity.toLocaleString()}</span></p>
                             <div className="w-24 h-1 bg-paper-2 rounded-full mt-1.5 ml-auto overflow-hidden">
                               <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
                             </div>
                           </td>
-                          <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
+                          <td className="px-3 py-4 text-right text-[15px] font-bold tracking-tight text-ink whitespace-nowrap">
                             {formatCurrency(e.revenue, e.currency)}
                           </td>
                           <td className="px-3 py-4 text-right">
@@ -761,7 +761,7 @@ export default async function OrganizerPage({
 
             {/* Upcoming payout */}
             <div className="rounded-2xl border border-line bg-paper p-5">
-              <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">Upcoming payout</p>
+              <p className="text-[18px] font-semibold tracking-tight text-ink mb-4">Upcoming payout</p>
               <p className="text-[32px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(0, "USD")}</p>
               <p className="text-[12px] text-ink-3 mt-0.5 mb-4">USD via EcoCash</p>
               <div className="space-y-2 text-[12.5px] text-ink-2">
@@ -781,7 +781,7 @@ export default async function OrganizerPage({
 
             {/* VIP attendees */}
             <div className="rounded-2xl border border-line bg-paper p-5 flex-1">
-              <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">Top buyers</p>
+              <p className="text-[18px] font-semibold tracking-tight text-ink mb-4">Top buyers</p>
               {vipBuyers.length === 0 ? (
                 <EmptyState
                   icon={Users}
@@ -795,8 +795,8 @@ export default async function OrganizerPage({
                     <div key={b.name} className="flex items-center gap-3">
                       <span className="text-[11px] font-bold text-ink-3 w-4 tabular-nums">{i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-ink truncate">{b.name}</p>
-                        <p className="text-[11px] text-ink-3">{b.tickets} order{b.tickets !== 1 ? "s" : ""}</p>
+                        <p className="text-[14px] font-semibold text-ink truncate">{b.name}</p>
+                        <p className="text-[12px] text-ink-3">{b.tickets} order{b.tickets !== 1 ? "s" : ""}</p>
                       </div>
                       <span className="text-[13px] font-bold text-ink tabular-nums shrink-0">{formatCurrency(b.spent, "USD")}</span>
                     </div>
@@ -812,7 +812,7 @@ export default async function OrganizerPage({
 
           {/* Sales by event */}
           <div className="col-span-12 lg:col-span-5 rounded-2xl border border-line bg-paper p-5">
-            <p className="text-[16px] font-semibold tracking-tight text-ink mb-5">Sales by event</p>
+            <p className="text-[18px] font-semibold tracking-tight text-ink mb-5">Sales by event</p>
             {SALES_BY_EVENT.length === 0 ? (
               <EmptyState
                 icon={DollarSign}
@@ -828,8 +828,8 @@ export default async function OrganizerPage({
                   return (
                     <div key={e.id}>
                       <div className="flex justify-between items-baseline mb-1.5">
-                        <p className="text-[13px] font-medium text-ink truncate max-w-[180px]">{e.title}</p>
-                        <span className="text-[13px] font-bold text-ink tabular-nums shrink-0 ml-3">{formatCurrency(e.revenue, "USD")}</span>
+                        <p className="text-[14px] font-medium text-ink truncate max-w-[200px]">{e.title}</p>
+                        <span className="text-[14px] font-bold text-ink tabular-nums shrink-0 ml-3">{formatCurrency(e.revenue, "USD")}</span>
                       </div>
                       <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
                         <div className="h-full bg-navy rounded-full tp-progress-fill" style={{ width: `${pct}%` }} />
@@ -844,7 +844,7 @@ export default async function OrganizerPage({
           {/* Recent orders */}
           <div className="col-span-12 lg:col-span-7 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent orders</h2>
+              <h2 className="text-[18px] font-semibold tracking-tight text-ink">Recent orders</h2>
             </div>
 
             {RECENT_ORDERS.length === 0 ? (
@@ -860,14 +860,14 @@ export default async function OrganizerPage({
                   {RECENT_ORDERS.map((o) => (
                     <div key={`${o.name}-${o.ago}`} className="p-4">
                       <div className="flex justify-between items-start gap-2 mb-1">
-                        <p className="text-[13.5px] font-semibold text-ink">{o.name}</p>
-                        <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full shrink-0 ${ORDER_STATUS_STYLE[o.status]}`}>
+                        <p className="text-[14.5px] font-semibold text-ink">{o.name}</p>
+                        <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full shrink-0 ${ORDER_STATUS_STYLE[o.status]}`}>
                           {o.status}
                         </span>
                       </div>
-                      <p className="text-[12px] text-ink-3 truncate mb-2">{o.event}</p>
+                      <p className="text-[13px] text-ink-3 truncate mb-2">{o.event}</p>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(o.amount, o.currency)}</span>
+                        <span className="text-[14px] font-bold text-ink tabular-nums">{formatCurrency(o.amount, o.currency)}</span>
                         <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method] ?? METHOD_STYLE.ecocash}`}>{o.method}</span>
                         <span className="text-[11px] text-ink-3 ml-auto">{o.ago}</span>
                       </div>
@@ -878,7 +878,7 @@ export default async function OrganizerPage({
                 {/* Desktop: table */}
                 <table className="hidden md:table w-full">
                   <thead>
-                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <tr className="border-b border-line text-[12px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-5 py-3 font-semibold">Customer</th>
                       <th className="text-left px-3 py-3 font-semibold">Event</th>
                       <th className="text-right px-3 py-3 font-semibold">Amount</th>
@@ -890,11 +890,11 @@ export default async function OrganizerPage({
                   <tbody className="divide-y divide-line">
                     {RECENT_ORDERS.map((o) => (
                       <tr key={`${o.name}-${o.ago}`} className="hover:bg-paper-2 transition-colors">
-                        <td className="px-5 py-3 text-[13px] font-semibold text-ink whitespace-nowrap">{o.name}</td>
-                        <td className="px-3 py-3 text-[12px] text-ink-2 max-w-[160px]">
+                        <td className="px-5 py-3 text-[14px] font-semibold text-ink whitespace-nowrap">{o.name}</td>
+                        <td className="px-3 py-3 text-[13px] text-ink-2 max-w-[160px]">
                           <span className="line-clamp-1">{o.event}</span>
                         </td>
-                        <td className="px-3 py-3 text-right text-[13px] font-bold text-ink tabular-nums whitespace-nowrap">{formatCurrency(o.amount, o.currency)}</td>
+                        <td className="px-3 py-3 text-right text-[14px] font-bold text-ink tabular-nums whitespace-nowrap">{formatCurrency(o.amount, o.currency)}</td>
                         <td className="px-3 py-3 text-center">
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${METHOD_STYLE[o.method] ?? METHOD_STYLE.ecocash}`}>{o.method}</span>
                         </td>
@@ -903,7 +903,7 @@ export default async function OrganizerPage({
                             {o.status}
                           </span>
                         </td>
-                        <td className="px-3 py-3 text-right text-[11.5px] text-ink-3 whitespace-nowrap">{o.ago}</td>
+                        <td className="px-3 py-3 text-right text-[12.5px] text-ink-3 whitespace-nowrap">{o.ago}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -918,7 +918,7 @@ export default async function OrganizerPage({
 
           {/* Activity timeline */}
           <div className="col-span-12 lg:col-span-5 rounded-2xl border border-line bg-paper p-5">
-            <p className="text-[16px] font-semibold tracking-tight text-ink mb-5">What&apos;s happening</p>
+            <p className="text-[18px] font-semibold tracking-tight text-ink mb-5">What&apos;s happening</p>
             {activity.length === 0 ? (
               <EmptyState
                 icon={Calendar}
@@ -934,8 +934,8 @@ export default async function OrganizerPage({
                       <Icon size={13} className="text-ink-2" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] text-ink leading-snug">{text}</p>
-                      <p className="text-[11px] text-ink-3 mt-0.5">{ago}</p>
+                      <p className="text-[14px] text-ink leading-snug">{text}</p>
+                      <p className="text-[12px] text-ink-3 mt-0.5">{ago}</p>
                     </div>
                   </div>
                 ))}
@@ -945,7 +945,7 @@ export default async function OrganizerPage({
 
           {/* Quick links */}
           <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4 content-start">
-            <p className="text-[16px] font-semibold tracking-tight text-ink sm:col-span-3">Quick links</p>
+            <p className="text-[18px] font-semibold tracking-tight text-ink sm:col-span-3">Quick links</p>
 
             <Link
               href="/organizer/scan"
@@ -958,8 +958,8 @@ export default async function OrganizerPage({
                 </span>
                 <div className="min-w-0">
                   <p className="text-[10.5px] font-semibold tracking-[0.18em] text-white/70 uppercase">End-to-end · included</p>
-                  <p className="text-[15.5px] font-semibold tracking-tight text-white mt-0.5">Open the gate scanner</p>
-                  <p className="text-[12.5px] text-white/75 mt-1 leading-relaxed">
+                  <p className="text-[17px] font-semibold tracking-tight text-white mt-0.5">Open the gate scanner</p>
+                  <p className="text-[13.5px] text-white/75 mt-1 leading-relaxed">
                     Run TicketPulse&apos;s reader app on a phone or tablet at the gate. Reads PDF, mobile QR, and wallet passes. No third-party scanner contracts.
                   </p>
                   <p className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-white">
@@ -979,9 +979,9 @@ export default async function OrganizerPage({
               { title: "Read the guide", body: "Selling tips for first-time organizers.",    href: "/help/organizers" },
             ].map(({ title, body, href }) => (
               <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-                <p className="text-[14px] font-semibold tracking-tight text-ink">{title}</p>
-                <p className="text-[12.5px] text-ink-2 mt-1">{body}</p>
-                <p className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy">
+                <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
+                <p className="text-[13.5px] text-ink-2 mt-1">{body}</p>
+                <p className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-navy">
                   Open <ArrowUpRight size={12} />
                 </p>
               </Link>

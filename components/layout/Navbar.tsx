@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import {
   Menu, X, LogOut, LayoutDashboard, ChevronDown, ShoppingBag, Search,
-  Music, Trophy, Footprints, Film, Building2, Mountain, ArrowRight, ArrowUpRight,
+  Music, Trophy, Footprints, Film, Building2, Mountain, Ticket, ArrowRight, ArrowUpRight,
   CalendarCog, Store, Shield,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -28,10 +28,19 @@ const CATEGORIES: NavCategory[] = [
   { label: "Expeditions", value: "expedition", desc: "Outdoor & wilderness",    icon: Mountain,   accent: "text-lime-700",    ring: "ring-lime-200/60" },
 ]
 
+const CATEGORY_ICON: Record<string, typeof Music> = {
+  concert: Music,
+  marathon: Trophy,
+  walkathon: Footprints,
+  film: Film,
+  exhibition: Building2,
+  expedition: Mountain,
+}
+
 export interface NavbarFeaturedItem {
   slug: string
   title: string
-  emoji: string
+  category: string
   date: string
 }
 
@@ -334,7 +343,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                         href={`/events/${f.slug}`}
                         className="group flex items-center gap-3 rounded-xl border border-line bg-paper p-3 hover:border-line-2 hover:shadow-sm transition-all"
                       >
-                        <span className="shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-lg bg-paper-2 ring-1 ring-line text-xl">{f.emoji}</span>
+                        <span className="shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-lg bg-paper-2 ring-1 ring-line text-ink-2">{(CATEGORY_ICON[f.category.toLowerCase()] ?? Ticket)({ size: 18 })}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-semibold tracking-tight text-ink line-clamp-1">{f.title}</p>
                           <p className="text-[11.5px] text-ink-3">{f.date}</p>

@@ -259,7 +259,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <div className="relative w-full h-[32vh] md:h-[44vh] overflow-hidden bg-ink">
           <img
             src={row.coverImage}
-            alt=""
+            alt={`${row.title} event at ${row.venue}, ${row.city}`}
             className="w-full h-full object-cover bg-ink"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />

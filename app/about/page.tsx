@@ -1,5 +1,12 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight, Sparkles, Heart, ShieldCheck, Target, Zap } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "About",
+  description: "TicketPulse is a Zimbabwean ticketing platform built in Harare. Verified organizers, instant payouts, EcoCash & Visa. Live since May 2026.",
+  alternates: { canonical: "/about" },
+}
 
 const VALUES = [
   { icon: ShieldCheck, title: "Verified by default", body: "Every organizer and vendor is checked before they go live. Trust isn't a setting. It's the floor." },

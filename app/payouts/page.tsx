@@ -1,6 +1,13 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Sparkles, Wallet, ShieldCheck, Clock, ArrowRight, Check, Banknote, Smartphone } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
+
+export const metadata: Metadata = {
+  title: "Payouts",
+  description: "Get paid fast. EcoCash (instant), USD bank (24h), ZAR bank (24h). Flat 5% fee. TrustCo escrow protection for organizers.",
+  alternates: { canonical: "/payouts" },
+}
 
 const RAILS = [
   { icon: Smartphone, title: "EcoCash",  body: "Instant on event completion. No fee under USD 50.", chip: "Instant" },
@@ -87,6 +94,23 @@ export default function PayoutsPage() {
 
       {/* FAQ */}
       <section className="max-w-4xl mx-auto px-5 md:px-8 py-14 md:py-20">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: FAQ.map(({ q, a }) => ({
+                "@type": "Question",
+                name: q,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: a,
+                },
+              })),
+            }),
+          }}
+        />
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
         <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">Common payout questions.</h2>
         <FAQSection items={FAQ} />

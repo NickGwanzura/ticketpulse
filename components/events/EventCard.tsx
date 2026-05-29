@@ -150,7 +150,7 @@ export default function EventCard({
             {/* Cover image */}
             <img
               src={coverImage}
-              alt=""
+              alt={`${title} — ${venue}, ${city}`}
               loading="lazy"
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />

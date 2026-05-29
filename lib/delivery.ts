@@ -1,0 +1,387 @@
+import "server-only"
+import { eq, sql, and } from "drizzle-orm"
+import { db } from "@/db"
+import { orders, orderItems, ticketTiers, tickets, events, users } from "@/db/schema"
+import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
+import { saleNotificationEmail } from "@/lib/email-templates"
+import { sendText, formatChatId } from "@/lib/whatsapp"
+import { getBaseUrl } from "@/lib/url-config"
+import { trackEvent } from "@/lib/analytics"
+import { log } from "@/lib/logger"
+
+export type DeliveryStatus =
+  | "NOT_STARTED"
+  | "TICKETS_CREATED"
+  | "INVENTORY_UPDATED"
+  | "EMAIL_SENT"
+  | "EMAIL_FAILED"
+  | "WHATSAPP_SENT"
+  | "DELIVERED"
+  | "FAILED"
+
+export type DeliveryMetadata = {
+  status: DeliveryStatus
+  ticketIssuedAt: string | null
+  emailSentAt: string | null
+  emailSentTo: string | null
+  emailId: string | null
+  emailError: string | null
+  whatsappSent: boolean
+  deliveryAttempts: number
+  lastDeliveryError: string | null
+  lastDeliveryAttemptAt: string | null
+}
+
+const DEFAULT_DELIVERY: DeliveryMetadata = {
+  status: "NOT_STARTED",
+  ticketIssuedAt: null,
+  emailSentAt: null,
+  emailSentTo: null,
+  emailId: null,
+  emailError: null,
+  whatsappSent: false,
+  deliveryAttempts: 0,
+  lastDeliveryError: null,
+  lastDeliveryAttemptAt: null,
+}
+
+function getDeliveryMeta(meta: Record<string, unknown>): DeliveryMetadata {
+  return (meta.delivery ?? DEFAULT_DELIVERY) as DeliveryMetadata
+}
+
+/**
+ * Atomically issue tickets for a confirmed paid order.
+ *
+ * Safe to call multiple times — checks for existing tickets before creating.
+ * Returns a summary of what was done.
+ */
+export async function deliverTicketForPaidOrder(orderId: string): Promise<{
+  success: boolean
+  status: DeliveryStatus
+  ticketCount: number
+  emailSent: boolean
+  error: string | null
+}> {
+  const baseUrl = getBaseUrl()
+
+  // 1. Load the order
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) {
+    return { success: false, status: "FAILED", ticketCount: 0, emailSent: false, error: "Order not found" }
+  }
+
+  if (order.status !== "paid") {
+    return {
+      success: false,
+      status: "FAILED",
+      ticketCount: 0,
+      emailSent: false,
+      error: `Order status is "${order.status}", expected "paid"`,
+    }
+  }
+
+  // 2. Check if tickets already exist (idempotency)
+  const existingTickets = await db
+    .select({ id: tickets.id })
+    .from(tickets)
+    .where(eq(tickets.orderId, orderId))
+    .limit(1)
+
+  const meta = (order.metadata ?? {}) as Record<string, unknown>
+  const delivery = getDeliveryMeta(meta)
+  const alreadyDelivered = existingTickets.length > 0
+
+  // ── Guard: if tickets exist and email was sent, skip everything ─────────
+  if (alreadyDelivered && delivery.emailSentAt) {
+    log.info("delivery - already delivered, skipping", { orderId, ticketCount: existingTickets.length })
+    return {
+      success: true,
+      status: "DELIVERED",
+      ticketCount: existingTickets.length,
+      emailSent: true,
+      error: null,
+    }
+  }
+
+  const attemptMeta = {
+    ...delivery,
+    deliveryAttempts: delivery.deliveryAttempts + 1,
+    lastDeliveryAttemptAt: new Date().toISOString(),
+  }
+
+  try {
+    let ticketCount = 0
+
+    // ── 3. Create tickets if they don't exist ──────────────────────────────
+    if (!alreadyDelivered) {
+      const itemsWithIds = await db
+        .select({ id: orderItems.id, tierId: orderItems.tierId, quantity: orderItems.quantity })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId))
+
+      const ticketValues: {
+        tierId: string
+        eventId: string
+        orderId: string
+        userId: string | null
+        status: "sold"
+        qrCode: string
+      }[] = []
+
+      for (const item of itemsWithIds) {
+        if (!item.tierId) continue
+        for (let i = 0; i < item.quantity; i++) {
+          ticketValues.push({
+            tierId: item.tierId,
+            eventId: order.eventId,
+            orderId: orderId,
+            userId: order.userId,
+            status: "sold",
+            qrCode: `${orderId}-${item.id}-${i}`,
+          })
+        }
+      }
+
+      if (ticketValues.length > 0) {
+        await db.insert(tickets).values(ticketValues)
+
+        const tierCounts = new Map<string, number>()
+        for (const t of ticketValues) {
+          tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+        }
+        for (const [tierId, count] of tierCounts) {
+          await db
+            .update(ticketTiers)
+            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+            .where(eq(ticketTiers.id, tierId))
+        }
+
+        ticketCount = ticketValues.length
+
+        await trackEvent({
+          event: "TICKET_ISSUED",
+          eventId: order.eventId,
+          orderId,
+          ticketType: itemsWithIds.map((i) => i.tierId).filter(Boolean).join(","),
+          buyerEmail: order.guestEmail ?? undefined,
+        })
+      }
+
+      attemptMeta.status = "TICKETS_CREATED"
+      attemptMeta.ticketIssuedAt = new Date().toISOString()
+    } else {
+      ticketCount = existingTickets.length
+    }
+
+    // ── 4. Update delivery metadata ───────────────────────────────────────
+    await db
+      .update(orders)
+      .set({
+        metadata: { ...meta, delivery: { ...attemptMeta, status: "TICKETS_CREATED" } },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+
+    // ── 5. Send confirmation email ────────────────────────────────────────
+    if (order.guestEmail) {
+      try {
+        const [ev] = await db
+          .select({ title: events.title, startsAt: events.startsAt, venue: events.venue, organizerId: events.organizerId })
+          .from(events)
+          .where(eq(events.id, order.eventId))
+          .limit(1)
+
+        const saleLines = await db
+          .select({ qty: orderItems.quantity, unit: orderItems.unitPrice, total: orderItems.total, tierName: ticketTiers.name })
+          .from(orderItems)
+          .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+          .where(eq(orderItems.orderId, orderId))
+
+        const lines = saleLines.map((i) => ({
+          label: i.tierName ?? "Ticket",
+          qty: i.qty,
+          amount: `${i.total} ${order.currency ?? "USD"}`,
+        }))
+
+        const eventDate = ev?.startsAt
+          ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+          : "TBA"
+
+        const result = await sendOrderConfirmationEmail({
+          to: order.guestEmail,
+          buyerName: order.guestName,
+          orderId,
+          eventTitle: ev?.title ?? "your event",
+          eventDate,
+          eventVenue: ev?.venue ?? undefined,
+          lines,
+          total: String(order.totalAmount ?? "0"),
+          currency: order.currency ?? "USD",
+          ticketUrl: `${baseUrl}/orders/${orderId}`,
+        })
+
+        attemptMeta.status = "EMAIL_SENT"
+        attemptMeta.emailSentAt = new Date().toISOString()
+        attemptMeta.emailSentTo = order.guestEmail
+        attemptMeta.emailId = "id" in result ? result.id : null
+        attemptMeta.emailError = null
+
+        // ── Notify organizer and admin about the sale ─────────────────────
+        if (ev) {
+          notifyOrganizerSale(order, ev, saleLines, lines, baseUrl).catch((err) =>
+            log.warn("delivery - organizer notification failed", { orderId, error: String(err) }),
+          )
+        }
+      } catch (err) {
+        attemptMeta.status = "EMAIL_FAILED"
+        attemptMeta.emailError = err instanceof Error ? err.message : String(err)
+        log.error("delivery - email send failed", { orderId, error: attemptMeta.emailError })
+      }
+    }
+
+    // ── 6. Send WhatsApp ticket (non-blocking, idempotent) ─────────────────
+    if (order.guestPhone && !delivery.whatsappSent) {
+      const internalKey = process.env.INTERNAL_API_KEY
+      fetch(`${baseUrl}/api/whatsapp/send-ticket`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(internalKey ? { "X-Internal-Key": internalKey } : {}),
+        },
+        body: JSON.stringify({ orderId }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`WhatsApp API returned ${res.status}`)
+          return res.json()
+        })
+        .then(() => {
+          log.info("delivery - WhatsApp ticket sent", { orderId })
+        })
+        .catch((err) => log.warn("delivery - WhatsApp send failed (non-blocking)", { orderId, error: String(err) }))
+    }
+
+    // ── 7. Final status ───────────────────────────────────────────────────
+    const finalStatus: DeliveryStatus = attemptMeta.status === "EMAIL_FAILED" ? "EMAIL_FAILED" : "DELIVERED"
+    attemptMeta.status = finalStatus
+    attemptMeta.lastDeliveryError = finalStatus === "DELIVERED" ? null : attemptMeta.emailError
+
+    await db
+      .update(orders)
+      .set({
+        metadata: { ...meta, delivery: attemptMeta },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+
+    return {
+      success: finalStatus !== "EMAIL_FAILED",
+      status: finalStatus,
+      ticketCount,
+      emailSent: finalStatus === "DELIVERED",
+      error: attemptMeta.lastDeliveryError,
+    }
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
+    attemptMeta.status = "FAILED"
+    attemptMeta.lastDeliveryError = errorMsg
+
+    await db
+      .update(orders)
+      .set({
+        metadata: { ...meta, delivery: attemptMeta },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+      .catch((updateErr) => {
+        log.error("delivery - failed to record delivery failure in metadata", {
+          orderId,
+          error: String(updateErr),
+        })
+      })
+
+    log.error("delivery - failed", { orderId, error: errorMsg })
+    return { success: false, status: "FAILED", ticketCount: 0, emailSent: false, error: errorMsg }
+  }
+}
+
+// ── Organizer / Admin sale notifications ────────────────────────────────────
+
+async function notifyOrganizerSale(
+  order: typeof orders.$inferSelect,
+  ev: { title: string; startsAt: Date | null; venue: string | null; organizerId: string },
+  saleLines: { qty: number; unit: string; total: string; tierName: string | null }[],
+  lines: { label: string; qty: number; amount: string }[],
+  baseUrl: string,
+) {
+  const [org] = await db
+    .select({ name: users.name, email: users.email, phone: users.phone })
+    .from(users)
+    .where(eq(users.id, ev.organizerId))
+    .limit(1)
+
+  if (org?.email) {
+    const { html, text } = saleNotificationEmail({
+      role: "organizer",
+      eventTitle: ev.title,
+      buyerName: order.guestName ?? "A buyer",
+      orderId: order.id,
+      items: lines,
+      total: String(order.totalAmount),
+      currency: order.currency ?? "USD",
+      organizerName: org.name,
+    })
+    await sendEmail({ to: org.email, subject: `🎟️ New ticket sale — ${ev.title}`, html, text }).catch((err) =>
+      log.warn("delivery - organizer email notification failed", { error: String(err) }),
+    )
+  }
+
+  if (org?.phone) {
+    sendText(
+      formatChatId(org.phone),
+      [
+        `🎟️ *New ticket sale — ${ev.title}*`,
+        "",
+        `Buyer: ${order.guestName ?? "Someone"}`,
+        `Order: ${order.id.slice(0, 8)}...`,
+        ...lines.map((l) => `  • ${l.qty}× ${l.label} — ${l.amount}`),
+        `Total: ${order.totalAmount} ${order.currency ?? "USD"}`,
+        "",
+        `👉 ${baseUrl}/organizer/events/${order.eventId}/attendees`,
+      ].join("\n"),
+    ).catch((e) => log.warn("delivery - WhatsApp to organizer failed", { orderId: order.id, error: String(e) }))
+  }
+
+  // Admin sale notification
+  try {
+    const { html, text } = saleNotificationEmail({
+      role: "admin",
+      eventTitle: ev.title,
+      buyerName: order.guestName ?? "A buyer",
+      orderId: order.id,
+      items: lines,
+      total: String(order.totalAmount),
+      currency: order.currency ?? "USD",
+    })
+    await sendEmail({ to: adminEmail, subject: `🎟️ Sale alert — ${ev.title}`, html, text }).catch((err) =>
+      log.warn("delivery - admin email notification failed", { error: String(err) }),
+    )
+  } catch {
+    // Non-critical
+  }
+}
+
+// ── Delivery status helpers ─────────────────────────────────────────────────
+
+export function readDeliveryStatus(metadata: unknown): DeliveryMetadata {
+  const meta = (metadata ?? {}) as Record<string, unknown>
+  return (meta.delivery ?? DEFAULT_DELIVERY) as DeliveryMetadata
+}
+
+export function hasActiveTickets(orderId: string, status: string): boolean {
+  return status === "paid"
+}

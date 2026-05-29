@@ -297,12 +297,12 @@ export default async function AdminOverviewPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           {KPIS.length > 0 ? KPIS.map(({ label, value, currency, delta, up, spark }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[11.5px] text-ink-3 mb-2.5">{label}</p>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
+              <p className="text-[13px] text-ink-3 mb-2.5">{label}</p>
+              <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">
                 {currency ? formatCurrency(value, currency) : value.toLocaleString()}
               </p>
               <div className="mt-3 flex items-center justify-between gap-3">
-                <span className={`inline-flex items-center gap-1 text-[11.5px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
+                <span className={`inline-flex items-center gap-1 text-[12.5px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
                   {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
                   {Math.abs(delta).toFixed(1)}% MoM
                 </span>
@@ -315,10 +315,10 @@ export default async function AdminOverviewPage() {
             <>
               {["Gross volume", "Net revenue", "Active events", "New users"].map((label) => (
                 <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-                  <p className="text-[11.5px] text-ink-3 mb-2.5">{label}</p>
-                  <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">0</p>
+                  <p className="text-[12.5px] text-ink-3 mb-2.5">{label}</p>
+                  <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">0</p>
                   <div className="mt-3">
-                    <span className="text-[11.5px] text-ink-3">No data yet</span>
+                    <span className="text-[12.5px] text-ink-3">No data yet</span>
                   </div>
                 </div>
               ))}
@@ -333,7 +333,7 @@ export default async function AdminOverviewPage() {
               <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-indigo-50">
                 <Activity size={12} className="text-indigo-600" />
               </span>
-              <h2 className="text-[13px] font-semibold tracking-tight text-ink">Velocity payments</h2>
+              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Velocity payments</h2>
             </div>
             <div className="flex items-center gap-3">
               <PollNowButton />
@@ -344,19 +344,19 @@ export default async function AdminOverviewPage() {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[11.5px] text-ink-3 mb-2.5">Velocity revenue</p>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
+              <p className="text-[13px] text-ink-3 mb-2.5">Velocity revenue</p>
+              <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">
                 {formatCurrency(velocityRevenue, "USD")}
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[11.5px] text-ink-3 mb-2.5">Total transactions</p>
+              <p className="text-[13px] text-ink-3 mb-2.5">Total transactions</p>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
                 {velocityTotal.toLocaleString()}
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[11.5px] text-ink-3 mb-2.5">Pending / awaiting</p>
+              <p className="text-[13px] text-ink-3 mb-2.5">Pending / awaiting</p>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
                 {velocityPending.toLocaleString()}
               </p>
@@ -369,7 +369,7 @@ export default async function AdminOverviewPage() {
               )}
             </div>
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[11.5px] text-ink-3 mb-2.5">Completed</p>
+              <p className="text-[13px] text-ink-3 mb-2.5">Completed</p>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
                 {velocityPaid.toLocaleString()}
               </p>
@@ -422,7 +422,7 @@ export default async function AdminOverviewPage() {
                         <p className="text-[13.5px] text-ink leading-snug">
                           <span className="font-semibold">{a.who}</span> <span className="text-ink-2">{a.msg}</span>
                         </p>
-                        <p className="text-[11.5px] text-ink-3 mt-0.5">{a.when}</p>
+                        <p className="text-[12.5px] text-ink-3 mt-0.5">{a.when}</p>
                       </div>
                     </li>
                   )
@@ -452,7 +452,7 @@ export default async function AdminOverviewPage() {
                     <div className="flex items-start justify-between gap-3 mb-1.5">
                       <div className="min-w-0">
                         <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                        <p className="text-[11.5px] text-ink-3 mt-0.5">{e.organizer}</p>
+                        <p className="text-[12.5px] text-ink-3 mt-0.5">{e.organizer}</p>
                       </div>
                       <p className="text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
                         {e.revenue > 0 ? formatCurrency(e.revenue, e.currency) : "—"}
