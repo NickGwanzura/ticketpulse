@@ -1,26 +1,38 @@
 import Link from "next/link"
-import { Wallet, Clock, CheckCircle2, AlertOctagon, Send, ArrowUpRight, Smartphone, Building2, Inbox, Loader2 } from "lucide-react"
+import {
+  Wallet, Clock, CheckCircle2, Send, ArrowUpRight,
+  Smartphone, Building2, Inbox, XCircle,
+} from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
-import { getPayouts, processPayoutAction, updatePayoutStatusAction } from "./actions"
+import {
+  getPayouts, approvePayoutAction, rejectPayoutAction,
+  markPayoutPaidAction, markPayoutProcessingAction,
+} from "./actions"
 
-type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held"
+type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
 const STATUS_STYLE: Record<PayoutStatus, string> = {
-  pending:   "bg-amber-50 text-amber-700",
-  approved:  "bg-violet-50 text-violet-700",
+  pending:    "bg-amber-50 text-amber-700",
+  approved:   "bg-violet-50 text-violet-700",
   processing: "bg-sky-50 text-sky-700",
-  paid:      "bg-emerald-50 text-emerald-700",
-  held:      "bg-rose-50 text-rose-700",
+  paid:       "bg-emerald-50 text-emerald-700",
+  held:       "bg-rose-50 text-rose-700",
+  rejected:   "bg-red-50 text-red-700",
+  failed:     "bg-orange-50 text-orange-700",
+  cancelled:  "bg-gray-50 text-gray-600",
 }
 
 const STATUS_LABEL: Record<PayoutStatus, string> = {
-  pending:   "Pending",
-  approved:  "Approved",
+  pending:    "Pending",
+  approved:   "Approved",
   processing: "Processing",
-  paid:      "Paid",
-  held:      "Held",
+  paid:       "Paid",
+  held:       "Held",
+  rejected:   "Rejected",
+  failed:     "Failed",
+  cancelled:  "Cancelled",
 }
 
 const TABS: { key: PayoutStatus | "all"; label: string }[] = [
@@ -29,6 +41,7 @@ const TABS: { key: PayoutStatus | "all"; label: string }[] = [
   { key: "processing", label: "Processing" },
   { key: "paid",      label: "Paid" },
   { key: "held",      label: "Held" },
+  { key: "rejected",  label: "Rejected" },
 ]
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -38,10 +51,11 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
   const { payouts: payoutRows, stats } = await getPayouts(active === "all" ? undefined : active)
 
   const statsCards = [
-    { label: "Pending payouts", value: stats.pending,   icon: Clock,         tone: "text-amber-700",   bg: "bg-amber-50" },
-    { label: "Approved",        value: stats.approved,  icon: CheckCircle2,  tone: "text-violet-700",  bg: "bg-violet-50" },
-    { label: "Processing",      value: stats.processing, icon: Send,         tone: "text-sky-700",     bg: "bg-sky-50" },
-    { label: "Paid",            value: stats.paid,      icon: CheckCircle2,  tone: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: "Pending",     value: stats.pending,     icon: Clock,          tone: "text-amber-700",  bg: "bg-amber-50" },
+    { label: "Approved",    value: stats.approved,    icon: CheckCircle2,   tone: "text-violet-700", bg: "bg-violet-50" },
+    { label: "Processing",  value: stats.processing,  icon: Send,           tone: "text-sky-700",    bg: "bg-sky-50" },
+    { label: "Paid",        value: stats.paid,        icon: CheckCircle2,   tone: "text-emerald-700", bg: "bg-emerald-50" },
+    { label: "Rejected",    value: stats.rejected,    icon: XCircle,        tone: "text-red-700",    bg: "bg-red-50" },
   ]
 
   const pendingTotal = Number(stats.pendingTotal ?? 0)
@@ -51,13 +65,13 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
       <PageHeader
         eyebrow="Payouts"
         title="Organizer payouts"
-        subtitle="Review and process payout requests across EcoCash and bank transfers."
+        subtitle="Review, approve, and process payout requests across EcoCash and bank transfers."
         width="full"
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 tp-fade-up-1">
           {statsCards.map(({ label, value, icon: Icon, tone, bg }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">
               <span className={`inline-flex w-10 h-10 items-center justify-center rounded-xl ${bg}`}>
@@ -79,8 +93,8 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                 <Wallet size={15} className="text-brand-600" />
               </span>
               <div>
-                <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(pendingTotal, "USD")} ready to send</p>
-                <p className="text-[12.5px] text-ink-2">{stats.pending} pending payout request{stats.pending !== 1 ? "s" : ""} awaiting processing.</p>
+                <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(pendingTotal, "USD")} ready to review</p>
+                <p className="text-[12.5px] text-ink-2">{stats.pending} payout request{stats.pending !== 1 ? "s" : ""} pending approval.</p>
               </div>
             </div>
             <Link
@@ -100,7 +114,9 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
               : key === "approved" ? stats.approved
               : key === "processing" ? stats.processing
               : key === "paid" ? stats.paid
-              : stats.held
+              : key === "held" ? stats.held
+              : key === "rejected" ? stats.rejected
+              : 0
             return (
               <Link
                 key={key}
@@ -131,7 +147,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                       <th className="text-left px-3 py-3 font-semibold">Requested</th>
                       <th className="text-left px-3 py-3 font-semibold">Status</th>
                       <th className="text-right px-3 py-3 font-semibold">Amount</th>
-                      <th className="px-5 py-3" />
+                      <th className="px-5 py-3 text-right" colSpan={2}>Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -139,7 +155,12 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                       <tr key={p.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-4">
                           <p className="text-[13.5px] font-semibold tracking-tight text-ink">{p.organizerName ?? "—"}</p>
-                          <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.eventTitle ?? "General"} · {p.id.slice(0, 8)}</p>
+                          <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">
+                            {p.eventTitle ?? "General"} · {p.id.slice(0, 8)}
+                            {p.rejectionReason && (
+                              <span className="text-red-500 ml-2">Rejected: {p.rejectionReason}</span>
+                            )}
+                          </p>
                         </td>
                         <td className="px-3 py-4">
                           <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
@@ -156,17 +177,70 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
                           {formatCurrency(Number(p.amount), p.currency)}
                         </td>
-                        <td className="px-5 py-4 text-right">
-                          {p.status === "pending" && (
-                            <form action={async () => { await processPayoutAction(p.id) }} className="inline-flex">
-                              <button
-                                type="submit"
-                                className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
-                              >
-                                <Send size={11} /> Pay
-                              </button>
-                            </form>
-                          )}
+                        <td className="px-3 py-4 text-right">
+                          <div className="flex items-center gap-1.5 justify-end">
+                            {/* Pending → Approve / Reject */}
+                            {p.status === "pending" && (
+                              <>
+                                <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
+                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700 transition-colors">
+                                    <CheckCircle2 size={11} /> Approve
+                                  </button>
+                                </form>
+                                <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
+                                  <div className="flex items-center gap-1">
+                                    <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1.5 text-[10.5px] font-semibold text-white hover:bg-red-700 transition-colors">
+                                      <XCircle size={10} /> Reject
+                                    </button>
+                                  </div>
+                                </form>
+                              </>
+                            )}
+
+                            {/* Approved → Process / Pay */}
+                            {p.status === "approved" && (
+                              <>
+                                <form action={async () => { "use server"; await markPayoutProcessingAction(p.id) }}>
+                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-sky-700 transition-colors">
+                                    <Send size={11} /> Process
+                                  </button>
+                                </form>
+                                <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                                  <div className="flex items-center gap-1">
+                                    <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[10.5px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                                      <CheckCircle2 size={10} /> Pay
+                                    </button>
+                                  </div>
+                                </form>
+                              </>
+                            )}
+
+                            {/* Processing → Pay */}
+                            {p.status === "processing" && (
+                              <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                                <div className="flex items-center gap-1">
+                                  <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[10.5px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                                    <CheckCircle2 size={10} /> Pay
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+
+                            {/* Paid — show proof reference */}
+                            {p.status === "paid" && p.proofReference && (
+                              <span className="text-[10.5px] text-ink-3 font-medium">Ref: {p.proofReference}</span>
+                            )}
+
+                            {/* Rejected — show reason */}
+                            {p.status === "rejected" && p.rejectionReason && (
+                              <span className="text-[10.5px] text-red-600 max-w-[120px] truncate" title={p.rejectionReason}>
+                                {p.rejectionReason}
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -196,15 +270,42 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         {formatCurrency(Number(p.amount), p.currency)}
                       </span>
                     </div>
+
+                    {/* Mobile action buttons */}
                     {p.status === "pending" && (
-                      <form action={async () => { await processPayoutAction(p.id) }} className="mt-3">
-                        <button
-                          type="submit"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
-                        >
-                          <Send size={12} /> Mark as paid
-                        </button>
-                      </form>
+                      <div className="mt-3 flex items-center gap-2">
+                        <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
+                          <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700">Approve</button>
+                        </form>
+                        <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
+                          <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px]" />
+                          <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Reject</button>
+                        </form>
+                      </div>
+                    )}
+                    {p.status === "approved" && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <form action={async () => { "use server"; await markPayoutProcessingAction(p.id) }}>
+                          <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Process</button>
+                        </form>
+                        <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                          <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px]" />
+                          <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Pay</button>
+                        </form>
+                      </div>
+                    )}
+                    {p.status === "processing" && (
+                      <div className="mt-3">
+                        <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                          <div className="flex items-center gap-1">
+                            <input name="proofRef" type="text" placeholder="Ref..." className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px]" />
+                            <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Mark paid</button>
+                          </div>
+                        </form>
+                      </div>
+                    )}
+                    {p.status === "rejected" && p.rejectionReason && (
+                      <p className="mt-2 text-[11px] text-red-600">{p.rejectionReason}</p>
                     )}
                   </li>
                 ))}
@@ -214,7 +315,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
             <EmptyState
               icon={Inbox}
               title="No payouts in this status"
-              body="When payouts are requested, processed, or held they'll appear here."
+              body="When payouts are submitted, processed, or completed they'll appear here."
               variant="inline"
             />
           )}

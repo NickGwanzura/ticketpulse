@@ -3,7 +3,7 @@ import Link from "next/link"
 import {
   ArrowUpRight, ArrowDownRight, MapPin, CreditCard, TrendingUp, BarChart2, Users, PieChart,
 } from "lucide-react"
-import { eq, sql, and, gte, lt } from "drizzle-orm"
+import { eq, sql, and, or, gte, lt } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -11,6 +11,7 @@ import { orders, events, orderItems, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
+import { confirmedOrderStatus, paymentTimeSince } from "@/lib/revenue"
 import AiNarrativeSummary from "@/components/ai/AiNarrativeSummary"
 
 const PERIODS = [
@@ -46,14 +47,14 @@ export default async function AdminAnalyticsPage({
   const period = sp.period ?? "30d"
   const { since, previousSince, previousEnd } = periodDateRange(period)
 
-  // ── Revenue (paid orders) ───────────────────────────────────────────────
+  // ── Revenue (paid + completed orders) ───────────────────────────────────
   const [revenueRow] = await db
     .select({
       revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
       count:   sql<number>`COUNT(*)::int`,
     })
     .from(orders)
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since)))
+    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
 
   const currentRevenue = Number(revenueRow?.revenue ?? 0)
   const paidOrderCount = revenueRow?.count ?? 0
@@ -67,9 +68,11 @@ export default async function AdminAnalyticsPage({
     .from(orders)
     .where(
       and(
-        eq(orders.status, "paid"),
-        gte(orders.paidAt, previousSince),
-        lt(orders.paidAt, previousEnd),
+        confirmedOrderStatus,
+        or(
+          and(gte(orders.paidAt, previousSince), lt(orders.paidAt, previousEnd)),
+          and(gte(orders.completedAt, previousSince), lt(orders.completedAt, previousEnd)),
+        ),
       ),
     )
 
@@ -84,7 +87,7 @@ export default async function AdminAnalyticsPage({
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since), eq(orderItems.type, "ticket")))
+    .where(and(confirmedOrderStatus, paymentTimeSince(since), eq(orderItems.type, "ticket")))
 
   const ticketsSold = ticketsRow?.count ?? 0
 
@@ -95,10 +98,12 @@ export default async function AdminAnalyticsPage({
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        eq(orders.status, "paid"),
+        confirmedOrderStatus,
         eq(orderItems.type, "ticket"),
-        gte(orders.paidAt, previousSince),
-        lt(orders.paidAt, previousEnd),
+        or(
+          and(gte(orders.paidAt, previousSince), lt(orders.paidAt, previousEnd)),
+          and(gte(orders.completedAt, previousSince), lt(orders.completedAt, previousEnd)),
+        ),
       ),
     )
 
@@ -180,7 +185,7 @@ export default async function AdminAnalyticsPage({
     })
     .from(orders)
     .innerJoin(events, eq(orders.eventId, events.id))
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since)))
+    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
     .groupBy(events.category)
     .orderBy(sql`SUM(${orders.totalAmount}) DESC`)
 
@@ -203,7 +208,7 @@ export default async function AdminAnalyticsPage({
     .from(orders)
     .innerJoin(events, eq(orders.eventId, events.id))
     .innerJoin(users, eq(events.organizerId, users.id))
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since)))
+    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
     .groupBy(events.organizerId, users.name, users.email)
     .orderBy(sql`SUM(${orders.totalAmount}) DESC`)
     .limit(10)
@@ -222,7 +227,7 @@ export default async function AdminAnalyticsPage({
     })
     .from(orders)
     .innerJoin(events, eq(orders.eventId, events.id))
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since)))
+    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
     .groupBy(events.city)
     .orderBy(sql`SUM(${orders.totalAmount}) DESC`)
     .limit(10)
@@ -241,7 +246,7 @@ export default async function AdminAnalyticsPage({
       count:   sql<number>`COUNT(*)::int`,
     })
     .from(orders)
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since)))
+    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
     .groupBy(orders.paymentMethod)
     .orderBy(sql`COUNT(*) DESC`)
 
@@ -292,13 +297,13 @@ export default async function AdminAnalyticsPage({
   // ── Revenue over time (daily aggregates for the period) ─────────────────
   const revenueOverTimeRows = await db
     .select({
-      day: sql<string>`DATE(${orders.paidAt})`,
+      day: sql<string>`DATE(COALESCE(${orders.paidAt}, ${orders.completedAt}))`,
       revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(and(eq(orders.status, "paid"), gte(orders.paidAt, since)))
-    .groupBy(sql`DATE(${orders.paidAt})`)
-    .orderBy(sql`DATE(${orders.paidAt})`)
+    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
+    .groupBy(sql`DATE(COALESCE(${orders.paidAt}, ${orders.completedAt}))`)
+    .orderBy(sql`DATE(COALESCE(${orders.paidAt}, ${orders.completedAt}))`)
 
   const revenueOverTime = revenueOverTimeRows.map((r) => Number(r.revenue ?? 0))
 

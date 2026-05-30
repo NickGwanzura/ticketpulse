@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
-  Wallet, Clock, CheckCircle2, AlertOctagon, ArrowUpRight,
+  Wallet, Clock, CheckCircle2, ArrowUpRight,
   Send, Smartphone, Building2, Inbox, Banknote,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
@@ -10,14 +10,17 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getOrganizerPayouts, getOrganizerBalance } from "./actions"
 
-type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held"
+type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
 const STATUS_STYLE: Record<PayoutStatus, string> = {
-  pending:   "bg-amber-50 text-amber-700",
-  approved:  "bg-violet-50 text-violet-700",
+  pending:    "bg-amber-50 text-amber-700",
+  approved:   "bg-violet-50 text-violet-700",
   processing: "bg-sky-50 text-sky-700",
-  paid:      "bg-emerald-50 text-emerald-700",
-  held:      "bg-rose-50 text-rose-700",
+  paid:       "bg-emerald-50 text-emerald-700",
+  held:       "bg-rose-50 text-rose-700",
+  rejected:   "bg-red-50 text-red-700",
+  failed:     "bg-orange-50 text-orange-700",
+  cancelled:  "bg-gray-50 text-gray-600",
 }
 
 const STATUS_LABEL: Record<PayoutStatus, string> = {
@@ -26,6 +29,9 @@ const STATUS_LABEL: Record<PayoutStatus, string> = {
   processing: "Processing",
   paid:      "Paid",
   held:      "Held",
+  rejected:  "Rejected",
+  failed:    "Failed",
+  cancelled: "Cancelled",
 }
 
 export default async function PayoutsDashboardPage() {
@@ -36,7 +42,7 @@ export default async function PayoutsDashboardPage() {
   const isOrganizer = session.user.role === "organizer" || session.user.role === "admin"
 
   const { payouts, stats } = await getOrganizerPayouts(userId)
-  const { availableBalance, totalEarned, totalPaidOut } = await getOrganizerBalance(userId)
+  const { availableBalance, totalEarned, totalPaidOut, commissionRate, grossRevenue } = await getOrganizerBalance(userId)
 
   return (
     <div className="tp-fade-up">

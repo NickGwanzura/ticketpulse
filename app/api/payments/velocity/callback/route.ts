@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const [existing] = await db
       .select({ id: paymentLedger.id })
       .from(paymentLedger)
-      .where(eq(paymentLedger.salesOrderTrace, salesOrderTrace))
+      .where(eq(paymentLedger.transactionTrace, transactionTrace))
       .limit(1)
 
     if (existing) {

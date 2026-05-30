@@ -658,6 +658,9 @@ export const payoutStatusEnum = pgEnum("payout_status", [
   "processing",
   "paid",
   "held",
+  "rejected",
+  "failed",
+  "cancelled",
 ])
 
 export const payoutMethodEnum = pgEnum("payout_method", [
@@ -677,6 +680,9 @@ export const payouts = pgTable("payouts", {
   accountNumber: text("account_number"),
   accountName: text("account_name"),
   bankName: text("bank_name"),
+  rejectionReason: text("rejection_reason"),
+  proofReference: text("proof_reference"),
+  reviewedBy: text("reviewed_by"),
   processedAt: timestamp("processed_at"),
   processedBy: text("processed_by"),
   notes: text("notes"),
@@ -692,6 +698,22 @@ export const payoutsRelations = relations(payouts, ({ one }) => ({
   event: one(events, { fields: [payouts.eventId], references: [events.id] }),
 }))
 
+// ─── Payout Audit Log ─────────────────────────────────────────────────────────
+
+export const payoutAuditLog = pgTable("payout_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  payoutId: uuid("payout_id").notNull().references(() => payouts.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  fromStatus: payoutStatusEnum("from_status"),
+  toStatus: payoutStatusEnum("to_status"),
+  performedBy: text("performed_by").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("payout_audit_log_payout_id_idx").on(table.payoutId),
+  index("payout_audit_log_created_idx").on(table.createdAt),
+])
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 
 export const notificationTypeEnum = pgEnum("notification_type", [
@@ -702,6 +724,9 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "ticket_checked_in",
   "payout_requested",
   "payout_paid",
+  "payout_rejected",
+  "payout_approved",
+  "payout_failed",
   "event_published",
   "event_sold_out",
   "system",

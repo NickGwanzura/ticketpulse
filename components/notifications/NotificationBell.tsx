@@ -41,40 +41,85 @@ function typeIcon(type: string): string {
   return map[type] ?? "🔔"
 }
 
+const MAX_RETRIES = 5
+const BASE_INTERVAL_MS = 60_000
+const MAX_INTERVAL_MS = 300_000 // 5 min cap
+
 export default function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(false)
   const [marking, setMarking] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+  const retryRef = useRef(0)
+  const mountedRef = useRef(true)
 
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications?limit=20")
-      if (!res.ok) return
+      if (!res.ok) {
+        // Non-2xx — treat as failure for backoff tracking
+        throw new Error(`HTTP ${res.status}`)
+      }
+      // Reset retry count on success
+      retryRef.current = 0
+
       const data = (await res.json()) as {
         notifications: NotificationItem[]
         unreadCount: number
       }
+      if (!mountedRef.current) return
       setItems(data.notifications)
       setUnreadCount(data.unreadCount)
     } catch {
-      // silently fail
+      if (!mountedRef.current) return
+      retryRef.current++
     }
   }, [])
 
-  // Initial load
+  // ── Polling with exponential backoff ──────────────────────────────────
+  // Instead of setInterval(fn, 60_000) which fires unconditionally, we
+  // chain setTimeout calls that respect the current retry count.  After
+  // MAX_RETRIES consecutive failures the polling stops entirely.
   useEffect(() => {
-    fetchNotifications()
-  }, [fetchNotifications])
+    retryRef.current = 0
 
-  // Refresh every 60s when panel is closed
-  useEffect(() => {
-    if (open) return
-    const id = setInterval(fetchNotifications, 60000)
-    return () => clearInterval(id)
-  }, [open, fetchNotifications])
+    const poll = () => {
+      fetchNotifications().then(() => {
+        if (!mountedRef.current) return
+
+        // If we've hit the retry limit, stop hammering the API.
+        if (retryRef.current >= MAX_RETRIES) {
+          console.warn(
+            `[notifications] stopped polling after ${MAX_RETRIES} consecutive failures`,
+          )
+          return
+        }
+
+        // Exponential backoff: 60s, 74s, 102s, 160s, 276s (capped at 5 min)
+        const backoff = Math.min(
+          BASE_INTERVAL_MS * Math.pow(1.4, retryRef.current),
+          MAX_INTERVAL_MS,
+        )
+        const nextDelay = retryRef.current > 0 ? backoff : BASE_INTERVAL_MS
+
+        timerRef.current = window.setTimeout(poll, nextDelay)
+      })
+    }
+
+    const timerRef: { current: number | null } = { current: null }
+
+    // Initial fetch
+    fetchNotifications().then(() => {
+      if (mountedRef.current) {
+        timerRef.current = window.setTimeout(poll, BASE_INTERVAL_MS)
+      }
+    })
+
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current)
+    }
+  }, [fetchNotifications])
 
   // Close on outside click
   useEffect(() => {
@@ -88,19 +133,51 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  // SSE connection for real-time updates
+  // ── SSE connection with reconnection backoff ─────────────────────────
   useEffect(() => {
-    const es = new EventSource("/api/notifications/stream")
-    es.addEventListener("connected", () => {
-      // Connection established
-    })
-    es.addEventListener("heartbeat", () => {
-      // Keep-alive
-    })
-    es.onerror = () => {
-      es.close()
+    let retries = 0
+    let es: EventSource | null = null
+    let reconnectTimer: number | null = null
+
+    function connect() {
+      es = new EventSource("/api/notifications/stream")
+
+      es.addEventListener("connected", () => {
+        retries = 0 // reset on successful connection
+      })
+
+      es.addEventListener("heartbeat", () => {
+        // keep-alive
+      })
+
+      es.onerror = () => {
+        es?.close()
+        es = null
+
+        if (retries >= MAX_RETRIES) {
+          console.warn("[notifications] SSE stopped reconnecting after max retries")
+          return
+        }
+        retries++
+        // Exponential backoff: 1s, 1.4s, 2s, 2.7s, 3.8s (capped at 30s)
+        const delay = Math.min(1000 * Math.pow(1.4, retries - 1), 30_000)
+        reconnectTimer = window.setTimeout(connect, delay)
+      }
     }
-    return () => es.close()
+
+    connect()
+
+    return () => {
+      es?.close()
+      if (reconnectTimer !== null) clearTimeout(reconnectTimer)
+    }
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
   }, [])
 
   const markRead = async (id: string) => {
@@ -140,7 +217,10 @@ export default function NotificationBell() {
       <button
         onClick={() => {
           setOpen((o) => !o)
-          if (!open) fetchNotifications()
+          if (!open) {
+            retryRef.current = 0 // reset retry count on manual open
+            fetchNotifications()
+          }
         }}
         className="relative inline-flex items-center justify-center w-9 h-9 rounded-lg text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
         aria-label="Notifications"

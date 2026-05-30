@@ -3,17 +3,46 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowUpRight, Ticket, ArrowRight, Sparkles } from "lucide-react"
+import { ArrowUpRight, Ticket, ArrowRight, Sparkles, AlertCircle } from "lucide-react"
 import EmptyTickets from "@/components/EmptyTickets"
 
 export default function OrdersPage() {
+  // useCart must be at the top level (Rules of Hooks). The context is
+  // provided by CartProvider in layout/Providers.tsx. If the context is
+  // somehow missing, useCart throws — we catch that in the effect below.
   const { ready, getOrders } = useCart()
   const [orders, setOrders] = useState<OrderRecord[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (error) return // don't retry after a fatal error
     if (!ready) return
-    queueMicrotask(() => { setOrders(getOrders()) })
-  }, [ready, getOrders])
+
+    try {
+      const result = getOrders()
+      setOrders(result)
+    } catch (e) {
+      console.error("[orders] getOrders failed", e)
+      setError("Could not load your orders. Please refresh the page.")
+    }
+  }, [ready, getOrders, error])
+
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto px-5 md:px-8 py-20">
+        <div className="text-center py-8 md:py-14">
+          <AlertCircle size={32} className="mx-auto text-ink-3 mb-4" />
+          <p className="text-[15px] text-ink-2">{error}</p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition"
+          >
+            Back to home
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   if (!ready) {
     return (

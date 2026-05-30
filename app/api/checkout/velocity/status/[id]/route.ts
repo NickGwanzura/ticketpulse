@@ -333,21 +333,29 @@ async function handlePollSuccess(
     // ── Generate tickets and send confirmation ────────────────────────────
     const delivery = await deliverTicketForPaidOrder(id)
 
-    // ── Record in payment_ledger ──────────────────────────────────────────
-    await db.insert(paymentLedger).values({
-      orderId: id,
-      eventId: order.eventId,
-      transactionTrace: velocityMeta.transactionTrace ?? "",
-      salesOrderTrace: velocityMeta.salesOrderTrace,
-      invoiceId,
-      amount: order.totalAmount,
-      currency: order.currency ?? "USD",
-      processor: "velocity",
-      velocityPollStatus: "SUCCESS",
-      localStatus: "paid",
-      source: "poll",
-      rawPayload: null,
-    })
+    // ── Record in payment_ledger (deduplicated) ────────────────────────────
+    const [existingLedger] = await db
+      .select({ id: paymentLedger.id })
+      .from(paymentLedger)
+      .where(eq(paymentLedger.transactionTrace, velocityMeta.transactionTrace!))
+      .limit(1)
+
+    if (!existingLedger) {
+      await db.insert(paymentLedger).values({
+        orderId: id,
+        eventId: order.eventId,
+        transactionTrace: velocityMeta.transactionTrace ?? "",
+        salesOrderTrace: velocityMeta.salesOrderTrace ?? "",
+        invoiceId,
+        amount: order.totalAmount,
+        currency: order.currency ?? "USD",
+        processor: "velocity",
+        velocityPollStatus: "SUCCESS",
+        localStatus: "paid",
+        source: "poll",
+        rawPayload: null,
+      })
+    }
 
     log.info("velocity status - delivery result", {
       localOrderId: id,

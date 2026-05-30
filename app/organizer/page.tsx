@@ -232,7 +232,9 @@ async function getRecentOrders(eventIds: string[], limit = 8) {
       eventId: orders.eventId,
     })
     .from(orders)
-    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "awaiting_verification", "refunded"])))
+    .where(        and(
+        inArray(orders.eventId, eventIds),
+        inArray(orders.status, ["paid", "completed", "awaiting_verification", "refunded"])))
     .orderBy(desc(orders.createdAt))
     .limit(limit)
 
@@ -280,7 +282,7 @@ async function getRevenueByDay(eventIds: string[], days = 30) {
     .where(
       and(
         inArray(orders.eventId, eventIds),
-        inArray(orders.status, ["paid", "completed", "awaiting_verification"]),
+        inArray(orders.status, ["paid", "completed"]),
         gte(orders.createdAt, since),
       ),
     )
@@ -406,6 +408,27 @@ export default async function OrganizerPage({
     )
 
   const pendingPayout = Number(pendingPayoutRow?.total ?? 0)
+
+  // Get total paid out and available balance
+  const [paidOutRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` })
+    .from(payouts)
+    .where(and(eq(payouts.userId, session.user.id), eq(payouts.status, 'paid')))
+
+  const totalPaidOut = Number(paidOutRow?.total ?? 0)
+
+  const grossRevenue = totalRevenue
+  const totalEarned = grossRevenue * (1 - platformFeePercent / 100)
+  const availableBalance = Math.max(0, totalEarned - totalPaidOut - pendingPayout)
+
+  // Stats for the payout card
+  const [pendingCountRow] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(payouts)
+    .where(and(eq(payouts.userId, session.user.id), eq(payouts.status, 'pending')))
+
+  const pendingCount = pendingCountRow?.count ?? 0
+  const payoutStats = { pending: pendingCount }
 
   const RECENT_ORDERS: OrderRow[] = recentOrdersRaw.map((o) => ({
     name: o.guestName || o.guestEmail || "Guest",
@@ -781,24 +804,26 @@ export default async function OrganizerPage({
             )}
 
             {/* Upcoming payout */}
-            <div className="rounded-2xl border border-line bg-paper p-5">
+            <Link href="/payouts/request" className="block rounded-2xl border border-line bg-paper p-5 tp-lift hover:bg-paper-2 transition-colors">
               <p className="text-[18px] font-semibold tracking-tight text-ink mb-4">Upcoming payout</p>
-              <p className="text-[32px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(0, "USD")}</p>
-              <p className="text-[12px] text-ink-3 mt-0.5 mb-4">USD via EcoCash</p>
+              <p className="text-[32px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(pendingPayout, "USD")}</p>
+              <p className="text-[12px] text-ink-3 mt-0.5 mb-4">Pending · {payoutStats.pending > 0 ? `${payoutStats.pending} payout request${payoutStats.pending !== 1 ? "s" : ""}` : "No active requests"}</p>
               <div className="space-y-2 text-[12.5px] text-ink-2">
                 <div className="flex justify-between">
-                  <span>Scheduled</span>
-                  <span className="font-medium text-ink-3">0</span>
+                  <span>Net revenue</span>
+                  <span className="font-medium text-ink tabular-nums">{formatCurrency(net, "USD")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>From event</span>
-                  <span className="font-medium text-ink-3">0</span>
+                  <span>Paid out</span>
+                  <span className="font-medium text-ink tabular-nums">{formatCurrency(totalPaidOut, "USD")}</span>
                 </div>
               </div>
-              <button className="mt-5 w-full rounded-xl border border-line text-[13px] font-semibold text-ink py-2.5 hover:bg-paper-2 transition">
-                Request earlier
-              </button>
-            </div>
+              {availableBalance > 0 && (
+                <div className="mt-5 w-full rounded-xl bg-brand-600 text-[13px] font-semibold text-white py-2.5 text-center hover:bg-brand-700 transition-colors">
+                  Request payout — {formatCurrency(availableBalance, "USD")} available
+                </div>
+              )}
+            </Link>
 
             {/* VIP attendees */}
             <div className="rounded-2xl border border-line bg-paper p-5 flex-1">
