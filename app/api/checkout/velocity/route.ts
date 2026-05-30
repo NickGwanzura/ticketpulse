@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { eq, and, inArray } from "drizzle-orm"
+import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { checkoutLimiter } from "@/lib/rate-limit"
@@ -239,6 +239,54 @@ export async function POST(req: Request) {
     ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
   }
 
+  // ── Idempotency: resume an existing in-progress order if one exists ──────────
+  // Handles retries, double-clicks, and page-refresh re-submissions without
+  // creating duplicate orders or surfacing a confusing error to the user.
+  async function findResumableOrder() {
+    const [existing] = await db
+      .select({
+        id: orders.id,
+        paymentMethod: orders.paymentMethod,
+        totalAmount: orders.totalAmount,
+        currency: orders.currency,
+        metadata: orders.metadata,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.eventId, event.id),
+          eq(orders.guestEmail, parsed.email),
+          inArray(orders.status, ["pending", "awaiting_verification"]),
+          sql`${orders.createdAt} > now() - interval '30 minutes'`,
+          sql`${orders.metadata}->'velocity'->>'transactionTrace' IS NOT NULL`,
+        ),
+      )
+      .orderBy(desc(orders.createdAt))
+      .limit(1)
+    return existing ?? null
+  }
+
+  const resumable = await findResumableOrder()
+  if (resumable) {
+    const meta = (resumable.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    const vm = meta.velocity!
+    const isCard = resumable.paymentMethod === "velocity-card"
+    log.info("velocity checkout - resuming existing order", { orderId: resumable.id, email: parsed.email })
+    return NextResponse.json({
+      success: true,
+      paymentMethod: isCard ? "CARD" : "ECOCASH",
+      orderId: resumable.id,
+      salesOrderTrace: vm.salesOrderTrace,
+      transactionTrace: vm.transactionTrace,
+      flow: isCard ? "velocity-redirect" : "velocity-seamless",
+      pollRequired: isCard ? undefined : true,
+      redirectUrl: null,
+      amount: Number(resumable.totalAmount),
+      currency: resumable.currency ?? currency,
+      resumed: true,
+    })
+  }
+
   // ── Phase 1: Create order atomically under lock ────────────────────────────
   // withLock uses pg_try_advisory_xact_lock (transaction-scoped) — the lock
   // auto-releases on commit. DB writes are atomic; HTTP calls happen after.
@@ -299,8 +347,31 @@ export async function POST(req: Request) {
   })
 
   if (!creation) {
+    // Lock contention: a concurrent request is creating an order at this exact
+    // moment. Wait briefly for it to commit, then try to resume that order.
+    await new Promise((r) => setTimeout(r, 400))
+    const concurrent = await findResumableOrder()
+    if (concurrent) {
+      const meta = (concurrent.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+      const vm = meta.velocity!
+      const isCard = concurrent.paymentMethod === "velocity-card"
+      log.info("velocity checkout - resuming concurrent order after lock wait", { orderId: concurrent.id })
+      return NextResponse.json({
+        success: true,
+        paymentMethod: isCard ? "CARD" : "ECOCASH",
+        orderId: concurrent.id,
+        salesOrderTrace: vm.salesOrderTrace,
+        transactionTrace: vm.transactionTrace,
+        flow: isCard ? "velocity-redirect" : "velocity-seamless",
+        pollRequired: isCard ? undefined : true,
+        redirectUrl: null,
+        amount: Number(concurrent.totalAmount),
+        currency: concurrent.currency ?? currency,
+        resumed: true,
+      })
+    }
     return NextResponse.json(
-      { error: "A checkout is already in progress for this account" },
+      { error: "Your checkout is being processed. Please wait a moment and try again." },
       { status: 429 },
     )
   }
