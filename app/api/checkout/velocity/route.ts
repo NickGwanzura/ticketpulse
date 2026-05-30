@@ -6,7 +6,8 @@ import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promo
 import { checkoutLimiter } from "@/lib/rate-limit"
 import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
-import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
+import { withLock } from "@/lib/velocity/idempotency"
+import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
@@ -18,19 +19,19 @@ function extractRedirectUrl(body: Record<string, unknown>): string | undefined {
   const candidates = [
     "redirectUrl", "redirect_url", "paymentUrl", "payment_url",
     "checkoutUrl", "checkout_url", "gatewayUrl", "gateway_url",
-    "authorizationUrl", "authorization_url", "url",
+    "authorizationUrl", "authorization_url",
     "hostedUrl", "hosted_url", "paymentLink", "payment_link",
     "checkoutLink", "checkout_link", "embeddedUrl", "embedded_url",
   ]
 
   for (const key of candidates) {
     const val = body[key]
-    if (typeof val === "string" && (val.startsWith("http://") || val.startsWith("https://"))) {
+    // Only accept HTTPS redirect URLs for payment security
+    if (typeof val === "string" && val.startsWith("https://")) {
       return val
     }
   }
 
-  // Recurse into nested objects (e.g. body.body.redirectUrl)
   for (const key of Object.keys(body)) {
     const val = body[key]
     if (typeof val === "object" && val !== null && !Array.isArray(val)) {
@@ -96,6 +97,11 @@ export async function POST(req: Request) {
 
   const ticketItems = parsed.items.filter((i): i is typeof i & { kind: "ticket" } => i.kind === "ticket")
   const vendorAddonItems = parsed.items.filter((i): i is typeof i & { kind: "vendor_addon" } => i.kind === "vendor_addon")
+
+  // Velocity sales orders need at least one ticket item to compute a valid unit price.
+  if (ticketItems.length === 0) {
+    return NextResponse.json({ error: "At least one ticket is required" }, { status: 400 })
+  }
 
   const tiers = await db
     .select()
@@ -228,13 +234,18 @@ export async function POST(req: Request) {
     questionResponseMeta = parsed.questionResponses
   }
 
-  const lockKey = `velocity-checkout:${parsed.email}:${event.id}`
-  if (!await acquireLock(lockKey)) {
-    return NextResponse.json({ error: "A checkout is already in progress for this account" }, { status: 429 })
+  const baseMeta = {
+    ...(appliedPromo ? { promo: appliedPromo } : {}),
+    ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
   }
 
-  try {
-    const [order] = await db
+  // ── Phase 1: Create order atomically under lock ────────────────────────────
+  // withLock uses pg_try_advisory_xact_lock (transaction-scoped) — the lock
+  // auto-releases on commit. DB writes are atomic; HTTP calls happen after.
+  const lockKey = `velocity-checkout:${parsed.email}:${event.id}`
+
+  const creation = await withLock(lockKey, async (tx) => {
+    const [order] = await tx
       .insert(orders)
       .values({
         userId: null,
@@ -246,10 +257,7 @@ export async function POST(req: Request) {
         guestEmail: parsed.email,
         guestName: parsed.name,
         guestPhone: parsed.phone,
-        metadata: {
-          ...(appliedPromo ? { promo: appliedPromo } : {}),
-          ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
-        },
+        metadata: baseMeta,
       })
       .returning({ id: orders.id })
 
@@ -286,22 +294,59 @@ export async function POST(req: Request) {
       })
     }
 
-    await db.insert(orderItems).values(orderItemValues)
+    await tx.insert(orderItems).values(orderItemValues)
+    return { orderId: order.id }
+  })
 
-    const sessionId = req.headers.get("x-session-id") ?? crypto.randomUUID()
-    const referrer = req.headers.get("referer")
-    const userAgent = req.headers.get("user-agent")
+  if (!creation) {
+    return NextResponse.json(
+      { error: "A checkout is already in progress for this account" },
+      { status: 429 },
+    )
+  }
 
-    trackEvent({ event: "CHECKOUT_STARTED", eventId: event.id, orderId: order.id, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, referrer, userAgent, amount: total })
-    trackEvent({ event: "BUYER_DETAILS_SUBMITTED", eventId: event.id, orderId: order.id, sessionId, buyerEmail: parsed.email, referrer, userAgent })
-    trackEvent({ event: "PAYMENT_METHOD_SELECTED", eventId: event.id, orderId: order.id, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, referrer, userAgent })
+  const { orderId } = creation
 
+  const sessionId = req.headers.get("x-session-id") ?? crypto.randomUUID()
+  const referrer = req.headers.get("referer")
+  const userAgent = req.headers.get("user-agent")
+
+  trackEvent({ event: "CHECKOUT_STARTED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, referrer, userAgent, amount: total })
+  trackEvent({ event: "BUYER_DETAILS_SUBMITTED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, referrer, userAgent })
+  trackEvent({ event: "PAYMENT_METHOD_SELECTED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, referrer, userAgent })
+
+  // ── Zero-amount order (100% promo) — skip Velocity, mark paid directly ────
+  if (total <= 0) {
+    await db
+      .update(orders)
+      .set({ status: "paid", paidAt: new Date(), updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+
+    deliverTicketForPaidOrder(orderId).catch((err) =>
+      log.error("velocity checkout - free order delivery failed", { orderId, error: String(err) }),
+    )
+
+    trackEvent({ event: "PAYMENT_CONFIRMED", eventId: event.id, orderId, paymentMethod: parsed.paymentMethod, amount: 0 })
+
+    return NextResponse.json({
+      success: true,
+      paymentMethod: "FREE",
+      orderId,
+      flow: "free",
+      amount: 0,
+      currency,
+    })
+  }
+
+  // ── Phase 2: Velocity API calls (lock already released) ───────────────────
+  try {
     const config = getConfig()
     const currentDate = new Date().toISOString().split("T")[0]
 
     const velocityCustomerId = await getDefaultCustomerId()
     log.info("velocity checkout - using default customer UUID", { customerId: velocityCustomerId })
 
+    const ticketQty = ticketItems.reduce((s, i) => s + i.quantity, 0)
     const salesOrderPayload = {
       currencyCodeString: currency as "USD" | "ZWG",
       customerIdString: velocityCustomerId,
@@ -312,20 +357,20 @@ export async function POST(req: Request) {
       items: [
         {
           itemCode: config.itemCode,
-          qty: ticketItems.reduce((s, i) => s + i.quantity, 0),
-          unitPrice: total / ticketItems.reduce((s, i) => s + i.quantity, 0),
+          qty: ticketQty,
+          unitPrice: total / ticketQty,
           amount: total,
         },
       ],
     }
 
-    log.info("velocity checkout - creating sales order", { orderId: order.id, payload: salesOrderPayload })
+    log.info("velocity checkout - creating sales order", { orderId, payload: salesOrderPayload })
     const salesOrder = await createSalesOrder(salesOrderPayload)
     const salesOrderTrace = salesOrder.body.trace
     const salesOrderId = salesOrder.body.id ?? salesOrderTrace
 
     log.info("velocity checkout - sales order created", {
-      orderId: order.id,
+      orderId,
       trace: salesOrderTrace,
       id: salesOrder.body.id,
       workflowId: salesOrder.workflowId,
@@ -333,9 +378,7 @@ export async function POST(req: Request) {
       usingSalesOrderId: salesOrderId,
     })
 
-    // Auto-format phone number (local ZW formats like 077... → +26377...)
     const formattedPhone = formatPhone(parsed.phone)
-
     const processor: "ECOCASH" | "VMC" = parsed.paymentMethod === "velocity-ecocash" ? "ECOCASH" : "VMC"
     const authType = getAuthType(processor)
 
@@ -349,7 +392,7 @@ export async function POST(req: Request) {
       await db
         .update(orders)
         .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(orders.id, order.id))
+        .where(eq(orders.id, orderId))
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
@@ -357,20 +400,19 @@ export async function POST(req: Request) {
       await db
         .update(orders)
         .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(orders.id, order.id))
+        .where(eq(orders.id, orderId))
       return NextResponse.json({ error: "Merchant phone not configured" }, { status: 500 })
     }
 
     const origin = new URL(req.url).origin
     const isCard = processor === "VMC"
 
-    // Return URLs tell Velocity where to send the customer after card payment.
     const returnUrlFields: Record<string, string | undefined> = {}
     if (isCard) {
       const base = `${origin}/api/checkout/velocity`
-      returnUrlFields.returnUrl = `${base}/return/${order.id}`
-      returnUrlFields.successUrl = `${base}/return/${order.id}`
-      returnUrlFields.cancelUrl = `${origin}/orders/${order.id}?error=cancelled`
+      returnUrlFields.returnUrl = `${base}/return/${orderId}`
+      returnUrlFields.successUrl = `${base}/return/${orderId}`
+      returnUrlFields.cancelUrl = `${origin}/orders/${orderId}?error=cancelled`
     }
 
     const transactionPayload = {
@@ -389,15 +431,13 @@ export async function POST(req: Request) {
       ...returnUrlFields,
     }
 
-    log.info("velocity checkout - initiating transaction", { orderId: order.id, salesOrderId, processor, amount: total, authType })
+    log.info("velocity checkout - initiating transaction", { orderId, salesOrderId, processor, amount: total, authType })
     const transaction = await initiateTransaction(transactionPayload)
 
-    // Extract the redirect URL flexibly from the entire response body.
-    // The exact field name varies by Velocity API version.
     const redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
 
     log.info("velocity checkout - transaction response", {
-      orderId: order.id,
+      orderId,
       processor,
       authType,
       trace: transaction.body.trace,
@@ -411,11 +451,11 @@ export async function POST(req: Request) {
     const pollStatus = (transaction.body.pollStatus ?? "PENDING") as VelocityPollStatus
 
     const velocityMeta: VelocityOrderMetadata = {
-      salesOrderTrace: salesOrderTrace,
+      salesOrderTrace,
       transactionTrace: transaction.body.trace,
       outstandingAmount: total,
       paymentProcessor: processor,
-      pollStatus: pollStatus,
+      pollStatus,
       paymentRef: null,
       invoiceRef: null,
       initiatedAt: new Date().toISOString(),
@@ -425,35 +465,24 @@ export async function POST(req: Request) {
     await db
       .update(orders)
       .set({
-        metadata: {
-          ...(appliedPromo ? { promo: appliedPromo } : {}),
-          ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
-          velocity: velocityMeta,
-        },
+        metadata: { ...baseMeta, velocity: velocityMeta },
         updatedAt: new Date(),
       })
-      .where(eq(orders.id, order.id))
+      .where(eq(orders.id, orderId))
 
-    trackEvent({ event: "PAYMENT_INITIATED", eventId: event.id, orderId: order.id, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, amount: total })
+    trackEvent({ event: "PAYMENT_INITIATED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, amount: total })
 
-    // Card (VMC) with WEB auth must return a redirect URL — if missing, store status and fail clearly.
     if (isCard && !redirectUrl) {
-      const failedMeta = {
-        ...(appliedPromo ? { promo: appliedPromo } : {}),
-        ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
-        velocity: {
-          ...velocityMeta,
-          pollStatus: "INITIATED_BUT_NO_REDIRECT" as VelocityPollStatus,
-        },
-      }
-
       await db
         .update(orders)
-        .set({ metadata: failedMeta, updatedAt: new Date() })
-        .where(eq(orders.id, order.id))
+        .set({
+          metadata: { ...baseMeta, velocity: { ...velocityMeta, pollStatus: "INITIATED_BUT_NO_REDIRECT" as VelocityPollStatus } },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
 
       log.error("velocity checkout - card payment missing redirect URL", {
-        orderId: order.id,
+        orderId,
         responseBody: JSON.stringify(transaction).slice(0, 2000),
       })
       return NextResponse.json({
@@ -464,8 +493,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       paymentMethod: isCard ? "CARD" : "ECOCASH",
-      orderId: order.id,
-      salesOrderTrace: salesOrderTrace,
+      orderId,
+      salesOrderTrace,
       transactionTrace: transaction.body.trace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
       pollRequired: isCard ? undefined : true,
@@ -475,9 +504,11 @@ export async function POST(req: Request) {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Checkout failed"
-    log.error("velocity checkout failed", { error: message })
+    log.error("velocity checkout failed", { orderId, error: message })
+    await db
+      .update(orders)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
     return NextResponse.json({ error: message }, { status: 502 })
-  } finally {
-    await releaseLock(lockKey)
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders } from "@/db/schema"
+import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 
 type Params = { id: string }
@@ -13,6 +14,10 @@ type Params = { id: string }
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
   const origin = new URL(req.url).origin
+
+  if (!isValidUUID(id)) {
+    return NextResponse.redirect(`${origin}/checkout?error=not_found`)
+  }
 
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)
   if (!order) {

@@ -25,7 +25,9 @@ type CheckoutResponse = {
 type PaymentMethodValue = "velocity-ecocash" | "velocity-card"
 
 const POLL_INTERVAL_MS = 4000
-const POLL_TIMEOUT_MS = 10 * 60 * 1000 // 10 min — maximum polling window
+// Must match POLL_TIMEOUT_MS in app/api/checkout/velocity/status/[id]/route.ts.
+// Client uses slightly longer window to account for network latency on the final poll.
+const POLL_TIMEOUT_MS = 5.5 * 60 * 1000
 
 const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string; icon: typeof Smartphone }[] = [
   { value: "velocity-ecocash", label: "EcoCash", body: "Pay with EcoCash via mobile money. Instant confirmation.", icon: Smartphone },
