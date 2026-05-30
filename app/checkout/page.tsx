@@ -11,15 +11,16 @@ import CheckoutSteps from "@/components/CheckoutSteps"
 
 type CheckoutResponse = {
   success: true
-  paymentMethod: "CARD" | "ECOCASH"
-  flow: "velocity-seamless" | "velocity-redirect"
+  paymentMethod: "CARD" | "ECOCASH" | "FREE"
+  flow: "velocity-seamless" | "velocity-redirect" | "free"
   orderId: string
-  salesOrderTrace: string
-  transactionTrace: string
+  salesOrderTrace?: string
+  transactionTrace?: string
   pollRequired?: true
   redirectUrl?: string | null
   amount: number
   currency: string
+  resumed?: boolean
 }
 
 type PaymentMethodValue = "velocity-ecocash" | "velocity-card"
@@ -295,6 +296,17 @@ export default function CheckoutPage() {
       const data = (await res.json()) as CheckoutResponse
 
       const contactData = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
+
+      if (data.flow === "free") {
+        placeOrder(
+          { name: form.name, email: form.email, phone: form.phone },
+          { method: "velocity-ecocash" },
+          data.orderId,
+          "paid",
+        )
+        window.location.href = `/orders/${data.orderId}?welcome=1`
+        return
+      }
 
       if (data.flow === "velocity-seamless") {
         pollingContact.current = contactData

@@ -222,9 +222,6 @@ export async function POST(req: Request) {
       salesOrderTrace,
       error: err instanceof Error ? err.message : String(err),
     })
-
-    await releaseLock(lockKey).catch(() => {})
-
     return NextResponse.json({ error: "internal_error" }, { status: 500 })
   } finally {
     await releaseLock(lockKey).catch(() => {})

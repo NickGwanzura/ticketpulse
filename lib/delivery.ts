@@ -121,14 +121,35 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
     let ticketCount = 0
 
     // ── 3. Create tickets if they don't exist ──────────────────────────────
+    // Ticket metadata is built here and reused for PDF/email — no re-query needed.
+    let pdfTicketData: { id: string; tierId: string | null; qrCode: string; tierName: string }[] = []
+    let saleLines: { label: string; qty: number; amount: string }[] = []
+    let ev: { title: string; startsAt: Date | null; venue: string | null; organizerId: string } | undefined
+
     if (!alreadyDelivered) {
-      const itemsWithIds = await db
-        .select({ id: orderItems.id, tierId: orderItems.tierId, quantity: orderItems.quantity })
+      // Fetch items + tier names in one query (used for ticket creation AND email lines)
+      const itemsWithTiers = await db
+        .select({
+          id: orderItems.id,
+          tierId: orderItems.tierId,
+          tierName: ticketTiers.name,
+          quantity: orderItems.quantity,
+          unitPrice: orderItems.unitPrice,
+          total: orderItems.total,
+        })
         .from(orderItems)
+        .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
         .where(eq(orderItems.orderId, orderId))
+
+      saleLines = itemsWithTiers.map((i) => ({
+        label: i.tierName ?? "Ticket",
+        qty: i.quantity,
+        amount: `${i.total} ${order.currency ?? "USD"}`,
+      }))
 
       const ticketValues: {
         tierId: string
+        tierName: string
         eventId: string
         orderId: string
         userId: string | null
@@ -136,49 +157,64 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
         qrCode: string
       }[] = []
 
-      for (const item of itemsWithIds) {
+      for (const item of itemsWithTiers) {
         if (!item.tierId) continue
         for (let i = 0; i < item.quantity; i++) {
           ticketValues.push({
             tierId: item.tierId,
+            tierName: item.tierName ?? "General Admission",
             eventId: order.eventId,
-            orderId: orderId,
+            orderId,
             userId: order.userId,
             status: "sold",
-            // Temporary QR — will be updated with real QR data URL after insert
             qrCode: `${orderId}-${item.id}-${i}`,
           })
         }
       }
 
       if (ticketValues.length > 0) {
-        const inserted = await db.insert(tickets).values(ticketValues).returning({ id: tickets.id, qrCode: tickets.qrCode })
+        const inserted = await db
+          .insert(tickets)
+          .values(ticketValues.map(({ tierName: _, ...v }) => v))
+          .returning({ id: tickets.id, qrCode: tickets.qrCode })
 
-        // Generate QR data URLs and update ticket records
-        const qrUpdates: { id: string; qrCode: string }[] = []
-        for (const t of inserted) {
-          try {
-            const qrDataUrl = await generateQrDataUrl(t.id, orderId, baseUrl)
-            qrUpdates.push({ id: t.id, qrCode: qrDataUrl })
-          } catch {
-            // Fall back to the identifier string if QR generation fails
-            qrUpdates.push({ id: t.id, qrCode: t.qrCode ?? `${orderId}-${t.id}` })
-          }
-        }
-        for (const update of qrUpdates) {
-          await db.update(tickets).set({ qrCode: update.qrCode }).where(eq(tickets.id, update.id))
-        }
+        // Generate all QR codes in parallel — no more sequential await per ticket
+        const qrResults = await Promise.all(
+          inserted.map((t) =>
+            generateQrDataUrl(t.id, orderId, baseUrl).catch(
+              () => t.qrCode ?? `${orderId}-${t.id}`,
+            ),
+          ),
+        )
 
+        // Batch-update QR codes concurrently
+        await Promise.all(
+          inserted.map((t, i) =>
+            db.update(tickets).set({ qrCode: qrResults[i] }).where(eq(tickets.id, t.id)),
+          ),
+        )
+
+        // Build PDF ticket data directly — no re-query of the tickets table
+        pdfTicketData = inserted.map((t, i) => ({
+          id: t.id,
+          tierId: ticketValues[i].tierId,
+          qrCode: qrResults[i],
+          tierName: ticketValues[i].tierName,
+        }))
+
+        // Update soldQuantity for all tiers concurrently
         const tierCounts = new Map<string, number>()
         for (const t of ticketValues) {
           tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
         }
-        for (const [tierId, count] of tierCounts) {
-          await db
-            .update(ticketTiers)
-            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
-            .where(eq(ticketTiers.id, tierId))
-        }
+        await Promise.all(
+          Array.from(tierCounts).map(([tierId, count]) =>
+            db
+              .update(ticketTiers)
+              .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+              .where(eq(ticketTiers.id, tierId)),
+          ),
+        )
 
         ticketCount = ticketValues.length
 
@@ -186,7 +222,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
           event: "TICKET_ISSUED",
           eventId: order.eventId,
           orderId,
-          ticketType: itemsWithIds.map((i) => i.tierId).filter(Boolean).join(","),
+          ticketType: [...new Set(ticketValues.map((t) => t.tierId))].join(","),
           buyerEmail: order.guestEmail ?? undefined,
         })
       }
@@ -210,56 +246,55 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
     // ── 5. Send confirmation email with PDF tickets attached ──────────────
     if (order.guestEmail) {
       try {
-        const [ev] = await db
-          .select({ title: events.title, startsAt: events.startsAt, venue: events.venue, organizerId: events.organizerId })
-          .from(events)
-          .where(eq(events.id, order.eventId))
-          .limit(1)
+        const [[evRow], existingPdfData] = await Promise.all([
+          db
+            .select({ title: events.title, startsAt: events.startsAt, venue: events.venue, organizerId: events.organizerId })
+            .from(events)
+            .where(eq(events.id, order.eventId))
+            .limit(1),
+          // Only re-query tickets when resuming an already-delivered order (pdfTicketData is empty)
+          pdfTicketData.length === 0
+            ? db
+                .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId, tierName: ticketTiers.name })
+                .from(tickets)
+                .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+                .where(eq(tickets.orderId, orderId))
+            : Promise.resolve([] as { id: string; qrCode: string | null; tierId: string | null; tierName: string | null }[]),
+        ])
 
-        const saleLines = await db
-          .select({ qty: orderItems.quantity, unit: orderItems.unitPrice, total: orderItems.total, tierName: ticketTiers.name })
-          .from(orderItems)
-          .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
-          .where(eq(orderItems.orderId, orderId))
-
-        const lines = saleLines.map((i) => ({
-          label: i.tierName ?? "Ticket",
-          qty: i.qty,
-          amount: `${i.total} ${order.currency ?? "USD"}`,
-        }))
+        ev = evRow
+        if (existingPdfData.length > 0) {
+          pdfTicketData = existingPdfData.map((t) => ({
+            id: t.id,
+            tierId: t.tierId,
+            qrCode: t.qrCode ?? `${orderId}-${t.id}`,
+            tierName: t.tierName ?? "General Admission",
+          }))
+          // Also build saleLines from a joined items query when we didn't create tickets above
+          const sl = await db
+            .select({ qty: orderItems.quantity, total: orderItems.total, tierName: ticketTiers.name })
+            .from(orderItems)
+            .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+            .where(eq(orderItems.orderId, orderId))
+          saleLines = sl.map((i) => ({ label: i.tierName ?? "Ticket", qty: i.qty, amount: `${i.total} ${order.currency ?? "USD"}` }))
+        }
 
         const eventDate = ev?.startsAt
           ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
           : "TBA"
 
-        // Load created tickets for PDF generation
-        const orderTicketRecords = await db
-          .select({
-            id: tickets.id,
-            qrCode: tickets.qrCode,
-            tierId: tickets.tierId,
-          })
-          .from(tickets)
-          .where(eq(tickets.orderId, orderId))
-
-        // Build tier name map
-        const tierRows = await db
-          .select({ id: ticketTiers.id, name: ticketTiers.name })
-          .from(ticketTiers)
-          .where(inArray(ticketTiers.id, [...new Set(orderTicketRecords.map((t) => t.tierId).filter(Boolean))]))
-
-        const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
+        const tierNameMap = new Map(pdfTicketData.map((t) => [t.tierId, t.tierName]))
 
         // Generate combined PDF of all tickets
         let pdfBuffer: Buffer | null = null
         try {
-          const pdfTickets = orderTicketRecords.map((t) => ({
+          const pdfTickets = pdfTicketData.map((t) => ({
             eventTitle: ev?.title ?? "Your Ticket",
-            tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+            tierName: t.tierName,
             buyerName: order.guestName ?? "Valued Guest",
             orderId,
             ticketId: t.id,
-            qrCodeData: t.qrCode ?? `${orderId}-${t.id}`,
+            qrCodeData: t.qrCode,
           }))
           pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
         } catch (err) {
@@ -280,7 +315,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
           eventTitle: ev?.title ?? "your event",
           eventDate,
           eventVenue: ev?.venue ?? undefined,
-          lines,
+          lines: saleLines,
           total: String(order.totalAmount ?? "0"),
           currency: order.currency ?? "USD",
           ticketUrl: `${baseUrl}/orders/${orderId}`,
@@ -296,7 +331,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
 
         // ── Notify organizer and admin about the sale ─────────────────────
         if (ev) {
-          notifyOrganizerSale(order, ev, saleLines, lines, baseUrl).catch((err) =>
+          notifyOrganizerSale(order, ev, saleLines, baseUrl).catch((err) =>
             log.warn("delivery - organizer notification failed", { orderId, error: String(err) }),
           )
         }
@@ -377,7 +412,6 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
 async function notifyOrganizerSale(
   order: typeof orders.$inferSelect,
   ev: { title: string; startsAt: Date | null; venue: string | null; organizerId: string },
-  saleLines: { qty: number; unit: string; total: string; tierName: string | null }[],
   lines: { label: string; qty: number; amount: string }[],
   baseUrl: string,
 ) {

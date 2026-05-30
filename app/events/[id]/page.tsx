@@ -130,10 +130,28 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   const isEventOwner = session?.user?.id === row.organizerId || session?.user?.role === "admin"
 
-  const tierRows = await db
-    .select()
-    .from(ticketTiers)
-    .where(eq(ticketTiers.eventId, row.id))
+  const [tierRows, vendorListingRows] = await Promise.all([
+    db.select().from(ticketTiers).where(eq(ticketTiers.eventId, row.id)),
+    db
+      .select({
+        id: vendorListings.id,
+        eventId: vendorListings.eventId,
+        packageName: vendorListings.packageName,
+        packageDescription: vendorListings.packageDescription,
+        price: vendorListings.price,
+        currency: vendorListings.currency,
+        available: vendorListings.available,
+        booked: vendorListings.booked,
+        businessName: vendors.businessName,
+        category: vendors.category,
+        logo: vendors.logo,
+        verified: vendors.verified,
+        rating: vendors.rating,
+      })
+      .from(vendorListings)
+      .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
+      .where(and(eq(vendorListings.eventId, row.id), eq(vendorListings.available, true))),
+  ])
 
   const tiers = tierRows.map((t) => ({
     id: t.id,
@@ -145,30 +163,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     soldQuantity: t.soldQuantity ?? 0,
     maxPerOrder: t.maxPerOrder ?? 10,
   }))
-
-  // ── Vendor listings (addons available to ticket buyers) ────────────
-  const vendorListingRows = await db
-    .select({
-      id: vendorListings.id,
-      eventId: vendorListings.eventId,
-      packageName: vendorListings.packageName,
-      packageDescription: vendorListings.packageDescription,
-      price: vendorListings.price,
-      currency: vendorListings.currency,
-      available: vendorListings.available,
-      booked: vendorListings.booked,
-      businessName: vendors.businessName,
-      category: vendors.category,
-      logo: vendors.logo,
-      verified: vendors.verified,
-      rating: vendors.rating,
-    })
-    .from(vendorListings)
-    .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
-    .where(and(
-      eq(vendorListings.eventId, row.id),
-      eq(vendorListings.available, true),
-    ))
 
   const vendorListingsData: VendorListing[] = vendorListingRows.map((r) => ({
     id: r.id,

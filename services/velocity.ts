@@ -339,19 +339,4 @@ export function normalizeVelocityPollResponse(
   }
 }
 
-/**
- * Legacy normalizer – prefer normalizeVelocityPollResponse.
- * Normalizes a single status string. Treats anything other than
- * SUCCESS/FAILED as PENDING.
- */
-export function normalizeVelocityPollStatus(
-  status: string | undefined | null,
-): "SUCCESS" | "FAILED" | "PENDING" {
-  if (!status) return "PENDING"
-  const upper = status.toUpperCase()
-  if (upper === "SUCCESS") return "SUCCESS"
-  if (upper === "FAILED") return "FAILED"
-  return "PENDING"
-}
-
 export { getConfig }

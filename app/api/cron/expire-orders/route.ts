@@ -66,25 +66,27 @@ export async function POST(request: Request) {
       continue
     }
 
-    const items = await db
-      .select({ tierId: orderItems.tierId, quantity: orderItems.quantity })
-      .from(orderItems)
-      .where(eq(orderItems.orderId, order.id))
+    // Only decrement soldQuantity if tickets were actually created for this order.
+    // soldQuantity is incremented at ticket delivery time, not at checkout.
+    // Expiring an order that never paid (no tickets) must not touch inventory.
+    const orderTickets = await db
+      .select({ tierId: tickets.tierId })
+      .from(tickets)
+      .where(eq(tickets.orderId, order.id))
 
-    const tierMap = new Map<string, number>()
-    for (const item of items) {
-      if (item.tierId) {
-        tierMap.set(item.tierId, (tierMap.get(item.tierId) ?? 0) + item.quantity)
+    if (orderTickets.length > 0) {
+      const tierMap = new Map<string, number>()
+      for (const t of orderTickets) {
+        if (t.tierId) tierMap.set(t.tierId, (tierMap.get(t.tierId) ?? 0) + 1)
       }
-    }
-
-    for (const [tierId, qty] of tierMap) {
-      await db
-        .update(ticketTiers)
-        .set({
-          soldQuantity: sql`${ticketTiers.soldQuantity} - ${qty}`,
-        })
-        .where(eq(ticketTiers.id, tierId))
+      await Promise.all(
+        Array.from(tierMap).map(([tierId, qty]) =>
+          db
+            .update(ticketTiers)
+            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} - ${qty}` })
+            .where(eq(ticketTiers.id, tierId)),
+        ),
+      )
     }
 
     await db.insert(paymentLedger).values({

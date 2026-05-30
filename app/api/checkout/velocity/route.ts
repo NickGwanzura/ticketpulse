@@ -343,6 +343,14 @@ export async function POST(req: Request) {
     }
 
     await tx.insert(orderItems).values(orderItemValues)
+
+    if (appliedPromo) {
+      await tx
+        .update(promoCodes)
+        .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+        .where(eq(promoCodes.id, appliedPromo.id))
+    }
+
     return { orderId: order.id }
   })
 
