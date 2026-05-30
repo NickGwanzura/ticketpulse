@@ -1,34 +1,73 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq } from "drizzle-orm"
+import { eq, and, inArray } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { platformSettings } from "@/db/schema"
 import { log } from "@/lib/logger"
 
-const SETTINGS_ID = "00000000-0000-0000-0000-000000000001"
+const ENV = "prod"
 
-export async function getPlatformSettings() {
+type SettingsMap = {
+  platformName: string
+  supportEmail: string
+  defaultCurrency: string
+  platformFeePercent: string
+  maintenanceMode: boolean
+  updatedAt: Date | null
+}
+
+const DEFAULTS: SettingsMap = {
+  platformName: "TicketPulse",
+  supportEmail: "support@ticketpulse.co.zw",
+  defaultCurrency: "USD",
+  platformFeePercent: "8.00",
+  maintenanceMode: false,
+  updatedAt: null,
+}
+
+const KEY_MAP: Record<string, keyof SettingsMap> = {
+  platform_name: "platformName",
+  support_email: "supportEmail",
+  default_currency: "defaultCurrency",
+  platform_fee_percent: "platformFeePercent",
+  maintenance_mode: "maintenanceMode",
+}
+
+
+export async function getPlatformSettings(): Promise<SettingsMap> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     throw new Error("Unauthorized")
   }
 
-  const [settings] = await db
+  const rows = await db
     .select()
     .from(platformSettings)
-    .where(eq(platformSettings.id, SETTINGS_ID))
-    .limit(1)
+    .where(eq(platformSettings.env, ENV))
 
-  if (!settings) {
-    // Seed default settings if missing
-    const [created] = await db
-      .insert(platformSettings)
-      .values({ id: SETTINGS_ID })
-      .returning()
-    return created
+  const settings = { ...DEFAULTS }
+
+  let latestUpdatedAt: Date | null = null
+
+  for (const row of rows) {
+    const mappedKey = KEY_MAP[row.key]
+    if (mappedKey) {
+      if (mappedKey === "maintenanceMode") {
+        (settings as any)[mappedKey] = row.value === true || row.value === "true"
+      } else if (mappedKey === "platformFeePercent") {
+        (settings as any)[mappedKey] = String(row.value)
+      } else {
+        (settings as any)[mappedKey] = String(row.value)
+      }
+    }
+    if (row.updatedAt && (!latestUpdatedAt || row.updatedAt > latestUpdatedAt)) {
+      latestUpdatedAt = row.updatedAt
+    }
   }
+
+  settings.updatedAt = latestUpdatedAt
 
   return settings
 }
@@ -39,27 +78,47 @@ export async function updatePlatformSettings(formData: FormData) {
     throw new Error("Unauthorized")
   }
 
-  const platformName = formData.get("platformName") as string
-  const supportEmail = formData.get("supportEmail") as string
-  const defaultCurrency = formData.get("defaultCurrency") as string
-  const platformFeePercent = parseFloat(formData.get("platformFeePercent") as string)
-  const maintenanceMode = formData.get("maintenanceMode") === "on"
+  const raw: Record<string, unknown> = {
+    platformName: formData.get("platformName"),
+    supportEmail: formData.get("supportEmail"),
+    defaultCurrency: formData.get("defaultCurrency"),
+    platformFeePercent: formData.get("platformFeePercent"),
+    maintenanceMode: formData.get("maintenanceMode") === "on",
+  }
+
+  const platformName = raw.platformName as string
+  const supportEmail = raw.supportEmail as string
+  const defaultCurrency = raw.defaultCurrency as string
+  const platformFeePercent = parseFloat(raw.platformFeePercent as string)
 
   if (!platformName || !supportEmail || !defaultCurrency || Number.isNaN(platformFeePercent)) {
     throw new Error("Invalid form data")
   }
 
-  await db
-    .update(platformSettings)
-    .set({
-      platformName: platformName.trim(),
-      supportEmail: supportEmail.trim(),
-      defaultCurrency: defaultCurrency.trim(),
-      platformFeePercent: platformFeePercent.toFixed(2),
-      maintenanceMode,
-      updatedAt: new Date(),
-    })
-    .where(eq(platformSettings.id, SETTINGS_ID))
+  const entries: Array<{ key: string; value: unknown }> = [
+    { key: "platform_name", value: platformName.trim() },
+    { key: "support_email", value: supportEmail.trim() },
+    { key: "default_currency", value: defaultCurrency.trim() },
+    { key: "platform_fee_percent", value: platformFeePercent.toFixed(2) },
+    { key: "maintenance_mode", value: raw.maintenanceMode },
+  ]
+
+  // Atomically replace settings: delete existing rows for these keys, then insert fresh ones.
+  await db.transaction(async (tx) => {
+    const keys = entries.map((e) => e.key)
+    await tx
+      .delete(platformSettings)
+      .where(and(eq(platformSettings.env, ENV), inArray(platformSettings.key, keys)))
+
+    for (const entry of entries) {
+      await tx.insert(platformSettings).values({
+        key: entry.key,
+        value: entry.value,
+        env: ENV,
+        updatedBy: session.user.email ?? undefined,
+      })
+    }
+  })
 
   log.info("Platform settings updated", { by: session.user.email })
   revalidatePath("/admin/settings")

@@ -384,13 +384,14 @@ export default async function OrganizerPage({
   const totalSold = ORGANIZER_EVENTS.reduce((s, e) => s + e.sold, 0)
   const liveEvents = ORGANIZER_EVENTS.filter((e) => e.status === "published").length
 
-  // Get platform fee and calculate net
+  // Get platform fee from key-value settings
   const [settingsRow] = await db
-    .select({ fee: platformSettings.platformFeePercent })
+    .select({ value: platformSettings.value })
     .from(platformSettings)
+    .where(and(eq(platformSettings.key, "platform_fee_percent"), eq(platformSettings.env, "prod")))
     .limit(1)
 
-  const platformFeePercent = Number(settingsRow?.fee ?? 8)
+  const platformFeePercent = Number(settingsRow?.value ?? 8)
   const gross = totalRevenue
   const net = totalRevenue * (1 - platformFeePercent / 100)
   const refunds = 0 // no refund tracking yet

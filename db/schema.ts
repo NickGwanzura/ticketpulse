@@ -640,15 +640,19 @@ export const galleryRelations = relations(eventGalleries, ({ one, many }) => ({
 
 // ─── Platform Settings ───────────────────────────────────────────────────────
 
+export const platformEnvEnum = pgEnum("platform_env", ["dev", "stage", "prod"])
+
 export const platformSettings = pgTable("platform_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  platformName: text("platform_name").default("TicketPulse").notNull(),
-  supportEmail: text("support_email").default("support@ticketpulse.co.zw").notNull(),
-  defaultCurrency: text("default_currency").default("USD").notNull(),
-  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }).default("8").notNull(),
-  maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-})
+  key: text("key").notNull(),
+  value: json("value").notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  version: integer("version").default(1),
+  env: platformEnvEnum("env").default("prod").notNull(),
+}, (table) => [
+  uniqueIndex("platform_settings_key_env_idx").on(table.key, table.env),
+])
 
 // ─── Payouts ─────────────────────────────────────────────────────────────────
 
