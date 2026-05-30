@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, use, useRef, useCallback } from "react"
+import { useEffect, useState, use } from "react"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { formatDate } from "@/lib/utils"
@@ -42,9 +42,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({})
-  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
-  const [downloadAll, setDownloadAll] = useState(false)
-  const ticketRefs = useRef<(HTMLElement | null)[]>([])
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (!ready) return
@@ -88,83 +86,29 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     generate()
   }, [order])
 
-  // ── Download single ticket as PDF ──────────────────────────────────────────
+  // ── Download all tickets as PDF (server-side) ──────────────────────────────
 
-  const downloadTicketPdf = useCallback(async (idx: number) => {
-    setDownloadingIndex(idx)
+  const downloadAllPdf = async () => {
+    setDownloading(true)
     try {
-      const { default: jsPDF } = await import("jspdf")
-      const { default: html2canvas } = await import("html2canvas")
-
-      const el = ticketRefs.current[idx]
-      if (!el) return
-
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        logging: false,
-        useCORS: true,
-      })
-
-      const imgData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-      const pdfW = pdf.internal.pageSize.getWidth()
-      const pdfH = (canvas.height * pdfW) / canvas.width
-
-      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH)
-      pdf.save(`ticket-${shortCode(order!.id, idx)}.pdf`)
+      const res = await fetch(`/api/orders/${id}/pdf`)
+      if (!res.ok) throw new Error(`PDF API returned ${res.status}`)
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `tickets-${id.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
     } catch (err) {
       console.error("PDF download failed:", err)
-      // Fallback to browser print
       window.print()
     } finally {
-      setDownloadingIndex(null)
+      setDownloading(false)
     }
-  }, [order])
-
-  // ── Download all tickets as single PDF ─────────────────────────────────────
-
-  const downloadAllPdf = useCallback(async () => {
-    setDownloadAll(true)
-    try {
-      const { default: jsPDF } = await import("jspdf")
-      const { default: html2canvas } = await import("html2canvas")
-
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-      const tickets = order!.items.filter((i) => i.kind === "ticket")
-      const flat = tickets.flatMap((line) =>
-        line.kind === "ticket"
-          ? Array.from({ length: line.qty }).map((_, i) => ({ line, i }))
-          : []
-      )
-
-      for (let idx = 0; idx < flat.length; idx++) {
-        const el = ticketRefs.current[idx]
-        if (!el) continue
-
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          backgroundColor: "#ffffff",
-          logging: false,
-          useCORS: true,
-        })
-
-        const imgData = canvas.toDataURL("image/png")
-        const pdfW = pdf.internal.pageSize.getWidth()
-        const pdfH = (canvas.height * pdfW) / canvas.width
-
-        if (idx > 0) pdf.addPage()
-        pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH)
-      }
-
-      pdf.save(`${order!.id.slice(0, 8)}-tickets.pdf`)
-    } catch (err) {
-      console.error("PDF download all failed:", err)
-      window.print()
-    } finally {
-      setDownloadAll(false)
-    }
-  }, [order])
+  }
 
   if (!ready || fetching) {
     return (
@@ -245,21 +189,21 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
               <ArrowLeft size={14} /> Back
             </Link>
             <span className="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] text-[#5a6d7c]">
-              <ShieldCheck size={12} className="text-green-600" /> {flat.length} {flat.length === 1 ? "ticket" : "tickets"}
+              <ShieldCheck size={12} className="text-brand-600" /> {flat.length} {flat.length === 1 ? "ticket" : "tickets"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={downloadAllPdf}
-              disabled={!allQrReady || downloadAll}
+              disabled={!allQrReady || downloading}
               className="inline-flex items-center gap-2 rounded-xl bg-[#0a2540] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1a3550] disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {downloadAll ? (
+              {downloading ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 <DownloadCloud size={14} />
               )}
-              {downloadAll ? "Generating…" : "Download all as PDF"}
+              {downloading ? "Generating…" : "Download all as PDF"}
             </button>
             <button
               onClick={() => window.print()}
@@ -287,11 +231,8 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
           return (
             <div key={`${line.key}-${i}`} className="tp-print-page">
-              {/* ── Ticket content (captured for PDF) ──────────────────── */}
-              <article
-                ref={(el) => { ticketRefs.current[idx] = el }}
-                className="relative bg-white rounded-3xl border border-[#e2e8f0] overflow-hidden print:rounded-none print:shadow-none print:border-0"
-              >
+              {/* ── Ticket content ─────────────────────────────────────── */}
+              <article className="relative bg-white rounded-3xl border border-[#e2e8f0] overflow-hidden print:rounded-none print:shadow-none print:border-0">
                 {/* ── Compact header bar ─────────────────────────────── */}
                 <div className="flex items-center justify-between px-5 py-3 bg-[#131132]">
                   <div className="flex items-center gap-2">
@@ -359,24 +300,6 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
               </article>
-
-              {/* ── Per-ticket download button — OUTSIDE article so it's not captured in PDF ── */}
-              {qr && (
-                <div className="tp-no-print pt-3 pb-1">
-                  <button
-                    onClick={() => downloadTicketPdf(idx)}
-                    disabled={downloadingIndex === idx}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] px-4 py-2.5 text-[12px] font-medium text-[#0a2540] hover:bg-[#f1f5f9] disabled:opacity-50 transition"
-                  >
-                    {downloadingIndex === idx ? (
-                      <Loader2 size={13} className="animate-spin" />
-                    ) : (
-                      <Download size={13} />
-                    )}
-                    {downloadingIndex === idx ? "Generating PDF…" : "Download this ticket as PDF"}
-                  </button>
-                </div>
-              )}
             </div>
           )
         })}

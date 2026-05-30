@@ -59,12 +59,12 @@ export default async function VendorsPage({
         />
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-10 md:pb-14">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-green-600" />
+            <Sparkles size={13} className="text-brand-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">Marketplace</span>
           </div>
 
           <h1 className="text-[36px] md:text-[60px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
-            Trusted vendors. <span className="text-green-600">Booked direct.</span>
+            Trusted vendors. <span className="text-brand-600">Booked direct.</span>
           </h1>
           <p className="mt-4 md:mt-5 text-[15px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
             Catering, photography, sound, security and more, verified by TicketPulse, rated by organizers across Zimbabwe.
@@ -98,7 +98,7 @@ export default async function VendorsPage({
               name="q"
               placeholder="Search vendors, cities, services…"
               defaultValue={query}
-              className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+              className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
             />
           </div>
           {activeCategory !== "all" && (
@@ -118,12 +118,12 @@ export default async function VendorsPage({
               defaultChecked={verifiedOnly}
               className="sr-only"
             />
-            <ShieldCheck size={15} className={verifiedOnly ? "text-green-600" : "text-green-600"} />
+            <ShieldCheck size={15} className={verifiedOnly ? "text-brand-600" : "text-brand-600"} />
             Verified only
           </label>
           <button
             type="submit"
-            className="hidden md:inline-flex items-center justify-center h-12 rounded-xl bg-green-600 px-5 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition-colors"
+            className="hidden md:inline-flex items-center justify-center h-12 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
           >
             Apply
           </button>
@@ -144,7 +144,7 @@ export default async function VendorsPage({
                 href={href}
                 className={`text-sm px-4 py-2 rounded-full border transition-all ${
                   isActive
-                    ? "bg-navy text-white border-navy shadow-sm shadow-green-600/20"
+                    ? "bg-navy text-white border-navy shadow-sm shadow-brand-600/20"
                     : "border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2"
                 }`}
               >

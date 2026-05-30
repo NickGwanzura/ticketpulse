@@ -35,12 +35,12 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
               type="email"
               required
               placeholder="colleague@example.com"
-              className="flex-1 rounded-xl border border-line bg-paper px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+              className="flex-1 rounded-xl border border-line bg-paper px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
             />
             <button
               type="submit"
               disabled={pending}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition shrink-0"
             >
               <Send size={14} />
               {pending ? "Sending..." : "Send invite"}
@@ -58,7 +58,7 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
         )}
 
         {state.ok && state.message && (
-          <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
+          <div className="rounded-xl bg-green-50 border border-brand-200 px-4 py-3 text-[13px] text-green-800">
             {state.message}
           </div>
         )}

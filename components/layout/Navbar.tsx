@@ -282,7 +282,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
             </Link>
             <Link
               href="/auth/signup"
-              className="hidden sm:inline-flex h-9 items-center rounded-lg bg-green-600 px-2.5 text-[12.5px] font-semibold text-white hover:bg-green-700 transition-colors"
+              className="hidden sm:inline-flex h-9 items-center rounded-lg bg-brand-600 px-2.5 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               Sign up
             </Link>
@@ -418,7 +418,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
             {/* Sell row */}
             <Link href="/auth/signup?role=organizer" className="flex items-center gap-3 rounded-xl bg-green-50/60 border border-green-500/15 p-4">
               <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line">
-                <CalendarCog size={15} className="text-green-600" />
+                <CalendarCog size={15} className="text-brand-600" />
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-ink">Sell tickets</p>
@@ -449,7 +449,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                   <Link href="/dashboard" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
                     <LayoutDashboard size={15} /> Dashboard
                   </Link>
-                  <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white">
+                  <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">
                     <LogOut size={15} /> Sign out
                   </button>
                 </div>
@@ -459,7 +459,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                     <Link href="/auth/signin" className="flex items-center justify-center rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
                       Sign in
                     </Link>
-                    <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white">
+                    <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">
                       Sign up <ArrowRight size={13} />
                     </Link>
                   </div>

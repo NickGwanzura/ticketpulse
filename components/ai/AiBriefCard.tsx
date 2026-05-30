@@ -31,7 +31,7 @@ export default function AiBriefCard({
     <div className="rounded-2xl border border-line bg-gradient-to-br from-blue-50/40 to-indigo-50/40 p-5 tp-lift">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Sparkles size={15} className="text-green-600" />
+          <Sparkles size={15} className="text-brand-600" />
           <h3 className="text-[14px] font-semibold tracking-tight text-ink">AI Platform Brief</h3>
         </div>
         <button

@@ -37,6 +37,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "pending",
   "awaiting_verification",
   "paid",
+  "completed",
   "cancelled",
   "refunded",
   "expired",
@@ -268,6 +269,8 @@ export const orders = pgTable("orders", {
   verificationSentAt: timestamp("verification_sent_at"),
   verificationExpires: timestamp("verification_expires"),
   verifiedAt: timestamp("verified_at"),
+  completedAt: timestamp("completed_at"),
+  completedBy: text("completed_by"),
   metadata: json("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -602,7 +605,120 @@ export const analyticsEvents = pgTable("analytics_events", {
   index("analytics_events_event_type_idx").on(table.event, table.createdAt),
 ])
 
+export const paymentLedger = pgTable("payment_ledger", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id").notNull().references(() => orders.id),
+  eventId: uuid("event_id").notNull().references(() => events.id),
+  transactionTrace: text("transaction_trace").notNull(),
+  salesOrderTrace: text("sales_order_trace").notNull(),
+  invoiceId: text("invoice_id"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD"),
+  processor: text("processor").notNull(),
+  velocityPollStatus: text("velocity_poll_status"),
+  localStatus: text("local_status").notNull(),
+  source: text("source").notNull(),
+  rawPayload: json("raw_payload"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("payment_ledger_trace_idx").on(table.transactionTrace),
+  index("payment_ledger_order_idx").on(table.orderId),
+  index("payment_ledger_event_idx").on(table.eventId),
+  index("payment_ledger_created_idx").on(table.createdAt),
+])
+
+export const paymentLedgerRelations = relations(paymentLedger, ({ one }) => ({
+  order: one(orders, { fields: [paymentLedger.orderId], references: [orders.id] }),
+  event: one(events, { fields: [paymentLedger.eventId], references: [events.id] }),
+}))
+
 export const galleryRelations = relations(eventGalleries, ({ one, many }) => ({
   event: one(events, { fields: [eventGalleries.eventId], references: [events.id] }),
   photos: many(galleryPhotos),
 }))
+
+// ─── Platform Settings ───────────────────────────────────────────────────────
+
+export const platformSettings = pgTable("platform_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  platformName: text("platform_name").default("TicketPulse").notNull(),
+  supportEmail: text("support_email").default("support@ticketpulse.co.zw").notNull(),
+  defaultCurrency: text("default_currency").default("USD").notNull(),
+  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }).default("8").notNull(),
+  maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+// ─── Payouts ─────────────────────────────────────────────────────────────────
+
+export const payoutStatusEnum = pgEnum("payout_status", [
+  "pending",
+  "approved",
+  "processing",
+  "paid",
+  "held",
+])
+
+export const payoutMethodEnum = pgEnum("payout_method", [
+  "ecocash",
+  "bank_usd",
+  "bank_zar",
+])
+
+export const payouts = pgTable("payouts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD").notNull(),
+  method: payoutMethodEnum("method").default("ecocash").notNull(),
+  status: payoutStatusEnum("status").default("pending").notNull(),
+  accountNumber: text("account_number"),
+  accountName: text("account_name"),
+  bankName: text("bank_name"),
+  processedAt: timestamp("processed_at"),
+  processedBy: text("processed_by"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("payouts_user_idx").on(table.userId),
+  index("payouts_status_idx").on(table.status),
+  index("payouts_created_idx").on(table.createdAt),
+])
+
+export const payoutsRelations = relations(payouts, ({ one }) => ({
+  user: one(users, { fields: [payouts.userId], references: [users.id] }),
+  event: one(events, { fields: [payouts.eventId], references: [events.id] }),
+}))
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "order_paid",
+  "order_cancelled",
+  "order_refunded",
+  "ticket_issued",
+  "ticket_checked_in",
+  "payout_requested",
+  "payout_paid",
+  "event_published",
+  "event_sold_out",
+  "system",
+])
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  link: text("link"),
+  read: boolean("read").default(false).notNull(),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("notifications_user_id_idx").on(table.userId),
+  index("notifications_read_idx").on(table.read),
+  index("notifications_created_idx").on(table.createdAt),
+])

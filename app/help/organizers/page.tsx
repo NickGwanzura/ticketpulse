@@ -129,7 +129,7 @@ export default function HelpOrganizersPage() {
             Back to help center
           </Link>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-5 shadow-sm shadow-ink/5">
-            <CalendarCog size={13} className="text-green-600" />
+            <CalendarCog size={13} className="text-brand-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">
               For organizers
             </span>
@@ -161,7 +161,7 @@ export default function HelpOrganizersPage() {
                 0{i + 1}
               </span>
               <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
-                <Icon size={17} className="text-green-600" />
+                <Icon size={17} className="text-brand-600" />
               </span>
               <p className="text-[14.5px] font-semibold tracking-tight text-ink mb-1.5">
                 {title}
@@ -188,7 +188,7 @@ export default function HelpOrganizersPage() {
                 className="flex gap-4 rounded-2xl border border-line bg-paper p-5"
               >
                 <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
-                  <Icon size={17} className="text-green-600" />
+                  <Icon size={17} className="text-brand-600" />
                 </span>
                 <div>
                   <p className="text-[14.5px] font-semibold tracking-tight text-ink">
@@ -204,7 +204,7 @@ export default function HelpOrganizersPage() {
           <div className="mt-6 rounded-2xl border border-green-500/15 bg-gradient-to-br from-blue-soft to-paper p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
             <div className="flex items-start gap-4">
               <span className="inline-flex w-11 h-11 items-center justify-center rounded-xl bg-paper ring-1 ring-green-500/20 shadow-sm shrink-0">
-                <Clock3 size={18} className="text-green-600" />
+                <Clock3 size={18} className="text-brand-600" />
               </span>
               <div>
                 <p className="text-[14.5px] font-semibold tracking-tight text-ink leading-snug">
@@ -217,7 +217,7 @@ export default function HelpOrganizersPage() {
             </div>
             <Link
               href="/auth/signup?role=organizer"
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition shrink-0"
             >
               Start selling <ArrowRight size={14} />
             </Link>

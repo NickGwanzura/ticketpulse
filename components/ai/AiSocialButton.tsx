@@ -60,7 +60,7 @@ export default function AiSocialButton({
         <select
           value={platform}
           onChange={(e) => setPlatform(e.target.value as typeof platform)}
-          className="text-[11px] bg-paper border border-line rounded-lg px-2 py-1.5 text-ink-2 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+          className="text-[11px] bg-paper border border-line rounded-lg px-2 py-1.5 text-ink-2 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         >
           {PLATFORMS.map((p) => (
             <option key={p.value} value={p.value}>{p.label}</option>
@@ -88,7 +88,7 @@ export default function AiSocialButton({
             className="absolute top-2 right-2 text-ink-3 hover:text-ink transition-colors"
             title="Copy to clipboard"
           >
-            {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+            {copied ? <Check size={14} className="text-brand-600" /> : <Copy size={14} />}
           </button>
         </div>
       )}

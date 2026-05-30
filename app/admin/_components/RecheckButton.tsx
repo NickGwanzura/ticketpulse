@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react"
 import { RefreshCw, CheckCircle, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { recheckPaymentAction } from "@/app/admin/actions"
+import { recheckPaymentAction } from "@/app/admin/actions/velocity"
 
 type ActionState = { ok: boolean; message: string } | null
 

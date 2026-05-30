@@ -58,7 +58,7 @@ function inputCls(hasError?: boolean) {
     "placeholder:text-ink-3 focus:outline-none focus:ring-4",
     hasError
       ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/15"
-      : "border-line focus:border-line-2 focus:ring-green-500/15",
+      : "border-line focus:border-line-2 focus:ring-brand-500/15",
   ].join(" ")
 }
 
@@ -247,7 +247,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
   return (
     <div className="space-y-8">
       {showCreatedToast && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-800" role="status">
+        <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] text-green-800" role="status">
           Draft created. Add a cover image and the rest of your details below.
         </div>
       )}
@@ -262,7 +262,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
           </div>
         )}
         {state.ok && state.message && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-800" role="status">
+          <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] text-green-800" role="status">
             {state.message}
           </div>
         )}
@@ -317,7 +317,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
                   type="button"
                   onClick={handleGenerateDesc}
                   disabled={genDesc}
-                  className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-green-600/80 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
                 >
                   {genDesc ? (
                     <Loader2 size={12} className="animate-spin" />
@@ -397,7 +397,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               type="button"
               onClick={handleSuggestLocation}
               disabled={genLoc}
-              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-green-600/80 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
             >
               {genLoc ? (
                 <Loader2 size={13} className="animate-spin" />

@@ -122,7 +122,7 @@ export default async function ComingSoonPage({
       <div className="relative w-full max-w-2xl mx-auto text-center">
         {/* Brand */}
         <div className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">
-          <span className="relative inline-flex w-8 h-8 items-center justify-center rounded-lg bg-navy shadow-sm shadow-green-600/30">
+          <span className="relative inline-flex w-8 h-8 items-center justify-center rounded-lg bg-navy shadow-sm shadow-brand-600/30">
             <span className="block w-2 h-2 rounded-full bg-white" />
             <span className="absolute inset-0 rounded-lg ring-1 ring-white/20" aria-hidden />
           </span>
@@ -135,7 +135,7 @@ export default async function ComingSoonPage({
             <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-70" />
             <span className="relative block w-1.5 h-1.5 rounded-full bg-green-500" />
           </span>
-          <Sparkles size={12} className="text-green-600" />
+          <Sparkles size={12} className="text-brand-600" />
           <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">
             Launching Soon
           </span>
@@ -164,7 +164,7 @@ export default async function ComingSoonPage({
               className="rounded-2xl border border-line bg-paper/70 backdrop-blur px-4 py-3.5 shadow-sm shadow-ink/[0.03]"
             >
               <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-green-50 ring-1 ring-green-500/15 mb-2">
-                <Icon size={14} className="text-green-600" />
+                <Icon size={14} className="text-brand-600" />
               </span>
               <p className="text-[13px] font-semibold tracking-tight text-ink">{title}</p>
               <p className="text-[11.5px] text-ink-2 mt-0.5 leading-snug">{body}</p>
@@ -190,7 +190,7 @@ export default async function ComingSoonPage({
               autoFocus
               placeholder="Access password"
               aria-invalid={showError}
-              className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition aria-[invalid=true]:border-rose-400 aria-[invalid=true]:ring-rose-100"
+              className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition aria-[invalid=true]:border-rose-400 aria-[invalid=true]:ring-rose-100"
             />
           </div>
           {showError && (
@@ -200,7 +200,7 @@ export default async function ComingSoonPage({
           )}
           <button
             type="submit"
-            className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-sm py-3 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20"
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold text-sm py-3 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-sm shadow-brand-600/20"
           >
             Unlock preview <ArrowRight size={14} />
           </button>

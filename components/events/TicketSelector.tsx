@@ -170,7 +170,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
       <button
         onClick={checkout}
         disabled={lineCount === 0}
-        className="w-full bg-green-600 text-white font-semibold py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm mb-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-green-600"
+        className="w-full bg-brand-600 text-white font-semibold py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-sm shadow-brand-600/20 text-sm mb-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand-600"
       >
         {lineCount === 0 ? "Choose tickets" : `Checkout · ${hasMixedCurrencies ? "Mixed" : formatCurrency(total, baseCurrency)}`}
       </button>
@@ -180,7 +180,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
         className="w-full inline-flex items-center justify-center gap-2 border border-line bg-paper text-ink font-medium py-3 rounded-xl hover:border-line-2 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {added ? (
-          <><Check size={14} className="text-green-600" /> Added to cart</>
+          <><Check size={14} className="text-brand-600" /> Added to cart</>
         ) : (
           <><ShoppingBag size={14} /> Add to cart</>
         )}

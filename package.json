@@ -26,6 +26,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
+    "@react-pdf/renderer": "^4.5.1",
     "@types/pg": "^8.20.0",
     "@types/uuid": "^10.0.0",
     "clsx": "^2.1.1",

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { orders } from "@/db/schema"
+import { orders, paymentLedger } from "@/db/schema"
 import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
-import { startOrderVerification } from "@/lib/order-verification"
-import { notifyPaymentSuccess } from "@/lib/payment-notifications"
+import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
@@ -188,17 +187,18 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       pollStatus: "PENDING",
     })
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Polling failed"
     log.error("velocity status polling error", {
       localOrderId: id,
       velocityTransactionTrace: velocityMeta?.transactionTrace,
-      error: String(err),
+      error: errorMessage,
     })
     return NextResponse.json({
       orderId: id,
       status: "pending",
       paid: false,
-      pollStatus: "PENDING",
-      message: err instanceof Error ? err.message : "Polling failed",
+      pollStatus: "ERROR",
+      message: errorMessage,
     })
   }
 }
@@ -216,7 +216,7 @@ async function handlePollSuccess(
   pollResult: Awaited<ReturnType<typeof pollTransaction>>,
 ) {
   const lockKey = `velocity-finalize:${velocityMeta.salesOrderTrace}`
-  if (!acquireLock(lockKey)) {
+  if (!await acquireLock(lockKey)) {
     log.info("velocity status - finalization lock contended", {
       localOrderId: id,
       salesOrderTrace: velocityMeta.salesOrderTrace,
@@ -284,11 +284,11 @@ async function handlePollSuccess(
       },
     }
 
-    // ── Update local DB ───────────────────────────────────────────────────
+    // ── Update local DB directly to PAID (skip awaiting_verification) ─────
     const [claimed] = await db
       .update(orders)
       .set({
-        status: "awaiting_verification",
+        status: "paid",
         paidAt: new Date(),
         paymentRef: invoiceId,
         metadata: finalMeta,
@@ -330,38 +330,40 @@ async function handlePollSuccess(
       }
     }
 
-    // ── Send verification email ──────────────────────────────────────────
-    if (order.guestEmail) {
-      const origin = new URL(req.url).origin
-      try {
-        await startOrderVerification({
-          orderId: id,
-          email: order.guestEmail,
-          origin,
-        })
-      } catch (err) {
-        // Verification email failed — order stays at awaiting_verification.
-        // Admin can resend via the admin panel.
-        log.warn("velocity status - verification email send failed, payment confirmed but email pending", {
-          localOrderId: id,
-          error: String(err),
-        })
-      }
-      // Fire-and-forget the payment notification (non-critical)
-      notifyPaymentSuccess(id).catch((err) => {
-        log.warn("velocity status - notifyPaymentSuccess failed", { localOrderId: id, error: String(err) })
-      })
-    }
+    // ── Generate tickets and send confirmation ────────────────────────────
+    const delivery = await deliverTicketForPaidOrder(id)
+
+    // ── Record in payment_ledger ──────────────────────────────────────────
+    await db.insert(paymentLedger).values({
+      orderId: id,
+      eventId: order.eventId,
+      transactionTrace: velocityMeta.transactionTrace ?? "",
+      salesOrderTrace: velocityMeta.salesOrderTrace,
+      invoiceId,
+      amount: order.totalAmount,
+      currency: order.currency ?? "USD",
+      processor: "velocity",
+      velocityPollStatus: "SUCCESS",
+      localStatus: "paid",
+      source: "poll",
+      rawPayload: null,
+    })
+
+    log.info("velocity status - delivery result", {
+      localOrderId: id,
+      deliveryStatus: delivery.status,
+      ticketCount: delivery.ticketCount,
+    })
 
     return NextResponse.json({
       orderId: id,
-      status: "awaiting_verification",
+      status: "paid",
       paid: true,
       pollStatus: "SUCCESS",
       sentTo: order.guestEmail,
       invoiceRef: invoiceId,
     })
   } finally {
-    releaseLock(lockKey)
+    await releaseLock(lockKey)
   }
 }

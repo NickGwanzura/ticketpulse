@@ -316,7 +316,7 @@ export default function VelocityViewer({ initialData }: Props) {
       label: "Completed",
       value: stats.completed.toLocaleString(),
       icon: CheckCircle,
-      tone: "text-green-600",
+      tone: "text-brand-600",
       bg: "bg-green-50",
     },
     {
@@ -339,7 +339,7 @@ export default function VelocityViewer({ initialData }: Props) {
     row.guestName ?? row.guestEmail?.split("@")[0] ?? "—"
 
   const pollIcon = (pollStatus: string | null | undefined) => {
-    if (pollStatus === "SUCCESS") return <CheckCircle size={11} className="text-green-600 shrink-0" />
+    if (pollStatus === "SUCCESS") return <CheckCircle size={11} className="text-brand-600 shrink-0" />
     if (pollStatus === "FAILED") return <XCircle size={11} className="text-rose-600 shrink-0" />
     if (pollStatus === "TIMEOUT") return <AlertTriangle size={11} className="text-gray-500 shrink-0" />
     return <RefreshCw size={11} className="text-amber-500 shrink-0" />
@@ -461,7 +461,7 @@ export default function VelocityViewer({ initialData }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by order #, email, or name…"
-            className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
+            className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
           />
         </form>
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -556,7 +556,7 @@ export default function VelocityViewer({ initialData }: Props) {
                                 {POLL_LABEL[v.pollStatus] ?? v.pollStatus}
                               </span>
                               {v.finalizedAt && (
-                                <span className="text-[9.5px] text-green-600 font-medium">
+                                <span className="text-[9.5px] text-brand-600 font-medium">
                                   Finalized {formatDateShort(v.finalizedAt)}
                                 </span>
                               )}
@@ -578,7 +578,7 @@ export default function VelocityViewer({ initialData }: Props) {
                               </span>
                             )}
                             {o.paidAt && (
-                              <span className="text-[9.5px] text-green-600 font-medium">
+                              <span className="text-[9.5px] text-brand-600 font-medium">
                                 Paid {formatDateShort(o.paidAt)}
                               </span>
                             )}
@@ -601,7 +601,7 @@ export default function VelocityViewer({ initialData }: Props) {
                               <span className="text-[9.5px] text-ink-3 italic">No SO trace</span>
                             )}
                             {v?.invoiceRef && (
-                              <span className="text-[9.5px] font-mono text-green-600 truncate" title={v.invoiceRef}>
+                              <span className="text-[9.5px] font-mono text-brand-600 truncate" title={v.invoiceRef}>
                                 INV: {v.invoiceRef.slice(0, 14)}
                               </span>
                             )}
@@ -707,7 +707,7 @@ export default function VelocityViewer({ initialData }: Props) {
                         </p>
                       )}
                       {v?.invoiceRef && (
-                        <p className="text-[9.5px] font-mono text-green-600 truncate" title={v.invoiceRef}>
+                        <p className="text-[9.5px] font-mono text-brand-600 truncate" title={v.invoiceRef}>
                           INV: {v.invoiceRef.slice(0, 20)}
                         </p>
                       )}

@@ -94,7 +94,7 @@ export default function AcceptInviteForm({
             </p>
             <Link
               href={`/auth/signin?callbackUrl=/invite/${token}`}
-              className="block w-full text-center rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
+              className="block w-full text-center rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
             >
               Sign in with this email
             </Link>
@@ -113,7 +113,7 @@ export default function AcceptInviteForm({
             </div>
             <Link
               href={`/auth/signin?callbackUrl=/invite/${token}`}
-              className="block w-full text-center rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
+              className="block w-full text-center rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
             >
               Sign in with a different email
             </Link>
@@ -130,7 +130,7 @@ export default function AcceptInviteForm({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 text-center">
+            <div className="rounded-xl bg-green-50 border border-brand-200 px-4 py-3 text-sm text-green-800 text-center">
               Signed in as <strong>{email}</strong>
             </div>
 

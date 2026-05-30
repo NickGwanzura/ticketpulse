@@ -229,7 +229,7 @@ export async function POST(req: Request) {
   }
 
   const lockKey = `velocity-checkout:${parsed.email}:${event.id}`
-  if (!acquireLock(lockKey)) {
+  if (!await acquireLock(lockKey)) {
     return NextResponse.json({ error: "A checkout is already in progress for this account" }, { status: 429 })
   }
 
@@ -475,6 +475,6 @@ export async function POST(req: Request) {
     log.error("velocity checkout failed", { error: message })
     return NextResponse.json({ error: message }, { status: 502 })
   } finally {
-    releaseLock(lockKey)
+    await releaseLock(lockKey)
   }
 }

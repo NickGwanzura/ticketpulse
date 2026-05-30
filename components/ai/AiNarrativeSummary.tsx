@@ -23,7 +23,7 @@ export default function AiNarrativeSummary(props: Props) {
     <div className="rounded-2xl border border-line bg-gradient-to-br from-green-50/40 to-teal-50/40 p-5 tp-lift">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <BarChart3 size={15} className="text-green-600" />
+          <BarChart3 size={15} className="text-brand-600" />
           <h3 className="text-[14px] font-semibold tracking-tight text-ink">AI Narrative Summary</h3>
         </div>
         <button

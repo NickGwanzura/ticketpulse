@@ -19,11 +19,11 @@ export default function VendorsApplyPage() {
               <span className="opacity-60">←</span> Back to vendors
             </Link>
             <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-5 shadow-sm shadow-ink/5">
-              <Sparkles size={13} className="text-green-600" />
+              <Sparkles size={13} className="text-brand-600" />
               <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">For vendors</span>
             </div>
             <h1 className="text-[34px] md:text-[48px] font-bold tracking-[-0.025em] leading-[1.05] text-ink">
-              List your service. <span className="text-green-600">Get booked.</span>
+              List your service. <span className="text-brand-600">Get booked.</span>
             </h1>
             <p className="mt-4 text-[15px] md:text-[16px] leading-relaxed text-ink-2 max-w-md">
               Join the marketplace organizers reach for first. Free to apply, we approve in 48 hours.
@@ -33,7 +33,7 @@ export default function VendorsApplyPage() {
               {PERKS.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="flex items-start gap-3.5">
                   <span className="shrink-0 inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mt-0.5">
-                    <Icon size={16} className="text-green-600" />
+                    <Icon size={16} className="text-brand-600" />
                   </span>
                   <div>
                     <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>
@@ -53,7 +53,7 @@ export default function VendorsApplyPage() {
                   "Photos of past work (3+)",
                 ].map((c) => (
                   <li key={c} className="flex items-center gap-2 text-[13.5px] text-ink-2">
-                    <Check size={14} className="text-green-600 shrink-0" />
+                    <Check size={14} className="text-brand-600 shrink-0" />
                     {c}
                   </li>
                 ))}
@@ -81,7 +81,7 @@ export default function VendorsApplyPage() {
                 <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Category</label>
                 <select
                   required
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 >
                   <option value="">Choose a category…</option>
                   <option value="catering">Catering</option>
@@ -154,7 +154,7 @@ export default function VendorsApplyPage() {
 
               <button
                 type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20 text-sm mt-2"
+                className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-sm shadow-brand-600/20 text-sm mt-2"
               >
                 Submit application <ArrowRight size={15} />
               </button>

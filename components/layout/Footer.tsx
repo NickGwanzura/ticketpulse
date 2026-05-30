@@ -137,7 +137,7 @@ export default function Footer() {
                     aria-label="Email address"
                     placeholder="you@example.com"
                     disabled
-                    className="w-full h-14 rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur pl-11 pr-4 text-[14.5px] text-white placeholder:text-white/40 focus:outline-none focus:border-green-500/60 focus:ring-4 focus:ring-green-500/20 transition"
+                    className="w-full h-14 rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur pl-11 pr-4 text-[14.5px] text-white placeholder:text-white/40 focus:outline-none focus:border-green-500/60 focus:ring-4 focus:ring-brand-500/20 transition"
                   />
                 </div>
                 <div

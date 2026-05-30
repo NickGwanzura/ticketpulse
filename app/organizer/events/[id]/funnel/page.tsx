@@ -149,7 +149,7 @@ export default async function FunnelPage({ params }: { params: Promise<RoutePara
               <div className="px-5 md:px-6 py-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-[13px] text-ink-2">
-                    <CheckCircle size={13} className="text-green-600" />
+                    <CheckCircle size={13} className="text-brand-600" />
                     Successful
                   </span>
                   <span className="text-[14px] font-bold tabular-nums text-green-700">{paymentBreakdown.successful.toLocaleString()}</span>

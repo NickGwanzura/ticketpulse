@@ -7,11 +7,34 @@ import PayoutNotificationEmail from "@/emails/payout-notification"
 import VerifyPurchaseEmail from "@/emails/verify-purchase"
 import AdminInviteEmail from "@/emails/admin-invite"
 import ResetPasswordEmail from "@/emails/reset-password"
+import { log } from "@/lib/logger"
 
-// TODO: verify the `ticketpulse.tech` sending domain in Resend before
-// going live, otherwise outbound mail will be rejected.
 const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
 const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.tech"
+
+export function validateEmailConfig(): { valid: boolean; warnings: string[] } {
+  const warnings: string[] = []
+
+  if (!process.env.AUTH_RESEND_KEY) {
+    warnings.push("AUTH_RESEND_KEY is not set — transactional email will be skipped")
+  }
+
+  const domain = FROM.split("@").pop()?.replace(">", "")
+  if (domain && !domain.includes("gmail.com") && !domain.includes("localhost")) {
+    warnings.push(
+      `Resend sending domain "${domain}" must be verified in Resend dashboard before going live, ` +
+      "otherwise outbound mail will be rejected or marked as spam",
+    )
+  }
+
+  if (warnings.length > 0) {
+    for (const w of warnings) {
+      log.warn(`email config validation: ${w}`)
+    }
+  }
+
+  return { valid: warnings.length === 0, warnings }
+}
 
 let _resend: Resend | null = null
 function client(): Resend | null {
@@ -31,10 +54,13 @@ function client(): Resend | null {
 
 type SendResult = { id: string } | { skipped: true; reason: string }
 
+type Attachment = { filename: string; content: Buffer | string; contentType?: string }
+
 async function send(args: {
   to: string
   subject: string
   react: React.ReactElement
+  attachments?: Attachment[]
 }): Promise<SendResult> {
   const resend = client()
   if (!resend) return { skipped: true, reason: "AUTH_RESEND_KEY not set" }
@@ -43,6 +69,11 @@ async function send(args: {
     to: args.to,
     subject: args.subject,
     react: args.react,
+    attachments: args.attachments?.map((a) => ({
+      filename: a.filename,
+      content: a.content instanceof Buffer ? a.content.toString("base64") : a.content,
+      contentType: a.contentType ?? "application/pdf",
+    })),
   })
   if (error) {
     console.error("[email] Resend rejected send", { to: args.to, subject: args.subject, error })
@@ -62,6 +93,7 @@ export async function sendEmail(opts: {
   text?: string
   replyTo?: string
   cc?: string | string[]
+  attachments?: { filename: string; content: Buffer | string; contentType?: string }[]
 }): Promise<SendResult> {
   const resend = client()
   if (!resend) return { skipped: true, reason: "AUTH_RESEND_KEY not set" }
@@ -73,6 +105,11 @@ export async function sendEmail(opts: {
     html: opts.html,
     text: opts.text,
     replyTo: opts.replyTo,
+    attachments: opts.attachments?.map((a) => ({
+      filename: a.filename,
+      content: a.content instanceof Buffer ? a.content.toString("base64") : a.content,
+      contentType: a.contentType ?? "application/pdf",
+    })),
   })
   if (error) {
     console.error("[email] Resend rejected send", { to: opts.to, subject: opts.subject, error })
@@ -160,11 +197,13 @@ export function sendOrderConfirmationEmail(args: {
   total: string
   currency: string
   ticketUrl: string
+  attachments?: { filename: string; content: Buffer | string; contentType?: string }[]
 }) {
   return send({
     to: args.to,
     subject: `Tickets confirmed: ${args.eventTitle}`,
     react: OrderConfirmationEmail(args),
+    attachments: args.attachments,
   })
 }
 

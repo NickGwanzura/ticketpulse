@@ -88,7 +88,7 @@ export default function InviteUserDialog() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
+        className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
       >
         <UserPlus size={14} />
         Invite user
@@ -140,7 +140,7 @@ export default function InviteUserDialog() {
                     if (error) setError(null)
                   }}
                   autoFocus
-                  className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${error ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-green-500/10"}`}
+                  className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${error ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
                 />
               </div>
 
@@ -189,7 +189,7 @@ export default function InviteUserDialog() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-wait"
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-wait"
                 >
                   {submitting ? "Sending..." : "Send invite"}
                 </button>

@@ -7,7 +7,6 @@ import {
   RotateCcw, ArrowLeft, ShieldCheck, Wifi, WifiOff, Trash2, User,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
-import { useCart } from "@/lib/cart-context"
 import { markTicketScannedAction, type ScanResult } from "./actions"
 
 const CHECKINS_KEY = "tp_checkins"
@@ -60,7 +59,6 @@ function parseTicketCode(raw: string): { orderId: string; lineKey: string; idx: 
 }
 
 export default function OrganizerScanPage() {
-  const { ready, getOrder } = useCart()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const detectorRef = useRef<BarcodeDetectorLike | null>(null)
@@ -120,23 +118,8 @@ export default function OrganizerScanPage() {
       eventTitle = "🧪 Sample ticket"
       tierName = "Test QR code — not valid for entry"
     } else {
-      const parsed = parseTicketCode(code)
-      if (parsed) {
-        const order = ready ? getOrder(parsed.orderId) : null
-        if (order && order.status === "paid") {
-          const ticket = order.items.find((it) => it.kind === "ticket" && it.key === parsed.lineKey)
-          if (ticket && ticket.kind === "ticket" && parsed.idx < ticket.qty) {
-            eventTitle = ticket.eventTitle
-            tierName = ticket.tierName
-            holder = order.contact.name || order.contact.email
-            const dup = recentRef.current.find((r) => r.code === code && r.status === "valid")
-            status = dup ? "duplicate" : "valid"
-          }
-        }
-      }
-
-      // Fallback to server lookup for codes not matched locally (e.g. staff tickets)
-      if (status === "unknown" && navigator.onLine) {
+      // Server-first validation — always hit the database for authoritative ticket status
+      if (navigator.onLine) {
         try {
           const result: ScanResult = await markTicketScannedAction(code)
           if (result.ok) {
@@ -169,7 +152,7 @@ export default function OrganizerScanPage() {
       saveCheckins(next)
       return next
     })
-  }, [ready, getOrder])
+  }, [])
 
   const stopCamera = useCallback(() => {
     if (rafRef.current !== null) {
@@ -283,7 +266,7 @@ export default function OrganizerScanPage() {
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-6">
         {/* Trust strip */}
         <div className="rounded-2xl border border-line bg-paper p-4 md:p-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-[12.5px] text-ink-2">
-          <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-green-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
+          <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-brand-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
           <span className="inline-flex items-center gap-2"><Ticket size={14} className="text-ink-3" /> Reads PDF, mobile QR, and Apple/Google Wallet.</span>
           <span className={`inline-flex items-center gap-2 ${online ? "text-green-700" : "text-amber-700"}`}>
             {online ? <Wifi size={14} /> : <WifiOff size={14} />}
@@ -311,7 +294,7 @@ export default function OrganizerScanPage() {
           <div className="col-span-12 lg:col-span-7 rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink inline-flex items-center gap-2">
-                <ScanLine size={16} className="text-green-600" /> Scanner
+                <ScanLine size={16} className="text-brand-600" /> Scanner
               </h2>
               <div className="flex items-center gap-2">
                 {cameraState === "running" ? (
@@ -325,7 +308,7 @@ export default function OrganizerScanPage() {
                   <button
                     onClick={startCamera}
                     disabled={!cameraSupported || cameraState === "starting"}
-                    className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     <Camera size={13} /> {cameraState === "starting" ? "Starting…" : "Start camera"}
                   </button>
@@ -384,11 +367,11 @@ export default function OrganizerScanPage() {
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
                 placeholder="Manual entry: paste or type ticket code (e.g. TP-XXXXX-...)"
-                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 transition"
               >
                 Verify
               </button>
@@ -400,7 +383,7 @@ export default function OrganizerScanPage() {
             {/* Latest result */}
             <div className={`tp-slide-up rounded-2xl border p-5 ${
               !latest ? "border-line bg-paper" :
-              latest.status === "valid" ? "border-green-200 bg-green-50/60 ring-1 ring-green-200/40" :
+              latest.status === "valid" ? "border-brand-200 bg-green-50/60 ring-1 ring-green-200/40" :
               latest.status === "duplicate" ? "border-amber-200 bg-amber-50/60 ring-1 ring-amber-200/40" :
               "border-rose-200 bg-rose-50/60 ring-1 ring-rose-200/40"
             }`}>

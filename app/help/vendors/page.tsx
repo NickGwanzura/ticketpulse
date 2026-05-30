@@ -28,7 +28,7 @@ export default function HelpVendorsPage() {
             <ArrowLeft size={13} /> All help topics
           </Link>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-green-600" />
+            <Sparkles size={13} className="text-brand-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">For vendors</span>
           </div>
           <h1 className="text-[36px] md:text-[52px] font-bold tracking-[-0.025em] leading-[1.05] text-ink max-w-2xl">
@@ -68,7 +68,7 @@ export default function HelpVendorsPage() {
             ].map(({ icon: Icon, title, body }) => (
               <div key={title} className="rounded-2xl border border-line bg-paper p-6">
                 <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
-                  <Icon size={17} className="text-green-600" />
+                  <Icon size={17} className="text-brand-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
                 <p className="text-[13.5px] text-ink-2 mt-1.5 leading-relaxed">{body}</p>

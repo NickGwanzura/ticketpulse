@@ -1,14 +1,20 @@
+import React from "react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Search, DollarSign, Receipt, TrendingUp,
   Smartphone, ShoppingCart, Download, ExternalLink,
 } from "lucide-react"
+import Pagination from "@/components/ui/Pagination"
 
 import ResendButton from "@/app/admin/_components/ResendButton"
 import RefundButton from "@/app/admin/_components/RefundButton"
 import RecheckButton from "@/app/admin/_components/RecheckButton"
-import { desc, eq, or, like, and } from "drizzle-orm"
+import CompleteButton from "@/app/admin/_components/CompleteButton"
+import SendTicketsButton from "@/app/admin/_components/SendTicketsButton"
+import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
+import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
+import { desc, eq, or, like, and, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -23,6 +29,7 @@ const STATUS_STYLE: Record<string, string> = {
   paid:                   "bg-emerald-50 text-emerald-700",
   pending:                "bg-amber-50 text-amber-700",
   awaiting_verification:  "bg-blue-50 text-blue-700 ring-1 ring-blue-200/50",
+  completed:              "bg-violet-50 text-violet-700 ring-1 ring-violet-200/50",
   refunded:               "bg-rose-50 text-rose-700",
   cancelled:              "bg-paper-2 text-ink-3 ring-1 ring-line",
   expired:                "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
@@ -32,14 +39,60 @@ const STATUS_LABEL: Record<string, string> = {
   paid:                   "Paid",
   pending:                "Pending",
   awaiting_verification:  "Awaiting verification",
+  completed:              "Completed",
   refunded:               "Refunded",
   cancelled:              "Cancelled",
   expired:                "Expired",
 }
 
+function PaymentBadge({ status }: { status: string | null }) {
+  const paidStatuses = ["paid", "completed"]
+  if (paidStatuses.includes(status ?? "")) {
+    return <span className="text-[10px] font-medium text-emerald-600">Paid</span>
+  }
+  if (status === "refunded") {
+    return <span className="text-[10px] font-medium text-rose-600">Refunded</span>
+  }
+  return <span className="text-[10px] font-medium text-amber-600">Pending</span>
+}
+
+function FulfilmentBadge({ metadata }: { metadata: unknown }) {
+  const meta = metadata as Record<string, unknown> | null
+  const delivery = meta?.delivery as Record<string, unknown> | undefined
+  const hasTickets = delivery?.ticketIssuedAt || (delivery?.status && delivery.status !== "NOT_STARTED")
+  if (hasTickets) {
+    return <span className="text-[10px] font-medium text-emerald-600">Ticket Generated</span>
+  }
+  return <span className="text-[10px] font-medium text-amber-600">Not Generated</span>
+}
+
+function DeliveryBadge({ metadata }: { metadata: unknown }) {
+  const meta = metadata as Record<string, unknown> | null
+  const delivery = meta?.delivery as Record<string, unknown> | undefined
+  if (!delivery || delivery.status === "NOT_STARTED") {
+    return <span className="text-[10px] font-medium text-amber-600">Pending</span>
+  }
+  if (delivery.status === "EMAIL_SENT" || delivery.status === "DELIVERED") {
+    return <span className="text-[10px] font-medium text-emerald-600">Sent</span>
+  }
+  if (delivery.status === "EMAIL_FAILED" || delivery.status === "FAILED") {
+    return <span className="text-[10px] font-medium text-rose-600">Failed</span>
+  }
+  return <span className="text-[10px] font-medium text-amber-600">Pending</span>
+}
+
+function completedByText(metadata: unknown): React.ReactNode {
+  const m = metadata as Record<string, unknown>
+  if (m.completedBy) {
+    return <span className="text-[10px] text-violet-600 font-medium">by {String(m.completedBy)}</span>
+  }
+  return null
+}
+
 const FILTER_PILLS = [
   { label: "All",              value: "all" },
   { label: "Paid",             value: "paid" },
+  { label: "Completed",        value: "completed" },
   { label: "Pending",          value: "pending" },
   { label: "Awaiting verify",  value: "awaiting_verification" },
   { label: "Cancelled",        value: "cancelled" },
@@ -47,10 +100,12 @@ const FILTER_PILLS = [
   { label: "Expired",          value: "expired" },
 ]
 
+const LIMIT = 25
+
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
@@ -60,6 +115,8 @@ export default async function AdminOrdersPage({
   const sp = await searchParams
   const query = sp.q?.trim() ?? ""
   const statusFilter = sp.status ?? "all"
+  const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
+  const offset = (currentPage - 1) * LIMIT
 
   // ── Build WHERE clause ──────────────────────────────────────────────────
   const conditions: ReturnType<typeof and>[] = []
@@ -109,7 +166,18 @@ export default async function AdminOrdersPage({
     .leftJoin(events, eq(orders.eventId, events.id))
     .where(whereClause)
     .orderBy(desc(orders.createdAt))
-    .limit(100)
+    .limit(LIMIT)
+    .offset(offset)
+
+  // ── Count total for pagination ──────────────────────────────────────────
+  const [countRow] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(orders)
+    .leftJoin(events, eq(orders.eventId, events.id))
+    .where(whereClause)
+
+  const totalCount = countRow?.count ?? 0
+  const totalPages = Math.ceil(totalCount / LIMIT)
 
   // ── Aggregate stats from all orders ─────────────────────────────────────
   const allOrders = await db
@@ -120,7 +188,7 @@ export default async function AdminOrdersPage({
     })
     .from(orders)
 
-  const paidOrders = allOrders.filter((o) => o.status === "paid")
+  const paidOrders = allOrders.filter((o) => o.status === "paid" || o.status === "completed")
   const pendingOrders = allOrders.filter(
     (o) => o.status === "pending" || o.status === "awaiting_verification",
   )
@@ -146,7 +214,7 @@ export default async function AdminOrdersPage({
       label: "Completed",
       value: paidOrders.length.toLocaleString(),
       icon: TrendingUp,
-      tone: "text-green-600",
+      tone: "text-brand-600",
       bg: "bg-green-50",
     },
     {
@@ -217,7 +285,7 @@ export default async function AdminOrdersPage({
               name="q"
               defaultValue={query}
               placeholder="Search by order #, email, or name…"
-              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
+              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
             />
             {statusFilter !== "all" && (
               <input type="hidden" name="status" value={statusFilter} />
@@ -264,6 +332,9 @@ export default async function AdminOrdersPage({
                       <th className="text-left px-3 py-3 font-semibold">Event</th>
                       <th className="text-left px-3 py-3 font-semibold">Method</th>
                       <th className="text-left px-3 py-3 font-semibold">Status</th>
+                      <th className="text-left px-3 py-3 font-semibold">Payment</th>
+                      <th className="text-left px-3 py-3 font-semibold">Fulfilment</th>
+                      <th className="text-left px-3 py-3 font-semibold">Delivery</th>
                       <th className="text-left px-3 py-3 font-semibold">Date</th>
                       <th className="text-right px-3 py-3 font-semibold">Amount</th>
                       <th className="text-right px-5 py-3 font-semibold">Actions</th>
@@ -312,7 +383,7 @@ export default async function AdminOrdersPage({
                                 return (
                                   <>
                                     {meta.velocity.pollStatus && (
-                                      <span className={`text-[10px] font-medium ${meta.velocity.pollStatus === "SUCCESS" ? "text-green-600" : meta.velocity.pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
+                                      <span className={`text-[10px] font-medium ${meta.velocity.pollStatus === "SUCCESS" ? "text-brand-600" : meta.velocity.pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
                                         {meta.velocity.pollStatus}
                                       </span>
                                     )}
@@ -358,7 +429,17 @@ export default async function AdminOrdersPage({
                             {o.status === "awaiting_verification" && !o.verificationSentAt && (
                               <span className="text-[10px] text-amber-600 font-medium">Not yet verified</span>
                             )}
+                            {o.status === "completed" ? completedByText(o.metadata) : null}
                           </div>
+                        </td>
+                        <td className="px-3 py-3.5">
+                          <PaymentBadge status={o.status} />
+                        </td>
+                        <td className="px-3 py-3.5">
+                          <FulfilmentBadge metadata={o.metadata} />
+                        </td>
+                        <td className="px-3 py-3.5">
+                          <DeliveryBadge metadata={o.metadata} />
                         </td>
                         <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
                           <div className="flex flex-col">
@@ -376,7 +457,7 @@ export default async function AdminOrdersPage({
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1 max-w-[320px] flex-wrap">
                             {(o.status === "paid" || o.status === "awaiting_verification") && (
                               <ResendButton
                                 orderId={o.id}
@@ -387,13 +468,31 @@ export default async function AdminOrdersPage({
                             {o.status === "pending" && (
                               <RecheckButton orderId={o.id} variant="desktop" />
                             )}
+                            {(o.status === "pending" || o.status === "awaiting_verification") && (
+                              <CompleteAndSendButton orderId={o.id} variant="desktop" />
+                            )}
                             {o.status === "paid" && (
                               <>
                                 <RefundButton orderId={o.id} variant="desktop" />
+                                <CompleteButton orderId={o.id} variant="desktop" />
+                                <SendTicketsButton orderId={o.id} variant="desktop" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-green-700 transition-colors"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                >
+                                  <Download size={12} />
+                                  Tickets
+                                </Link>
+                              </>
+                            )}
+                            {o.status === "completed" && (
+                              <>
+                                <ResendTicketsButton orderId={o.id} variant="desktop" />
+                                <Link
+                                  href={`/orders/${o.id}/print`}
+                                  target="_blank"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
                                   <Download size={12} />
                                   Tickets
@@ -401,7 +500,7 @@ export default async function AdminOrdersPage({
                               </>
                             )}
                             <Link
-                              href={`/orders/${o.id}`}
+                              href={`/admin/orders/${o.id}`}
                               target="_blank"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
                               title="View order"
@@ -481,7 +580,7 @@ export default async function AdminOrdersPage({
                             const v = meta.velocity
                             return (
                               <>
-                                {v.pollStatus === "SUCCESS" && <span className="text-[9px] text-green-600">✓</span>}
+                                {v.pollStatus === "SUCCESS" && <span className="text-[9px] text-brand-600">✓</span>}
                                 {v.pollStatus === "FAILED" && <span className="text-[9px] text-red-600">✗</span>}
                               </>
                             )
@@ -496,7 +595,7 @@ export default async function AdminOrdersPage({
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {(o.status === "paid" || o.status === "awaiting_verification") && (
                         <ResendButton
                           orderId={o.id}
@@ -507,21 +606,39 @@ export default async function AdminOrdersPage({
                       {o.status === "pending" && (
                         <RecheckButton orderId={o.id} variant="mobile" />
                       )}
+                      {(o.status === "pending" || o.status === "awaiting_verification") && (
+                        <CompleteAndSendButton orderId={o.id} variant="mobile" />
+                      )}
                       {o.status === "paid" && (
                         <>
                           <RefundButton orderId={o.id} variant="mobile" />
+                          <CompleteButton orderId={o.id} variant="mobile" />
+                          <SendTicketsButton orderId={o.id} variant="mobile" />
                           <Link
                             href={`/orders/${o.id}/print`}
                             target="_blank"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-green-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                           >
                             <Download size={12} />
-                            Download tickets
+                            Tickets
+                          </Link>
+                        </>
+                      )}
+                      {o.status === "completed" && (
+                        <>
+                          <ResendTicketsButton orderId={o.id} variant="mobile" />
+                          <Link
+                            href={`/orders/${o.id}/print`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                          >
+                            <Download size={12} />
+                            Tickets
                           </Link>
                         </>
                       )}
                       <Link
-                        href={`/orders/${o.id}`}
+                        href={`/admin/orders/${o.id}`}
                         target="_blank"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
                       >
@@ -543,6 +660,14 @@ export default async function AdminOrdersPage({
                   : "Ticket purchases across all events will appear here."
               }
               variant="inline"
+            />
+          )}
+          {orderRows.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              baseUrl="/admin/orders"
+              queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined }}
             />
           )}
         </div>

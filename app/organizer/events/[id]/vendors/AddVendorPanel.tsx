@@ -73,7 +73,7 @@ export default function AddVendorPanel({
             setSelectedVendor(null)
             setSearch("")
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-green-700 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition"
         >
           {open ? <><X size={13} /> Close</> : <><Plus size={13} /> Add vendor</>}
         </button>
@@ -91,7 +91,7 @@ export default function AddVendorPanel({
                   placeholder="Search vendors by name, category or city…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                  className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                 />
               </div>
 
@@ -121,7 +121,7 @@ export default function AddVendorPanel({
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-ink truncate">
                           {v.businessName}
-                          {v.verified && <span className="ml-1 text-[11px] text-green-600">✓ Verified</span>}
+                          {v.verified && <span className="ml-1 text-[11px] text-brand-600">✓ Verified</span>}
                         </p>
                         <p className="text-ink-3 truncate">
                           {vendorCategoryLabel(v.category)}{v.city ? ` · ${v.city}` : ""}
@@ -175,7 +175,7 @@ export default function AddVendorPanel({
                     name="packageName"
                     required
                     placeholder="e.g. Premium catering package"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
                   {state.fieldErrors?.packageName && (
                     <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.packageName}</p>
@@ -190,7 +190,7 @@ export default function AddVendorPanel({
                     name="packageDescription"
                     rows={3}
                     placeholder="What's included? (optional)"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15 resize-none"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15 resize-none"
                   />
                 </div>
 
@@ -206,7 +206,7 @@ export default function AddVendorPanel({
                       min="0"
                       required
                       placeholder="0.00"
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                     />
                     {state.fieldErrors?.price && (
                       <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.price}</p>
@@ -219,7 +219,7 @@ export default function AddVendorPanel({
                     <select
                       name="currency"
                       defaultValue="USD"
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -237,7 +237,7 @@ export default function AddVendorPanel({
                     type="number"
                     min="1"
                     placeholder="Leave blank for unlimited"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
                   <p className="mt-1 text-[11.5px] text-ink-3">
                     Maximum number of ticket buyers who can purchase this add-on.
@@ -252,7 +252,7 @@ export default function AddVendorPanel({
                 )}
 
                 {state.ok && state.message && (
-                  <p className="text-[13px] text-green-600">{state.message}</p>
+                  <p className="text-[13px] text-brand-600">{state.message}</p>
                 )}
 
                 <div className="flex items-center gap-2 pt-1">

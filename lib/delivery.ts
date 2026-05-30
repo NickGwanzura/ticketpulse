@@ -1,5 +1,5 @@
 import "server-only"
-import { eq, sql, and } from "drizzle-orm"
+import { eq, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, events, users } from "@/db/schema"
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
@@ -8,6 +8,7 @@ import { sendText, formatChatId } from "@/lib/whatsapp"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
+import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
 
 export type DeliveryStatus =
   | "NOT_STARTED"
@@ -75,13 +76,13 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
     return { success: false, status: "FAILED", ticketCount: 0, emailSent: false, error: "Order not found" }
   }
 
-  if (order.status !== "paid") {
+  if (order.status !== "paid" && order.status !== "completed") {
     return {
       success: false,
       status: "FAILED",
       ticketCount: 0,
       emailSent: false,
-      error: `Order status is "${order.status}", expected "paid"`,
+      error: `Order status is "${order.status}", expected "paid" or "completed"`,
     }
   }
 
@@ -142,13 +143,29 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
             orderId: orderId,
             userId: order.userId,
             status: "sold",
+            // Temporary QR — will be updated with real QR data URL after insert
             qrCode: `${orderId}-${item.id}-${i}`,
           })
         }
       }
 
       if (ticketValues.length > 0) {
-        await db.insert(tickets).values(ticketValues)
+        const inserted = await db.insert(tickets).values(ticketValues).returning({ id: tickets.id, qrCode: tickets.qrCode })
+
+        // Generate QR data URLs and update ticket records
+        const qrUpdates: { id: string; qrCode: string }[] = []
+        for (const t of inserted) {
+          try {
+            const qrDataUrl = await generateQrDataUrl(t.id, orderId, baseUrl)
+            qrUpdates.push({ id: t.id, qrCode: qrDataUrl })
+          } catch {
+            // Fall back to the identifier string if QR generation fails
+            qrUpdates.push({ id: t.id, qrCode: t.qrCode ?? `${orderId}-${t.id}` })
+          }
+        }
+        for (const update of qrUpdates) {
+          await db.update(tickets).set({ qrCode: update.qrCode }).where(eq(tickets.id, update.id))
+        }
 
         const tierCounts = new Map<string, number>()
         for (const t of ticketValues) {
@@ -187,7 +204,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
       })
       .where(eq(orders.id, orderId))
 
-    // ── 5. Send confirmation email ────────────────────────────────────────
+    // ── 5. Send confirmation email with PDF tickets attached ──────────────
     if (order.guestEmail) {
       try {
         const [ev] = await db
@@ -212,6 +229,47 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
           ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
           : "TBA"
 
+        // Load created tickets for PDF generation
+        const orderTicketRecords = await db
+          .select({
+            id: tickets.id,
+            qrCode: tickets.qrCode,
+            tierId: tickets.tierId,
+          })
+          .from(tickets)
+          .where(eq(tickets.orderId, orderId))
+
+        // Build tier name map
+        const tierRows = await db
+          .select({ id: ticketTiers.id, name: ticketTiers.name })
+          .from(ticketTiers)
+          .where(inArray(ticketTiers.id, [...new Set(orderTicketRecords.map((t) => t.tierId).filter(Boolean))]))
+
+        const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
+
+        // Generate combined PDF of all tickets
+        let pdfBuffer: Buffer | null = null
+        try {
+          const pdfTickets = orderTicketRecords.map((t) => ({
+            eventTitle: ev?.title ?? "Your Ticket",
+            tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+            buyerName: order.guestName ?? "Valued Guest",
+            orderId,
+            ticketId: t.id,
+            qrCodeData: t.qrCode ?? `${orderId}-${t.id}`,
+          }))
+          pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
+        } catch (err) {
+          log.warn("delivery - PDF generation failed (email will still be sent)", {
+            orderId,
+            error: String(err),
+          })
+        }
+
+        const attachments = pdfBuffer
+          ? [{ filename: `tickets-${orderId.slice(0, 8)}.pdf`, content: pdfBuffer, contentType: "application/pdf" as const }]
+          : undefined
+
         const result = await sendOrderConfirmationEmail({
           to: order.guestEmail,
           buyerName: order.guestName,
@@ -223,6 +281,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
           total: String(order.totalAmount ?? "0"),
           currency: order.currency ?? "USD",
           ticketUrl: `${baseUrl}/orders/${orderId}`,
+          attachments,
         })
 
         attemptMeta.status = "EMAIL_SENT"
@@ -383,5 +442,5 @@ export function readDeliveryStatus(metadata: unknown): DeliveryMetadata {
 }
 
 export function hasActiveTickets(orderId: string, status: string): boolean {
-  return status === "paid"
+  return status === "paid" || status === "completed"
 }

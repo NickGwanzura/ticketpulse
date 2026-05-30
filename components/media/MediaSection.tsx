@@ -21,7 +21,7 @@ export default function MediaSection({ galleries, eventTitle }: MediaSectionProp
     <section>
       <div className="flex items-center gap-3 mb-6">
         <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
-          <Camera size={16} className="text-green-600" />
+          <Camera size={16} className="text-brand-600" />
         </span>
         <div>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Photo gallery</p>
@@ -52,7 +52,7 @@ export default function MediaSection({ galleries, eventTitle }: MediaSectionProp
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-ink-2">{current.photoCount} photos</p>
             {current.packPrice && (
-              <button className="inline-flex items-center gap-2 bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+              <button className="inline-flex items-center gap-2 bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors">
                 <Download size={13} />
                 Download pack · {formatCurrency(current.packPrice, current.currency)}
               </button>
@@ -98,7 +98,7 @@ export default function MediaSection({ galleries, eventTitle }: MediaSectionProp
                 <p className="text-sm font-semibold text-ink">Want high-resolution downloads?</p>
                 <p className="text-xs text-ink-2">Purchase the full photo pack to download all {current.photoCount} photos in full quality.</p>
               </div>
-              <button className="bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors shrink-0">
+              <button className="bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors shrink-0">
                 {formatCurrency(current.packPrice, current.currency)}
               </button>
             </div>

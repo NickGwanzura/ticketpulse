@@ -34,7 +34,7 @@ export default function PasswordInput({
         minLength={minLength}
         autoComplete={autoComplete}
         placeholder={placeholder}
-        className={`w-full bg-paper border border-line-2 rounded-xl pl-10 pr-10 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition ${inputClassName}`}
+        className={`w-full bg-paper border border-line-2 rounded-xl pl-10 pr-10 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition ${inputClassName}`}
       />
       <button
         type="button"

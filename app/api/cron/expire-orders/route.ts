@@ -1,23 +1,27 @@
 import { NextResponse } from "next/server"
 import { lte, and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, orderItems, ticketTiers, tickets } from "@/db/schema"
+import { orders, orderItems, ticketTiers, tickets, paymentLedger } from "@/db/schema"
 import { log } from "@/lib/logger"
+import type { VelocityOrderMetadata } from "@/types/velocity"
 
-/**
- * Cron job to expire stale pending orders older than 24 hours.
- *
- * Expired orders are marked "expired" and their inventory is freed.
- * Designed to be called by Railway cron or any external scheduler.
- */
 export async function POST() {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const pendingCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const awaitingCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
 
-  const staleOrders = await db
-    .select({ id: orders.id })
+  const pendingStale = await db
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency })
     .from(orders)
-    .where(and(eq(orders.status, "pending"), lte(orders.createdAt, cutoff)))
-    .limit(100)
+    .where(and(eq(orders.status, "pending"), lte(orders.createdAt, pendingCutoff)))
+    .limit(50)
+
+  const awaitingStale = await db
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency })
+    .from(orders)
+    .where(and(eq(orders.status, "awaiting_verification"), lte(orders.createdAt, awaitingCutoff)))
+    .limit(50)
+
+  const staleOrders = [...pendingStale, ...awaitingStale]
 
   if (staleOrders.length === 0) {
     log.info("cron/expire-orders — no stale orders to expire")
@@ -26,13 +30,43 @@ export async function POST() {
 
   const ids = staleOrders.map((o) => o.id)
 
-  // Free inventory for any tiers that had soldQuantity incremented
-  // (shouldn't happen for pending orders, but be safe)
-  for (const id of ids) {
+  const skippedVelocity: string[] = []
+
+  for (const order of staleOrders) {
+    const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    const velocityMeta = meta.velocity
+
+    if (velocityMeta?.pollStatus === "SUCCESS" || velocityMeta?.paymentRef) {
+      log.warn("cron/expire-orders — skipping order with confirmed Velocity payment", {
+        orderId: order.id,
+        status: order.status,
+        pollStatus: velocityMeta.pollStatus,
+        paymentRef: velocityMeta.paymentRef,
+      })
+
+      await db.insert(paymentLedger).values({
+        orderId: order.id,
+        eventId: order.eventId,
+        transactionTrace: velocityMeta.transactionTrace ?? "",
+        salesOrderTrace: velocityMeta.salesOrderTrace,
+        amount: order.totalAmount,
+        currency: order.currency ?? "USD",
+        processor: "velocity",
+        velocityPollStatus: velocityMeta.pollStatus ?? "UNKNOWN",
+        localStatus: order.status ?? "unknown",
+        source: "cron",
+        rawPayload: null,
+        errorMessage: "Cron attempted to expire but order has confirmed Velocity payment",
+      })
+
+      skippedVelocity.push(order.id)
+      continue
+    }
+
     const items = await db
       .select({ tierId: orderItems.tierId, quantity: orderItems.quantity })
       .from(orderItems)
-      .where(eq(orderItems.orderId, id))
+      .where(eq(orderItems.orderId, order.id))
 
     const tierMap = new Map<string, number>()
     for (const item of items) {
@@ -49,20 +83,43 @@ export async function POST() {
         })
         .where(eq(ticketTiers.id, tierId))
     }
+
+    await db.insert(paymentLedger).values({
+      orderId: order.id,
+      eventId: order.eventId,
+      transactionTrace: velocityMeta?.transactionTrace ?? "",
+      salesOrderTrace: velocityMeta?.salesOrderTrace ?? "",
+      amount: order.totalAmount,
+      currency: order.currency ?? "USD",
+      processor: "velocity",
+      velocityPollStatus: velocityMeta?.pollStatus ?? "UNKNOWN",
+      localStatus: "expired",
+      source: "cron",
+      errorMessage: "Order expired by cron",
+    })
   }
 
-  await db
-    .update(orders)
-    .set({ status: "expired", updatedAt: new Date() })
-    .where(inArray(orders.id, ids))
+  const expireIds = ids.filter((id) => !skippedVelocity.includes(id))
 
-  // Cancel any associated tickets
-  await db
-    .update(tickets)
-    .set({ status: "cancelled" })
-    .where(inArray(tickets.orderId, ids))
+  if (expireIds.length > 0) {
+    await db
+      .update(orders)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(inArray(orders.id, expireIds))
 
-  log.info(`cron/expire-orders — expired ${ids.length} stale orders`, { ids })
+    await db
+      .update(tickets)
+      .set({ status: "cancelled" })
+      .where(inArray(tickets.orderId, expireIds))
 
-  return NextResponse.json({ expired: ids.length })
+    log.info(`cron/expire-orders — expired ${expireIds.length} orders, skipped ${skippedVelocity.length} with confirmed payments`, {
+      expired: expireIds,
+      skippedVelocity,
+    })
+  }
+
+  return NextResponse.json({
+    expired: expireIds.length,
+    skipped: skippedVelocity.length,
+  })
 }

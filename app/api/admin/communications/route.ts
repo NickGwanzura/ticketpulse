@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { sendCommunicationAction } from "@/app/admin/actions"
+import { sendCommunicationAction } from "@/app/admin/actions/communications"
 
 export async function POST(req: NextRequest) {
   try {

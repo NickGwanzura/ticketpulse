@@ -21,7 +21,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 })
   }
 
-  if (order.status !== "paid") {
+  if (order.status !== "paid" && order.status !== "completed") {
     return NextResponse.json(
       { error: `Cannot resend tickets for order with status "${order.status}".` },
       { status: 409 },

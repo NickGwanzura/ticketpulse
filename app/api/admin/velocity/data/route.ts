@@ -35,6 +35,7 @@ export type VelocityApiResponse = {
     pollSuccess: number
     pollFailed: number
     pollPending: number
+    undeliveredRevenue: number
   }
 }
 
@@ -140,7 +141,17 @@ export async function GET(request: Request) {
     else pollPending++
   }
 
+  // Revenue = only PAID orders (tickets delivered).
+  // Undelivered-but-collected shown separately.
+  const velocityConfirmed = allVelocityOrders.filter((o) => {
+    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    return meta.velocity?.pollStatus === "SUCCESS" && (o.status === "paid" || o.status === "awaiting_verification")
+  })
   const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+  const undeliveredRevenue = allVelocityOrders.filter((o) => {
+    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    return meta.velocity?.pollStatus === "SUCCESS" && o.status === "awaiting_verification"
+  }).reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
   const response: VelocityApiResponse = {
     orders: serializedOrders,
@@ -153,6 +164,7 @@ export async function GET(request: Request) {
       pollSuccess,
       pollFailed,
       pollPending,
+      undeliveredRevenue,
     },
   }
 

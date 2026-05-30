@@ -61,12 +61,12 @@ export default function EventWaitlist() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 disabled={status === "sending"}
-                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[13px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition disabled:opacity-60"
+                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[13px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition disabled:opacity-60"
               />
               <button
                 type="submit"
                 disabled={status === "sending"}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-green-700 transition disabled:opacity-60 shrink-0"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-brand-700 transition disabled:opacity-60 shrink-0"
               >
                 {status === "sending" ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
                 Notify me

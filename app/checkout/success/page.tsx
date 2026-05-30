@@ -66,7 +66,7 @@ function CheckoutSuccessInner() {
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</p>
         <p className="mt-1 text-[13px] text-ink-3">If you just completed a purchase, check your email — it may take a moment to appear here.</p>
-        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">
+        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
           See your orders <ArrowRight size={14} />
         </Link>
       </div>
@@ -113,7 +113,7 @@ function CheckoutSuccessInner() {
             <AnimatedCheck size={64} />
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-4 shadow-sm shadow-ink/5">
-            <Sparkles size={12} className="text-green-600" />
+            <Sparkles size={12} className="text-brand-600" />
             <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">Order confirmed</span>
           </div>
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
@@ -138,13 +138,13 @@ function CheckoutSuccessInner() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
             >
-              <CalendarPlus size={14} className="text-green-600" /> Add to calendar
+              <CalendarPlus size={14} className="text-brand-600" /> Add to calendar
             </a>
             <button
               onClick={shareOrder}
               className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
             >
-              <Share2 size={14} className="text-green-600" /> Share
+              <Share2 size={14} className="text-brand-600" /> Share
             </button>
           </div>
         </div>
@@ -246,7 +246,7 @@ function CheckoutSuccessInner() {
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/orders/${order.id}`}
-            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
           >
             <Download size={14} /> View / download tickets
           </Link>

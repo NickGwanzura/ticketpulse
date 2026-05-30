@@ -2,7 +2,7 @@
 
 import { useActionState } from "react"
 import { Percent } from "lucide-react"
-import { updateCommissionRateAction } from "@/app/admin/actions"
+import { updateCommissionRateAction } from "@/app/admin/actions/users"
 
 type State = { ok: boolean; message?: string } | null
 
@@ -39,14 +39,14 @@ export default function CommissionRateInput({
           step="0.5"
           min="0"
           max="100"
-          className="w-20 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink tabular-nums text-right focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="w-20 rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink tabular-nums text-right focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <Percent size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
       </div>
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md px-2 py-1.5 text-[11px] font-medium text-blue hover:bg-green-50 disabled:opacity-40 transition-colors"
+        className="rounded-md px-2 py-1.5 text-[11px] font-medium text-blue hover:bg-brand-50 disabled:opacity-40 transition-colors"
       >
         {pending ? "Saving…" : "Save"}
       </button>

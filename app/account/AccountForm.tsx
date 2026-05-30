@@ -128,7 +128,7 @@ export default function AccountForm({
         <p className="text-[12.5px] text-rose-600 font-medium">{error}</p>
       )}
       {saved && (
-        <p className="text-[12.5px] text-green-600 font-medium">Changes saved.</p>
+        <p className="text-[12.5px] text-brand-600 font-medium">Changes saved.</p>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-2">
@@ -143,7 +143,7 @@ export default function AccountForm({
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-xl bg-green-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-green-700 transition-colors shadow-sm shadow-green-600/20 disabled:opacity-60"
+          className="rounded-xl bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-brand-700 transition-colors shadow-sm shadow-brand-600/20 disabled:opacity-60"
         >
           {isPending ? "Saving…" : "Save changes"}
         </button>

@@ -12,7 +12,7 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, orderItems, ticketTiers, tickets, users } from "@/db/schema"
+import { events, eventOrganisers, orders, orderItems, ticketTiers, tickets, users, platformSettings, payouts } from "@/db/schema"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
 import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
@@ -86,10 +86,11 @@ const METHOD_STYLE: Record<string, string> = {
 }
 
 const ORDER_STATUS_STYLE: Record<string, string> = {
-  paid:      "bg-green-50 text-green-700",
-  refunded:  "bg-rose-50 text-rose-600",
-  pending:   "bg-amber-50 text-amber-700",
-  awaiting_verification: "bg-blue-50 text-blue-700",
+  paid:                   "bg-green-50 text-green-700",
+  refunded:               "bg-rose-50 text-rose-600",
+  pending:                "bg-amber-50 text-amber-700",
+  completed:              "bg-violet-50 text-violet-700",
+  awaiting_verification:  "bg-blue-50 text-blue-700",
 }
 
 function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
@@ -212,7 +213,7 @@ async function getEventSales(eventIds: string[]) {
       status: orders.status,
     })
     .from(orders)
-    .where(and(inArray(orders.eventId, eventIds), eq(orders.status, "paid")))
+    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"])))
 
   return { tiers, orders: ordersRows }
 }
@@ -231,7 +232,7 @@ async function getRecentOrders(eventIds: string[], limit = 8) {
       eventId: orders.eventId,
     })
     .from(orders)
-    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "awaiting_verification", "refunded"])))
+    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "awaiting_verification", "refunded"])))
     .orderBy(desc(orders.createdAt))
     .limit(limit)
 
@@ -247,7 +248,7 @@ async function getTopBuyers(eventIds: string[], limit = 5) {
       totalAmount: orders.totalAmount,
     })
     .from(orders)
-    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid"])))
+    .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"])))
 
   const map = new Map<string, VipBuyer>()
   for (const r of rows) {
@@ -279,7 +280,7 @@ async function getRevenueByDay(eventIds: string[], days = 30) {
     .where(
       and(
         inArray(orders.eventId, eventIds),
-        inArray(orders.status, ["paid", "awaiting_verification"]),
+        inArray(orders.status, ["paid", "completed", "awaiting_verification"]),
         gte(orders.createdAt, since),
       ),
     )
@@ -377,14 +378,34 @@ export default async function OrganizerPage({
     return true
   })
 
-  const totalRevenue = ORGANIZER_EVENTS.reduce((s, e) => s + (e.currency === "USD" ? e.revenue : 0), 0)
+  const totalRevenue = ORGANIZER_EVENTS.reduce((s, e) => s + e.revenue, 0)
   const totalSold = ORGANIZER_EVENTS.reduce((s, e) => s + e.sold, 0)
   const liveEvents = ORGANIZER_EVENTS.filter((e) => e.status === "published").length
 
+  // Get platform fee and calculate net
+  const [settingsRow] = await db
+    .select({ fee: platformSettings.platformFeePercent })
+    .from(platformSettings)
+    .limit(1)
+
+  const platformFeePercent = Number(settingsRow?.fee ?? 8)
   const gross = totalRevenue
-  const net = totalRevenue * 0.97 // rough estimate minus 3% fees
+  const net = totalRevenue * (1 - platformFeePercent / 100)
   const refunds = 0 // no refund tracking yet
   const avgOrder = totalSold > 0 ? totalRevenue / totalSold : 0
+
+  // Get pending payout amount for this organizer
+  const [pendingPayoutRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` })
+    .from(payouts)
+    .where(
+      and(
+        eq(payouts.userId, session.user.id),
+        sql`${payouts.status} in ('pending', 'approved', 'processing')`
+      )
+    )
+
+  const pendingPayout = Number(pendingPayoutRow?.total ?? 0)
 
   const RECENT_ORDERS: OrderRow[] = recentOrdersRaw.map((o) => ({
     name: o.guestName || o.guestEmail || "Guest",
@@ -419,8 +440,8 @@ export default async function OrganizerPage({
   const KPI_SPARKLINES: Record<string, number[]> = {
     "Live events":   [],
     "Tickets sold":  [],
-    "Revenue (USD)": sparkData,
-    "Followers":     [],
+    "Revenue":       sparkData,
+    "Pending payout": [],
   }
 
   // Find best event for AI insight (first published with sales, or first published, or first)
@@ -457,7 +478,7 @@ export default async function OrganizerPage({
             </Link>
             <Link
               href="/organizer/events/new"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
             >
               <Plus size={15} /> Create event
             </Link>
@@ -468,7 +489,7 @@ export default async function OrganizerPage({
       {/* Commission rate badge */}
       <div className="max-w-7xl mx-auto px-5 md:px-8 pt-4">
         {isFreeListing ? (
-          <div className="inline-flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3 py-1.5 text-[12px] font-medium text-green-700">
+          <div className="inline-flex items-center gap-2 rounded-full bg-green-50 border border-brand-200 px-3 py-1.5 text-[12px] font-medium text-green-700">
             <CheckCircle2 size={13} /> Free listing — no platform fee on your events
           </div>
         ) : (
@@ -513,8 +534,8 @@ export default async function OrganizerPage({
             [
               { l: "Live events",   v: liveEvents.toString(),               i: Calendar,   pos: true  },
               { l: "Tickets sold",  v: totalSold.toLocaleString(),          i: Ticket,     pos: true  },
-              { l: "Revenue (USD)", v: formatCurrency(totalRevenue, "USD"), i: DollarSign, pos: true  },
-              { l: "Followers",     v: "0",                                 i: Users,      pos: true  },
+              { l: "Revenue",       v: formatCurrency(totalRevenue, "USD"), i: DollarSign, pos: true  },
+              { l: "Pending payout", v: formatCurrency(pendingPayout, "USD"), i: Users,      pos: true  },
             ] as const
           ).map(({ l, v, i: Icon, pos }) => {
             const spark = KPI_SPARKLINES[l] ?? []
@@ -970,6 +991,7 @@ export default async function OrganizerPage({
             </Link>
 
             {[
+              { title: "Order management", body: "Complete orders, send tickets, and manage fulfilment.", href: "/organizer/orders" },
               { title: "Set up payouts", body: "Add EcoCash or bank to receive payouts.",   href: "/payouts" },
               { title: "Browse vendors", body: "Find catering, sound, security and more.",  href: "/vendors" },
               { title: "Live dashboard", body: "Real-time check-in tracking and entry stats.", href: ORGANIZER_EVENTS.length > 0 ? `/organizer/events/${ORGANIZER_EVENTS[0].id}/live` : "#" },

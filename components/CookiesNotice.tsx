@@ -46,7 +46,7 @@ export default function CookiesNotice() {
 
         <div className="flex items-start gap-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
-            <Cookie size={16} className="text-green-600" />
+            <Cookie size={16} className="text-brand-600" />
           </span>
           <div className="min-w-0 pr-5">
             <p className="text-[14px] font-semibold tracking-tight text-ink">We use essential cookies</p>
@@ -58,7 +58,7 @@ export default function CookiesNotice() {
               <button
                 type="button"
                 onClick={dismiss}
-                className="inline-flex items-center gap-1.5 rounded-full bg-green-600 text-white text-[12.5px] font-semibold tracking-tight px-4 py-2 hover:bg-green-700 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 text-white text-[12.5px] font-semibold tracking-tight px-4 py-2 hover:bg-brand-700 transition-colors"
               >
                 Got it
               </button>

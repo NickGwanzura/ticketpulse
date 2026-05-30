@@ -168,7 +168,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                             href={`https://wa.me/${r.guestPhone.replace(/\D/g, "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-green-600 transition-colors"
+                            className="hover:text-brand-600 transition-colors"
                           >
                             {r.guestPhone}
                           </a>
@@ -228,7 +228,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                           href={`https://wa.me/${r.guestPhone.replace(/\D/g, "")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="hover:text-green-600 transition-colors"
+                          className="hover:text-brand-600 transition-colors"
                         >
                           {r.guestPhone}
                         </a>

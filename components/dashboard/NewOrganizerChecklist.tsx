@@ -74,7 +74,7 @@ export default function NewOrganizerChecklist({
         </div>
         <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden mt-3">
           <div
-            className="h-full bg-green-600 rounded-full transition-all duration-500"
+            className="h-full bg-brand-600 rounded-full transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -99,7 +99,7 @@ export default function NewOrganizerChecklist({
                 }`}
               >
                 {step.done ? (
-                  <Check size={15} className="text-green-600" />
+                  <Check size={15} className="text-brand-600" />
                 ) : (
                   <Icon size={15} className="text-ink-2" />
                 )}

@@ -25,7 +25,7 @@ type CheckoutResponse = {
 type PaymentMethodValue = "velocity-ecocash" | "velocity-card"
 
 const POLL_INTERVAL_MS = 4000
-const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 min — matches typical mobile-money TTL
+const POLL_TIMEOUT_MS = 10 * 60 * 1000 // 10 min — maximum polling window
 
 const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string; icon: typeof Smartphone }[] = [
   { value: "velocity-ecocash", label: "EcoCash", body: "Pay with EcoCash via mobile money. Instant confirmation.", icon: Smartphone },
@@ -53,52 +53,97 @@ export default function CheckoutPage() {
   const [promoLoading, setPromoLoading] = useState(false)
 
   // Drives the "Check your phone" overlay for seamless mobile-money payments.
-  // Polls the Velocity transaction status until it flips to SUCCESS / FAILED.
+  // Polls the Velocity transaction status at 4s intervals until a terminal state.
+  // Page-refresh safe: stores startedAt in sessionStorage so the timer survives navigation.
+  // Terminal states: SUCCESS, FAILED, CANCELLED, EXPIRED (polling stops immediately).
   useEffect(() => {
     if (!pollingOrderId) return
-    let cancelled = false
-    const startedAt = Date.now()
 
+    const storageKey = `poll_started:${pollingOrderId}`
+    const stored = sessionStorage.getItem(storageKey)
+    const startedAt = stored ? Number(stored) : Date.now()
+    if (!stored) sessionStorage.setItem(storageKey, String(startedAt))
+
+    let active = true
     const statusEndpoint = `/api/checkout/velocity/status/${pollingOrderId}`
 
-    const tick = async () => {
-      if (cancelled) return
+    const interval = setInterval(async () => {
+      if (!active) return
+
+      // ── Timeout check ──────────────────────────────────────────────────
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        clearInterval(interval)
+        sessionStorage.removeItem(storageKey)
+        setPollingOrderId(null)
+        setSubmitError("The payment window has closed. If money was deducted, your tickets will be issued automatically once confirmed. Contact support for help.")
+        setSubmitting(false)
+        return
+      }
+
       try {
         const res = await fetch(statusEndpoint, { cache: "no-store" })
         const data = await res.json()
+
+        // ── TERMINAL: paid ───────────────────────────────────────────────
         if (data.paid && pollingContact.current) {
+          clearInterval(interval)
+          sessionStorage.removeItem(storageKey)
+          const contact = pollingContact.current
           placeOrder(
-            { name: pollingContact.current.name, email: pollingContact.current.email, phone: pollingContact.current.phone },
-            { method: pollingContact.current.method },
+            { name: contact.name, email: contact.email, phone: contact.phone },
+            { method: contact.method },
             pollingOrderId,
-            "awaiting_verification",
+            data.status ?? "paid",
           )
-          router.push(`/orders/${pollingOrderId}?awaiting=1`)
+          router.push(`/orders/${pollingOrderId}?welcome=1`)
           return
         }
-        if (data.status === "cancelled" || data.pollStatus === "FAILED") {
-          if (!cancelled) {
-            setPollingOrderId(null)
-            setSubmitError("Payment was cancelled or declined. Please try again.")
-            setSubmitting(false)
-          }
+
+        // ── TERMINAL: failed / cancelled / expired ───────────────────────
+        const terminalPollStatuses = ["FAILED", "CANCELLED", "EXPIRED"]
+        const terminalOrderStatuses = ["cancelled", "expired"]
+
+        if (
+          terminalOrderStatuses.includes(data.status) ||
+          terminalPollStatuses.includes(data.pollStatus) ||
+          data.pollStatus === "TIMEOUT"
+        ) {
+          clearInterval(interval)
+          sessionStorage.removeItem(storageKey)
+          setPollingOrderId(null)
+          const msg =
+            data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
+              ? "The payment window expired. If money was deducted, it will be refunded automatically. Contact support if needed."
+              : "Payment was cancelled or declined. Please try again."
+          setSubmitError(msg)
+          setSubmitting(false)
           return
+        }
+
+        // ── NON-TERMINAL: UNKNOWN / ERROR — show message but keep polling ──
+        if (data.pollStatus === "UNKNOWN") {
+          setSubmitError("We couldn't confirm your payment status. If money was deducted, your tickets will be sent once confirmed. Contact support.")
+          return
+        }
+
+        if (data.pollStatus === "ERROR") {
+          setSubmitError(`An error occurred: ${data.message ?? "Unknown error"}. Your payment may still complete — we'll keep checking.`)
+          return
+        }
+
+        // ── PENDING — clear any previous error and continue ──────────────
+        if (data.pollStatus === "PENDING" || !data.pollStatus) {
+          // No update needed — still waiting
         }
       } catch {
         // Network blip — fall through to next tick.
       }
-      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        if (!cancelled) {
-          setPollingOrderId(null)
-          setSubmitError("We didn't see a confirmation in time. Check your phone and try again.")
-          setSubmitting(false)
-        }
-        return
-      }
-      if (!cancelled) setTimeout(tick, POLL_INTERVAL_MS)
+    }, POLL_INTERVAL_MS)
+
+    return () => {
+      active = false
+      clearInterval(interval)
     }
-    setTimeout(tick, POLL_INTERVAL_MS)
-    return () => { cancelled = true }
   }, [pollingOrderId, placeOrder, router])
 
   // Fetch event questions once cart is ready
@@ -132,7 +177,7 @@ export default function CheckoutPage() {
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Nothing to check out yet</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">Add tickets to your cart first.</p>
-        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition">
+        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition">
           Browse events <ArrowRight size={14} />
         </Link>
       </div>
@@ -295,7 +340,7 @@ export default function CheckoutPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Tendai Moyo"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                   />
                 </div>
               </div>
@@ -311,7 +356,7 @@ export default function CheckoutPage() {
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="you@example.com"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                   />
                 </div>
               </div>
@@ -327,7 +372,7 @@ export default function CheckoutPage() {
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="+263 77…"
-                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                   />
                 </div>
               </div>
@@ -356,7 +401,7 @@ export default function CheckoutPage() {
                         setQuestionAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
                       }
                       placeholder="Your answer"
-                      className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                      className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                     />
                   </div>
                 ))}
@@ -419,7 +464,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90"
+            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90"
           >
             {submitting
               ? form.payment === "velocity-card"
@@ -473,7 +518,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex items-baseline justify-between text-[13px]">
                     <span className="text-ink-3">Discount</span>
-                    <span className="font-semibold text-green-600">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
+                    <span className="font-semibold text-brand-600">-{formatCurrency(appliedPromo.discount, Object.keys(totalsByCurrency)[0] || "USD")}</span>
                   </div>
                 </div>
               ) : (
@@ -520,7 +565,7 @@ export default function CheckoutPage() {
                           setPromoLoading(false)
                         }
                       }}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-70"
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-70"
                     >
                       {promoLoading ? <Loader2 size={13} className="animate-spin" /> : <Percent size={13} />}
                       Apply
@@ -555,7 +600,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
+              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
             >
               {submitting
                 ? form.payment === "velocity-card"

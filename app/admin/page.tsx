@@ -8,11 +8,12 @@ import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, users } from "@/db/schema"
+import { events, orders, users, ticketTiers } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
-import { publishEventAction, verifyUserEmailAction } from "@/app/admin/actions"
+import { publishEventAction } from "@/app/admin/actions/events"
+import { verifyUserEmailAction } from "@/app/admin/actions/users"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import AiModerateButton from "@/components/ai/AiModerateButton"
@@ -64,12 +65,34 @@ export default async function AdminOverviewPage() {
 
   // ── KPIs ────────────────────────────────────────────────────────────────
 
+  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
+  const hasVelocityPollSuccess = sql`${orders.metadata}->'velocity'->>'pollStatus' = 'SUCCESS'`
+
   const [revenueRow] = await db
     .select({
       gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(eq(orders.status, "paid"))
+    .where(
+      and(
+        eq(orders.status, "paid"),
+        hasVelocity,
+        hasVelocityPollSuccess,
+      ),
+    )
+
+  const [awaitingRevenueRow] = await db
+    .select({
+      gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "awaiting_verification"),
+        hasVelocity,
+        hasVelocityPollSuccess,
+      ),
+    )
 
   const [activeEventsRow] = await db
     .select({
@@ -88,26 +111,114 @@ export default async function AdminOverviewPage() {
     )
 
   const grossVolume = Number(revenueRow?.gross ?? 0)
+  const awaitingVolume = Number(awaitingRevenueRow?.gross ?? 0)
+  const collectedButUndelivered = awaitingVolume
   const activeEvents = activeEventsRow?.count ?? 0
   const newUsers = newUsersThisMonth?.count ?? 0
 
+  // ── 7-day sparkline data ────────────────────────────────────────────────
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+  const dailyRevenue7d = await db
+    .select({
+      day: sql<string>`DATE(${orders.createdAt})`,
+      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "paid"),
+        gte(orders.createdAt, sevenDaysAgo),
+      )
+    )
+    .groupBy(sql`DATE(${orders.createdAt})`)
+    .orderBy(sql`DATE(${orders.createdAt})`)
+
+  const dailyRevenue14d = await db
+    .select({
+      day: sql<string>`DATE(${orders.createdAt})`,
+      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status, "paid"),
+        gte(orders.createdAt, fourteenDaysAgo),
+        sql`${orders.createdAt} < ${sevenDaysAgo}`,
+      )
+    )
+    .groupBy(sql`DATE(${orders.createdAt})`)
+
+  const spark7 = dailyRevenue7d.map((d) => Number(d.total))
+  const spark14 = dailyRevenue14d.map((d) => Number(d.total))
+  const sum7 = spark7.reduce((a, b) => a + b, 0)
+  const sum14 = spark14.reduce((a, b) => a + b, 0)
+  const revenueDelta = sum14 > 0 ? ((sum7 - sum14) / sum14) * 100 : 0
+
+  const activeEvents7d = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(events)
+    .where(and(eq(events.status, "published"), gte(events.createdAt, sevenDaysAgo)))
+
+  const activeEvents14d = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(events)
+    .where(and(eq(events.status, "published"), gte(events.createdAt, fourteenDaysAgo), sql`${events.createdAt} < ${sevenDaysAgo}`))
+
+  const eventsDelta = (activeEvents14d[0]?.count ?? 0) > 0
+    ? (((activeEvents7d[0]?.count ?? 0) - (activeEvents14d[0]?.count ?? 0)) / (activeEvents14d[0]?.count ?? 0)) * 100
+    : 0
+
+  const users7d = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(users)
+    .where(gte(users.createdAt, sevenDaysAgo))
+
+  const users14d = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(users)
+    .where(and(gte(users.createdAt, fourteenDaysAgo), sql`${users.createdAt} < ${sevenDaysAgo}`))
+
+  const usersDelta = (users14d[0]?.count ?? 0) > 0
+    ? (((users7d[0]?.count ?? 0) - (users14d[0]?.count ?? 0)) / (users14d[0]?.count ?? 0)) * 100
+    : 0
+
   const KPIS: KPI[] = [
-    { label: "Gross volume", value: grossVolume, currency: "USD", delta: 0, up: true, spark: [0, 0, 0, 0] },
-    { label: "Net revenue", value: grossVolume, currency: "USD", delta: 0, up: true, spark: [0, 0, 0, 0] },
-    { label: "Active events", value: activeEvents, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
-    { label: "New users (month)", value: newUsers, currency: null, delta: 0, up: true, spark: [0, 0, 0, 0] },
+    { label: "Gross volume", value: grossVolume, currency: "USD", delta: revenueDelta, up: revenueDelta >= 0, spark: spark7.length >= 2 ? spark7 : [0, 0, 0, 0] },
+    { label: "Revenue (paid only)", value: grossVolume, currency: "USD", delta: revenueDelta, up: revenueDelta >= 0, spark: spark7.length >= 2 ? spark7 : [0, 0, 0, 0] },
+    { label: "Collected but undelivered", value: collectedButUndelivered, currency: "USD", delta: 0, up: true, spark: [0, 0, 0, 0] },
+    { label: "New users (month)", value: newUsers, currency: null, delta: usersDelta, up: usersDelta >= 0, spark: [users7d[0]?.count ?? 0, users14d[0]?.count ?? 0] },
   ]
 
   // ── Velocity stats ──────────────────────────────────────────────────────
-
-  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
 
   const [velocityRevenueRow] = await db
     .select({
       total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
     })
     .from(orders)
-    .where(and(hasVelocity, eq(orders.status, "paid")))
+    .where(
+      and(
+        hasVelocity,
+        hasVelocityPollSuccess,
+        eq(orders.status, "paid"),
+      ),
+    )
+
+  const [velocityAwaitingRevenueRow] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+    })
+    .from(orders)
+    .where(
+      and(
+        hasVelocity,
+        hasVelocityPollSuccess,
+        eq(orders.status, "awaiting_verification"),
+      ),
+    )
 
   const [velocityCountRow] = await db
     .select({
@@ -120,6 +231,7 @@ export default async function AdminOverviewPage() {
     .where(hasVelocity)
 
   const velocityRevenue = Number(velocityRevenueRow?.total ?? 0)
+  const velocityUndeliveredRevenue = Number(velocityAwaitingRevenueRow?.total ?? 0)
   const velocityTotal = velocityCountRow?.total ?? 0
   const velocityPending = (velocityCountRow?.pending ?? 0) + (velocityCountRow?.awaiting ?? 0)
   const velocityPaid = velocityCountRow?.paid ?? 0
@@ -219,14 +331,35 @@ export default async function AdminOverviewPage() {
     }
   }
 
+  // Get ticket tier stats for top events
+  const eventTierStats = eventIds.length > 0
+    ? await db
+        .select({
+          eventId: ticketTiers.eventId,
+          capacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
+          sold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
+        })
+        .from(ticketTiers)
+        .where(inArray(ticketTiers.eventId, eventIds))
+        .groupBy(ticketTiers.eventId)
+    : []
+
+  const tierMap = new Map<string, { sold: number; capacity: number }>()
+  for (const t of eventTierStats) {
+    if (t.eventId) {
+      tierMap.set(t.eventId, { sold: t.sold, capacity: t.capacity })
+    }
+  }
+
   const TOP_EVENTS: TopEvent[] = topEventRows.map((e) => {
     const rev = revMap.get(e.id)
+    const tiers = tierMap.get(e.id)
     return {
       id: e.id,
       title: e.title,
       organizer: e.organizerName ?? e.organizerEmail ?? "—",
-      sold: 0,
-      capacity: 0,
+      sold: tiers?.sold ?? 0,
+      capacity: tiers?.capacity ?? 0,
       revenue: rev?.revenue ?? 0,
       currency: rev?.currency ?? "USD",
     }
@@ -350,10 +483,17 @@ export default async function AdminOverviewPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[13px] text-ink-3 mb-2.5">Total transactions</p>
+              <p className="text-[13px] text-ink-3 mb-2.5">Collected but undelivered</p>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
-                {velocityTotal.toLocaleString()}
+                {formatCurrency(velocityUndeliveredRevenue, "USD")}
               </p>
+              {velocityUndeliveredRevenue > 0 && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-[10px] font-semibold">
+                    <AlertCircle size={10} /> Needs delivery
+                  </span>
+                </div>
+              )}
             </div>
             <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
               <p className="text-[13px] text-ink-3 mb-2.5">Pending / awaiting</p>
@@ -505,7 +645,7 @@ export default async function AdminOverviewPage() {
                     <form action={p.action.bind(null, p.id)}>
                       <button
                         type="submit"
-                        className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-green-600/20 hover:bg-green-700 transition-colors"
+                        className="rounded-lg bg-brand-600 text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
                       >
                         {p.primary}
                       </button>

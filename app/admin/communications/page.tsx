@@ -140,9 +140,9 @@ export default function AdminCommunicationsPage() {
 
         {/* Results summary after sending */}
         {results && (
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-5 space-y-3">
+          <div className="rounded-2xl border border-brand-200 bg-green-50 p-5 space-y-3">
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-600" />
+              <CheckCircle size={16} className="text-brand-600" />
               <h3 className="text-[14px] font-semibold text-green-800">Sent</h3>
             </div>
             <div className="grid grid-cols-2 gap-4 text-[13px]">
@@ -193,7 +193,7 @@ export default function AdminCommunicationsPage() {
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <Users size={14} className={audience === opt.value ? "text-green-600" : "text-ink-3"} />
+                      <Users size={14} className={audience === opt.value ? "text-brand-600" : "text-ink-3"} />
                       <p className="text-[13px] font-semibold text-ink">{opt.label}</p>
                     </div>
                     <p className="text-[11.5px] text-ink-2">{opt.description}</p>
@@ -235,9 +235,9 @@ export default function AdminCommunicationsPage() {
             </section>
 
             {/* AI Draft */}
-            <section className="rounded-2xl border border-green-200/60 bg-gradient-to-br from-green-50/40 to-emerald-50/40 p-5 space-y-3">
+            <section className="rounded-2xl border border-brand-200/60 bg-gradient-to-br from-green-50/40 to-emerald-50/40 p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <Sparkles size={15} className="text-green-600" />
+                <Sparkles size={15} className="text-brand-600" />
                 <h2 className="text-[14px] font-semibold tracking-tight text-green-800">AI Draft</h2>
               </div>
               <p className="text-[12px] text-ink-2">
@@ -249,7 +249,7 @@ export default function AdminCommunicationsPage() {
                   placeholder="What's the announcement about?"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="flex-1 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                  className="flex-1 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
                 <div className="flex gap-1.5">
                   {TONE_OPTIONS.map((t) => (
@@ -269,7 +269,7 @@ export default function AdminCommunicationsPage() {
                 <button
                   onClick={generateDraft}
                   disabled={generating || !topic.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 text-white px-4 py-2 text-[13px] font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 shrink-0"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 text-white px-4 py-2 text-[13px] font-semibold hover:bg-brand-700 transition-colors disabled:opacity-50 shrink-0"
                 >
                   {generating ? (
                     <Loader size={13} className="animate-spin" />
@@ -292,7 +292,7 @@ export default function AdminCommunicationsPage() {
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="e.g. New features and fixes on TicketPulse"
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                   />
                 </div>
                 <div>
@@ -307,7 +307,7 @@ export default function AdminCommunicationsPage() {
                     onChange={(e) => setBody(e.target.value)}
                     placeholder="Hi {name},&#10;&#10;We have some exciting updates to share..."
                     rows={10}
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-green-500/20 resize-y min-h-[200px]"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-y min-h-[200px]"
                   />
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function AdminCommunicationsPage() {
                 <button
                   type="submit"
                   disabled={!canSend || sending}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 text-white px-5 py-2.5 text-[13px] font-semibold shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition-all disabled:opacity-40"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 text-white px-5 py-2.5 text-[13px] font-semibold shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition-all disabled:opacity-40"
                 >
                   {sending ? (
                     <Loader size={14} className="animate-spin" />

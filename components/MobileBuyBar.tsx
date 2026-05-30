@@ -40,7 +40,7 @@ export default function MobileBuyBar({ label, primary, secondary, href, showAfte
         </div>
         <Link
           href={href}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 active:scale-[0.99] transition shrink-0"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 active:scale-[0.99] transition shrink-0"
         >
           {label} <ArrowRight size={13} />
         </Link>

@@ -16,7 +16,7 @@ function inputCls(hasError?: boolean) {
     "placeholder:text-ink-3 focus:outline-none focus:ring-4",
     hasError
       ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/15"
-      : "border-line focus:border-line-2 focus:ring-green-500/15",
+      : "border-line focus:border-line-2 focus:ring-brand-500/15",
   ].join(" ")
 }
 
@@ -115,7 +115,7 @@ export default function GalleryForm({ eventId, gallery, onDone }: Props) {
           type="checkbox"
           name="isPublic"
           defaultChecked={gallery?.isPublic ?? true}
-          className="h-4 w-4 rounded border-line text-navy focus:ring-green-500/20"
+          className="h-4 w-4 rounded border-line text-navy focus:ring-brand-500/20"
         />
         Make gallery visible to attendees
       </label>

@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react"
 import { Trash2, CheckCircle, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { cancelTicketsAction } from "@/app/admin/actions"
+import { cancelTicketsAction } from "@/app/admin/actions/orders"
 
 type ActionState = { ok: boolean; message: string } | null
 

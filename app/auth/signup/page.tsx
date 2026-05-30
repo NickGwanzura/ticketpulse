@@ -127,7 +127,7 @@ export default async function SignUpPage({
                 required
                 autoComplete="name"
                 placeholder="Tendai Moyo"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
           </div>
@@ -143,7 +143,7 @@ export default async function SignUpPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
           </div>
@@ -158,7 +158,7 @@ export default async function SignUpPage({
 
           <button
             type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-md shadow-green-600/25"
+            className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-md shadow-brand-600/25"
           >
             Create account <ArrowRight size={15} />
           </button>
@@ -209,7 +209,7 @@ export default async function SignUpPage({
             "Cancel & refund up to 24hrs before",
           ].map((p) => (
             <li key={p} className="flex items-center gap-2 text-[13px] text-ink-2">
-              <Check size={14} className="text-green-600" /> {p}
+              <Check size={14} className="text-brand-600" /> {p}
             </li>
           ))}
         </ul>

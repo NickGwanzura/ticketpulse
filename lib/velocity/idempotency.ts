@@ -1,56 +1,57 @@
+import { sql } from "drizzle-orm"
+import { db } from "@/db"
 import { log } from "@/lib/logger"
 
-const LOCK_TTL_MS = 30_000
-const locks = new Map<string, { lockedAt: number }>()
+const memoryLocks = new Map<string, number>()
+const MEMORY_LOCK_TTL = 30_000
 
-function reap() {
+function acquireMemoryLock(key: string): boolean {
   const now = Date.now()
-  for (const [key, value] of locks) {
-    if (now - value.lockedAt > LOCK_TTL_MS) {
-      locks.delete(key)
-    }
-  }
-}
-
-export function acquireLock(key: string): boolean {
-  reap()
-  if (locks.has(key)) {
-    log.warn("idempotency lock contention", { key })
-    return false
-  }
-  locks.set(key, { lockedAt: Date.now() })
+  const existing = memoryLocks.get(key)
+  if (existing && now - existing < MEMORY_LOCK_TTL) return false
+  memoryLocks.set(key, now)
   return true
 }
 
-export function releaseLock(key: string): void {
-  locks.delete(key)
+function releaseMemoryLock(key: string): void {
+  memoryLocks.delete(key)
 }
 
-export function withLock<T>(
-  key: string,
-  fn: () => Promise<T>,
-  options?: { ttlMs?: number },
-): Promise<T> {
-  const acquired = acquireLock(key)
-  if (!acquired) {
-    return Promise.reject(new Error(`Operation in progress for key: ${key}`))
+const useDatabaseLocks = typeof process !== "undefined" && !!process.env.DATABASE_URL
+
+export async function acquireLock(key: string): Promise<boolean> {
+  if (!useDatabaseLocks) {
+    const acquired = acquireMemoryLock(key)
+    if (!acquired) log.warn("idempotency lock contention (memory)", { key })
+    return acquired
   }
 
-  const ttl = options?.ttlMs ?? LOCK_TTL_MS
-  const timeout = setTimeout(() => {
-    releaseLock(key)
-    log.warn("idempotency lock timeout", { key })
-  }, ttl)
+  try {
+    const result = await db.execute(sql`
+      SELECT pg_try_advisory_lock(hashtext(${key})) as acquired
+    `)
+    const acquired = (result.rows?.[0] as Record<string, unknown> | undefined)?.acquired ?? false
+    if (!acquired) {
+      log.warn("idempotency lock contention", { key })
+    }
+    return Boolean(acquired)
+  } catch (err) {
+    log.error("idempotency acquireLock error", { key, error: String(err) })
+    return false
+  }
+}
 
-  return fn()
-    .then((result) => {
-      clearTimeout(timeout)
-      releaseLock(key)
-      return result
-    })
-    .catch((err) => {
-      clearTimeout(timeout)
-      releaseLock(key)
-      throw err
-    })
+export async function releaseLock(key: string): Promise<void> {
+  if (!useDatabaseLocks) {
+    releaseMemoryLock(key)
+    return
+  }
+
+  try {
+    await db.execute(sql`
+      SELECT pg_advisory_unlock(hashtext(${key}))
+    `)
+  } catch (err) {
+    log.error("idempotency releaseLock error", { key, error: String(err) })
+  }
 }

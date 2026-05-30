@@ -18,7 +18,7 @@ export default function NewGalleryPanel({ eventId }: { eventId: string }) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-green-700 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition"
         >
           {open ? <><X size={13} /> Close</> : <><Plus size={13} /> Create gallery</>}
         </button>

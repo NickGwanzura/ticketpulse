@@ -35,7 +35,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
               type="text"
               required
               placeholder="e.g. John Doe"
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
             />
             {state.fieldErrors?.staffName && (
               <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.staffName}</p>
@@ -48,7 +48,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
               name="staffRole"
               required
               defaultValue=""
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
             >
               <option value="" disabled>Select role</option>
               {STAFF_ROLES.map((role) => (
@@ -67,7 +67,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
               type="tel"
               required
               placeholder="e.g. +263 77 123 4567"
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+              className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
             />
             {state.fieldErrors?.staffPhone && (
               <p className="mt-1 text-[12px] text-rose-600">{state.fieldErrors.staffPhone}</p>
@@ -82,7 +82,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
         )}
 
         {state.ok && state.message && (
-          <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
+          <div className="rounded-xl bg-green-50 border border-brand-200 px-4 py-3 text-[13px] text-green-800">
             {state.message}
           </div>
         )}
@@ -90,7 +90,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           <Plus size={14} />
           {pending ? "Generating..." : "Generate ticket"}

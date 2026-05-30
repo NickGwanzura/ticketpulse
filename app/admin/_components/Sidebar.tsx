@@ -3,8 +3,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
-  LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Ticket, Settings, LogOut, Shield, Megaphone, Activity,
+  LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings, LogOut, Shield, Megaphone, Activity,
 } from "lucide-react"
+import NotificationBell from "@/components/notifications/NotificationBell"
 
 const NAV = [
   { label: "Overview",       href: "/admin",                icon: LayoutGrid },
@@ -15,7 +16,6 @@ const NAV = [
   { label: "Users",          href: "/admin/users",          icon: Users },
   { label: "Events",         href: "/admin/events",         icon: Calendar },
   { label: "Orders",         href: "/admin/orders",         icon: Receipt },
-  { label: "Tickets",        href: "/admin/tickets",        icon: Ticket },
   { label: "Settings",       href: "/admin/settings",       icon: Settings },
 ] as const
 
@@ -87,12 +87,15 @@ export default function Sidebar({ name, email }: { name: string; email: string }
               <p className="text-[12.5px] font-semibold tracking-tight text-ink truncate mt-0.5">{name}</p>
             </div>
           </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
-          >
-            <LogOut size={12} /> Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
+            >
+              <LogOut size={12} /> Sign out
+            </button>
+          </div>
         </div>
         <nav className="flex items-center gap-1 px-3 py-2 overflow-x-auto no-scrollbar">
           {NAV.map(({ label, href, icon: Icon }) => {

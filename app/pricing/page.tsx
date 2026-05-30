@@ -70,11 +70,11 @@ export default function PricingPage() {
         <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-24 pb-10 md:pb-16">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
-            <Sparkles size={13} className="text-green-600" />
+            <Sparkles size={13} className="text-brand-600" />
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">Pricing</span>
           </div>
           <h1 className="text-[40px] md:text-[64px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
-            Simple. <span className="text-green-600">Pay-as-you-sell.</span>
+            Simple. <span className="text-brand-600">Pay-as-you-sell.</span>
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-2xl leading-relaxed">
             Free for attendees. Free to list as a vendor. Organizers pay a flat 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts. Same pricing since launch in May 2026.
@@ -89,7 +89,7 @@ export default function PricingPage() {
             ].map(({ icon: Icon, k, v }) => (
               <div key={k} className="rounded-xl border border-line bg-paper/80 backdrop-blur p-3.5 flex items-start gap-3">
                 <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-green-50 ring-1 ring-green-500/15 shrink-0">
-                  <Icon size={14} className="text-green-600" />
+                  <Icon size={14} className="text-brand-600" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-[12.5px] font-semibold tracking-tight text-ink">{k}</p>
@@ -127,7 +127,7 @@ export default function PricingPage() {
               <ul className="space-y-2.5 mb-8">
                 {t.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[14px] text-ink-2">
-                    <Check size={15} className="text-green-600 mt-0.5 shrink-0" />
+                    <Check size={15} className="text-brand-600 mt-0.5 shrink-0" />
                     {f}
                   </li>
                 ))}
@@ -136,7 +136,7 @@ export default function PricingPage() {
                 href={t.cta.href}
                 className={`mt-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-semibold transition ${
                   t.highlight
-                    ? "bg-green-600 text-white shadow-sm shadow-green-600/20 hover:bg-green-700"
+                    ? "bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700"
                     : "border border-line bg-paper text-ink hover:border-line-2"
                 }`}
               >
@@ -173,7 +173,7 @@ export default function PricingPage() {
           </div>
           <FAQSection items={FAQ} />
           <div className="mt-10 rounded-2xl border border-line bg-paper p-5 flex items-start gap-3">
-            <ShieldCheck size={16} className="text-green-600 mt-0.5 shrink-0" />
+            <ShieldCheck size={16} className="text-brand-600 mt-0.5 shrink-0" />
             <p className="text-[13.5px] text-ink-2 leading-relaxed">
               <span className="font-semibold text-ink">No surprise fees.</span>{" "}
               We publish every cent we charge. If you spot a fee that isn&apos;t listed here,{" "}

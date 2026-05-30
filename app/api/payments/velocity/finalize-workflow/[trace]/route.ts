@@ -13,7 +13,7 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   }
 
   const lockKey = `finalize:${trace}`
-  if (!acquireLock(lockKey)) {
+  if (!await acquireLock(lockKey)) {
     return NextResponse.json({ error: "Workflow finalization already in progress for this order" }, { status: 429 })
   }
 
@@ -34,6 +34,6 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
     log.error("finalize-workflow failed", { salesOrderTrace: trace, error: message })
     return NextResponse.json({ error: message }, { status: 502 })
   } finally {
-    releaseLock(lockKey)
+    await releaseLock(lockKey)
   }
 }

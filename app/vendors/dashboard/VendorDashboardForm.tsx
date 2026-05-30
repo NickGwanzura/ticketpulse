@@ -93,7 +93,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
                   required
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What do you offer, who are your past clients, what makes you the right pick?"
-                className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition resize-none"
+                className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition resize-none"
               />
             </div>
 
@@ -124,7 +124,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+263 77…"
-                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
               </div>
             </div>
@@ -141,7 +141,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="hello@yourbusiness.co.zw"
-                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
               </div>
             </div>
@@ -158,7 +158,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Harare"
-                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
                   value={priceRange}
                   onChange={(e) => setPriceRange(e.target.value)}
                   placeholder="e.g. From $250"
-                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
               </div>
             </div>
@@ -220,7 +220,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center justify-center rounded-xl bg-green-600 text-white text-sm font-semibold px-5 py-2.5 hover:bg-green-700 transition-colors shadow-sm shadow-green-600/20 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center rounded-xl bg-brand-600 text-white text-sm font-semibold px-5 py-2.5 hover:bg-brand-700 transition-colors shadow-sm shadow-brand-600/20 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

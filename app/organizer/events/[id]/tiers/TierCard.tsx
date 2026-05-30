@@ -101,7 +101,7 @@ export default function TierCard({
           <button
             type="button"
             onClick={() => setShowingSample((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-green-200 hover:text-green-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-brand-200 hover:text-green-700"
           >
             {showingSample ? <><X size={12} /> Close</> : <><Eye size={12} /> Test ticket</>}
           </button>

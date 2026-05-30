@@ -71,7 +71,7 @@ export default async function AccountPage() {
             className="group mb-10 flex items-center gap-4 rounded-2xl border border-line bg-paper p-5 hover:border-line-2 hover:shadow-sm transition-all"
           >
             <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
-              <Store size={16} className="text-green-600" />
+              <Store size={16} className="text-brand-600" />
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-semibold tracking-tight text-ink">Vendor dashboard</p>
@@ -103,7 +103,7 @@ export default async function AccountPage() {
           <div className="rounded-2xl border border-line bg-paper p-6">
             <p className="text-sm font-semibold text-ink mb-1">No payment methods yet</p>
             <p className="text-[13px] text-ink-2 mb-5">Add EcoCash or a card to skip checkout next time.</p>
-            <button className="rounded-xl bg-green-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-green-700 transition-colors">
+            <button className="rounded-xl bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-brand-700 transition-colors">
               Add a method
             </button>
           </div>
@@ -149,7 +149,7 @@ export default async function AccountPage() {
 
           <div className="rounded-2xl border border-line bg-paper divide-y divide-line">
             <div className="flex items-start gap-4 p-5">
-              <ShieldCheck size={16} className="text-green-600 mt-0.5" />
+              <ShieldCheck size={16} className="text-brand-600 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Two-factor authentication</p>
                 <p className="text-[12.5px] text-ink-2 mt-0.5">Extra layer of security on sign-in.</p>

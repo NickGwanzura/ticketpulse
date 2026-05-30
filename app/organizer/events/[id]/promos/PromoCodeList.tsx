@@ -64,7 +64,7 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
               isInactive ? "bg-red-100" : "bg-green-500/10",
             )}
           >
-            <Tag size={15} className={isInactive ? "text-red-500" : "text-green-600"} />
+            <Tag size={15} className={isInactive ? "text-red-500" : "text-brand-600"} />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">

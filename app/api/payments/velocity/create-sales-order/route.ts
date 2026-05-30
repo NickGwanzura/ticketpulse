@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     }
 
     const lockKey = `sales-order:${customerIdString}:${Date.now()}`
-    if (!acquireLock(lockKey)) {
+    if (!await acquireLock(lockKey)) {
       return NextResponse.json({ error: "A sales order is already being created. Please wait." }, { status: 429 })
     }
 
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
         status: result.body.status,
       })
     } finally {
-      releaseLock(lockKey)
+      await releaseLock(lockKey)
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create sales order"

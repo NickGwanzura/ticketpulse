@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     }
 
     const lockKey = `transaction:${salesOrderTrace}`
-    if (!acquireLock(lockKey)) {
+    if (!await acquireLock(lockKey)) {
       return NextResponse.json({ error: "A transaction is already being processed for this order" }, { status: 429 })
     }
 
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
         amount: result.body.amount,
       })
     } finally {
-      releaseLock(lockKey)
+      await releaseLock(lockKey)
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to initiate transaction"

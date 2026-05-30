@@ -19,7 +19,7 @@ export default function MerchSection({ items, eventTitle }: MerchSectionProps) {
     <section>
       <div className="flex items-center gap-3 mb-6">
         <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
-          <ShoppingBag size={16} className="text-green-600" />
+          <ShoppingBag size={16} className="text-brand-600" />
         </span>
         <div>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Official merch</p>
@@ -95,7 +95,7 @@ export default function MerchSection({ items, eventTitle }: MerchSectionProps) {
                     </div>
                     <button
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full bg-green-600 text-white text-xs font-semibold py-2 rounded-lg hover:bg-green-700 transition-colors"
+                      className="w-full bg-brand-600 text-white text-xs font-semibold py-2 rounded-lg hover:bg-brand-700 transition-colors"
                     >
                       Add to order
                     </button>

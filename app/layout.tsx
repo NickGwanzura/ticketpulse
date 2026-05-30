@@ -8,6 +8,8 @@ import Footer from "@/components/layout/Footer"
 import CookiesNotice from "@/components/CookiesNotice"
 import PwaRegister from "@/components/PwaRegister"
 import WhatsAppWidget from "@/components/launch/WhatsAppWidget"
+import CommandPalette from "@/components/command-palette/CommandPalette"
+import MobileNav from "@/components/layout/MobileNav"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
 import { clashDisplay, generalSans, polysans, polysansWide } from "@/lib/fonts"
@@ -123,6 +125,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}
           {!bare && <WhatsAppWidget phone="263777816368" label="Support" />}
+          <CommandPalette />
+          <MobileNav />
         </Providers>
         {!bare && <PwaRegister />}
       </body>

@@ -24,7 +24,7 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
         <p className="text-[12.5px] text-red-500">{state.error}</p>
       )}
       {state.ok && state.message && (
-        <p className="text-[12.5px] text-green-600">{state.message}</p>
+        <p className="text-[12.5px] text-brand-600">{state.message}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -141,7 +141,7 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-70"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-70"
         >
           {pending ? "Creating…" : "Create promo code"}
         </button>

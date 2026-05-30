@@ -1,9 +1,9 @@
 "use client"
 
 import { useActionState, useEffect, useState } from "react"
-import { RotateCcw, CheckCircle, XCircle } from "lucide-react"
+import { RotateCcw, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { refundOrderAction } from "@/app/admin/actions"
+import { refundOrderAction } from "@/app/admin/actions/orders"
 
 type ActionState = { ok: boolean; message: string } | null
 
@@ -14,6 +14,7 @@ export default function RefundButton({
   orderId: string
   variant?: "desktop" | "mobile"
 }) {
+  const [confirming, setConfirming] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -41,29 +42,56 @@ export default function RefundButton({
   const showFeedback = state && !dismissed
 
   return (
-    <form action={formAction} className="relative inline-flex items-center">
-      <button
-        type="submit"
-        disabled={pending}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
-          variant === "desktop"
-            ? "px-2.5 py-1.5 text-[11px] text-rose-700 hover:bg-rose-50 border border-rose-200"
-            : "px-3 py-2 text-[12px] text-rose-700 hover:bg-rose-50 border border-rose-200",
-        )}
-        title="Refund order"
-      >
-        <RotateCcw size={variant === "desktop" ? 11 : 12} />
-        {pending ? "Refunding…" : "Refund"}
-      </button>
+    <div className="relative inline-flex items-center">
+      {confirming ? (
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors",
+            variant === "desktop"
+              ? "px-2.5 py-1.5 text-[11px]"
+              : "px-3 py-2 text-[12px]",
+          )}
+        >
+          <AlertTriangle size={variant === "desktop" ? 11 : 12} className="text-rose-600" />
+          <span className="text-rose-700">Sure?</span>
+          <form action={formAction} className="inline-flex">
+            <button
+              type="submit"
+              disabled={pending}
+              className="ml-1 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[11px] font-semibold hover:bg-rose-700 disabled:opacity-50"
+            >
+              {pending ? "…" : "Yes"}
+            </button>
+          </form>
+          <button
+            onClick={() => setConfirming(false)}
+            className="ml-1 px-2 py-0.5 rounded-md border border-line text-ink-2 text-[11px] hover:bg-paper-2"
+          >
+            No
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirming(true)}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors",
+            variant === "desktop"
+              ? "px-2.5 py-1.5 text-[11px] text-rose-700 hover:bg-rose-50 border border-rose-200"
+              : "px-3 py-2 text-[12px] text-rose-700 hover:bg-rose-50 border border-rose-200",
+          )}
+          title="Refund order"
+        >
+          <RotateCcw size={variant === "desktop" ? 11 : 12} />
+          Refund
+        </button>
+      )}
 
       {showFeedback && (
         <div
           className={cn(
             "absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium shadow-lg whitespace-nowrap pointer-events-none",
             state.ok
-              ? "bg-green-50 text-green-700 ring-1 ring-green-200"
+              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
               : "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
           )}
         >
@@ -75,6 +103,6 @@ export default function RefundButton({
           {state.message}
         </div>
       )}
-    </form>
+    </div>
   )
 }

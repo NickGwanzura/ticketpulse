@@ -42,7 +42,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
     <section>
       <div className="flex items-center gap-3 mb-6">
         <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
-          <UtensilsCrossed size={16} className="text-green-600" />
+          <UtensilsCrossed size={16} className="text-brand-600" />
         </span>
         <div>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Vendors and Caterers</p>
@@ -80,7 +80,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[14px] font-semibold tracking-tight text-ink truncate">{listing.vendor.businessName}</span>
                         {listing.vendor.verified && (
-                          <CheckCircle size={12} className="text-green-600 shrink-0" />
+                          <CheckCircle size={12} className="text-brand-600 shrink-0" />
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-ink-2 mb-2">
@@ -105,7 +105,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                       </div>
 
                       {isOrganizer && (
-                        <button className="mt-2 text-[11px] bg-green-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
+                        <button className="mt-2 text-[11px] bg-brand-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-700 transition-colors">
                           Book slot
                         </button>
                       )}
@@ -113,7 +113,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                       {!isOrganizer && !inCart && (
                         <button
                           onClick={() => handleAdd(listing)}
-                          className="mt-2 inline-flex items-center gap-1 text-[11px] bg-green-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-green-700 active:scale-[0.97] transition"
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] bg-brand-600 text-white font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-700 active:scale-[0.97] transition"
                         >
                           <Plus size={11} /> Add to cart
                         </button>

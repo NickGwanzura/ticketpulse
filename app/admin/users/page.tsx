@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import {
   Search, UserCheck, ShieldCheck, Store, User, ShieldAlert, Users,
   BadgeCheck, BadgeX, MailCheck, MailX, Percent,
 } from "lucide-react"
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, or, ilike, sql } from "drizzle-orm"
+import Pagination from "@/components/ui/Pagination"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -11,7 +13,7 @@ import { users, userRoleEnum } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import InviteUserDialog from "./_components/InviteUserDialog"
-import { verifyUserEmailAction, unverifyUserEmailAction, updateCommissionRateAction } from "@/app/admin/actions"
+import { verifyUserEmailAction, unverifyUserEmailAction, updateCommissionRateAction } from "@/app/admin/actions/users"
 import CommissionRateInput from "./_components/CommissionRateInput"
 
 type Role = "attendee" | "organizer" | "vendor" | "admin"
@@ -19,7 +21,7 @@ type Role = "attendee" | "organizer" | "vendor" | "admin"
 const ROLE_STYLE: Record<Role, string> = {
   attendee:  "bg-violet-50 text-violet-700",
   organizer: "bg-sky-50 text-sky-700",
-  vendor:    "bg-green-50 text-green-700",
+  vendor:    "bg-emerald-50 text-emerald-700",
   admin:     "bg-amber-50 text-amber-700",
 }
 
@@ -27,14 +29,20 @@ const AVATAR_COLORS = [
   "bg-rose-100 text-rose-700",
   "bg-sky-100 text-sky-700",
   "bg-violet-100 text-violet-700",
-  "bg-green-100 text-green-700",
+  "bg-emerald-100 text-emerald-700",
   "bg-amber-100 text-amber-700",
   "bg-cyan-100 text-cyan-700",
   "bg-pink-100 text-pink-700",
   "bg-indigo-100 text-indigo-700",
 ]
 
-const FILTER_PILLS = ["All", "Attendees", "Organizers", "Vendors", "Admins"]
+const FILTER_PILLS: { label: string; value: string }[] = [
+  { label: "All", value: "all" },
+  { label: "Attendees", value: "attendee" },
+  { label: "Organizers", value: "organizer" },
+  { label: "Vendors", value: "vendor" },
+  { label: "Admins", value: "admin" },
+]
 
 function colorFor(name: string | null | undefined): string {
   const s = name ?? "?"
@@ -47,11 +55,41 @@ function initial(name: string | null, email: string | null): string {
   return (name ?? email ?? "?")[0].toUpperCase()
 }
 
-export default async function AdminUsersPage() {
+const LIMIT = 25
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; role?: string; page?: string }>
+}) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     redirect("/auth/signin?callbackUrl=/admin/users")
   }
+
+  const { q, role, page } = await searchParams
+  const searchQuery = q?.trim()
+  const roleFilter = role?.trim()
+  const currentPage = Math.max(1, parseInt(page ?? "1", 10))
+  const offset = (currentPage - 1) * LIMIT
+
+  // Build conditions
+  const conditions = []
+  if (searchQuery) {
+    conditions.push(
+      or(
+        ilike(users.name, `%${searchQuery}%`),
+        ilike(users.email, `%${searchQuery}%`)
+      )
+    )
+  }
+  if (roleFilter && roleFilter !== "all") {
+    conditions.push(eq(users.role, roleFilter as Role))
+  }
+
+  const whereClause = conditions.length > 0
+    ? conditions.length === 1 ? conditions[0] : sql`${conditions[0]} AND ${conditions[1]}`
+    : undefined
 
   const allUsers = await db
     .select({
@@ -64,24 +102,47 @@ export default async function AdminUsersPage() {
       createdAt: users.createdAt,
     })
     .from(users)
+    .where(whereClause)
     .orderBy(desc(users.createdAt))
-    .limit(200)
+    .limit(LIMIT)
+    .offset(offset)
 
-  const stats = {
-    total:     allUsers.length,
-    attendee:  allUsers.filter((u) => u.role === "attendee").length,
-    organizer: allUsers.filter((u) => u.role === "organizer").length,
-    vendor:    allUsers.filter((u) => u.role === "vendor").length,
-    admin:     allUsers.filter((u) => u.role === "admin").length,
-  }
+  // Stats should reflect total counts, not filtered
+  const totalStats = await db
+    .select({
+      total: sql<number>`count(*)`,
+      attendee: sql<number>`count(case when ${users.role} = 'attendee' then 1 end)`,
+      organizer: sql<number>`count(case when ${users.role} = 'organizer' then 1 end)`,
+      vendor: sql<number>`count(case when ${users.role} = 'vendor' then 1 end)`,
+      admin: sql<number>`count(case when ${users.role} = 'admin' then 1 end)`,
+    })
+    .from(users)
+
+  const stats = totalStats[0] ?? { total: 0, attendee: 0, organizer: 0, vendor: 0, admin: 0 }
+
+  // Count total for pagination
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(whereClause)
+
+  const totalCount = countRow?.count ?? 0
+  const totalPages = Math.ceil(totalCount / LIMIT)
 
   const statCards = [
     { label: "Total users",  value: stats.total,     icon: User,        tone: "text-ink-2",      bg: "bg-paper-2" },
     { label: "Attendees",    value: stats.attendee,   icon: UserCheck,   tone: "text-violet-700", bg: "bg-violet-50" },
     { label: "Organizers",   value: stats.organizer,  icon: ShieldCheck, tone: "text-sky-700",    bg: "bg-sky-50" },
-    { label: "Vendors",      value: stats.vendor,     icon: Store,       tone: "text-green-700",bg: "bg-green-50" },
+    { label: "Vendors",      value: stats.vendor,     icon: Store,       tone: "text-emerald-700",bg: "bg-emerald-50" },
     { label: "Admins",       value: stats.admin,      icon: ShieldAlert, tone: "text-amber-700",  bg: "bg-amber-50" },
   ]
+
+  const queryString = (newRole?: string) => {
+    const p = new URLSearchParams()
+    if (searchQuery) p.set("q", searchQuery)
+    if (newRole && newRole !== "all") p.set("role", newRole)
+    return p.toString()
+  }
 
   return (
     <div className="tp-fade-up">
@@ -102,7 +163,7 @@ export default async function AdminUsersPage() {
                 <span className={`inline-flex w-7 h-7 items-center justify-center rounded-lg ${bg}`}>
                   <Icon size={13} className={tone} />
                 </span>
-                <span className="text-[11.5px] text-ink-3">{label}</span>
+                <span className="text-[11.5px] text-ink-3]">{label}</span>
               </div>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{value.toLocaleString()}</p>
             </div>
@@ -111,25 +172,32 @@ export default async function AdminUsersPage() {
 
         {/* Search + filters */}
         <div className="flex flex-col md:flex-row md:items-center gap-3 tp-fade-up-2">
-          <div className="relative flex-1 max-w-md">
+          <form action="/admin/users" method="get" className="relative flex-1 max-w-md">
             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
             <input
+              name="q"
               type="text"
+              defaultValue={searchQuery ?? ""}
               placeholder="Search by name or email"
-              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-green-500/10"
+              className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
             />
-          </div>
+            {roleFilter && <input type="hidden" name="role" value={roleFilter} />}
+          </form>
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {FILTER_PILLS.map((p, i) => (
-              <button
-                key={p}
-                className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
-                  i === 0 ? "bg-paper-2 text-ink font-semibold ring-1 ring-line" : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+            {FILTER_PILLS.map((p) => {
+              const isActive = (roleFilter ?? "all") === p.value
+              return (
+                <Link
+                  key={p.value}
+                  href={`/admin/users?${queryString(p.value)}`}
+                  className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
+                    isActive ? "bg-paper-2 text-ink font-semibold ring-1 ring-line" : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
+                  }`}
+                >
+                  {p.label}
+                </Link>
+              )
+            })}
           </div>
         </div>
 
@@ -171,7 +239,7 @@ export default async function AdminUsersPage() {
                         </td>
                         <td className="px-3 py-3.5">
                           {u.emailVerified ? (
-                            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-green-700">
+                            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-emerald-700">
                               <BadgeCheck size={13} /> Verified
                             </span>
                           ) : (
@@ -207,7 +275,7 @@ export default async function AdminUsersPage() {
                                 <button
                                   type="submit"
                                   title="Verify email"
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-green-600 hover:bg-green-50 transition-colors"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                                 >
                                   <MailCheck size={14} />
                                 </button>
@@ -237,7 +305,7 @@ export default async function AdminUsersPage() {
                     <div className="flex flex-wrap items-center gap-1.5 mb-3">
                       <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${ROLE_STYLE[u.role as Role]}`}>{u.role}</span>
                       {u.emailVerified ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 px-2 py-0.5 rounded-full bg-green-50">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 px-2 py-0.5 rounded-full bg-emerald-50">
                           <BadgeCheck size={10} /> Verified
                         </span>
                       ) : (
@@ -265,7 +333,7 @@ export default async function AdminUsersPage() {
                         <form action={verifyUserEmailAction.bind(null, u.id)}>
                           <button
                             type="submit"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-50 text-green-700 hover:bg-green-100 text-[12px] font-medium transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[12px] font-medium transition-colors"
                           >
                             <MailCheck size={12} /> Verify email
                           </button>
@@ -279,9 +347,17 @@ export default async function AdminUsersPage() {
           ) : (
             <EmptyState
               icon={Users}
-              title="No users yet"
-              body="Registered attendees, organizers, and vendors will appear here."
+              title="No users found"
+              body={searchQuery || roleFilter ? "Try adjusting your search or filters." : "Registered attendees, organizers, and vendors will appear here."}
               variant="inline"
+            />
+          )}
+          {allUsers.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              baseUrl="/admin/users"
+              queryParams={{ q: searchQuery || undefined, role: roleFilter || undefined }}
             />
           )}
         </div>

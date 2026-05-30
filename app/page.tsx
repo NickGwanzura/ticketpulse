@@ -94,7 +94,7 @@ function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
       coverImage: event.coverImage,
       badge: event.status === "sold_out"
         ? { label: "SOLD OUT", color: "bg-rose-600 text-white" }
-        : { label: "ON SALE", color: "bg-green-600 text-white" },
+        : { label: "ON SALE", color: "bg-brand-600 text-white" },
       rotate: placement.rotate,
       placement: placement.placement,
       z: placement.z,
@@ -367,12 +367,12 @@ export default async function Home() {
                     name="q"
                     placeholder="Search events, venues, cities…"
                     aria-label="Search events"
-                    className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                    className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 text-[15px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition group"
+                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition group"
                 >
                   Find tickets
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
@@ -380,16 +380,16 @@ export default async function Home() {
               </form>
 
               <div className="tp-fade-up-4 mt-7 md:mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-2 md:py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
-                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-green-600" /> No signup to buy</span>
-                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-green-600" /> PDF + mobile QR</span>
-                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-green-600" /> Delivered on WhatsApp</span>
-                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-green-600" /> Our gate scanner</span>
+                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-brand-600" /> No signup to buy</span>
+                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-brand-600" /> PDF + mobile QR</span>
+                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-brand-600" /> Delivered on WhatsApp</span>
+                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-brand-600" /> Our gate scanner</span>
               </div>
 
               {/* Launch credibility */}
               <div className="tp-fade-up-5 mt-10 md:mt-8 inline-flex items-center gap-3 rounded-2xl border border-line bg-paper/60 backdrop-blur px-4 py-3 md:py-2.5">
-                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 shrink-0">
-                  <ShieldCheck size={16} className="text-green-600" />
+                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-brand-500/15 shrink-0">
+                  <ShieldCheck size={16} className="text-brand-600" />
                 </span>
                 <div className="leading-tight">
                   <p className="text-[12.5px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
@@ -546,7 +546,7 @@ export default async function Home() {
                 key={value}
                 href={`/events?category=${value}`}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 flex flex-col hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 hover:ring-1 hover:ring-green-500/15 active:scale-[0.99] transition-all`}
+                className={`tp-fade-up group relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br ${gradient} p-4 sm:p-5 flex flex-col hover:shadow-[0_12px_40px_-16px_rgba(10,37,64,0.2)] hover:-translate-y-0.5 hover:ring-1 hover:ring-brand-500/15 active:scale-[0.99] transition-all`}
               >
                 <div className="flex items-start justify-between">
                   <span className={`inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white ring-1 ${ring} shadow-sm`}>
@@ -610,8 +610,8 @@ export default async function Home() {
               </span>
 
               <div className="relative flex items-center gap-3 mb-5">
-                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/15 group-hover:bg-green-100 group-hover:ring-green-500/25 transition-all duration-300">
-                  <Icon size={22} className="text-green-600" />
+                <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-brand-500/15 group-hover:bg-green-100 group-hover:ring-brand-500/25 transition-all duration-300">
+                  <Icon size={22} className="text-brand-600" />
                 </span>
                 <span className="text-[10.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
               </div>
@@ -627,7 +627,7 @@ export default async function Home() {
         {/* End-to-end strip */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {[
-            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-green-500/15",   accent: "text-green-600" },
+            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-brand-500/15",   accent: "text-brand-600" },
             { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-green-50 to-paper-2", ring: "ring-green-200/60", accent: "text-green-700" },
             { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
           ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (

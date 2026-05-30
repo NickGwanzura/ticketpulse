@@ -114,7 +114,7 @@ export default function QuestionsForm({
                       onChange={(e) => updateQuestion(index, { question: e.target.value })}
                       placeholder="e.g. Dietary requirements?"
                       maxLength={500}
-                      className="w-full bg-paper border border-line rounded-xl px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                      className="w-full bg-paper border border-line rounded-xl px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                     />
                   </div>
                   <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -122,7 +122,7 @@ export default function QuestionsForm({
                       type="checkbox"
                       checked={q.required}
                       onChange={(e) => updateQuestion(index, { required: e.target.checked })}
-                      className="rounded border-line text-green-600 focus:ring-green-500"
+                      className="rounded border-line text-brand-600 focus:ring-brand-500"
                     />
                     <span className="text-[12.5px] text-ink-2">Required</span>
                   </label>
@@ -167,7 +167,7 @@ export default function QuestionsForm({
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition disabled:opacity-80"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-80"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
             Save questions

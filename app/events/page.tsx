@@ -220,7 +220,7 @@ export default async function EventsPage({
                   name="q"
                   placeholder="Search events, venues, cities…"
                   defaultValue={query}
-                  className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                  className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
               </div>
             </form>
@@ -237,7 +237,7 @@ export default async function EventsPage({
                     aria-current={isActive ? "page" : undefined}
                     className={`text-sm px-4 py-2 rounded-full border transition-all ${
                       isActive
-                        ? "bg-navy text-white border-navy shadow-sm shadow-green-600/20"
+                        ? "bg-navy text-white border-navy shadow-sm shadow-brand-600/20"
                         : "border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2"
                     }`}
                   >
@@ -266,7 +266,7 @@ export default async function EventsPage({
                 {(query || activeCategory !== "all") && (
                   <Link
                     href="/events"
-                    className="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+                    className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
                   >
                     Browse all events
                   </Link>

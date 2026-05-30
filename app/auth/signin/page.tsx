@@ -31,8 +31,8 @@ export default async function SignInPage({
         </div>
 
         {resetOk ? (
-          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-green-200 bg-green-50 px-3.5 py-3">
-            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-brand-200 bg-green-50 px-3.5 py-3">
+            <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-brand-600" />
             <p className="text-[13px] font-medium text-green-900">
               Password updated. Sign in below.
             </p>
@@ -62,7 +62,7 @@ export default async function SignInPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
           </div>
@@ -75,7 +75,7 @@ export default async function SignInPage({
           </div>
           <button
             type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-md shadow-green-600/25"
+            className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold text-[15px] py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-md shadow-brand-600/25"
           >
             Sign in <ArrowRight size={15} />
           </button>
@@ -127,7 +127,7 @@ export default async function SignInPage({
                 name="email"
                 required
                 placeholder="Send a magic link"
-                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition"
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
             <button

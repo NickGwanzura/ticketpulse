@@ -18,7 +18,7 @@ export default function TransportSection({ routes }: TransportSectionProps) {
     <section>
       <div className="flex items-center gap-3 mb-6">
         <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15">
-          <Bus size={16} className="text-green-600" />
+          <Bus size={16} className="text-brand-600" />
         </span>
         <div>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Event Transport</p>
@@ -101,7 +101,7 @@ export default function TransportSection({ routes }: TransportSectionProps) {
                       Total: {formatCurrency(route.pricePerSeat * seatCount, route.currency)}
                     </span>
                   </div>
-                  <button className="bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                  <button className="bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors">
                     Confirm booking
                   </button>
                   <button onClick={() => setBooking(null)} className="text-xs text-ink-3 hover:text-ink-2">

@@ -118,6 +118,13 @@ export default async function AdminVelocityPage({
 
   const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
+  const undeliveredRevenue = allVelocityOrders
+    .filter((o) => {
+      const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+      return meta.velocity?.pollStatus === "SUCCESS" && o.status === "awaiting_verification"
+    })
+    .reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+
   const initialData: VelocityApiResponse = {
     orders: serializedOrders,
     stats: {
@@ -129,6 +136,7 @@ export default async function AdminVelocityPage({
       pollSuccess,
       pollFailed,
       pollPending,
+      undeliveredRevenue,
     },
   }
 

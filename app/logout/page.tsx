@@ -55,7 +55,7 @@ export default async function LogoutPage() {
           >
             <button
               type="submit"
-              className="w-full inline-flex items-center justify-center gap-2 bg-green-600 text-white font-semibold text-sm py-3 rounded-xl hover:bg-green-700 active:scale-[0.99] transition shadow-sm shadow-green-600/20"
+              className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold text-sm py-3 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-sm shadow-brand-600/20"
             >
               <LogOut size={14} /> Sign out
             </button>
@@ -69,7 +69,7 @@ export default async function LogoutPage() {
         </div>
 
         <p className="mt-5 text-center text-[12px] text-ink-3 inline-flex items-center justify-center gap-1.5 w-full">
-          <ShieldCheck size={12} className="text-green-600" />
+          <ShieldCheck size={12} className="text-brand-600" />
           Your tickets stay safe, re-sign in with the same email.
         </p>
       </div>

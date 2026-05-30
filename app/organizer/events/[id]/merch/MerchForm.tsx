@@ -16,7 +16,7 @@ function inputCls(hasError?: boolean) {
     "placeholder:text-ink-3 focus:outline-none focus:ring-4",
     hasError
       ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/15"
-      : "border-line focus:border-line-2 focus:ring-green-500/15",
+      : "border-line focus:border-line-2 focus:ring-brand-500/15",
   ].join(" ")
 }
 
@@ -135,15 +135,15 @@ export default function MerchForm({ eventId, merch, onDone }: Props) {
 
       <div className="space-y-2">
         <label className="flex items-center gap-2 text-[13px] text-ink">
-          <input type="checkbox" name="active" defaultChecked={merch?.active ?? true} className="h-4 w-4 rounded border-line text-navy focus:ring-green-500/20" />
+          <input type="checkbox" name="active" defaultChecked={merch?.active ?? true} className="h-4 w-4 rounded border-line text-navy focus:ring-brand-500/20" />
           Active (available to buy)
         </label>
         <label className="flex items-center gap-2 text-[13px] text-ink">
-          <input type="checkbox" name="pickupAtEvent" defaultChecked={merch?.pickupAtEvent ?? true} className="h-4 w-4 rounded border-line text-navy focus:ring-green-500/20" />
+          <input type="checkbox" name="pickupAtEvent" defaultChecked={merch?.pickupAtEvent ?? true} className="h-4 w-4 rounded border-line text-navy focus:ring-brand-500/20" />
           Pickup at the event
         </label>
         <label className="flex items-center gap-2 text-[13px] text-ink">
-          <input type="checkbox" name="deliveryAvailable" defaultChecked={merch?.deliveryAvailable ?? false} className="h-4 w-4 rounded border-line text-navy focus:ring-green-500/20" />
+          <input type="checkbox" name="deliveryAvailable" defaultChecked={merch?.deliveryAvailable ?? false} className="h-4 w-4 rounded border-line text-navy focus:ring-brand-500/20" />
           Delivery available
         </label>
       </div>

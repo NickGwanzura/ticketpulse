@@ -68,7 +68,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
       total: sql<number>`COALESCE(SUM(${orders.totalAmount})::numeric, 0)::int`,
     })
     .from(orders)
-    .where(and(eq(orders.eventId, id), eq(orders.status, "paid")))
+    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"])))
 
   const revenue = Number(revenueRow?.total ?? 0)
   const currency = tiers[0]?.currency ?? "USD"
@@ -81,7 +81,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
       totalAmount: orders.totalAmount,
     })
     .from(orders)
-    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid"])))
+    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"])))
 
   const uniqueBuyers = new Set(attendeeRows.map((r) => r.guestEmail).filter(Boolean))
   const totalAttendees = uniqueBuyers.size
@@ -125,7 +125,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
       createdAt: orders.createdAt,
     })
     .from(orders)
-    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "awaiting_verification", "refunded"])))
+    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed", "awaiting_verification", "refunded"])))
     .orderBy(desc(orders.createdAt))
     .limit(5)
 

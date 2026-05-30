@@ -43,7 +43,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                   </span>
                   {vendor.verified && (
                     <span className="inline-flex items-center gap-1 bg-paper ring-1 ring-line text-ink text-[10.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full">
-                      <ShieldCheck size={11} className="text-green-600" /> Verified
+                      <ShieldCheck size={11} className="text-brand-600" /> Verified
                     </span>
                   )}
                 </div>
@@ -82,7 +82,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               </Link>
               <Link
                 href="#packages"
-                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
               >
                 Get a quote <ArrowUpRight size={14} />
               </Link>
@@ -150,7 +150,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                         <ul className="mt-4 space-y-1.5">
                           {pkg.bullets.map((b) => (
                             <li key={b} className="flex items-start gap-2 text-[13.5px] text-ink-2">
-                              <Check size={14} className="text-green-600 mt-0.5 shrink-0" />
+                              <Check size={14} className="text-brand-600 mt-0.5 shrink-0" />
                               <span>{b}</span>
                             </li>
                           ))}
@@ -161,7 +161,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                         <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
                           {formatCurrency(pkg.price, pkg.currency)}
                         </p>
-                        <button className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-green-700 transition-colors w-full md:w-auto">
+                        <button className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-brand-700 transition-colors w-full md:w-auto">
                           Request <ArrowUpRight size={13} />
                         </button>
                       </div>
@@ -221,7 +221,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               </div>
 
               <div className="mt-5 rounded-xl bg-paper-2 border border-line p-3.5 flex items-start gap-2.5">
-                <ShieldCheck size={15} className="text-green-600 mt-0.5 shrink-0" />
+                <ShieldCheck size={15} className="text-brand-600 mt-0.5 shrink-0" />
                 <p className="text-[12px] leading-relaxed text-ink-2">
                   All payments are held by TicketPulse and released to the vendor on event completion. Refundable if cancelled within terms.
                 </p>

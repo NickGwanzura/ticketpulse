@@ -42,7 +42,7 @@ function inputCls(hasError?: boolean) {
     "placeholder:text-ink-3 focus:outline-none focus:ring-4",
     hasError
       ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/15"
-      : "border-line focus:border-line-2 focus:ring-green-500/15",
+      : "border-line focus:border-line-2 focus:ring-brand-500/15",
   ].join(" ")
 }
 
@@ -233,7 +233,7 @@ export default function NewEventForm() {
                   if (form) handleGenerateDesc(form)
                 }}
                 disabled={genDesc}
-                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-green-600/80 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
               >
                 {genDesc ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -357,7 +357,7 @@ export default function NewEventForm() {
               if (form) handleSuggestLocation(form)
             }}
             disabled={genLoc}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-green-600/80 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
           >
             {genLoc ? (
               <Loader2 size={13} className="animate-spin" />

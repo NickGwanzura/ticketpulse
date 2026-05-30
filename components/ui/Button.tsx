@@ -7,10 +7,10 @@ type Variant = "primary" | "secondary" | "ghost" | "subtle" | "destructive" | "w
 type Size = "sm" | "md" | "lg" | "xl"
 
 const VARIANTS: Record<Variant, string> = {
-  primary:     "bg-green-600 text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] focus-visible:ring-green-600/30",
-  secondary:   "border border-line bg-paper text-ink hover:border-line-2 hover:bg-paper-2 focus-visible:ring-green-500/20",
-  ghost:       "text-ink-2 hover:text-ink hover:bg-paper-2 focus-visible:ring-green-500/20",
-  subtle:      "bg-paper-2 text-ink ring-1 ring-line hover:bg-paper-3 focus-visible:ring-green-500/20",
+  primary:     "bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] focus-visible:ring-brand-600/30",
+  secondary:   "border border-line bg-paper text-ink hover:border-line-2 hover:bg-paper-2 focus-visible:ring-brand-500/20",
+  ghost:       "text-ink-2 hover:text-ink hover:bg-paper-2 focus-visible:ring-brand-500/20",
+  subtle:      "bg-paper-2 text-ink ring-1 ring-line hover:bg-paper-3 focus-visible:ring-brand-500/20",
   destructive: "bg-rose-600 text-white shadow-sm shadow-rose-600/20 hover:bg-rose-700 active:scale-[0.99] focus-visible:ring-rose-500/30",
   white:       "bg-white text-navy shadow-sm shadow-ink/10 hover:bg-paper-2 active:scale-[0.99] focus-visible:ring-navy/20",
 }

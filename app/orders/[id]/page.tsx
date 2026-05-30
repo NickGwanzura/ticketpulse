@@ -47,7 +47,7 @@ function AwaitingVerification({ orderId }: { orderId: string }) {
     <div className="max-w-xl mx-auto px-5 md:px-8 py-16 md:py-24">
       <div className="rounded-3xl border border-line bg-paper p-8 md:p-10 shadow-sm shadow-ink/[0.04]">
         <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-500/20 mb-5">
-          <MailCheck size={20} className="text-green-600" />
+          <MailCheck size={20} className="text-brand-600" />
         </span>
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Almost there</p>
         <h1 className="text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.15] text-ink">
@@ -74,7 +74,7 @@ function AwaitingVerification({ orderId }: { orderId: string }) {
           </button>
           <Link
             href="/events"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
           >
             Browse more events
           </Link>
@@ -162,7 +162,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[14.5px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
         <p className="mt-1 text-[13px] text-ink-3">If you just purchased, check your email — it may take a moment to appear here.</p>
-        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">
+        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
           <ArrowLeft size={14} /> All orders
         </Link>
       </div>
@@ -196,7 +196,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               </Link>
               <Link
                 href={`/orders/${order.id}/print?auto=1`}
-                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
               >
                 <Download size={14} /> Save as PDF
               </Link>
@@ -296,7 +296,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   type="button"
                   onClick={resendTickets}
                   disabled={resendingTickets}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 disabled:opacity-60 transition"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 disabled:opacity-60 transition"
                 >
                   {resendingTickets ? (
                     <Loader2 size={14} className="animate-spin" />

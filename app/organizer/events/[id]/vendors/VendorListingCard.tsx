@@ -96,7 +96,7 @@ export default function VendorListingCard({
               <p className="text-[12.5px] text-ink-2">
                 {listing.vendor.businessName}
                 {listing.vendor.verified && (
-                  <span className="ml-1 text-green-600">✓ Verified</span>
+                  <span className="ml-1 text-brand-600">✓ Verified</span>
                 )}
                 <span className="mx-1.5 text-ink-3">·</span>
                 {vendorCategoryLabel(listing.vendor.category)}
@@ -188,7 +188,7 @@ export default function VendorListingCard({
                     name="packageName"
                     defaultValue={listing.packageName}
                     required
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -201,7 +201,7 @@ export default function VendorListingCard({
                       min="0"
                       defaultValue={listing.price}
                       required
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                     />
                   </div>
                   <div>
@@ -209,7 +209,7 @@ export default function VendorListingCard({
                     <select
                       name="currency"
                       defaultValue={listing.currency}
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -225,7 +225,7 @@ export default function VendorListingCard({
                   name="packageDescription"
                   rows={2}
                   defaultValue={listing.packageDescription ?? ""}
-                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15 resize-none"
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15 resize-none"
                 />
               </div>
 
@@ -237,7 +237,7 @@ export default function VendorListingCard({
                     type="number"
                     min="1"
                     defaultValue={listing.maxCapacity ?? ""}
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-green-500/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
                 </div>
                 <div className="flex items-end pb-2">
@@ -260,7 +260,7 @@ export default function VendorListingCard({
               )}
 
               {state.ok && state.message && (
-                <p className="text-[13px] text-green-600">{state.message}</p>
+                <p className="text-[13px] text-brand-600">{state.message}</p>
               )}
 
               <div className="flex items-center gap-2">

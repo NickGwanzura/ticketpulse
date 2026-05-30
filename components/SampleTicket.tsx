@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { Download, Loader2, Ticket, Calendar, ShieldCheck, Smartphone, QrCode, Eye, X } from "lucide-react"
 import QRCode from "qrcode"
 import { formatCurrency } from "@/lib/utils"
@@ -37,8 +37,6 @@ type SampleTicketProps = {
 
 export default function SampleTicket({ eventId, eventTitle, tier, onClose }: SampleTicketProps) {
   const [qrUrl, setQrUrl] = useState<string | null>(null)
-  const [downloading, setDownloading] = useState(false)
-  const ticketRef = useRef<HTMLDivElement | null>(null)
 
   const testCode = shortCode(tier.id)
   const price = Number.parseFloat(tier.price) || 0
@@ -51,37 +49,6 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
     })
     return () => { cancelled = true }
   }, [testCode])
-
-  // Download sample ticket as PDF
-  const downloadPdf = useCallback(async () => {
-    setDownloading(true)
-    try {
-      const { default: jsPDF } = await import("jspdf")
-      const { default: html2canvas } = await import("html2canvas")
-
-      const el = ticketRef.current
-      if (!el) return
-
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        logging: false,
-        useCORS: true,
-      })
-
-      const imgData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-      const pdfW = pdf.internal.pageSize.getWidth()
-      const pdfH = (canvas.height * pdfW) / canvas.width
-
-      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH)
-      pdf.save(`sample-${tier.name.replace(/\s+/g, "-").toLowerCase()}-ticket.pdf`)
-    } catch (err) {
-      console.error("Sample PDF download failed:", err)
-    } finally {
-      setDownloading(false)
-    }
-  }, [tier.name])
 
   return (
     <div className="border-t border-line bg-gradient-to-b from-paper-2/30 to-paper/60">
@@ -101,16 +68,11 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={downloadPdf}
-              disabled={!qrUrl || downloading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition"
             >
-              {downloading ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <Download size={13} />
-              )}
-              {downloading ? "Generating PDF…" : "Download sample PDF"}
+              <Download size={13} />
+              Print preview
             </button>
             {onClose && (
               <button
@@ -125,10 +87,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
         </div>
 
         {/* Ticket card */}
-        <div
-          ref={ticketRef}
-          className="relative bg-white rounded-2xl border border-line overflow-hidden shadow-sm"
-        >
+        <div className="relative bg-white rounded-2xl border border-line overflow-hidden shadow-sm">
           {/* Gradient top bar */}
           <div className="h-1 bg-gradient-to-r from-navy via-blue-600 to-navy" aria-hidden />
 
@@ -242,7 +201,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
           {/* Footer */}
           <div className="border-t border-dashed border-line px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 bg-paper-2">
             <p className="text-[8px] text-ink-3 inline-flex items-center gap-1">
-              <ShieldCheck size={8} className="text-green-600" />
+              <ShieldCheck size={8} className="text-brand-600" />
               Sample ticket — not valid for entry
             </p>
             <p className="text-[8px] font-mono text-ink-3 tabular-nums">{shortCode(tier.id)}</p>
@@ -251,7 +210,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
 
         {/* QR test hint */}
         {qrUrl && (
-          <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[12.5px] text-green-800 flex items-start gap-2.5">
+          <div className="mt-4 rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[12.5px] text-green-800 flex items-start gap-2.5">
             <QrCode size={15} className="mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold mb-0.5">Scan to test</p>

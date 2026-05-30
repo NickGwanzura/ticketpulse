@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { RefreshCw, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
-import { pollAllVelocityOrdersAction } from "@/app/admin/actions"
+import { pollAllVelocityOrdersAction } from "@/app/admin/actions/velocity"
 import { cn } from "@/lib/utils"
 
 type PollResult = {

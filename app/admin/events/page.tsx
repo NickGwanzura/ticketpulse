@@ -11,8 +11,9 @@ import { db } from "@/db"
 import { events, ticketTiers, orders, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import Pagination from "@/components/ui/Pagination"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
-import { publishEventAction } from "@/app/admin/actions"
+import { publishEventAction } from "@/app/admin/actions/events"
 
 type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
 
@@ -40,10 +41,12 @@ const TABS: { label: string; value: string }[] = [
   { label: "Cancelled", value: "cancelled" },
 ]
 
+const LIMIT = 25
+
 export default async function AdminEventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
@@ -52,6 +55,8 @@ export default async function AdminEventsPage({
 
   const sp = await searchParams
   const activeTab = sp.status ?? "all"
+  const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
+  const offset = (currentPage - 1) * LIMIT
 
   const eventRows = await db
     .select({
@@ -73,7 +78,8 @@ export default async function AdminEventsPage({
     .leftJoin(ticketTiers, eq(ticketTiers.eventId, events.id))
     .groupBy(events.id, users.id)
     .orderBy(desc(events.createdAt))
-    .limit(100)
+    .limit(LIMIT)
+    .offset(offset)
 
   const revenueRows = await db
     .select({
@@ -96,22 +102,33 @@ export default async function AdminEventsPage({
     }
   }
 
+  // Count total for pagination (all events)
+  const [countRow] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(events)
+
+  const totalCount = countRow?.count ?? 0
+  const totalPages = Math.ceil(totalCount / LIMIT)
+
   const filtered = activeTab === "all"
     ? eventRows
     : eventRows.filter((e) => e.status === activeTab)
 
-  const totals = {
-    published: eventRows.filter((e) => e.status === "published").length,
-    draft:     eventRows.filter((e) => e.status === "draft").length,
-    sold_out:  eventRows.filter((e) => e.status === "sold_out").length,
-    cancelled: eventRows.filter((e) => e.status === "cancelled").length,
-  }
+  // Stats from all events in DB, not just current page
+  const allEventStats = await db
+    .select({
+      status: events.status,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(events)
+    .groupBy(events.status)
 
+  const statsMap = new Map(allEventStats.map((s) => [s.status, s.count]))
   const stats = [
-    { label: "Live",      value: totals.published, icon: CalendarCheck, tone: "text-green-700", bg: "bg-green-50" },
-    { label: "Drafts",    value: totals.draft,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
-    { label: "Sold out",  value: totals.sold_out,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-green-50" },
-    { label: "Cancelled", value: totals.cancelled, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
+    { label: "Live",      value: statsMap.get("published") ?? 0, icon: CalendarCheck, tone: "text-brand-700", bg: "bg-brand-50" },
+    { label: "Drafts",    value: statsMap.get("draft") ?? 0,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
+    { label: "Sold out",  value: statsMap.get("sold_out") ?? 0,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-brand-50" },
+    { label: "Cancelled", value: statsMap.get("cancelled") ?? 0, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
   ]
 
   return (
@@ -124,7 +141,7 @@ export default async function AdminEventsPage({
         actions={
           <Link
             href="/organizer/events/new"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-green-600/20 hover:bg-green-700 active:scale-[0.99] transition"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
           >
             <Plus size={14} /> Create event
           </Link>
@@ -231,7 +248,7 @@ export default async function AdminEventsPage({
                               <Link
                                 href={`/organizer/events/${e.id}`}
                                 aria-label="Manage event"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-navy hover:text-navy hover:bg-green-50 transition-colors"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-navy hover:text-navy hover:bg-brand-50 transition-colors"
                               >
                                 <Settings size={14} />
                               </Link>
@@ -244,7 +261,7 @@ export default async function AdminEventsPage({
                                   className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
                                     status === "published"
                                       ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                                      : "text-green-600 hover:text-green-800 hover:bg-green-50"
+                                      : "text-brand-600 hover:text-green-800 hover:bg-brand-50"
                                   }`}
                                 >
                                   {status === "published" ? <EyeOff size={14} /> : <Send size={14} />}
@@ -395,6 +412,14 @@ export default async function AdminEventsPage({
               ctaLabel={activeTab === "all" ? "Create event" : undefined}
               ctaHref={activeTab === "all" ? "/organizer/events/new" : undefined}
               variant="inline"
+            />
+          )}
+          {eventRows.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              baseUrl="/admin/events"
+              queryParams={{ status: activeTab !== "all" ? activeTab : undefined }}
             />
           )}
         </div>
