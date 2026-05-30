@@ -68,13 +68,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   let featured: NavbarFeaturedItem[] = []
   if (!bare) {
-    const events = await getFeaturedEvents(2)
-    featured = events.map((e) => ({
-      slug: e.slug,
-      title: e.title,
-      category: e.category.toLowerCase(),
-      date: `${formatDateShort(e.startsAt)} · ${e.venue}, ${e.city}`,
-    }))
+    try {
+      const events = await getFeaturedEvents(2)
+      featured = events.map((e) => ({
+        slug: e.slug,
+        title: e.title,
+        category: e.category.toLowerCase(),
+        date: `${formatDateShort(e.startsAt)} · ${e.venue}, ${e.city}`,
+      }))
+    } catch (e) {
+      // DB or network error — show empty navbar rather than crashing the entire app.
+      console.error("[layout] failed to load featured events", e)
+    }
   }
 
   return (

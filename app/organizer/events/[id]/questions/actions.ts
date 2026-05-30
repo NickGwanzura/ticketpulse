@@ -37,33 +37,35 @@ export async function saveEventQuestions(
   const existingIds = new Set(existing.map((e) => e.id))
   const incomingIds = new Set(parsed.filter((q) => q.id).map((q) => q.id!))
 
-  // Delete removed questions
-  for (const id of existingIds) {
-    if (!incomingIds.has(id)) {
-      await db.delete(ticketQuestions).where(eq(ticketQuestions.id, id))
+  await db.transaction(async (tx) => {
+    // Delete removed questions
+    for (const id of existingIds) {
+      if (!incomingIds.has(id)) {
+        await tx.delete(ticketQuestions).where(eq(ticketQuestions.id, id))
+      }
     }
-  }
 
-  // Upsert questions
-  for (const q of parsed) {
-    if (q.id && existingIds.has(q.id)) {
-      await db
-        .update(ticketQuestions)
-        .set({
+    // Upsert questions
+    for (const q of parsed) {
+      if (q.id && existingIds.has(q.id)) {
+        await tx
+          .update(ticketQuestions)
+          .set({
+            question: q.question,
+            required: q.required,
+            sortOrder: q.sortOrder,
+          })
+          .where(eq(ticketQuestions.id, q.id))
+      } else {
+        await tx.insert(ticketQuestions).values({
+          eventId,
           question: q.question,
           required: q.required,
           sortOrder: q.sortOrder,
         })
-        .where(eq(ticketQuestions.id, q.id))
-    } else {
-      await db.insert(ticketQuestions).values({
-        eventId,
-        question: q.question,
-        required: q.required,
-        sortOrder: q.sortOrder,
-      })
+      }
     }
-  }
+  })
 
   revalidatePath(`/organizer/events/${eventId}/questions`)
   return { success: true }
