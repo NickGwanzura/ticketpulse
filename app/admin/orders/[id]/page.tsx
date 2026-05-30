@@ -1,10 +1,9 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { eq } from "drizzle-orm"
-import {
-  ArrowLeft, CreditCard, Mail, Ticket, Calendar,
+import { ArrowLeft, CreditCard, Mail, Ticket, Calendar,
   Clock, User, MapPin, Smartphone, ExternalLink,
-  RotateCcw, Send, CheckCircle2, RefreshCw,
+  RotateCcw, Send, CheckCircle2, RefreshCw, FileDown,
 } from "lucide-react"
 
 import { auth } from "@/auth"
@@ -15,6 +14,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import {
   recheckPaymentAction,
 } from "@/app/admin/actions/velocity"
@@ -23,6 +23,7 @@ import {
   sendTicketsAction,
   completeAndSendAction,
   resendOrderEmailAction,
+  regeneratePdfAction,
 } from "@/app/admin/actions/orders"
 
 export default async function AdminOrderDetailPage({
@@ -118,6 +119,11 @@ export default async function AdminOrderDetailPage({
   const resendVerification = async () => {
     "use server"
     await resendOrderEmailAction(id)
+  }
+
+  const regeneratePdf = async () => {
+    "use server"
+    await regeneratePdfAction(id)
   }
 
   return (
@@ -262,9 +268,55 @@ export default async function AdminOrderDetailPage({
                   <Send size={14} /> Resend tickets
                 </button>
               </form>
+              <form action={regeneratePdf}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-violet-700 transition-colors"
+                >
+                  <FileDown size={14} /> Regenerate A6 PDF
+                </button>
+              </form>
             </div>
           </div>
         )}
+
+        {/* PDF Version Badge */}
+        {(() => {
+          const meta = (order.metadata ?? {}) as Record<string, unknown>
+          const delivery = meta.delivery as Record<string, unknown> | undefined
+          const pdfVersion = delivery?.pdfVersion as string | undefined
+          return (
+            <div className="rounded-2xl border border-line bg-paper p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileDown size={14} className="text-ink-3" />
+                  <span className="text-[13px] text-ink-3">PDF Version</span>
+                </div>
+                <span
+                  className={`inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+                    pdfVersion === "A6_V1"
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                      : pdfVersion
+                      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                      : "bg-gray-50 text-gray-500 ring-1 ring-gray-200"
+                  }`}
+                >
+                  {pdfVersion ?? "Not generated"}
+                </span>
+              </div>
+              {pdfVersion && pdfVersion !== "A6_V1" && (
+                <p className="text-[11.5px] text-amber-600 mt-2">
+                  This order uses an older PDF format. Click &ldquo;Regenerate A6 PDF&rdquo; above to upgrade.
+                </p>
+              )}
+              {!pdfVersion && orderTickets.length > 0 && (
+                <p className="text-[11.5px] text-amber-600 mt-2">
+                  PDF version not tracked. Click &ldquo;Regenerate A6 PDF&rdquo; above to generate with the latest A6 template.
+                </p>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Tickets */}
         {orderTickets.length > 0 && (

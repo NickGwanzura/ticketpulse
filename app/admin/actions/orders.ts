@@ -164,6 +164,32 @@ export async function resendOrderEmailAction(orderId: string) {
       attachments,
     })
 
+    // Update delivery metadata with pdfVersion
+    try {
+      const meta = (order.metadata ?? {}) as Record<string, unknown>
+      const delivery = (meta.delivery ?? {}) as Record<string, unknown>
+      await db
+        .update(orders)
+        .set({
+          metadata: {
+            ...meta,
+            delivery: {
+              ...delivery,
+              pdfVersion: "A6_V1",
+              lastDeliveryAttemptAt: new Date().toISOString(),
+              deliveryAttempts: ((delivery.deliveryAttempts as number) ?? 0) + 1,
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+    } catch (err) {
+      log.warn("resendOrderEmailAction - failed to update delivery metadata", {
+        orderId,
+        error: String(err),
+      })
+    }
+
     revalidatePath("/admin/orders")
     return
   }
@@ -404,6 +430,188 @@ export async function deliverTicketAction(orderId: string) {
   revalidatePath("/admin/orders")
   revalidatePath("/admin/tickets")
   return result
+}
+
+/**
+ * Regenerate A6 PDF tickets for an order and re-send the confirmation email.
+ * Force-regenerates the combined PDF using the current A6 template,
+ * regardless of existing pdfVersion. Updates delivery metadata.
+ */
+export async function regeneratePdfAction(orderId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) throw new Error("Order not found")
+  if (order.status !== "paid" && order.status !== "completed") {
+    throw new Error("Order must be paid or completed to regenerate tickets")
+  }
+
+  if (!order.guestEmail) {
+    throw new Error("Order has no guest email to send to")
+  }
+
+  const baseUrl = getBaseUrl()
+
+  // 1. Load ticket records
+  const ticketRecords = await db
+    .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId })
+    .from(tickets)
+    .where(eq(tickets.orderId, orderId))
+
+  if (ticketRecords.length === 0) {
+    throw new Error("No ticket records found for this order. Use Send Tickets first.")
+  }
+
+  // 2. Load event + order details
+  const [ev] = await db
+    .select({ title: events.title, startsAt: events.startsAt, venue: events.venue })
+    .from(events)
+    .where(eq(events.id, order.eventId))
+    .limit(1)
+
+  if (!ev) throw new Error("Event not found")
+
+  const saleLines = await db
+    .select({ qty: orderItems.quantity, unit: orderItems.unitPrice, total: orderItems.total, tierName: ticketTiers.name })
+    .from(orderItems)
+    .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+    .where(eq(orderItems.orderId, orderId))
+
+  const lines = saleLines.map((i) => ({
+    label: i.tierName ?? "Ticket",
+    qty: i.qty,
+    amount: `${i.total} ${order.currency ?? "USD"}`,
+  }))
+
+  const eventDate = ev.startsAt
+    ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "TBA"
+
+  // 3. Regenerate QR codes for all tickets (fresh A6 layout)
+  const qrMap = new Map<string, string>()
+  let qrCodesRegenerated = false
+  for (const t of ticketRecords) {
+    let qrCode = t.qrCode
+    if (!qrCode || !qrCode.startsWith("data:image")) {
+      try {
+        qrCode = await generateQrDataUrl(t.id, orderId, baseUrl)
+        qrCodesRegenerated = true
+      } catch {
+        qrCode = `${orderId}-${t.id}`
+      }
+    }
+    qrMap.set(t.id, qrCode)
+  }
+
+  // Save regenerated QR codes
+  if (qrCodesRegenerated) {
+    for (const t of ticketRecords) {
+      const qr = qrMap.get(t.id)
+      if (qr && qr !== t.qrCode && qr.startsWith("data:image")) {
+        await db.update(tickets).set({ qrCode: qr }).where(eq(tickets.id, t.id))
+      }
+    }
+  }
+
+  // 4. Build tier name map
+  const tierRows = await db
+    .select({ id: ticketTiers.id, name: ticketTiers.name })
+    .from(ticketTiers)
+    .where(inArray(ticketTiers.id, [...new Set(ticketRecords.map((t) => t.tierId).filter(Boolean))]))
+
+  const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
+
+  // 5. Generate combined A6 PDF (with fallback — send email even if PDF fails)
+  let attachments: { filename: string; content: Buffer | string; contentType: string }[] | undefined
+  try {
+    const pdfTickets = ticketRecords.map((t) => ({
+      eventTitle: ev.title,
+      tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+      buyerName: order.guestName ?? "Valued Guest",
+      orderId,
+      ticketId: t.id,
+      qrCodeData: qrMap.get(t.id) ?? `${orderId}-${t.id}`,
+    }))
+    const pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
+    attachments = [{
+      filename: `tickets-${orderId.slice(0, 8)}.pdf`,
+      content: pdfBuffer,
+      contentType: "application/pdf" as const,
+    }]
+  } catch (err) {
+    log.warn("regeneratePdfAction - PDF generation failed (email will still be sent)", {
+      orderId,
+      error: String(err),
+    })
+  }
+
+  // 6. Send email with regenerated PDF
+  try {
+    await sendOrderConfirmationEmail({
+      to: order.guestEmail,
+      buyerName: order.guestName,
+      orderId,
+      eventTitle: ev.title,
+      eventDate,
+      eventVenue: ev.venue ?? undefined,
+      lines,
+      total: String(order.totalAmount ?? "0"),
+      currency: order.currency ?? "USD",
+      ticketUrl: `${baseUrl}/orders/${orderId}`,
+      attachments,
+    })
+  } catch (err) {
+    log.error("regeneratePdfAction - email send failed", {
+      orderId,
+      error: String(err),
+    })
+    throw new Error(`PDF regenerated but email delivery failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  // 7. Update delivery metadata with pdfVersion
+  const meta = (order.metadata ?? {}) as Record<string, unknown>
+  const delivery = (meta.delivery ?? {}) as Record<string, unknown>
+  await db
+    .update(orders)
+    .set({
+      metadata: {
+        ...meta,
+        delivery: {
+          ...delivery,
+          pdfVersion: "A6_V1",
+          emailSentAt: new Date().toISOString(),
+          emailSentTo: order.guestEmail,
+          emailError: null,
+          deliveryAttempts: ((delivery.deliveryAttempts as number) ?? 0) + 1,
+          lastDeliveryAttemptAt: new Date().toISOString(),
+          status: "EMAIL_SENT",
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, orderId))
+
+  log.info("regeneratePdfAction - completed", {
+    orderId,
+    ticketCount: ticketRecords.length,
+    pdfVersion: "A6_V1",
+    emailSent: true,
+  })
+
+  revalidatePath("/admin/orders")
 }
 
 /**

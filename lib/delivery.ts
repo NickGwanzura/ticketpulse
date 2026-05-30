@@ -27,6 +27,7 @@ export type DeliveryMetadata = {
   emailSentTo: string | null
   emailId: string | null
   emailError: string | null
+  pdfVersion: string | null
   whatsappSent: boolean
   deliveryAttempts: number
   lastDeliveryError: string | null
@@ -40,6 +41,7 @@ const DEFAULT_DELIVERY: DeliveryMetadata = {
   emailSentTo: null,
   emailId: null,
   emailError: null,
+  pdfVersion: null,
   whatsappSent: false,
   deliveryAttempts: 0,
   lastDeliveryError: null,
@@ -191,6 +193,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
 
       attemptMeta.status = "TICKETS_CREATED"
       attemptMeta.ticketIssuedAt = new Date().toISOString()
+      attemptMeta.pdfVersion = "A6_V1"
     } else {
       ticketCount = existingTickets.length
     }
@@ -289,6 +292,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
         attemptMeta.emailSentTo = order.guestEmail
         attemptMeta.emailId = "id" in result ? result.id : null
         attemptMeta.emailError = null
+        attemptMeta.pdfVersion = "A6_V1"
 
         // ── Notify organizer and admin about the sale ─────────────────────
         if (ev) {

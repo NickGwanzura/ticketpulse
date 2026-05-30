@@ -14,6 +14,7 @@ import CompleteButton from "@/app/admin/_components/CompleteButton"
 import SendTicketsButton from "@/app/admin/_components/SendTicketsButton"
 import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
 import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
+import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
 import { desc, eq, or, like, and, sql } from "drizzle-orm"
 
@@ -65,6 +66,19 @@ function FulfilmentBadge({ metadata }: { metadata: unknown }) {
     return <span className="text-[10px] font-medium text-emerald-600">Ticket Generated</span>
   }
   return <span className="text-[10px] font-medium text-amber-600">Not Generated</span>
+}
+
+function PdfVersionBadge({ metadata }: { metadata: unknown }) {
+  const meta = metadata as Record<string, unknown> | null
+  const delivery = meta?.delivery as Record<string, unknown> | undefined
+  const pdfVersion = delivery?.pdfVersion as string | undefined
+  if (!pdfVersion) {
+    return <span className="text-[10px] font-medium text-gray-400">No version</span>
+  }
+  if (pdfVersion === "A6_V1") {
+    return <span className="text-[10px] font-medium text-emerald-600">A6 ✓</span>
+  }
+  return <span className="text-[10px] font-medium text-amber-600">{pdfVersion}</span>
 }
 
 function DeliveryBadge({ metadata }: { metadata: unknown }) {
@@ -335,6 +349,7 @@ export default async function AdminOrdersPage({
                       <th className="text-left px-3 py-3 font-semibold">Status</th>
                       <th className="text-left px-3 py-3 font-semibold">Payment</th>
                       <th className="text-left px-3 py-3 font-semibold">Fulfilment</th>
+                      <th className="text-left px-3 py-3 font-semibold">PDF</th>
                       <th className="text-left px-3 py-3 font-semibold">Delivery</th>
                       <th className="text-left px-3 py-3 font-semibold">Date</th>
                       <th className="text-right px-3 py-3 font-semibold">Amount</th>
@@ -440,6 +455,9 @@ export default async function AdminOrdersPage({
                           <FulfilmentBadge metadata={o.metadata} />
                         </td>
                         <td className="px-3 py-3.5">
+                          <PdfVersionBadge metadata={o.metadata} />
+                        </td>
+                        <td className="px-3 py-3.5">
                           <DeliveryBadge metadata={o.metadata} />
                         </td>
                         <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
@@ -490,6 +508,7 @@ export default async function AdminOrdersPage({
                             {o.status === "completed" && (
                               <>
                                 <ResendTicketsButton orderId={o.id} variant="desktop" />
+                                <RegeneratePdfButton orderId={o.id} variant="desktop" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"

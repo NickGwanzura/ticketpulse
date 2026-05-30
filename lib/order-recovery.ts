@@ -343,6 +343,7 @@ export async function sendTicketsAction(
           emailSentAt: result.emailSent ? new Date().toISOString() : null,
           emailSentTo: result.emailSent ? order.guestEmail : null,
           emailError: result.error,
+          pdfVersion: "A6_V1",
           deliveryAttempts: (delivery.deliveryAttempts ?? 0) + 1,
           lastDeliveryAttemptAt: new Date().toISOString(),
         },
