@@ -125,6 +125,15 @@ export default async function AdminVelocityPage({
     })
     .reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
+  const pendingSettlement = allVelocityOrders
+    .filter((o) => {
+      if (o.status !== "pending" && o.status !== "awaiting_verification") return false
+      const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+      const vel = meta.velocity
+      return vel?.paymentStatus === "SUCCESS" || vel?.pollStatus === "SUCCESS"
+    })
+    .reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+
   const initialData: VelocityApiResponse = {
     orders: serializedOrders,
     stats: {
@@ -137,6 +146,7 @@ export default async function AdminVelocityPage({
       pollFailed,
       pollPending,
       undeliveredRevenue,
+      pendingSettlement,
     },
   }
 

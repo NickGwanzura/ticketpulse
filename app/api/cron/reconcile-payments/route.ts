@@ -108,6 +108,7 @@ export async function POST(request: Request) {
             ${JSON.stringify({
               ...velocityMeta,
               pollStatus: "SUCCESS",
+              paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
               paymentRef: invoiceId,
               invoiceRef: invoiceId,
               finalizedAt: new Date().toISOString(),

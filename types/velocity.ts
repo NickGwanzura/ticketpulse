@@ -157,6 +157,7 @@ export interface VelocityOrderMetadata {
   outstandingAmount: number
   paymentProcessor: VelocityPaymentProcessor | null
   pollStatus: VelocityPollStatus | null
+  paymentStatus?: string | null
   paymentRef: string | null
   invoiceRef: string | null
   initiatedAt: string | null

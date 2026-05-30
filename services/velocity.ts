@@ -284,13 +284,14 @@ export function getProcessorLabel(paymentMethod: string): string {
  * Normalize the full Velocity poll response into a local payment status.
  *
  * Priority order:
- *   1. body.pollStatus === "SUCCESS" => PAID
- *   2. body.pollStatus === "FAILED"  => FAILED
- *   3. body.pollStatus === "PENDING" => PENDING
- *   4. pollStatus missing / unexpected:
- *        - check paymentStatus as diagnostic
- *        - mark UNKNOWN (require admin recheck)
- *   5. null/undefined response => UNKNOWN
+ *   1. body.pollStatus === "SUCCESS"   => PAID
+ *   2. body.paymentStatus === "SUCCESS" => PAID  (gateway settlement confirmed;
+ *        covers PENDING+SUCCESS and FAILED+SUCCESS when the poll workflow lags)
+ *   3. body.pollStatus === "FAILED"    => FAILED
+ *   4. body.paymentStatus === "FAILED" => FAILED
+ *   5. body.pollStatus === "PENDING"   => PENDING
+ *   6. anything else                   => UNKNOWN (require admin recheck)
+ *   7. null/undefined response         => UNKNOWN
  *
  * Never throws.
  */
@@ -315,14 +316,16 @@ export function normalizeVelocityPollResponse(
 
   if (pollStatus === "SUCCESS") {
     localStatus = "PAID"
+  } else if (paymentStatus === "SUCCESS") {
+    // Gateway confirmed settlement — promote to PAID even when pollStatus is
+    // still PENDING or FAILED (the async poll workflow can lag behind).
+    localStatus = "PAID"
   } else if (pollStatus === "FAILED") {
+    localStatus = "FAILED"
+  } else if (paymentStatus === "FAILED") {
     localStatus = "FAILED"
   } else if (pollStatus === "PENDING") {
     localStatus = "PENDING"
-  } else if (paymentStatus === "SUCCESS") {
-    localStatus = "PAID"
-  } else if (paymentStatus === "FAILED") {
-    localStatus = "FAILED"
   } else {
     localStatus = "UNKNOWN"
   }

@@ -60,7 +60,7 @@ export async function GET(_req: Request, ctx: RouteParams) {
     .where(
       and(
         eq(orders.eventId, id),
-        inArray(orders.status, ["paid"]),
+        inArray(orders.status, ["paid", "awaiting_verification", "completed"]),
         eq(orderItems.type, "ticket"),
       ),
     )

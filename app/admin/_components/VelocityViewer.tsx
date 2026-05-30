@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Search, RefreshCw, Activity, Smartphone,
   ExternalLink, DollarSign, ShoppingCart, X,
-  CheckCircle, XCircle, AlertTriangle,
+  CheckCircle, XCircle, AlertTriangle, AlertCircle,
 } from "lucide-react"
 
 import type { VelocityApiOrder, VelocityApiResponse } from "@/app/api/admin/velocity/data/route"
@@ -425,6 +425,22 @@ export default function VelocityViewer({ initialData }: Props) {
         ))}
       </div>
 
+      {/* Pending settlement alert — gateway confirmed but not finalized in TicketPulse */}
+      {stats.pendingSettlement > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 tp-fade-up-1">
+          <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[12.5px] font-semibold text-amber-800">
+              {formatCurrency(stats.pendingSettlement, "USD")} confirmed by gateway but not yet finalized
+            </p>
+            <p className="text-[11.5px] text-amber-700 mt-0.5">
+              The gateway recorded payment success but these orders are still pending or awaiting verification in TicketPulse.
+              Use <span className="font-semibold">Recheck</span> on each row below, or run the reconciliation cron to recover them automatically.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Poll status mini-breakdown */}
       <div className="flex items-center gap-4 tp-fade-up-1">
         <span className="text-[11px] font-semibold tracking-[0.16em] uppercase text-ink-3">
@@ -619,7 +635,7 @@ export default function VelocityViewer({ initialData }: Props) {
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            {o.status === "pending" && (
+                            {(o.status === "pending" || o.status === "awaiting_verification") && (
                               <RecheckButton orderId={o.id} variant="desktop" />
                             )}
                             {(o.status === "paid" || o.status === "awaiting_verification") && (
@@ -735,7 +751,7 @@ export default function VelocityViewer({ initialData }: Props) {
                     </div>
 
                     <div className="mt-3 flex items-center gap-2">
-                      {o.status === "pending" && (
+                      {(o.status === "pending" || o.status === "awaiting_verification") && (
                         <RecheckButton orderId={o.id} variant="mobile" />
                       )}
                       {(o.status === "paid" || o.status === "awaiting_verification") && (

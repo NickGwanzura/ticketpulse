@@ -148,6 +148,7 @@ export async function recheckPaymentAction(
     velocity: {
       ...velocityMeta,
       pollStatus: "SUCCESS" as const,
+      paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
       paymentRef: invoiceId,
       invoiceRef: invoiceId,
       finalizedAt: new Date().toISOString(),
@@ -336,6 +337,7 @@ export async function pollAllVelocityOrdersAction(): Promise<{
         velocity: {
           ...velocityMeta,
           pollStatus: "SUCCESS" as const,
+          paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
           paymentRef: invoiceId,
           invoiceRef: invoiceId,
           finalizedAt: new Date().toISOString(),

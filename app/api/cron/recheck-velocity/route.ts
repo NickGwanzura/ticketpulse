@@ -156,6 +156,7 @@ export async function POST(request: Request) {
         velocity: {
           ...velocityMeta,
           pollStatus: "SUCCESS",
+          paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
           paymentRef: invoiceId,
           invoiceRef: invoiceId,
           finalizedAt: new Date().toISOString(),

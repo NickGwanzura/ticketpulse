@@ -38,6 +38,8 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
     .orderBy(asc(ticketQuestions.sortOrder))
 
   // ── Attendee data ──────────────────────────────────────────────────────────
+  // One row per orderItem (buyer × tier). Do NOT join tickets here — that
+  // would produce one row per individual ticket and inflate/duplicate results.
   const rows = await db
     .select({
       orderId: orders.id,
@@ -45,28 +47,47 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
       guestEmail: orders.guestEmail,
       guestPhone: orders.guestPhone,
       tierName: ticketTiers.name,
+      tierId: orderItems.tierId,
       quantity: orderItems.quantity,
-      scannedAt: tickets.scannedAt,
-      qrCode: tickets.qrCode,
     })
     .from(orders)
     .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
     .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
-    .leftJoin(
-      tickets,
-      and(eq(tickets.orderId, orders.id), eq(tickets.tierId, orderItems.tierId)),
-    )
     .where(
       and(
         eq(orders.eventId, id),
-        inArray(orders.status, ["paid"]),
+        inArray(orders.status, ["paid", "awaiting_verification", "completed"]),
         eq(orderItems.type, "ticket"),
       ),
     )
     .orderBy(desc(orders.createdAt))
 
-  // Fetch responses for all paid orders
   const orderIds = [...new Set(rows.map((r) => r.orderId))]
+
+  // Check-in counts per (orderId, tierId) — separate query avoids row inflation
+  const checkedInData = orderIds.length > 0
+    ? await db
+        .select({
+          orderId: tickets.orderId,
+          tierId: tickets.tierId,
+          scannedCount: sql<number>`cast(count(*) filter (where ${tickets.scannedAt} is not null) as integer)`,
+        })
+        .from(tickets)
+        .where(inArray(tickets.orderId, orderIds))
+        .groupBy(tickets.orderId, tickets.tierId)
+    : []
+
+  const checkedInMap = new Map<string, number>()
+  for (const c of checkedInData) {
+    checkedInMap.set(`${c.orderId}:${c.tierId ?? ""}`, c.scannedCount)
+  }
+
+  const enrichedRows = rows.map((r) => ({
+    ...r,
+    scannedCount: checkedInMap.get(`${r.orderId}:${r.tierId ?? ""}`) ?? 0,
+  }))
+
+  // Fetch responses for all confirmed orders
   const responses = orderIds.length > 0
     ? await db
         .select({
@@ -88,7 +109,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
 
   const totalBuyers = new Set(rows.map((r) => r.guestEmail)).size
   const totalTickets = rows.reduce((sum, r) => sum + r.quantity, 0)
-  const checkedIn = rows.filter((r) => r.scannedAt).length
+  const checkedIn = enrichedRows.reduce((sum, r) => sum + r.scannedCount, 0)
 
   return (
     <div className="tp-fade-up">
@@ -156,8 +177,8 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {rows.map((r, i) => (
-                    <tr key={`${r.qrCode ?? r.guestEmail}-${i}`} className="hover:bg-paper-2 transition-colors">
+                  {enrichedRows.map((r, i) => (
+                    <tr key={`${r.orderId}-${r.tierId ?? ""}-${i}`} className="hover:bg-paper-2 transition-colors">
                       <td className="px-5 py-3.5 text-[13px] font-medium text-ink">
                         {r.guestName || "—"}
                       </td>
@@ -179,9 +200,13 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                       <td className="px-3 py-3.5 text-[13px] text-ink-2">{r.tierName ?? "N/A"}</td>
                       <td className="px-3 py-3.5 text-[13px] text-right text-ink">{r.quantity}</td>
                       <td className="px-3 py-3.5 text-center">
-                        {r.scannedAt ? (
+                        {r.scannedCount >= r.quantity && r.quantity > 0 ? (
                           <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-semibold text-green-700">
-                            Yes
+                            {r.quantity > 1 ? `${r.scannedCount}/${r.quantity}` : "Yes"}
+                          </span>
+                        ) : r.scannedCount > 0 ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                            {r.scannedCount}/{r.quantity}
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-ink/5 px-2.5 py-0.5 text-[11px] font-medium text-ink-3">
@@ -205,15 +230,19 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
 
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-line">
-              {rows.map((r, i) => {
+              {enrichedRows.map((r, i) => {
                 const orderResponses = responseMap.get(r.orderId)
                 return (
-                  <div key={`${r.qrCode ?? r.guestEmail}-${i}`} className="px-5 py-4 space-y-1">
+                  <div key={`${r.orderId}-${r.tierId ?? ""}-${i}`} className="px-5 py-4 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[13px] font-medium text-ink">{r.guestName || "—"}</span>
-                      {r.scannedAt ? (
+                      {r.scannedCount >= r.quantity && r.quantity > 0 ? (
                         <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">
-                          Checked in
+                          {r.quantity > 1 ? `${r.scannedCount}/${r.quantity} checked in` : "Checked in"}
+                        </span>
+                      ) : r.scannedCount > 0 ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          {r.scannedCount}/{r.quantity} checked in
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-medium text-ink-3">

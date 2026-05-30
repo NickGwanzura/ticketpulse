@@ -36,6 +36,7 @@ export type VelocityApiResponse = {
     pollFailed: number
     pollPending: number
     undeliveredRevenue: number
+    pendingSettlement: number
   }
 }
 
@@ -141,16 +142,21 @@ export async function GET(request: Request) {
     else pollPending++
   }
 
-  // Revenue = only PAID orders (tickets delivered).
-  // Undelivered-but-collected shown separately.
-  const velocityConfirmed = allVelocityOrders.filter((o) => {
-    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-    return meta.velocity?.pollStatus === "SUCCESS" && (o.status === "paid" || o.status === "awaiting_verification")
-  })
   const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+
+  // Orders where poll workflow finalized but ticket delivery is still pending
   const undeliveredRevenue = allVelocityOrders.filter((o) => {
     const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
     return meta.velocity?.pollStatus === "SUCCESS" && o.status === "awaiting_verification"
+  }).reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+
+  // Orders where the gateway confirmed payment (paymentStatus or pollStatus = SUCCESS)
+  // but TicketPulse hasn't moved them to paid yet — money collected, tickets not issued.
+  const pendingSettlement = allVelocityOrders.filter((o) => {
+    if (o.status !== "pending" && o.status !== "awaiting_verification") return false
+    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    const vel = meta.velocity
+    return vel?.paymentStatus === "SUCCESS" || vel?.pollStatus === "SUCCESS"
   }).reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
   const response: VelocityApiResponse = {
@@ -165,6 +171,7 @@ export async function GET(request: Request) {
       pollFailed,
       pollPending,
       undeliveredRevenue,
+      pendingSettlement,
     },
   }
 
