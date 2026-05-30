@@ -2,10 +2,13 @@ import { NextResponse } from "next/server"
 import { lte, and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, paymentLedger } from "@/db/schema"
+import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
-export async function POST() {
+export async function POST(request: Request) {
+  const authError = verifyCronSecret(request)
+  if (authError) return authError
   const pendingCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const awaitingCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
 

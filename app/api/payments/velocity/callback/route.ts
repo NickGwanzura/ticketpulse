@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
 import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
+import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { log } from "@/lib/logger"
 
 const CallbackBody = z.object({
@@ -44,23 +45,11 @@ export async function POST(req: Request) {
   const { transactionTrace, salesOrderTrace } = parsed.data
   log.info("velocity callback - received", { transactionTrace, salesOrderTrace })
 
-  const lockKey = `velocity-callback:${salesOrderTrace}`
+  const lockKey = `velocity-finalize:${salesOrderTrace}`
 
-  try {
-    const lockResult = await db.execute(sql`
-      SELECT pg_try_advisory_lock(hashtext(${lockKey})) as acquired
-    `)
-    const acquired = (lockResult.rows?.[0] as Record<string, unknown> | undefined)?.acquired
-    if (!acquired) {
-      log.info("velocity callback - lock contended, acknowledging", { salesOrderTrace })
-      return NextResponse.json({ status: "acknowledged", note: "Already processing" })
-    }
-  } catch (err) {
-    log.error("velocity callback - lock acquire failed", {
-      salesOrderTrace,
-      error: err instanceof Error ? err.message : String(err),
-    })
-    return NextResponse.json({ error: "internal_error" }, { status: 500 })
+  if (!await acquireLock(lockKey)) {
+    log.info("velocity callback - lock contended, acknowledging", { salesOrderTrace })
+    return NextResponse.json({ status: "acknowledged", note: "Already processing" })
   }
 
   try {
@@ -233,18 +222,10 @@ export async function POST(req: Request) {
       error: err instanceof Error ? err.message : String(err),
     })
 
-    try {
-      await db.execute(sql`
-        SELECT pg_advisory_unlock(hashtext(${lockKey}))
-      `)
-    } catch { }
+    await releaseLock(lockKey).catch(() => {})
 
     return NextResponse.json({ error: "internal_error" }, { status: 500 })
   } finally {
-    try {
-      await db.execute(sql`
-        SELECT pg_advisory_unlock(hashtext(${lockKey}))
-      `)
-    } catch { }
+    await releaseLock(lockKey).catch(() => {})
   }
 }

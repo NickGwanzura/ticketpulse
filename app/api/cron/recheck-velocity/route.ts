@@ -8,13 +8,16 @@ import {
   normalizeVelocityPollResponse,
 } from "@/services/velocity"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
+import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const MAX_ORDERS_PER_RUN = 30
 const RECHECK_COOLDOWN_MS = 60_000
 
-export async function POST() {
+export async function POST(request: Request) {
+  const authError = verifyCronSecret(request)
+  if (authError) return authError
   const startedAt = Date.now()
   log.info("cron/recheck-velocity — starting run")
 

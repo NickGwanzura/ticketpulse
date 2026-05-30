@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
+import { auth } from "@/auth"
 import { initiateTransaction, getAuthType, getConfig } from "@/services/velocity"
 import { validateTransactionPayload } from "@/lib/velocity/validation"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { log } from "@/lib/logger"
 
 export async function POST(req: Request) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
   try {
     const body = await req.json()
     const {

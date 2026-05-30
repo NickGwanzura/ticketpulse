@@ -8,6 +8,7 @@ import {
   uuid,
   pgEnum,
   json,
+  jsonb,
   primaryKey,
   index,
   uniqueIndex,
@@ -271,13 +272,15 @@ export const orders = pgTable("orders", {
   verifiedAt: timestamp("verified_at"),
   completedAt: timestamp("completed_at"),
   completedBy: text("completed_by"),
-  metadata: json("metadata"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("orders_user_id_idx").on(table.userId),
   index("orders_event_id_idx").on(table.eventId),
   index("orders_guest_email_idx").on(table.guestEmail),
+  index("orders_status_event_idx").on(table.eventId, table.status),
+  index("orders_metadata_gin_idx").using("gin", table.metadata),
 ])
 
 export const orderItems = pgTable("order_items", {
@@ -596,7 +599,7 @@ export const analyticsEvents = pgTable("analytics_events", {
   referrer: text("referrer"),
   userAgent: text("user_agent"),
   source: text("source"),
-  metadata: json("metadata"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("analytics_events_event_id_idx").on(table.eventId),
@@ -744,7 +747,7 @@ export const notifications = pgTable("notifications", {
   body: text("body").notNull(),
   link: text("link"),
   read: boolean("read").default(false).notNull(),
-  metadata: json("metadata"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("notifications_user_id_idx").on(table.userId),

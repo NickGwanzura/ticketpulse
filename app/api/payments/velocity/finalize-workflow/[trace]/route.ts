@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { auth } from "@/auth"
 import { finalizeWorkflow } from "@/services/velocity"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { log } from "@/lib/logger"
@@ -6,6 +7,10 @@ import { log } from "@/lib/logger"
 type Params = { trace: string }
 
 export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
   const { trace } = await ctx.params
 
   if (!trace || typeof trace !== "string") {
