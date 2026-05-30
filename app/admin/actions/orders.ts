@@ -344,3 +344,48 @@ export async function deliverTicketAction(orderId: string) {
   revalidatePath("/admin/tickets")
   return result
 }
+
+/**
+ * Permanently delete an order and all associated records.
+ * Only admins can call this. Irreversible.
+ */
+export async function deleteOrderAction(orderId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [order] = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1)
+
+  if (!order) throw new Error("Order not found")
+
+  // Clean up related records in dependency order
+  await db.delete(paymentLedger).where(eq(paymentLedger.orderId, orderId))
+
+  // Break FK references that don't have ON DELETE CASCADE
+  const { transportBookings, photoDownloads, analyticsEvents } = await import("@/db/schema")
+  await db
+    .update(transportBookings)
+    .set({ orderId: null })
+    .where(eq(transportBookings.orderId, orderId))
+  await db
+    .update(photoDownloads)
+    .set({ orderId: null })
+    .where(eq(photoDownloads.orderId, orderId))
+
+  // Delete tickets and order items
+  await db.delete(tickets).where(eq(tickets.orderId, orderId))
+  await db.delete(orderItems).where(eq(orderItems.orderId, orderId))
+
+  // Delete the order itself (cascades ticketQuestionResponses, sets null on analyticsEvents)
+  await db.delete(orders).where(eq(orders.id, orderId))
+
+  log.info("admin - order deleted", { orderId, deletedBy: session.user.id })
+
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin")
+}

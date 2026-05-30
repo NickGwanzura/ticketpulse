@@ -14,6 +14,7 @@ import CompleteButton from "@/app/admin/_components/CompleteButton"
 import SendTicketsButton from "@/app/admin/_components/SendTicketsButton"
 import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
 import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
+import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
 import { desc, eq, or, like, and, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
@@ -507,6 +508,7 @@ export default async function AdminOrdersPage({
                             >
                               <ExternalLink size={14} />
                             </Link>
+                            <DeleteOrderButton orderId={o.id} variant="desktop" />
                           </div>
                         </td>
                       </tr>
@@ -645,6 +647,7 @@ export default async function AdminOrdersPage({
                         <ExternalLink size={12} />
                         View
                       </Link>
+                      <DeleteOrderButton orderId={o.id} variant="mobile" />
                     </div>
                   </li>
                 ))}

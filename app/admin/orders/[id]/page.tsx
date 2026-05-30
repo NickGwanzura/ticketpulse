@@ -13,6 +13,7 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
+import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
 
 export default async function AdminOrderDetailPage({
   params,
@@ -227,6 +228,7 @@ export default async function AdminOrderDetailPage({
           >
             <ExternalLink size={14} /> View tickets
           </Link>
+          <DeleteOrderButton orderId={id} variant="desktop" />
         </div>
       </div>
     </div>
