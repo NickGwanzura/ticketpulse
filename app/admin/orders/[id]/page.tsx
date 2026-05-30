@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm"
 import {
   ArrowLeft, CreditCard, Mail, Ticket, Calendar,
   Clock, User, MapPin, Smartphone, ExternalLink,
+  RotateCcw, Send, CheckCircle2, RefreshCw,
 } from "lucide-react"
 
 import { auth } from "@/auth"
@@ -14,6 +15,15 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import {
+  recheckPaymentAction,
+} from "@/app/admin/actions/velocity"
+import {
+  markOrderCompleteAction,
+  sendTicketsAction,
+  completeAndSendAction,
+  resendOrderEmailAction,
+} from "@/app/admin/actions/orders"
 
 export default async function AdminOrderDetailPage({
   params,
@@ -84,6 +94,32 @@ export default async function AdminOrderDetailPage({
   const customerName = order.guestName ?? buyer?.name ?? "Guest"
   const customerEmail = order.guestEmail ?? buyer?.email ?? "—"
 
+  // ── Bound server actions for the client component ───────────────────────
+  const recheckPayment = async () => {
+    "use server"
+    await recheckPaymentAction(id)
+  }
+
+  const markComplete = async () => {
+    "use server"
+    await markOrderCompleteAction(id)
+  }
+
+  const sendTickets = async () => {
+    "use server"
+    await sendTicketsAction(id)
+  }
+
+  const completeAndSend = async () => {
+    "use server"
+    await completeAndSendAction(id)
+  }
+
+  const resendVerification = async () => {
+    "use server"
+    await resendOrderEmailAction(id)
+  }
+
   return (
     <div className="tp-fade-up">
       <PageHeader
@@ -114,6 +150,12 @@ export default async function AdminOrderDetailPage({
             verificationSentAt: order.verificationSentAt,
             verifiedAt: order.verifiedAt,
             completedAt: order.completedAt,
+          }}
+          actions={{
+            recheckPayment,
+            resendVerification,
+            completeAndSend,
+            sendTickets,
           }}
         />
 
@@ -165,6 +207,64 @@ export default async function AdminOrderDetailPage({
             )}
           </div>
         </div>
+
+        {/* Recovery Actions */}
+        {order.status !== "paid" && order.status !== "completed" && order.status !== "cancelled" && order.status !== "refunded" && (
+          <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+            <div className="px-5 md:px-6 py-4 border-b border-line">
+              <h3 className="text-[15px] font-semibold tracking-tight text-ink flex items-center gap-2">
+                <RefreshCw size={15} className="text-ink-3" /> Recovery Actions
+              </h3>
+            </div>
+            <div className="p-5 md:p-6 flex flex-wrap gap-3">
+              <form action={recheckPayment}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-amber-700 transition-colors"
+                >
+                  <RefreshCw size={14} /> Recheck payment
+                </button>
+              </form>
+              <form action={completeAndSend}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-emerald-700 transition-colors"
+                >
+                  <CheckCircle2 size={14} /> Complete & send
+                </button>
+              </form>
+              <form action={sendTickets}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-navy/90 transition-colors"
+                >
+                  <Send size={14} /> Resend tickets
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Paid/Completed actions */}
+        {(order.status === "paid" || order.status === "completed") && (
+          <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+            <div className="px-5 md:px-6 py-4 border-b border-line">
+              <h3 className="text-[15px] font-semibold tracking-tight text-ink flex items-center gap-2">
+                <Send size={15} className="text-ink-3" /> Delivery Actions
+              </h3>
+            </div>
+            <div className="p-5 md:p-6 flex flex-wrap gap-3">
+              <form action={sendTickets}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-navy/90 transition-colors"
+                >
+                  <Send size={14} /> Resend tickets
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Tickets */}
         {orderTickets.length > 0 && (
@@ -221,13 +321,15 @@ export default async function AdminOrderDetailPage({
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={`/orders/${id}/print`}
-            target="_blank"
-            className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
-          >
-            <ExternalLink size={14} /> View tickets
-          </Link>
+          {orderTickets.length > 0 && (
+            <Link
+              href={`/orders/${id}/print`}
+              target="_blank"
+              className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
+            >
+              <ExternalLink size={14} /> View tickets
+            </Link>
+          )}
           <DeleteOrderButton orderId={id} variant="desktop" />
         </div>
       </div>

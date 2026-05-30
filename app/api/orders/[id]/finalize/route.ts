@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { eq, sql } from "drizzle-orm"
+import { eq, sql, inArray } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, tickets, users, ticketQuestions, ticketQuestionResponses, promoCodes } from "@/db/schema"
@@ -8,6 +8,9 @@ import { saleNotificationEmail } from "@/lib/email-templates"
 import { sendText, formatChatId } from "@/lib/whatsapp"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
+import { notifyPaymentSuccess } from "@/lib/payment-notifications"
+import { generateCombinedTicketPdf } from "@/lib/tickets"
+import { getBaseUrl } from "@/lib/url-config"
 
 type Params = { id: string }
 
@@ -185,8 +188,39 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     }))
     saleLines = lines
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+    const baseUrl = getBaseUrl()
+
+    // ── Load tickets and generate PDF attachments ────────────────────────
+    const orderTicketRecords = await db
+      .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId })
+      .from(tickets)
+      .where(eq(tickets.orderId, id))
+
+    const tierRows = await db
+      .select({ id: ticketTiers.id, name: ticketTiers.name })
+      .from(ticketTiers)
+      .where(inArray(ticketTiers.id, [...new Set(orderTicketRecords.map((t) => t.tierId).filter(Boolean))]))
+
+    const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
+
+    let pdfBuffer: Buffer | null = null
+    try {
+      const pdfTickets = orderTicketRecords.map((t) => ({
+        eventTitle: ev?.title ?? "Your Ticket",
+        tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+        buyerName: order.guestName ?? session.user.name ?? "Valued Guest",
+        orderId: id,
+        ticketId: t.id,
+        qrCodeData: t.qrCode ?? `${id}-${t.id}`,
+      }))
+      pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
+    } catch (err) {
+      log.warn("finalize - PDF generation failed (email will still be sent)", { orderId: id, error: String(err) })
+    }
+
+    const attachments = pdfBuffer
+      ? [{ filename: `tickets-${id.slice(0, 8)}.pdf`, content: pdfBuffer, contentType: "application/pdf" as const }]
+      : undefined
 
     await sendOrderConfirmationEmail({
       to: session.user.email,
@@ -205,11 +239,43 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       lines,
       total: order.totalAmount,
       currency: order.currency ?? "USD",
-      ticketUrl: `${appUrl}/orders/${id}`,
+      ticketUrl: `${baseUrl}/orders/${id}`,
+      attachments,
     })
+
+    // Update delivery metadata
+    const meta = (order.metadata ?? {}) as Record<string, unknown>
+    await db
+      .update(orders)
+      .set({
+        metadata: {
+          ...meta,
+          delivery: {
+            status: pdfBuffer ? "DELIVERED" : "TICKETS_CREATED",
+            ticketIssuedAt: new Date().toISOString(),
+            emailSentAt: new Date().toISOString(),
+            emailSentTo: session.user.email,
+            emailError: null,
+            whatsappSent: false,
+            deliveryAttempts: 1,
+            lastDeliveryAttemptAt: new Date().toISOString(),
+            lastDeliveryError: null,
+          },
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .catch((updateErr) => {
+        log.warn("finalize - failed to update delivery metadata", { orderId: id, error: String(updateErr) })
+      })
   } catch (err) {
     console.error("[finalize] failed to send order confirmation:", err)
   }
+
+  // ── Payment notification (non-blocking) ─────────────────────────────────
+  notifyPaymentSuccess(id).catch((err) =>
+    log.warn("finalize - payment notification failed", { orderId: id, error: String(err) }),
+  )
 
   if (order.guestPhone) {
     fetch(`${origin}/api/whatsapp/send-ticket`, {

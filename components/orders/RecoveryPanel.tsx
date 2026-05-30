@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useCallback } from "react"
 import {
   AlertTriangle, CheckCircle2, Clock, Mail, CreditCard,
-  Ticket, RotateCcw, Send, Ban, ArrowRight,
+  Ticket, RotateCcw, Send, Ban, ArrowRight, Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -19,6 +19,14 @@ interface OrderStatus {
   completedAt?: Date | null
 }
 
+interface RecoveryActions {
+  recheckPayment?: () => Promise<void>
+  resendVerification?: () => Promise<void>
+  completeOrder?: () => Promise<void>
+  sendTickets?: () => Promise<void>
+  completeAndSend?: () => Promise<void>
+}
+
 interface Diagnosis {
   severity: "ok" | "warning" | "critical"
   headline: string
@@ -27,6 +35,7 @@ interface Diagnosis {
     label: string
     icon: React.ElementType
     action: () => void
+    loading?: boolean
   }
   secondaryAction?: {
     label: string
@@ -34,7 +43,7 @@ interface Diagnosis {
   }
 }
 
-function diagnoseOrder(order: OrderStatus): Diagnosis {
+function diagnoseOrder(order: OrderStatus, actions: RecoveryActions): Diagnosis {
   const meta = (order.metadata ?? {}) as Record<string, unknown>
   const velocity = meta.velocity as Record<string, unknown> | undefined
   const delivery = meta.delivery as Record<string, unknown> | undefined
@@ -58,11 +67,6 @@ function diagnoseOrder(order: OrderStatus): Diagnosis {
       severity: "critical",
       headline: "Order expired",
       detail: "This order was not completed within the time limit.",
-      primaryAction: {
-        label: "Recreate order",
-        icon: RotateCcw,
-        action: () => {}, // Would trigger recreate flow
-      },
     }
   }
 
@@ -75,11 +79,11 @@ function diagnoseOrder(order: OrderStatus): Diagnosis {
         detail: pollStatus === "FAILED"
           ? "Velocity reported a failed payment. The buyer may need to retry."
           : "The buyer may have abandoned checkout or the payment processor is slow.",
-        primaryAction: {
+        primaryAction: actions.recheckPayment ? {
           label: "Recheck payment",
           icon: CreditCard,
-          action: () => {}, // Would trigger recheck
-        },
+          action: actions.recheckPayment,
+        } : undefined,
       }
     }
     return {
@@ -94,16 +98,16 @@ function diagnoseOrder(order: OrderStatus): Diagnosis {
     const sentMs = order.verificationSentAt ? new Date(order.verificationSentAt).getTime() : null
     const hoursSinceSent = sentMs ? (now - sentMs) / (1000 * 60 * 60) : 0
 
-    if (hoursSinceSent > 4) {
+    if (hoursSinceSent > 1) {
       return {
         severity: "warning",
         headline: `Awaiting email verification for ${Math.floor(hoursSinceSent)} hours`,
         detail: "The buyer has not clicked the magic link. The email may be in spam or the address is incorrect.",
-        primaryAction: {
+        primaryAction: actions.resendVerification ? {
           label: "Resend verification",
           icon: Mail,
-          action: () => {},
-        },
+          action: actions.resendVerification,
+        } : undefined,
       }
     }
     return {
@@ -122,11 +126,11 @@ function diagnoseOrder(order: OrderStatus): Diagnosis {
         severity: "warning",
         headline: "Ticket delivery failed",
         detail: "The tickets were generated but the email could not be delivered. This may be a temporary issue.",
-        primaryAction: {
+        primaryAction: actions.sendTickets ? {
           label: "Resend tickets",
           icon: Send,
-          action: () => {},
-        },
+          action: actions.sendTickets,
+        } : undefined,
       }
     }
 
@@ -135,11 +139,11 @@ function diagnoseOrder(order: OrderStatus): Diagnosis {
         severity: "warning",
         headline: "Tickets not yet delivered",
         detail: "Payment is confirmed but ticket generation has not started. This is unusual.",
-        primaryAction: {
-          label: "Send tickets",
+        primaryAction: actions.completeAndSend ? {
+          label: "Complete & send",
           icon: Ticket,
-          action: () => {},
-        },
+          action: actions.completeAndSend,
+        } : undefined,
       }
     }
 
@@ -157,8 +161,47 @@ function diagnoseOrder(order: OrderStatus): Diagnosis {
   }
 }
 
-export default function RecoveryPanel({ order }: { order: OrderStatus }) {
-  const diagnosis = useMemo(() => diagnoseOrder(order), [order])
+export default function RecoveryPanel({
+  order,
+  actions = {},
+}: {
+  order: OrderStatus
+  actions?: RecoveryActions
+}) {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  const wrapAction = useCallback(
+    (actionName: string, fn: () => Promise<{ fixed?: boolean; success?: boolean; message?: string } | void>) => async () => {
+      setLoading(actionName)
+      setResult(null)
+      try {
+        const result = await fn()
+        if (result && 'message' in result) {
+          setResult({ success: result.fixed ?? result.success ?? true, message: result.message ?? "Action completed." })
+        } else {
+          setResult({ success: true, message: "Action completed successfully." })
+        }
+      } catch (err) {
+        setResult({ success: false, message: err instanceof Error ? err.message : "Action failed" })
+      } finally {
+        setLoading(null)
+      }
+    },
+    [],
+  )
+
+  const wrappedActions: RecoveryActions = {}
+  if (actions.recheckPayment) wrappedActions.recheckPayment = wrapAction("recheck", actions.recheckPayment)
+  if (actions.resendVerification) wrappedActions.resendVerification = wrapAction("resend", actions.resendVerification)
+  if (actions.completeOrder) wrappedActions.completeOrder = wrapAction("complete", actions.completeOrder)
+  if (actions.sendTickets) wrappedActions.sendTickets = wrapAction("send", actions.sendTickets)
+  if (actions.completeAndSend) wrappedActions.completeAndSend = wrapAction("complete-send", actions.completeAndSend)
+
+  const diagnosis = useMemo(
+    () => diagnoseOrder(order, wrappedActions),
+    [order, wrappedActions],
+  )
 
   const severityStyles = {
     ok: "border-emerald-200 bg-emerald-50/60",
@@ -193,18 +236,34 @@ export default function RecoveryPanel({ order }: { order: OrderStatus }) {
           <p className="text-[15px] font-semibold text-ink">{diagnosis.headline}</p>
           <p className="text-[13px] text-ink-2 mt-1">{diagnosis.detail}</p>
 
+          {result && (
+            <p
+              className={cn(
+                "text-[12px] mt-2 font-medium",
+                result.success ? "text-emerald-600" : "text-rose-600",
+              )}
+            >
+              {result.message}
+            </p>
+          )}
+
           {diagnosis.primaryAction && (
             <div className="flex items-center gap-3 mt-4">
               <button
                 onClick={diagnosis.primaryAction.action}
+                disabled={loading !== null}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13.5px] font-semibold transition-colors",
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13.5px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                   diagnosis.severity === "warning"
                     ? "bg-amber-600 text-white hover:bg-amber-700"
-                    : "bg-rose-600 text-white hover:bg-rose-700"
+                    : "bg-rose-600 text-white hover:bg-rose-700",
                 )}
               >
-                <diagnosis.primaryAction.icon size={14} />
+                {loading !== null ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <diagnosis.primaryAction.icon size={14} />
+                )}
                 {diagnosis.primaryAction.label}
               </button>
               {diagnosis.secondaryAction && (
