@@ -13,6 +13,8 @@ import {
 } from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
+import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
+import { getBaseUrl } from "@/lib/url-config"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function resendOrderEmailAction(orderId: string) {
@@ -98,6 +100,56 @@ export async function resendOrderEmailAction(orderId: string) {
         })
       : "TBA"
 
+    // ── Generate PDF tickets as attachment ────────────────────────────────
+    let attachments: { filename: string; content: Buffer; contentType: string }[] | undefined
+    try {
+      const ticketRecords = await db
+        .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId })
+        .from(tickets)
+        .where(eq(tickets.orderId, orderId))
+
+      if (ticketRecords.length > 0) {
+        const tierRows = await db
+          .select({ id: ticketTiers.id, name: ticketTiers.name })
+          .from(ticketTiers)
+          .where(inArray(ticketTiers.id, [...new Set(ticketRecords.map((t) => t.tierId).filter(Boolean))]))
+
+        const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
+        const baseUrl = getBaseUrl()
+
+        // Regenerate QR data URLs
+        const qrMap = new Map<string, string>()
+        for (const t of ticketRecords) {
+          let qrCode = t.qrCode
+          if (!qrCode || !qrCode.startsWith("data:image")) {
+            try {
+              qrCode = await generateQrDataUrl(t.id, orderId, baseUrl)
+            } catch {
+              qrCode = `${orderId}-${t.id}`
+            }
+          }
+          qrMap.set(t.id, qrCode)
+        }
+
+        const pdfTickets = ticketRecords.map((t) => ({
+          eventTitle: ev.title,
+          tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+          buyerName: order.guestName ?? "Valued Guest",
+          orderId,
+          ticketId: t.id,
+          qrCodeData: qrMap.get(t.id) ?? `${orderId}-${t.id}`,
+        }))
+
+        const pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
+        attachments = [{ filename: `tickets-${orderId.slice(0, 8)}.pdf`, content: pdfBuffer, contentType: "application/pdf" }]
+      }
+    } catch (err) {
+      log.warn("resendOrderEmailAction - PDF generation failed (email will still be sent)", {
+        orderId,
+        error: String(err),
+      })
+    }
+
     await sendOrderConfirmationEmail({
       to: recipient,
       buyerName: order.guestName,
@@ -109,6 +161,7 @@ export async function resendOrderEmailAction(orderId: string) {
       total: String(order.totalAmount ?? "0"),
       currency: order.currency ?? "USD",
       ticketUrl: `${appUrl}/orders/${orderId}`,
+      attachments,
     })
 
     revalidatePath("/admin/orders")

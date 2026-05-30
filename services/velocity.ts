@@ -320,17 +320,9 @@ export function normalizeVelocityPollResponse(
   } else if (pollStatus === "PENDING") {
     localStatus = "PENDING"
   } else if (paymentStatus === "SUCCESS") {
-    log.warn("normalizeVelocityPollResponse - pollStatus missing but paymentStatus is SUCCESS, treating as UNKNOWN", {
-      pollStatus,
-      paymentStatus,
-    })
-    localStatus = "UNKNOWN"
+    localStatus = "PAID"
   } else if (paymentStatus === "FAILED") {
-    log.warn("normalizeVelocityPollResponse - pollStatus missing but paymentStatus is FAILED, treating as UNKNOWN", {
-      pollStatus,
-      paymentStatus,
-    })
-    localStatus = "UNKNOWN"
+    localStatus = "FAILED"
   } else {
     localStatus = "UNKNOWN"
   }

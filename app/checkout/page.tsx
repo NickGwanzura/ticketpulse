@@ -32,6 +32,29 @@ const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string;
   { value: "velocity-card", label: "Card", body: "Pay with Visa/Mastercard via secure hosted checkout.", icon: CreditCard },
 ]
 
+// Key prefix used to persist polling state across page refresh.
+const POLL_SESSION_KEY = "polling"
+
+function clearPollingSession() {
+  try {
+    sessionStorage.removeItem(`${POLL_SESSION_KEY}:orderId`)
+    sessionStorage.removeItem(`${POLL_SESSION_KEY}:name`)
+    sessionStorage.removeItem(`${POLL_SESSION_KEY}:email`)
+    sessionStorage.removeItem(`${POLL_SESSION_KEY}:phone`)
+    sessionStorage.removeItem(`${POLL_SESSION_KEY}:method`)
+  } catch { /* sessionStorage may be unavailable */ }
+}
+
+function savePollingSession(orderId: string, contact: { name: string; email: string; phone: string; method: string }) {
+  try {
+    sessionStorage.setItem(`${POLL_SESSION_KEY}:orderId`, orderId)
+    sessionStorage.setItem(`${POLL_SESSION_KEY}:name`, contact.name)
+    sessionStorage.setItem(`${POLL_SESSION_KEY}:email`, contact.email)
+    sessionStorage.setItem(`${POLL_SESSION_KEY}:phone`, contact.phone)
+    sessionStorage.setItem(`${POLL_SESSION_KEY}:method`, contact.method)
+  } catch { /* sessionStorage may be unavailable */ }
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, ready, totalsByCurrency, placeOrder } = useCart()
@@ -39,6 +62,25 @@ export default function CheckoutPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [pollingOrderId, setPollingOrderId] = useState<string | null>(null)
   const pollingContact = useRef<{ name: string; email: string; phone: string; method: string } | null>(null)
+
+  // ── Restore polling session after page refresh ───────────────────────────
+  // Check sessionStorage for an active polling session and resume it.
+  useEffect(() => {
+    try {
+      const savedOrderId = sessionStorage.getItem(`${POLL_SESSION_KEY}:orderId`)
+      if (savedOrderId) {
+        const name = sessionStorage.getItem(`${POLL_SESSION_KEY}:name`)
+        const email = sessionStorage.getItem(`${POLL_SESSION_KEY}:email`)
+        const phone = sessionStorage.getItem(`${POLL_SESSION_KEY}:phone`)
+        const method = sessionStorage.getItem(`${POLL_SESSION_KEY}:method`)
+        if (name && email && phone && method) {
+          pollingContact.current = { name, email, phone, method }
+          setPollingOrderId(savedOrderId)
+          setSubmitting(true)
+        }
+      }
+    } catch { /* sessionStorage may be unavailable */ }
+  }, [])
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -59,10 +101,10 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!pollingOrderId) return
 
-    const storageKey = `poll_started:${pollingOrderId}`
-    const stored = sessionStorage.getItem(storageKey)
+    const startedAtKey = `poll_started:${pollingOrderId}`
+    const stored = sessionStorage.getItem(startedAtKey)
     const startedAt = stored ? Number(stored) : Date.now()
-    if (!stored) sessionStorage.setItem(storageKey, String(startedAt))
+    if (!stored) sessionStorage.setItem(startedAtKey, String(startedAt))
 
     let active = true
     const statusEndpoint = `/api/checkout/velocity/status/${pollingOrderId}`
@@ -73,7 +115,8 @@ export default function CheckoutPage() {
       // ── Timeout check ──────────────────────────────────────────────────
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         clearInterval(interval)
-        sessionStorage.removeItem(storageKey)
+        sessionStorage.removeItem(startedAtKey)
+        clearPollingSession()
         setPollingOrderId(null)
         setSubmitError("The payment window has closed. If money was deducted, your tickets will be issued automatically once confirmed. Contact support for help.")
         setSubmitting(false)
@@ -87,7 +130,8 @@ export default function CheckoutPage() {
         // ── TERMINAL: paid ───────────────────────────────────────────────
         if (data.paid && pollingContact.current) {
           clearInterval(interval)
-          sessionStorage.removeItem(storageKey)
+          sessionStorage.removeItem(startedAtKey)
+          clearPollingSession()
           const contact = pollingContact.current
           placeOrder(
             { name: contact.name, email: contact.email, phone: contact.phone },
@@ -109,7 +153,8 @@ export default function CheckoutPage() {
           data.pollStatus === "TIMEOUT"
         ) {
           clearInterval(interval)
-          sessionStorage.removeItem(storageKey)
+          sessionStorage.removeItem(startedAtKey)
+          clearPollingSession()
           setPollingOrderId(null)
           const msg =
             data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
@@ -247,8 +292,11 @@ export default function CheckoutPage() {
       }
       const data = (await res.json()) as CheckoutResponse
 
+      const contactData = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
+
       if (data.flow === "velocity-seamless") {
-        pollingContact.current = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
+        pollingContact.current = contactData
+        savePollingSession(data.orderId, contactData)
         setPollingOrderId(data.orderId)
         return
       }
@@ -265,7 +313,8 @@ export default function CheckoutPage() {
           return
         }
         // Fallback: poll if no redirect URL (unlikely for card, expected for Ecocash)
-        pollingContact.current = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
+        pollingContact.current = contactData
+        savePollingSession(data.orderId, contactData)
         setPollingOrderId(data.orderId)
         return
       }
@@ -286,6 +335,7 @@ export default function CheckoutPage() {
           method={form.payment}
           phone={form.phone}
           onCancel={() => {
+            clearPollingSession()
             setPollingOrderId(null)
             setSubmitting(false)
             setSubmitError("Payment cancelled. You can try again with the same or another method.")

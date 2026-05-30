@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { checkoutLimiter } from "@/lib/rate-limit"
 import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId } from "@/services/velocity"
-import { validateTransactionPayload } from "@/lib/velocity/validation"
+import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
@@ -333,13 +333,16 @@ export async function POST(req: Request) {
       usingSalesOrderId: salesOrderId,
     })
 
+    // Auto-format phone number (local ZW formats like 077... → +26377...)
+    const formattedPhone = formatPhone(parsed.phone)
+
     const processor: "ECOCASH" | "VMC" = parsed.paymentMethod === "velocity-ecocash" ? "ECOCASH" : "VMC"
     const authType = getAuthType(processor)
 
     const validationError = validateTransactionPayload({
       amount: total,
       processor,
-      phone: parsed.phone,
+      phone: formattedPhone,
       currency,
     })
     if (validationError) {
@@ -373,7 +376,7 @@ export async function POST(req: Request) {
     const transactionPayload = {
       amount: total,
       paymentProcessorLabel: processor,
-      debitPhone: parsed.phone,
+      debitPhone: formattedPhone,
       debitRegion: "ZW",
       debitCurrency: currency as "USD" | "ZWG",
       debitRef: "ticketpulse",

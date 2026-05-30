@@ -25,6 +25,23 @@ export function validatePhone(phone: string): boolean {
   return cleaned.startsWith("+") && /^\+[1-9]\d{6,14}$/.test(cleaned)
 }
 
+/**
+ * Auto-format a phone number into E.164 international format.
+ * - If the number starts with "0" (Zimbabwe local format), prepends +263
+ * - Strips whitespace, dashes, and parentheses before formatting
+ * - Returns the original cleaned number if no transformation applies
+ */
+export function formatPhone(phone: string): string {
+  if (!phone) return phone
+  let cleaned = phone.replace(/[\s\-\(\)]/g, "")
+  // Zimbabwe: 0771234567 → +263771234567, 0712345678 → +263712345678
+  if (cleaned.startsWith("0") && cleaned.length >= 9) {
+    cleaned = "+263" + cleaned.slice(1)
+  }
+  // Already has + but missing country code prefix — let through as-is
+  return cleaned
+}
+
 export function validateSalesOrderPayload(params: {
   currency: string
   quantity: number
