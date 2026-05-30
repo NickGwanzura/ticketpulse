@@ -211,7 +211,7 @@ export const tickets = pgTable("tickets", {
   id: uuid("id").primaryKey().defaultRandom(),
   tierId: uuid("tier_id").notNull().references(() => ticketTiers.id),
   eventId: uuid("event_id").notNull().references(() => events.id),
-  orderId: uuid("order_id"),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id),
   status: ticketStatusEnum("status").default("available"),
   qrCode: text("qr_code").unique(),

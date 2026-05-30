@@ -142,38 +142,42 @@ export async function cancelOrderTicketsAction(orderId: string) {
     throw new Error("Order is already cancelled or refunded")
   }
 
-  // Update the order status
-  await db
-    .update(orders)
-    .set({ status: "cancelled", updatedAt: new Date() })
-    .where(eq(orders.id, orderId))
+  // Wrap all mutations in a single transaction so a failure mid-way
+  // rolls everything back.
+  await db.transaction(async (tx) => {
+    // Update the order status
+    await tx
+      .update(orders)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
 
-  // Find all ticket records tied to this order and mark them as cancelled
-  const orderTickets = await db
-    .select({ id: tickets.id, tierId: tickets.tierId })
-    .from(tickets)
-    .where(eq(tickets.orderId, orderId))
+    // Find all ticket records tied to this order and mark them as cancelled
+    const orderTickets = await tx
+      .select({ id: tickets.id, tierId: tickets.tierId })
+      .from(tickets)
+      .where(eq(tickets.orderId, orderId))
 
-  if (orderTickets.length > 0) {
-    const ticketIds = orderTickets.map((t) => t.id)
-    const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
+    if (orderTickets.length > 0) {
+      const ticketIds = orderTickets.map((t) => t.id)
+      const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
 
-    await db
-      .update(tickets)
-      .set({ status: "cancelled" })
-      .where(inArray(tickets.id, ticketIds))
+      await tx
+        .update(tickets)
+        .set({ status: "cancelled" })
+        .where(inArray(tickets.id, ticketIds))
 
-    // Restore inventory for each affected tier
-    for (const tierId of tierIds) {
-      const cancelledCount = orderTickets.filter((t) => t.tierId === tierId).length
-      await db
-        .update(ticketTiers)
-        .set({
-          soldQuantity: sql`${ticketTiers.soldQuantity} - ${cancelledCount}`,
-        })
-        .where(eq(ticketTiers.id, tierId))
+      // Restore inventory for each affected tier
+      for (const tierId of tierIds) {
+        const cancelledCount = orderTickets.filter((t) => t.tierId === tierId).length
+        await tx
+          .update(ticketTiers)
+          .set({
+            soldQuantity: sql`${ticketTiers.soldQuantity} - ${cancelledCount}`,
+          })
+          .where(eq(ticketTiers.id, tierId))
+      }
     }
-  }
+  })
 
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")
@@ -297,35 +301,39 @@ export async function refundOrderAction(orderId: string) {
     throw new Error("Only paid orders can be refunded")
   }
 
-  await db
-    .update(orders)
-    .set({ status: "refunded", updatedAt: new Date() })
-    .where(eq(orders.id, orderId))
+  // Wrap all mutations in a single transaction so a failure mid-way
+  // rolls everything back.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(orders)
+      .set({ status: "refunded", updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
 
-  const orderTickets = await db
-    .select({ id: tickets.id, tierId: tickets.tierId })
-    .from(tickets)
-    .where(eq(tickets.orderId, orderId))
+    const orderTickets = await tx
+      .select({ id: tickets.id, tierId: tickets.tierId })
+      .from(tickets)
+      .where(eq(tickets.orderId, orderId))
 
-  if (orderTickets.length > 0) {
-    const ticketIds = orderTickets.map((t) => t.id)
-    const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
+    if (orderTickets.length > 0) {
+      const ticketIds = orderTickets.map((t) => t.id)
+      const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
 
-    await db
-      .update(tickets)
-      .set({ status: "refunded" })
-      .where(inArray(tickets.id, ticketIds))
+      await tx
+        .update(tickets)
+        .set({ status: "refunded" })
+        .where(inArray(tickets.id, ticketIds))
 
-    for (const tierId of tierIds) {
-      const refundedCount = orderTickets.filter((t) => t.tierId === tierId).length
-      await db
-        .update(ticketTiers)
-        .set({
-          soldQuantity: sql`${ticketTiers.soldQuantity} - ${refundedCount}`,
-        })
-        .where(eq(ticketTiers.id, tierId))
+      for (const tierId of tierIds) {
+        const refundedCount = orderTickets.filter((t) => t.tierId === tierId).length
+        await tx
+          .update(ticketTiers)
+          .set({
+            soldQuantity: sql`${ticketTiers.soldQuantity} - ${refundedCount}`,
+          })
+          .where(eq(ticketTiers.id, tierId))
+      }
     }
-  }
+  })
 
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")
@@ -363,26 +371,32 @@ export async function deleteOrderAction(orderId: string) {
 
   if (!order) throw new Error("Order not found")
 
-  // Clean up related records in dependency order
-  await db.delete(paymentLedger).where(eq(paymentLedger.orderId, orderId))
+  // Import additional table references before the transaction
+  const { transportBookings, photoDownloads } = await import("@/db/schema")
 
-  // Break FK references that don't have ON DELETE CASCADE
-  const { transportBookings, photoDownloads, analyticsEvents } = await import("@/db/schema")
-  await db
-    .update(transportBookings)
-    .set({ orderId: null })
-    .where(eq(transportBookings.orderId, orderId))
-  await db
-    .update(photoDownloads)
-    .set({ orderId: null })
-    .where(eq(photoDownloads.orderId, orderId))
+  // Wrap all deletion in a single transaction so a failure mid-way rolls
+  // everything back and leaves the database in a consistent state.
+  await db.transaction(async (tx) => {
+    await tx.delete(paymentLedger).where(eq(paymentLedger.orderId, orderId))
 
-  // Delete tickets and order items
-  await db.delete(tickets).where(eq(tickets.orderId, orderId))
-  await db.delete(orderItems).where(eq(orderItems.orderId, orderId))
+    // Break FK references that don't have ON DELETE CASCADE / SET NULL
+    await tx
+      .update(transportBookings)
+      .set({ orderId: null })
+      .where(eq(transportBookings.orderId, orderId))
+    await tx
+      .update(photoDownloads)
+      .set({ orderId: null })
+      .where(eq(photoDownloads.orderId, orderId))
 
-  // Delete the order itself (cascades ticketQuestionResponses, sets null on analyticsEvents)
-  await db.delete(orders).where(eq(orders.id, orderId))
+    // Delete tickets and order items
+    await tx.delete(tickets).where(eq(tickets.orderId, orderId))
+    await tx.delete(orderItems).where(eq(orderItems.orderId, orderId))
+
+    // Delete the order itself (cascades ticketQuestionResponses,
+    // sets null on analyticsEvents)
+    await tx.delete(orders).where(eq(orders.id, orderId))
+  })
 
   log.info("admin - order deleted", { orderId, deletedBy: session.user.id })
 

@@ -1,7 +1,8 @@
 "use client"
 
-import { useActionState, useState } from "react"
-import { Trash2, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
+import { useActionState, useEffect, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { Trash2, CheckCircle, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { cancelOrderTicketsAction } from "@/app/admin/actions/orders"
 
@@ -14,6 +15,7 @@ export default function CancelOrderButton({
   orderId: string
   variant?: "desktop" | "mobile"
 }) {
+  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -29,6 +31,24 @@ export default function CancelOrderButton({
     },
     null,
   )
+
+  // Track state transitions so we can reset `confirming` after
+  // the action completes — this lets the inline toast appear.
+  const prevStateRef = useRef(state)
+  useEffect(() => {
+    if (state && state !== prevStateRef.current) {
+      setConfirming(false)
+    }
+    prevStateRef.current = state
+  }, [state])
+
+  // Refresh the page after a successful cancellation so the table
+  // reflects the current database state.
+  useEffect(() => {
+    if (state?.ok) {
+      router.refresh()
+    }
+  }, [state, router])
 
   const showFeedback = state && !confirming
 
@@ -82,16 +102,10 @@ export default function CancelOrderButton({
         <div
           className={cn(
             "absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium shadow-lg whitespace-nowrap pointer-events-none",
-            state.ok
-              ? "bg-green-50 text-green-700 ring-1 ring-green-200"
-              : "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+            "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
           )}
         >
-          {state.ok ? (
-            <CheckCircle size={11} className="shrink-0" />
-          ) : (
-            <XCircle size={11} className="shrink-0" />
-          )}
+          <XCircle size={11} className="shrink-0" />
           {state.message}
         </div>
       )}

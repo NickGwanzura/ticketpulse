@@ -1,7 +1,8 @@
 "use client"
 
-import { useActionState, useState } from "react"
-import { Trash2, CheckCircle, XCircle } from "lucide-react"
+import { useActionState, useEffect, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { Trash2, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { deleteOrderAction } from "@/app/admin/actions/orders"
 
@@ -14,6 +15,7 @@ export default function DeleteOrderButton({
   orderId: string
   variant?: "desktop" | "mobile"
 }) {
+  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -29,6 +31,24 @@ export default function DeleteOrderButton({
     },
     null,
   )
+
+  // Track state transitions so we can reset `confirming` after
+  // the action completes — this lets the inline toast appear.
+  const prevStateRef = useRef(state)
+  useEffect(() => {
+    if (state && state !== prevStateRef.current) {
+      setConfirming(false)
+    }
+    prevStateRef.current = state
+  }, [state])
+
+  // Refresh the page after a successful deletion so the table / detail
+  // page reflects the current database state.
+  useEffect(() => {
+    if (state?.ok) {
+      router.refresh()
+    }
+  }, [state, router])
 
   const showFeedback = state && !confirming
 

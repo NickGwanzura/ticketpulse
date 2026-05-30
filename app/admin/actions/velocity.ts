@@ -157,46 +157,41 @@ export async function recheckPaymentAction(
     },
   }
 
+  // Update order and record payment ledger atomically
   try {
-    await db
-      .update(orders)
-      .set({
-        status: "paid",
-        paidAt: new Date(),
-        paymentRef: invoiceId,
-        metadata: finalMeta,
-        updatedAt: new Date(),
+    await db.transaction(async (tx) => {
+      await tx
+        .update(orders)
+        .set({
+          status: "paid",
+          paidAt: new Date(),
+          paymentRef: invoiceId,
+          metadata: finalMeta,
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+
+      await tx.insert(paymentLedger).values({
+        orderId,
+        eventId: order.eventId,
+        transactionTrace: velocityMeta.transactionTrace ?? "",
+        salesOrderTrace: velocityMeta.salesOrderTrace,
+        invoiceId,
+        amount: order.totalAmount,
+        currency: order.currency ?? "USD",
+        processor: "velocity",
+        velocityPollStatus: "SUCCESS",
+        localStatus: "paid",
+        source: "admin_recheck",
+        rawPayload: null,
       })
-      .where(eq(orders.id, orderId))
+    })
   } catch (err) {
     return {
       fixed: true,
       message: `Payment confirmed in Velocity and workflow finalized, but local DB update failed: ${err instanceof Error ? err.message : String(err)}. Please try again or check logs.`,
       details: { salesOrderTrace: velocityMeta.salesOrderTrace, invoiceId },
     }
-  }
-
-  // Record in payment ledger
-  try {
-    await db.insert(paymentLedger).values({
-      orderId,
-      eventId: order.eventId,
-      transactionTrace: velocityMeta.transactionTrace ?? "",
-      salesOrderTrace: velocityMeta.salesOrderTrace,
-      invoiceId,
-      amount: order.totalAmount,
-      currency: order.currency ?? "USD",
-      processor: "velocity",
-      velocityPollStatus: "SUCCESS",
-      localStatus: "paid",
-      source: "admin_recheck",
-      rawPayload: null,
-    })
-  } catch (err) {
-    log.warn("recheckPaymentAction - failed to record paymentLedger", {
-      orderId,
-      error: String(err),
-    })
   }
 
   // ── Step 4: Generate tickets and deliver ────────────────────────────────
@@ -349,30 +344,32 @@ export async function pollAllVelocityOrdersAction(): Promise<{
         },
       }
 
-      await db
-        .update(orders)
-        .set({
-          status: "paid",
-          paidAt: new Date(),
-          paymentRef: invoiceId,
-          metadata: updatedMeta,
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, order.id))
+      await db.transaction(async (tx) => {
+        await tx
+          .update(orders)
+          .set({
+            status: "paid",
+            paidAt: new Date(),
+            paymentRef: invoiceId,
+            metadata: updatedMeta,
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.id, order.id))
 
-      await db.insert(paymentLedger).values({
-        orderId: order.id,
-        eventId: order.eventId ?? "00000000-0000-0000-0000-000000000000",
-        transactionTrace: velocityMeta.transactionTrace ?? "",
-        salesOrderTrace: velocityMeta.salesOrderTrace,
-        invoiceId,
-        amount: order.totalAmount ?? "0",
-        currency: order.currency ?? "USD",
-        processor: "velocity",
-        velocityPollStatus: "SUCCESS",
-        localStatus: "paid",
-        source: "admin",
-        rawPayload: null,
+        await tx.insert(paymentLedger).values({
+          orderId: order.id,
+          eventId: order.eventId ?? "00000000-0000-0000-0000-000000000000",
+          transactionTrace: velocityMeta.transactionTrace ?? "",
+          salesOrderTrace: velocityMeta.salesOrderTrace,
+          invoiceId,
+          amount: order.totalAmount ?? "0",
+          currency: order.currency ?? "USD",
+          processor: "velocity",
+          velocityPollStatus: "SUCCESS",
+          localStatus: "paid",
+          source: "admin",
+          rawPayload: null,
+        })
       })
 
       // Generate tickets and send confirmation

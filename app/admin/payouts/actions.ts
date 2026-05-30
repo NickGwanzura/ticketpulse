@@ -17,8 +17,9 @@ async function createAuditLog(opts: {
   toStatus: string
   performedBy: string
   notes?: string | null
-}) {
-  await db.insert(payoutAuditLog).values({
+}, tx?: typeof db) {
+  const client = tx ?? db
+  await client.insert(payoutAuditLog).values({
     payoutId: opts.payoutId,
     action: opts.action,
     fromStatus: opts.fromStatus as any,
@@ -34,8 +35,9 @@ async function createPayoutNotification(opts: {
   title: string
   body: string
   link?: string
-}) {
-  await db.insert(notifications).values({
+}, tx?: typeof db) {
+  const client = tx ?? db
+  await client.insert(notifications).values({
     userId: opts.userId,
     type: opts.type as any,
     title: opts.title,
@@ -127,28 +129,30 @@ export async function approvePayoutAction(payoutId: string) {
     throw new Error(`Cannot approve payout in "${payout.status}" status`)
   }
 
-  await db
-    .update(payouts)
-    .set({
-      status: "approved",
-      reviewedBy: session.user.email ?? session.user.id,
-    })
-    .where(eq(payouts.id, payoutId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payouts)
+      .set({
+        status: "approved",
+        reviewedBy: session.user.email ?? session.user.id,
+      })
+      .where(eq(payouts.id, payoutId))
 
-  await createAuditLog({
-    payoutId,
-    action: "approved",
-    fromStatus: payout.status,
-    toStatus: "approved",
-    performedBy: session.user.email ?? session.user.id,
-    notes: "Payout approved by admin",
-  })
+    await createAuditLog({
+      payoutId,
+      action: "approved",
+      fromStatus: payout.status,
+      toStatus: "approved",
+      performedBy: session.user.email ?? session.user.id,
+      notes: "Payout approved by admin",
+    }, tx)
 
-  await createPayoutNotification({
-    userId: payout.userId,
-    type: "payout_approved",
-    title: "Payout approved",
-    body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been approved and is being processed.`,
+    await createPayoutNotification({
+      userId: payout.userId,
+      type: "payout_approved",
+      title: "Payout approved",
+      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been approved and is being processed.`,
+    }, tx)
   })
 
   log.info("Payout approved", { payoutId, by: session.user.email })
@@ -177,29 +181,31 @@ export async function rejectPayoutAction(payoutId: string, reason: string) {
     throw new Error(`Cannot reject payout in "${payout.status}" status`)
   }
 
-  await db
-    .update(payouts)
-    .set({
-      status: "rejected",
-      rejectionReason: reason.trim(),
-      reviewedBy: session.user.email ?? session.user.id,
-    })
-    .where(eq(payouts.id, payoutId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payouts)
+      .set({
+        status: "rejected",
+        rejectionReason: reason.trim(),
+        reviewedBy: session.user.email ?? session.user.id,
+      })
+      .where(eq(payouts.id, payoutId))
 
-  await createAuditLog({
-    payoutId,
-    action: "rejected",
-    fromStatus: payout.status,
-    toStatus: "rejected",
-    performedBy: session.user.email ?? session.user.id,
-    notes: `Rejected: ${reason.trim()}`,
-  })
+    await createAuditLog({
+      payoutId,
+      action: "rejected",
+      fromStatus: payout.status,
+      toStatus: "rejected",
+      performedBy: session.user.email ?? session.user.id,
+      notes: `Rejected: ${reason.trim()}`,
+    }, tx)
 
-  await createPayoutNotification({
-    userId: payout.userId,
-    type: "payout_rejected",
-    title: "Payout rejected",
-    body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} was rejected. Reason: ${reason.trim()}`,
+    await createPayoutNotification({
+      userId: payout.userId,
+      type: "payout_rejected",
+      title: "Payout rejected",
+      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} was rejected. Reason: ${reason.trim()}`,
+    }, tx)
   })
 
   log.info("Payout rejected", { payoutId, reason, by: session.user.email })
@@ -224,17 +230,19 @@ export async function markPayoutProcessingAction(payoutId: string) {
     throw new Error(`Cannot mark payout as processing in "${payout.status}" status`)
   }
 
-  await db
-    .update(payouts)
-    .set({ status: "processing" })
-    .where(eq(payouts.id, payoutId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payouts)
+      .set({ status: "processing" })
+      .where(eq(payouts.id, payoutId))
 
-  await createAuditLog({
-    payoutId,
-    action: "processing",
-    fromStatus: payout.status,
-    toStatus: "processing",
-    performedBy: session.user.email ?? session.user.id,
+    await createAuditLog({
+      payoutId,
+      action: "processing",
+      fromStatus: payout.status,
+      toStatus: "processing",
+      performedBy: session.user.email ?? session.user.id,
+    }, tx)
   })
 
   log.info("Payout marked processing", { payoutId, by: session.user.email })
@@ -270,33 +278,35 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
     throw new Error(`Cannot mark payout as paid in "${payout.status}" status. Must be approved or processing first.`)
   }
 
-  await db
-    .update(payouts)
-    .set({
-      status: "paid",
-      proofReference: proofReference?.trim() || undefined,
-      processedAt: new Date(),
-      processedBy: session.user.email ?? session.user.id,
-    })
-    .where(eq(payouts.id, payoutId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payouts)
+      .set({
+        status: "paid",
+        proofReference: proofReference?.trim() || undefined,
+        processedAt: new Date(),
+        processedBy: session.user.email ?? session.user.id,
+      })
+      .where(eq(payouts.id, payoutId))
 
-  await createAuditLog({
-    payoutId,
-    action: "paid",
-    fromStatus: payout.status,
-    toStatus: "paid",
-    performedBy: session.user.email ?? session.user.id,
-    notes: proofReference ? `Proof reference: ${proofReference}` : null,
+    await createAuditLog({
+      payoutId,
+      action: "paid",
+      fromStatus: payout.status,
+      toStatus: "paid",
+      performedBy: session.user.email ?? session.user.id,
+      notes: proofReference ? `Proof reference: ${proofReference}` : null,
+    }, tx)
+
+    await createPayoutNotification({
+      userId: payout.userId,
+      type: "payout_paid",
+      title: "Payout sent",
+      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been sent to your ${payout.method === "ecocash" ? "EcoCash" : "bank account"}.`,
+    }, tx)
   })
 
-  await createPayoutNotification({
-    userId: payout.userId,
-    type: "payout_paid",
-    title: "Payout sent",
-    body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been sent to your ${payout.method === "ecocash" ? "EcoCash" : "bank account"}.`,
-  })
-
-  // Email notification
+  // Email notification (non-DB — fire-and-forget even if it fails)
   try {
     const [user] = await db
       .select({ name: users.name, email: users.email })
@@ -343,21 +353,23 @@ export async function updatePayoutStatusAction(payoutId: string, status: string)
 
   if (!existing) throw new Error("Payout not found")
 
-  await db
-    .update(payouts)
-    .set({
-      status: status as any,
-      processedAt: status === "paid" ? new Date() : undefined,
-      processedBy: status === "paid" ? (session.user.email ?? session.user.id) : undefined,
-    })
-    .where(eq(payouts.id, payoutId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payouts)
+      .set({
+        status: status as any,
+        processedAt: status === "paid" ? new Date() : undefined,
+        processedBy: status === "paid" ? (session.user.email ?? session.user.id) : undefined,
+      })
+      .where(eq(payouts.id, payoutId))
 
-  await createAuditLog({
-    payoutId,
-    action: "status_updated",
-    fromStatus: existing.status,
-    toStatus: status,
-    performedBy: session.user.email ?? session.user.id,
+    await createAuditLog({
+      payoutId,
+      action: "status_updated",
+      fromStatus: existing.status,
+      toStatus: status,
+      performedBy: session.user.email ?? session.user.id,
+    }, tx)
   })
 
   log.info("Payout status updated", { payoutId, status, by: session.user.email })

@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useEffect, useState, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { RotateCcw, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { refundOrderAction } from "@/app/admin/actions/orders"
@@ -14,6 +15,7 @@ export default function RefundButton({
   orderId: string
   variant?: "desktop" | "mobile"
 }) {
+  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
@@ -30,6 +32,24 @@ export default function RefundButton({
     },
     null,
   )
+
+  // Track state transitions so we can reset `confirming` after
+  // the action completes.
+  const prevStateRef = useRef(state)
+  useEffect(() => {
+    if (state && state !== prevStateRef.current) {
+      setConfirming(false)
+    }
+    prevStateRef.current = state
+  }, [state])
+
+  // Refresh the page after a successful refund so the table
+  // reflects the current database state.
+  useEffect(() => {
+    if (state?.ok) {
+      router.refresh()
+    }
+  }, [state, router])
 
   useEffect(() => {
     if (state?.ok) {

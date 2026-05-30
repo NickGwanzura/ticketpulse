@@ -193,20 +193,23 @@ export async function deleteTierAction(formData: FormData): Promise<void> {
   const guard = await requireTierOwnership(tierId)
   if (!guard.ok) redirect(guard.redirectTo)
 
-  // 1. Delete any tickets linked to this tier (tickets.tier_id is NOT NULL
-  //    with no onDelete cascade, so they must be removed before the tier can
-  //    be deleted)
-  await db
-    .delete(tickets)
-    .where(eq(tickets.tierId, tierId))
+  // Delete tickets, nullify order item references, and delete the tier atomically
+  await db.transaction(async (tx) => {
+    // 1. Delete any tickets linked to this tier (tickets.tier_id is NOT NULL
+    //    with no onDelete cascade, so they must be removed before the tier can
+    //    be deleted)
+    await tx
+      .delete(tickets)
+      .where(eq(tickets.tierId, tierId))
 
-  // 2. Nullify order_items.tier_id references so the FK constraint doesn't block deletion
-  await db
-    .update(orderItems)
-    .set({ tierId: null })
-    .where(eq(orderItems.tierId, tierId))
+    // 2. Nullify order_items.tier_id references so the FK constraint doesn't block deletion
+    await tx
+      .update(orderItems)
+      .set({ tierId: null })
+      .where(eq(orderItems.tierId, tierId))
 
-  // 3. Delete the tier itself
-  await db.delete(ticketTiers).where(eq(ticketTiers.id, tierId))
+    // 3. Delete the tier itself
+    await tx.delete(ticketTiers).where(eq(ticketTiers.id, tierId))
+  })
   revalidatePath(`/organizer/events/${eventId}/tiers`)
 }

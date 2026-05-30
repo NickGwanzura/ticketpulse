@@ -197,28 +197,31 @@ export async function requestPayoutAction(formData: FormData) {
     throw new Error("You already have a pending payout request. Please wait for it to be processed before requesting another.")
   }
 
-  // Insert the payout
-  const [inserted] = await db
-    .insert(payouts)
-    .values({
-      userId,
-      amount: amount.toFixed(2),
-      currency,
-      method: method as "ecocash" | "bank_usd" | "bank_zar",
-      status: "pending",
-      accountNumber: ecocashNumber ?? accountNumber,
-      accountName,
-      bankName,
-    })
-    .returning({ id: payouts.id })
+  // Insert the payout and audit log atomically
+  const inserted = await db.transaction(async (tx) => {
+    const [result] = await tx
+      .insert(payouts)
+      .values({
+        userId,
+        amount: amount.toFixed(2),
+        currency,
+        method: method as "ecocash" | "bank_usd" | "bank_zar",
+        status: "pending",
+        accountNumber: ecocashNumber ?? accountNumber,
+        accountName,
+        bankName,
+      })
+      .returning({ id: payouts.id })
 
-  // Create audit log entry
-  await db.insert(payoutAuditLog).values({
-    payoutId: inserted.id,
-    action: "requested",
-    toStatus: "pending",
-    performedBy: session.user.email ?? userId,
-    notes: `Payout of ${amount.toFixed(2)} ${currency} requested via ${method}`,
+    await tx.insert(payoutAuditLog).values({
+      payoutId: result.id,
+      action: "requested",
+      toStatus: "pending",
+      performedBy: session.user.email ?? userId,
+      notes: `Payout of ${amount.toFixed(2)} ${currency} requested via ${method}`,
+    })
+
+    return result
   })
 
   log.info("Payout requested", { userId, amount, currency, method, payoutId: inserted.id })

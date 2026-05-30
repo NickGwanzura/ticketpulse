@@ -173,20 +173,22 @@ export async function addGalleryPhotosAction(
     return { ok: false, inserted: 0, error: "No photos provided." }
   }
 
-  // Atomic-ish: insert rows then bump the count by the number actually inserted.
-  // Drizzle neon-http doesn't support transactions, but the count update is
-  // expressed as `photoCount + N` so concurrent inserts stay correct.
-  const inserted = await db
-    .insert(galleryPhotos)
-    .values(cleaned.map((url) => ({ galleryId, url })))
-    .returning({ id: galleryPhotos.id })
+  // Insert photos and update count atomically
+  const inserted = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(galleryPhotos)
+      .values(cleaned.map((url) => ({ galleryId, url })))
+      .returning({ id: galleryPhotos.id })
 
-  await db
-    .update(eventGalleries)
-    .set({
-      photoCount: sql`${eventGalleries.photoCount} + ${inserted.length}`,
-    })
-    .where(eq(eventGalleries.id, galleryId))
+    await tx
+      .update(eventGalleries)
+      .set({
+        photoCount: sql`${eventGalleries.photoCount} + ${rows.length}`,
+      })
+      .where(eq(eventGalleries.id, galleryId))
+
+    return rows
+  })
 
   revalidatePath(`/organizer/events/${guard.gallery.eventId}/gallery`)
   return { ok: true, inserted: inserted.length }
@@ -201,21 +203,25 @@ export async function deleteGalleryPhotoAction(formData: FormData): Promise<void
   const guard = await requireGalleryOwnership(galleryId)
   if (!guard.ok) redirect(guard.redirectTo)
 
-  // Delete the row first and capture its public URL so we can also drop the
-  // underlying R2 object. The row is source of truth — if R2 cleanup fails,
-  // we still want the photo gone from the gallery view.
-  const deleted = await db
-    .delete(galleryPhotos)
-    .where(and(eq(galleryPhotos.id, photoId), eq(galleryPhotos.galleryId, galleryId)))
-    .returning({ id: galleryPhotos.id, url: galleryPhotos.url })
+  // Delete photo and update count atomically
+  const deleted = await db.transaction(async (tx) => {
+    const rows = await tx
+      .delete(galleryPhotos)
+      .where(and(eq(galleryPhotos.id, photoId), eq(galleryPhotos.galleryId, galleryId)))
+      .returning({ id: galleryPhotos.id, url: galleryPhotos.url })
 
+    if (rows.length > 0) {
+      await tx
+        .update(eventGalleries)
+        .set({ photoCount: sql`GREATEST(${eventGalleries.photoCount} - 1, 0)` })
+        .where(eq(eventGalleries.id, galleryId))
+    }
+
+    return rows
+  })
+
+  // Best-effort R2 cleanup; never blocks the user-facing flow.
   if (deleted.length > 0) {
-    await db
-      .update(eventGalleries)
-      .set({ photoCount: sql`GREATEST(${eventGalleries.photoCount} - 1, 0)` })
-      .where(eq(eventGalleries.id, galleryId))
-
-    // Best-effort R2 cleanup; never blocks the user-facing flow.
     deleteByPublicUrl(deleted[0].url).catch((err) =>
       console.error("[gallery] r2 cleanup failed", err),
     )
