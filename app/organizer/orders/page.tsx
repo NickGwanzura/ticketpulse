@@ -3,7 +3,7 @@ import Link from "next/link"
 import {
   Search, Smartphone, ShoppingCart, ExternalLink,
 } from "lucide-react"
-import { desc, eq, or, like, and, inArray } from "drizzle-orm"
+import { desc, eq, or, like, and, inArray, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -12,6 +12,7 @@ import type { VelocityOrderMetadata } from "@/types/velocity"
 
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import Pagination from "@/components/ui/Pagination"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 import CompleteButton from "@/app/admin/_components/CompleteButton"
@@ -22,31 +23,29 @@ import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RecheckButton from "@/app/admin/_components/RecheckButton"
 
 const STATUS_STYLE: Record<string, string> = {
-  paid:                   "bg-emerald-50 text-emerald-700",
-  pending:                "bg-amber-50 text-amber-700",
-  awaiting_verification:  "bg-blue-50 text-blue-700 ring-1 ring-blue-200/50",
-  completed:              "bg-violet-50 text-violet-700 ring-1 ring-violet-200/50",
-  refunded:               "bg-rose-50 text-rose-700",
-  cancelled:              "bg-paper-2 text-ink-3 ring-1 ring-line",
-  expired:                "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
+  paid:       "bg-emerald-50 text-emerald-700",
+  pending:    "bg-amber-50 text-amber-700",
+  completed:  "bg-violet-50 text-violet-700 ring-1 ring-violet-200/50",
+  refunded:   "bg-rose-50 text-rose-700",
+  cancelled:  "bg-paper-2 text-ink-3 ring-1 ring-line",
+  expired:    "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  paid:                   "Paid",
-  pending:                "Pending",
-  awaiting_verification:  "Awaiting verification",
-  completed:              "Completed",
-  refunded:               "Refunded",
-  cancelled:              "Cancelled",
-  expired:                "Expired",
+  paid:       "Paid",
+  pending:    "Pending",
+  completed:  "Completed",
+  refunded:   "Refunded",
+  cancelled:  "Cancelled",
+  expired:    "Expired",
 }
 
 const FILTER_PILLS = [
-  { label: "All",              value: "all" },
-  { label: "Paid",             value: "paid" },
-  { label: "Pending",          value: "pending" },
-  { label: "Completed",        value: "completed" },
-  { label: "Cancelled",        value: "cancelled" },
+  { label: "All",       value: "all" },
+  { label: "Paid",      value: "paid" },
+  { label: "Pending",   value: "pending" },
+  { label: "Completed", value: "completed" },
+  { label: "Cancelled", value: "cancelled" },
 ]
 
 function getPaymentBadge(status: string | null) {
@@ -83,10 +82,12 @@ function getDeliveryBadge(meta: Record<string, unknown> | null) {
   return <span className="text-[10px] font-medium text-amber-600">Pending</span>
 }
 
+const LIMIT = 25
+
 export default async function OrganizerOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer/orders")
@@ -136,6 +137,8 @@ export default async function OrganizerOrdersPage({
   const sp = await searchParams
   const query = sp.q?.trim() ?? ""
   const statusFilter = sp.status ?? "all"
+  const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
+  const offset = (currentPage - 1) * LIMIT
 
   const conditions: ReturnType<typeof and>[] = [inArray(orders.eventId, myEventIds)]
 
@@ -149,15 +152,19 @@ export default async function OrganizerOrdersPage({
     )
   }
 
-  if (statusFilter === "pending") {
-    conditions.push(
-      or(eq(orders.status, "pending"), eq(orders.status, "awaiting_verification")),
-    )
-  } else if (statusFilter !== "all") {
-    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "awaiting_verification" | "completed" | "cancelled" | "refunded" | "expired"))
+  if (statusFilter !== "all") {
+    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "completed" | "cancelled" | "refunded" | "expired"))
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(orders)
+    .where(whereClause)
+
+  const totalCount = countRow?.count ?? 0
+  const totalPages = Math.ceil(totalCount / LIMIT)
 
   const orderRows = await db
     .select({
@@ -178,7 +185,8 @@ export default async function OrganizerOrdersPage({
     .from(orders)
     .where(whereClause)
     .orderBy(desc(orders.createdAt))
-    .limit(100)
+    .limit(LIMIT)
+    .offset(offset)
 
   const customerName = (row: (typeof orderRows)[number]) =>
     row.guestName ?? row.guestEmail?.split("@")[0] ?? "—"
@@ -457,6 +465,15 @@ export default async function OrganizerOrdersPage({
               Clear search
             </Link>
           </p>
+        )}
+
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/organizer/orders"
+            queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined }}
+          />
         )}
       </div>
     </div>

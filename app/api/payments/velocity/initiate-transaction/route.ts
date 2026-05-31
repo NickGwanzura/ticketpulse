@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         debitPhone,
         debitRegion: "ZW",
         debitCurrency: currency,
-        debitRef: "ticketpulse",
+        debitRef: salesOrderTrace,
         creditPhone: merchantPhone,
         creditRegion: "ZW",
         creditAccount: merchantPhone,

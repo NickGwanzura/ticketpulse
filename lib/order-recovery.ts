@@ -223,31 +223,40 @@ export async function sendTicketsAction(
       for (const tv of ticketValues) {
         if (tv.tierId) tierCounts.set(tv.tierId, (tierCounts.get(tv.tierId) ?? 0) + 1)
       }
-      for (const [tierId, count] of tierCounts) {
-        await db
-          .update(ticketTiers)
-          .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
-          .where(eq(ticketTiers.id, tierId))
-      }
+      await Promise.all(
+        Array.from(tierCounts).map(([tierId, count]) =>
+          db.update(ticketTiers)
+            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+            .where(eq(ticketTiers.id, tierId))
+        )
+      )
     }
   }
 
-  // 3. Verify and regenerate QR codes
+  // 3. Verify and regenerate QR codes — parallel generation + batch updates
   result.regenerated.qrCodes = false
-  const qrUpdates: { id: string; qrCode: string }[] = []
-  for (const t of ticketRecords) {
-    if (!t.qrCode || t.qrCode.startsWith(orderId)) {
-      try {
-        const qrDataUrl = await generateQrDataUrl(t.id, orderId, baseUrl)
-        qrUpdates.push({ id: t.id, qrCode: qrDataUrl })
-        result.regenerated.qrCodes = true
-      } catch {
-        // keep existing qr
+  const staleTickets = ticketRecords.filter(t => !t.qrCode || t.qrCode.startsWith(orderId))
+  if (staleTickets.length > 0) {
+    const qrResults = await Promise.all(
+      staleTickets.map(t =>
+        generateQrDataUrl(t.id, orderId, baseUrl).catch(() => null)
+      )
+    )
+    const qrUpdates = staleTickets
+      .map((t, i) => ({ id: t.id, qrCode: qrResults[i] }))
+      .filter((u): u is { id: string; qrCode: string } => u.qrCode !== null)
+
+    if (qrUpdates.length > 0) {
+      await Promise.all(
+        qrUpdates.map(u => db.update(tickets).set({ qrCode: u.qrCode }).where(eq(tickets.id, u.id)))
+      )
+      // Update in-memory records with fresh QR codes
+      for (const u of qrUpdates) {
+        const rec = ticketRecords.find(t => t.id === u.id)
+        if (rec) rec.qrCode = u.qrCode
       }
+      result.regenerated.qrCodes = true
     }
-  }
-  for (const update of qrUpdates) {
-    await db.update(tickets).set({ qrCode: update.qrCode }).where(eq(tickets.id, update.id))
   }
 
   // 4. Generate PDF and send email

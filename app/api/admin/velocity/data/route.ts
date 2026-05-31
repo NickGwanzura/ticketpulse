@@ -67,15 +67,11 @@ export async function GET(request: Request) {
   }
 
   if (statusFilter === "pending") {
-    conditions.push(
-      or(eq(orders.status, "pending"), eq(orders.status, "awaiting_verification")),
-    )
+    conditions.push(eq(orders.status, "pending"))
   } else if (statusFilter === "failed") {
-    conditions.push(
-      or(eq(orders.status, "expired"), eq(orders.status, "cancelled")),
-    )
+    conditions.push(or(eq(orders.status, "expired"), eq(orders.status, "cancelled")))
   } else if (statusFilter !== "all") {
-    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "awaiting_verification" | "expired"))
+    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "expired"))
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
@@ -124,9 +120,7 @@ export async function GET(request: Request) {
     .where(hasVelocity)
 
   const velocityPaid = allVelocityOrders.filter((o) => o.status === "paid")
-  const velocityPending = allVelocityOrders.filter(
-    (o) => o.status === "pending" || o.status === "awaiting_verification",
-  )
+  const velocityPending = allVelocityOrders.filter((o) => o.status === "pending")
   const velocityFailed = allVelocityOrders.filter(
     (o) => o.status === "expired" || o.status === "cancelled",
   )
@@ -144,16 +138,11 @@ export async function GET(request: Request) {
 
   const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
-  // Orders where poll workflow finalized but ticket delivery is still pending
-  const undeliveredRevenue = allVelocityOrders.filter((o) => {
-    const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-    return meta.velocity?.pollStatus === "SUCCESS" && o.status === "awaiting_verification"
-  }).reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+  const undeliveredRevenue = 0 // awaiting_verification status removed
 
-  // Orders where the gateway confirmed payment (paymentStatus or pollStatus = SUCCESS)
-  // but TicketPulse hasn't moved them to paid yet — money collected, tickets not issued.
+  // Gateway confirmed payment but TicketPulse hasn't finalized yet
   const pendingSettlement = allVelocityOrders.filter((o) => {
-    if (o.status !== "pending" && o.status !== "awaiting_verification") return false
+    if (o.status !== "pending") return false
     const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
     const vel = meta.velocity
     return vel?.paymentStatus === "SUCCESS" || vel?.pollStatus === "SUCCESS"

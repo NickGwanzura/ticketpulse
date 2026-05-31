@@ -228,6 +228,7 @@ export const tickets = pgTable("tickets", {
   index("tickets_user_id_idx").on(table.userId),
   index("tickets_order_id_idx").on(table.orderId),
   index("tickets_staff_event_idx").on(table.eventId, table.isStaffTicket),
+  index("tickets_scanned_at_idx").on(table.scannedAt),
 ])
 
 // ─── Promo codes ──────────────────────────────────────────────────────────────
@@ -264,9 +265,8 @@ export const orders = pgTable("orders", {
   guestEmail: text("guest_email"),
   guestName: text("guest_name"),
   guestPhone: text("guest_phone"),
-  // Verification gating: tickets are only emailed once the buyer clicks the
-  // magic link sent to guestEmail. NextAuth handles the actual token; we
-  // store these for ops/UX (resend window, audit, expiry display).
+  // Legacy verification fields — kept for backward-compat with existing rows.
+  // Magic-link verification was removed; these columns are no longer written.
   verificationSentAt: timestamp("verification_sent_at"),
   verificationExpires: timestamp("verification_expires"),
   verifiedAt: timestamp("verified_at"),
@@ -281,6 +281,8 @@ export const orders = pgTable("orders", {
   index("orders_guest_email_idx").on(table.guestEmail),
   index("orders_status_event_idx").on(table.eventId, table.status),
   index("orders_metadata_gin_idx").using("gin", table.metadata),
+  index("orders_created_at_idx").on(table.createdAt),
+  index("orders_paid_at_idx").on(table.paidAt),
 ])
 
 export const orderItems = pgTable("order_items", {

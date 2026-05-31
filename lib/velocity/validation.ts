@@ -33,7 +33,9 @@ export function validatePhone(phone: string): boolean {
  */
 export function formatPhone(phone: string): string {
   if (!phone) return phone
-  let cleaned = phone.replace(/[\s\-\(\)]/g, "")
+  // Strip whitespace, dashes, parens, and stray quote/apostrophe characters
+  // (apostrophes appear when numbers are copy-pasted from spreadsheets)
+  let cleaned = phone.replace(/[\s\-\(\)'"`]/g, "")
   // Zimbabwe: 0771234567 → +263771234567, 0712345678 → +263712345678
   if (cleaned.startsWith("0") && cleaned.length >= 9) {
     cleaned = "+263" + cleaned.slice(1)
