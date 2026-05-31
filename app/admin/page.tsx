@@ -1,50 +1,50 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
-  ArrowUpRight, ArrowDownRight,
-  AlertCircle, CalendarCheck, LayoutList, CreditCard, ShoppingCart, Activity,
+  ArrowUpRight, AlertTriangle, CalendarCheck, CreditCard,
+  Users, Activity, CheckCircle2, Clock, TrendingUp,
+  Zap, FileWarning,
 } from "lucide-react"
 import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orders, users, ticketTiers } from "@/db/schema"
-import PageHeader from "@/components/dashboard/PageHeader"
-import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import { publishEventAction } from "@/app/admin/actions/events"
 import { verifyUserEmailAction } from "@/app/admin/actions/users"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
-import AiModerateButton from "@/components/ai/AiModerateButton"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
+import AiModerateButton from "@/components/ai/AiModerateButton"
 
-type KPI = { label: string; value: number; currency: string | null; delta: number; up: boolean; spark: readonly number[] }
-type Activity = { kind: string; icon: React.ElementType; iconColor: string; iconBg: string; who: string; msg: string; when: string }
-type TopEvent = { id: string; title: string; organizer: string; sold: number; capacity: number; revenue: number; currency: string }
-type Pending = { kind: string; title: string; detail: string; primary: string; action: (id: string) => Promise<void>; id: string; description: string; category: string }
-
-function Sparkline({ points, up }: { points: readonly number[]; up: boolean }) {
-  const w = 120, h = 36, pad = 2
+function MiniSparkline({ points, positive }: { points: number[]; positive: boolean }) {
+  if (points.length < 2) return <span className="text-[11px] text-ink-3">—</span>
   const min = Math.min(...points), max = Math.max(...points)
-  const span = max - min || 1
+  const range = max - min || 1
+  const w = 56, h = 20, pad = 1
   const step = (w - pad * 2) / (points.length - 1)
   const coords = points.map((v, i) => {
     const x = pad + i * step
-    const y = h - pad - ((v - min) / span) * (h - pad * 2)
+    const y = h - pad - ((v - min) / range) * (h - pad * 2)
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(" ")
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-9" preserveAspectRatio="none" aria-hidden>
-      <polyline
-        points={coords}
-        fill="none"
-        stroke={up ? "rgb(10 37 64)" : "rgb(190 18 60)"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-14 h-5 shrink-0" aria-hidden>
+      <polyline points={coords} fill="none"
+        stroke={positive ? "rgb(5 150 105)" : "rgb(220 38 38)"}
+        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  )
+}
+
+function DeltaBadge({ delta, inverted = false }: { delta: number; inverted?: boolean }) {
+  const positive = inverted ? delta <= 0 : delta >= 0
+  const sign = delta >= 0 ? "+" : ""
+  return (
+    <span className={`text-[11px] font-medium tabular-nums ${positive ? "text-emerald-700" : "text-rose-600"}`}>
+      {sign}{delta.toFixed(1)}%
+    </span>
   )
 }
 
@@ -54,614 +54,359 @@ export default async function AdminOverviewPage() {
     redirect("/auth/signin?callbackUrl=/admin")
   }
 
-  // ── Total organizers (for AI brief) ─────────────────────────────────────
-
-  const [orgCountRow] = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
-    .from(users)
-    .where(eq(users.role, "organizer"))
-
-  const totalOrganizers = orgCountRow?.count ?? 0
-
-  // ── KPIs ────────────────────────────────────────────────────────────────
-
-  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
-  const hasVelocityPollSuccess = sql`${orders.metadata}->'velocity'->>'pollStatus' = 'SUCCESS'`
-
-  const [revenueRow] = await db
-    .select({
-      gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.status, "paid"),
-        hasVelocity,
-        hasVelocityPollSuccess,
-      ),
-    )
-
-  const [awaitingRevenueRow] = await db
-    .select({
-      gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.status, "awaiting_verification"),
-        hasVelocity,
-        hasVelocityPollSuccess,
-      ),
-    )
-
-  const [activeEventsRow] = await db
-    .select({
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(events)
-    .where(eq(events.status, "published"))
-
-  const [newUsersThisMonth] = await db
-    .select({
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(users)
-    .where(
-      gte(users.createdAt, new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
-    )
-
-  const grossVolume = Number(revenueRow?.gross ?? 0)
-  const awaitingVolume = Number(awaitingRevenueRow?.gross ?? 0)
-  const collectedButUndelivered = awaitingVolume
-  const activeEvents = activeEventsRow?.count ?? 0
-  const newUsers = newUsersThisMonth?.count ?? 0
-
-  // ── 7-day sparkline data ────────────────────────────────────────────────
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
+  const hasVelocityPollSuccess = sql`${orders.metadata}->'velocity'->>'pollStatus' = 'SUCCESS'`
 
-  const dailyRevenue7d = await db
-    .select({
-      day: sql<string>`DATE(${orders.createdAt})`,
-      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.status, "paid"),
-        gte(orders.createdAt, sevenDaysAgo),
-      )
-    )
-    .groupBy(sql`DATE(${orders.createdAt})`)
-    .orderBy(sql`DATE(${orders.createdAt})`)
+  // Parallel data fetching
+  const [
+    [revenueRow],
+    [activeEventsRow],
+    [newUsersRow],
+    [orgCountRow],
+    dailyRevenue7d,
+    dailyRevenue14d,
+    [topCatRow],
+    [topCityRow],
+    recentOrders,
+    topEventRows,
+    draftEvents,
+    unverifiedUsers,
+    [velocityCountRow],
+    [velocityRevenueRow],
+  ] = await Promise.all([
+    db.select({ gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
+      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, hasVelocityPollSuccess)),
 
-  const dailyRevenue14d = await db
-    .select({
-      day: sql<string>`DATE(${orders.createdAt})`,
-      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.status, "paid"),
-        gte(orders.createdAt, fourteenDaysAgo),
-        sql`${orders.createdAt} < ${sevenDaysAgo}`,
-      )
-    )
-    .groupBy(sql`DATE(${orders.createdAt})`)
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(eq(events.status, "published")),
 
-  const spark7 = dailyRevenue7d.map((d) => Number(d.total))
-  const spark14 = dailyRevenue14d.map((d) => Number(d.total))
-  const sum7 = spark7.reduce((a, b) => a + b, 0)
-  const sum14 = spark14.reduce((a, b) => a + b, 0)
-  const revenueDelta = sum14 > 0 ? ((sum7 - sum14) / sum14) * 100 : 0
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(users).where(gte(users.createdAt, thisMonthStart)),
 
-  const activeEvents7d = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
-    .from(events)
-    .where(and(eq(events.status, "published"), gte(events.createdAt, sevenDaysAgo)))
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(users).where(eq(users.role, "organizer")),
 
-  const activeEvents14d = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
-    .from(events)
-    .where(and(eq(events.status, "published"), gte(events.createdAt, fourteenDaysAgo), sql`${events.createdAt} < ${sevenDaysAgo}`))
+    db.select({ day: sql<string>`DATE(${orders.createdAt})`, total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
+      .from(orders).where(and(eq(orders.status, "paid"), gte(orders.createdAt, sevenDaysAgo)))
+      .groupBy(sql`DATE(${orders.createdAt})`).orderBy(sql`DATE(${orders.createdAt})`),
 
-  const eventsDelta = (activeEvents14d[0]?.count ?? 0) > 0
-    ? (((activeEvents7d[0]?.count ?? 0) - (activeEvents14d[0]?.count ?? 0)) / (activeEvents14d[0]?.count ?? 0)) * 100
-    : 0
+    db.select({ day: sql<string>`DATE(${orders.createdAt})`, total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
+      .from(orders).where(and(eq(orders.status, "paid"), gte(orders.createdAt, fourteenDaysAgo), sql`${orders.createdAt} < ${sevenDaysAgo}`))
+      .groupBy(sql`DATE(${orders.createdAt})`),
 
-  const users7d = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
-    .from(users)
-    .where(gte(users.createdAt, sevenDaysAgo))
+    db.select({ category: events.category, count: sql<number>`COUNT(*)::int` })
+      .from(events).where(eq(events.status, "published"))
+      .groupBy(events.category).orderBy(sql`COUNT(*) DESC`).limit(1),
 
-  const users14d = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
-    .from(users)
-    .where(and(gte(users.createdAt, fourteenDaysAgo), sql`${users.createdAt} < ${sevenDaysAgo}`))
+    db.select({ city: events.city, count: sql<number>`COUNT(*)::int` })
+      .from(events).where(eq(events.status, "published"))
+      .groupBy(events.city).orderBy(sql`COUNT(*) DESC`).limit(1),
 
-  const usersDelta = (users14d[0]?.count ?? 0) > 0
-    ? (((users7d[0]?.count ?? 0) - (users14d[0]?.count ?? 0)) / (users14d[0]?.count ?? 0)) * 100
-    : 0
+    db.select({ id: orders.id, totalAmount: orders.totalAmount, currency: orders.currency, status: orders.status, createdAt: orders.createdAt, contactName: orders.guestName })
+      .from(orders).orderBy(desc(orders.createdAt)).limit(12),
 
-  const KPIS: KPI[] = [
-    { label: "Gross volume", value: grossVolume, currency: "USD", delta: revenueDelta, up: revenueDelta >= 0, spark: spark7.length >= 2 ? spark7 : [0, 0, 0, 0] },
-    { label: "Revenue (paid only)", value: grossVolume, currency: "USD", delta: revenueDelta, up: revenueDelta >= 0, spark: spark7.length >= 2 ? spark7 : [0, 0, 0, 0] },
-    { label: "Collected but undelivered", value: collectedButUndelivered, currency: "USD", delta: 0, up: true, spark: [0, 0, 0, 0] },
-    { label: "New users (month)", value: newUsers, currency: null, delta: usersDelta, up: usersDelta >= 0, spark: [users7d[0]?.count ?? 0, users14d[0]?.count ?? 0] },
-  ]
+    db.select({ id: events.id, title: events.title, organizerName: users.name, organizerEmail: users.email })
+      .from(events).leftJoin(users, eq(events.organizerId, users.id))
+      .where(eq(events.status, "published")).orderBy(desc(events.createdAt)).limit(8),
 
-  // ── Velocity stats ──────────────────────────────────────────────────────
+    db.select({ id: events.id, title: events.title, description: events.description, category: events.category, organizerName: users.name, organizerEmail: users.email })
+      .from(events).leftJoin(users, eq(events.organizerId, users.id))
+      .where(eq(events.status, "draft")).orderBy(desc(events.createdAt)).limit(10),
 
-  const [velocityRevenueRow] = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(
-      and(
-        hasVelocity,
-        hasVelocityPollSuccess,
-        eq(orders.status, "paid"),
-      ),
-    )
+    db.select({ id: users.id, name: users.name, email: users.email })
+      .from(users).where(sql`${users.emailVerified} IS NULL`)
+      .orderBy(desc(users.createdAt)).limit(10),
 
-  const [velocityAwaitingRevenueRow] = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(
-      and(
-        hasVelocity,
-        hasVelocityPollSuccess,
-        eq(orders.status, "awaiting_verification"),
-      ),
-    )
-
-  const [velocityCountRow] = await db
-    .select({
+    db.select({
       total: sql<number>`COUNT(*)::int`,
       pending: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'pending')::int`,
-      awaiting: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'awaiting_verification')::int`,
       paid: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'paid')::int`,
-    })
-    .from(orders)
-    .where(hasVelocity)
+    }).from(orders).where(hasVelocity),
 
-  const velocityRevenue = Number(velocityRevenueRow?.total ?? 0)
-  const velocityUndeliveredRevenue = Number(velocityAwaitingRevenueRow?.total ?? 0)
-  const velocityTotal = velocityCountRow?.total ?? 0
-  const velocityPending = (velocityCountRow?.pending ?? 0) + (velocityCountRow?.awaiting ?? 0)
-  const velocityPaid = velocityCountRow?.paid ?? 0
+    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
+      .from(orders).where(and(hasVelocity, hasVelocityPollSuccess, eq(orders.status, "paid"))),
+  ])
 
-  // ── Top category & city (for AI brief) ──────────────────────────────────
-
-  const [topCatRow] = await db
-    .select({
-      category: events.category,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(events)
-    .where(eq(events.status, "published"))
-    .groupBy(events.category)
-    .orderBy(sql`COUNT(*) DESC`)
-    .limit(1)
-
-  const [topCityRow] = await db
-    .select({
-      city: events.city,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(events)
-    .where(eq(events.status, "published"))
-    .groupBy(events.city)
-    .orderBy(sql`COUNT(*) DESC`)
-    .limit(1)
-
+  const grossVolume = Number(revenueRow?.gross ?? 0)
+  const activeEvents = activeEventsRow?.count ?? 0
+  const newUsers = newUsersRow?.count ?? 0
+  const totalOrganizers = orgCountRow?.count ?? 0
   const topCategory = topCatRow?.category ?? "N/A"
   const topCity = topCityRow?.city ?? "N/A"
+  const velocityRevenue = Number(velocityRevenueRow?.total ?? 0)
+  const velocityPending = velocityCountRow?.pending ?? 0
+  const velocityPaid = velocityCountRow?.paid ?? 0
 
-  // ── Recent orders (activity) ────────────────────────────────────────────
+  const spark7 = dailyRevenue7d.map(d => Number(d.total))
+  const spark14 = dailyRevenue14d.map(d => Number(d.total))
+  const sum7 = spark7.reduce((a, b) => a + b, 0)
+  const sum14 = spark14.reduce((a, b) => a + b, 0)
+  const revDelta = sum14 > 0 ? ((sum7 - sum14) / sum14) * 100 : 0
 
-  const recentOrders = await db
-    .select({
-      id: orders.id,
-      totalAmount: orders.totalAmount,
-      currency: orders.currency,
-      status: orders.status,
-      createdAt: orders.createdAt,
-      contactName: orders.guestName,
-    })
-    .from(orders)
-    .orderBy(desc(orders.createdAt))
-    .limit(20)
-
-  const ACTIVITY: Activity[] = recentOrders.map((o) => ({
-    kind: "order",
-    icon: o.status === "paid" ? CreditCard : ShoppingCart,
-    iconColor: o.status === "paid" ? "text-green-700" : "text-ink-2",
-    iconBg: o.status === "paid" ? "bg-green-50" : "bg-paper-2",
-    who: o.contactName ?? "Someone",
-    msg: o.status === "paid"
-      ? `paid ${formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}`
-      : `placed order ${o.id?.slice(0, 8)}… (${o.status})`,
-    when: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—",
-  }))
-
-  // ── Top events ──────────────────────────────────────────────────────────
-
-  const topEventRows = await db
-    .select({
-      id: events.id,
-      title: events.title,
-      organizerName: users.name,
-      organizerEmail: users.email,
-    })
-    .from(events)
-    .leftJoin(users, eq(events.organizerId, users.id))
-    .where(eq(events.status, "published"))
-    .orderBy(desc(events.createdAt))
-    .limit(10)
-
-  const eventIds = topEventRows.map((e) => e.id)
-
-  // Get revenue per event
+  // Event revenue map
+  const eventIds = topEventRows.map(e => e.id)
   const eventRevenue = eventIds.length > 0
-    ? await db
-        .select({
-          eventId: orders.eventId,
-          revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-          currency: orders.currency,
-        })
-        .from(orders)
-        .where(and(eq(orders.status, "paid"), inArray(orders.eventId, eventIds)))
+    ? await db.select({ eventId: orders.eventId, revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`, currency: orders.currency })
+        .from(orders).where(and(eq(orders.status, "paid"), inArray(orders.eventId, eventIds)))
         .groupBy(orders.eventId, orders.currency)
     : []
-
   const revMap = new Map<string, { revenue: number; currency: string }>()
   for (const r of eventRevenue) {
     if (!r.eventId) continue
-    const amount = Number(r.revenue ?? 0)
-    const cur = r.currency ?? "USD"
     const existing = revMap.get(r.eventId)
-    if (!existing || amount > existing.revenue) {
-      revMap.set(r.eventId, { revenue: amount, currency: cur })
-    }
+    const amt = Number(r.revenue ?? 0)
+    if (!existing || amt > existing.revenue) revMap.set(r.eventId, { revenue: amt, currency: r.currency ?? "USD" })
   }
 
-  // Get ticket tier stats for top events
-  const eventTierStats = eventIds.length > 0
-    ? await db
-        .select({
-          eventId: ticketTiers.eventId,
-          capacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
-          sold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
-        })
-        .from(ticketTiers)
-        .where(inArray(ticketTiers.eventId, eventIds))
-        .groupBy(ticketTiers.eventId)
-    : []
-
-  const tierMap = new Map<string, { sold: number; capacity: number }>()
-  for (const t of eventTierStats) {
-    if (t.eventId) {
-      tierMap.set(t.eventId, { sold: t.sold, capacity: t.capacity })
-    }
-  }
-
-  const TOP_EVENTS: TopEvent[] = topEventRows.map((e) => {
-    const rev = revMap.get(e.id)
-    const tiers = tierMap.get(e.id)
-    return {
-      id: e.id,
-      title: e.title,
-      organizer: e.organizerName ?? e.organizerEmail ?? "—",
-      sold: tiers?.sold ?? 0,
-      capacity: tiers?.capacity ?? 0,
-      revenue: rev?.revenue ?? 0,
-      currency: rev?.currency ?? "USD",
-    }
-  })
-
-  // ── Pending review ─────────────────────────────────────────────────────
-
-  const draftEvents = await db
-    .select({
-      id: events.id,
-      title: events.title,
-      description: events.description,
-      category: events.category,
-      organizerName: users.name,
-      organizerEmail: users.email,
-    })
-    .from(events)
-    .leftJoin(users, eq(events.organizerId, users.id))
-    .where(eq(events.status, "draft"))
-    .orderBy(desc(events.createdAt))
-    .limit(10)
-
-  const unverifiedUsers = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-    })
-    .from(users)
-    .where(sql`${users.emailVerified} IS NULL`)
-    .orderBy(desc(users.createdAt))
-    .limit(10)
-
-  const PENDING: Pending[] = [
-    ...draftEvents.map((e) => ({
-      kind: "Draft event",
-      title: e.title,
-      detail: `by ${e.organizerName ?? e.organizerEmail ?? "—"}`,
-      primary: "Publish",
-      action: publishEventAction,
-      id: e.id,
-      description: e.description ?? "",
-      category: e.category ?? "",
-    })),
-    ...unverifiedUsers.map((u) => ({
-      kind: "Unverified user",
-      title: u.name ?? "—",
-      detail: u.email ?? "—",
-      primary: "Verify email",
-      action: verifyUserEmailAction,
-      id: u.id,
-      description: "",
-      category: "",
-    })),
-  ]
+  const pendingReview = [...draftEvents, ...unverifiedUsers]
+  const hasPendingAction = pendingReview.length > 0 || velocityPending > 0
 
   return (
     <div className="tp-fade-up">
-      <PageHeader
-        eyebrow="Overview"
-        title="Platform pulse"
-        subtitle="Real-time activity across organizers, vendors, and attendees."
-        width="full"
-      />
+      {/* Header strip */}
+      <div className="border-b border-line bg-paper">
+        <div className="px-5 md:px-8 py-6 md:py-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Admin</p>
+            <h1 className="text-[26px] md:text-[30px] font-bold tracking-tight text-ink leading-none">Platform overview</h1>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <PollNowButton />
+            <Link href="/admin/velocity" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2 text-[12.5px] font-medium text-ink hover:border-line-2 transition-colors">
+              <Zap size={13} className="text-amber-500" /> Velocity
+            </Link>
+            <Link href="/admin/orders" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-ink/90 transition-colors">
+              <Activity size={13} /> All orders
+            </Link>
+          </div>
+        </div>
+      </div>
 
-      <div className="px-5 md:px-8 py-8 md:py-10 space-y-8">
-        {/* KPI grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
-          {KPIS.length > 0 ? KPIS.map(({ label, value, currency, delta, up, spark }) => (
-            <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[13px] text-ink-3 mb-2.5">{label}</p>
-              <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">
-                {currency ? formatCurrency(value, currency) : value.toLocaleString()}
+      <div className="px-5 md:px-8 py-8 space-y-8">
+
+        {/* Action alert — only shown when there's something that needs doing */}
+        {hasPendingAction && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 flex items-start gap-3 tp-fade-up-1">
+            <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-amber-900">
+                {[
+                  pendingReview.length > 0 && `${pendingReview.length} item${pendingReview.length !== 1 ? "s" : ""} need review`,
+                  velocityPending > 0 && `${velocityPending} Velocity payment${velocityPending !== 1 ? "s" : ""} pending`,
+                ].filter(Boolean).join(" · ")}
               </p>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className={`inline-flex items-center gap-1 text-[12.5px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
-                  {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                  {Math.abs(delta).toFixed(1)}% MoM
-                </span>
-                <div className="flex-1 max-w-[120px]">
-                  <Sparkline points={spark} up={up} />
-                </div>
-              </div>
             </div>
-          )) : (
-            <>
-              {["Gross volume", "Net revenue", "Active events", "New users"].map((label) => (
-                <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-                  <p className="text-[12.5px] text-ink-3 mb-2.5">{label}</p>
-                  <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">0</p>
-                  <div className="mt-3">
-                    <span className="text-[12.5px] text-ink-3">No data yet</span>
-                  </div>
+            <Link href="#review" className="shrink-0 text-[12px] font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2">
+              Jump to review
+            </Link>
+          </div>
+        )}
+
+        {/* Primary metrics — horizontal rule, not cards */}
+        <div className="tp-fade-up-1">
+          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line border border-line rounded-2xl bg-paper overflow-hidden">
+            {[
+              { label: "Revenue (7d)", value: formatCurrency(sum7, "USD"), sub: <DeltaBadge delta={revDelta} />, spark: spark7 },
+              { label: "Active events", value: activeEvents.toLocaleString(), sub: <span className="text-[11px] text-ink-3">published</span>, spark: [] },
+              { label: "New users (month)", value: newUsers.toLocaleString(), sub: <span className="text-[11px] text-ink-3">this month</span>, spark: [] },
+              { label: "Velocity paid", value: velocityPaid.toLocaleString(), sub: <span className="text-[11px] text-ink-3">orders confirmed</span>, spark: [] },
+            ].map(({ label, value, sub, spark }, i) => (
+              <div key={i} className="px-5 py-5 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11.5px] text-ink-3 mb-2">{label}</p>
+                  <p className="text-[24px] md:text-[26px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
+                  <div className="mt-1.5">{sub}</div>
+                </div>
+                {spark.length >= 2 && <MiniSparkline points={spark} positive={revDelta >= 0} />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Two-column: funnel + AI brief */}
+        <div className="grid lg:grid-cols-[3fr_2fr] gap-4 tp-fade-up-2">
+          <PurchaseFunnel />
+          <AiBriefCard
+            activeEvents={activeEvents}
+            totalOrganizers={totalOrganizers}
+            totalRevenue={grossVolume}
+            topCategory={topCategory}
+            topCity={topCity}
+          />
+        </div>
+
+        {/* Velocity + recent orders side by side */}
+        <div className="grid lg:grid-cols-[2fr_3fr] gap-4 tp-fade-up-2">
+          {/* Velocity panel */}
+          <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+            <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap size={14} className="text-amber-500" />
+                <h2 className="text-[14px] font-semibold text-ink">Velocity</h2>
+              </div>
+              <Link href="/admin/velocity" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+                Viewer <ArrowUpRight size={11} />
+              </Link>
+            </div>
+            <div className="divide-y divide-line">
+              {[
+                { label: "Collected revenue", value: formatCurrency(velocityRevenue, "USD"), accent: "text-emerald-700" },
+                { label: "Pending confirmation", value: velocityPending.toLocaleString(), accent: velocityPending > 0 ? "text-amber-700" : "text-ink" },
+                { label: "Completed orders", value: velocityPaid.toLocaleString(), accent: "text-ink" },
+              ].map(({ label, value, accent }) => (
+                <div key={label} className="px-5 py-3.5 flex items-center justify-between">
+                  <span className="text-[12.5px] text-ink-2">{label}</span>
+                  <span className={`text-[14px] font-bold tabular-nums ${accent}`}>{value}</span>
                 </div>
               ))}
-            </>
-          )}
-        </div>
-
-        {/* Velocity summary */}
-        <div className="tp-fade-up-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-indigo-50">
-                <Activity size={12} className="text-indigo-600" />
-              </span>
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Velocity payments</h2>
             </div>
-            <div className="flex items-center gap-3">
-              <PollNowButton />
-              <Link href="/admin/velocity" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
-                Transaction viewer <ArrowUpRight size={12} />
+          </div>
+
+          {/* Recent orders */}
+          <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+            <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+              <h2 className="text-[14px] font-semibold text-ink">Recent orders</h2>
+              <Link href="/admin/orders" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+                All <ArrowUpRight size={11} />
               </Link>
             </div>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[13px] text-ink-3 mb-2.5">Velocity revenue</p>
-              <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">
-                {formatCurrency(velocityRevenue, "USD")}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[13px] text-ink-3 mb-2.5">Collected but undelivered</p>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
-                {formatCurrency(velocityUndeliveredRevenue, "USD")}
-              </p>
-              {velocityUndeliveredRevenue > 0 && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-[10px] font-semibold">
-                    <AlertCircle size={10} /> Needs delivery
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[13px] text-ink-3 mb-2.5">Pending / awaiting</p>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
-                {velocityPending.toLocaleString()}
-              </p>
-              {velocityPending > 0 && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2 py-0.5 text-[10px] font-semibold">
-                    <AlertCircle size={10} /> Needs recheck
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <p className="text-[13px] text-ink-3 mb-2.5">Completed</p>
-              <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
-                {velocityPaid.toLocaleString()}
-              </p>
-              {velocityPaid > 0 && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-semibold">
-                    <CreditCard size={10} /> Settled
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Purchase journey funnel + AI Brief */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 tp-fade-up-1">
-          <div className="lg:col-span-3">
-            <PurchaseFunnel />
-          </div>
-          <div className="lg:col-span-2">
-            <AiBriefCard
-              activeEvents={activeEvents}
-              totalOrganizers={totalOrganizers}
-              totalRevenue={grossVolume}
-              topCategory={topCategory}
-              topCity={topCity}
-            />
-          </div>
-        </div>
-
-        {/* Activity + Top events */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 tp-fade-up-2">
-          <div className="lg:col-span-3 rounded-2xl border border-line bg-paper overflow-hidden">
-            <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Recent orders</h2>
-              <Link href="/admin/orders" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
-                View all <ArrowUpRight size={12} />
-              </Link>
-            </div>
-            {ACTIVITY.length > 0 ? (
-              <ul className="divide-y divide-line">
-                {ACTIVITY.map((a, i) => {
-                  const Icon = a.icon
-                  return (
-                    <li key={i} className="px-5 md:px-6 py-3.5 flex items-start gap-3 hover:bg-paper-2 transition-colors">
-                      <span className={`shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-lg ${a.iconBg}`}>
-                        <Icon size={14} className={a.iconColor} />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] text-ink leading-snug">
-                          <span className="font-semibold">{a.who}</span> <span className="text-ink-2">{a.msg}</span>
-                        </p>
-                        <p className="text-[12.5px] text-ink-3 mt-0.5">{a.when}</p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <EmptyState
-                icon={LayoutList}
-                title="No orders yet"
-                body="Orders and payments will appear here."
-                variant="inline"
-              />
-            )}
-          </div>
-
-          <div className="lg:col-span-2 rounded-2xl border border-line bg-paper overflow-hidden">
-            <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Published events</h2>
-              <Link href="/admin/events" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
-                Manage <ArrowUpRight size={12} />
-              </Link>
-            </div>
-            {TOP_EVENTS.length > 0 ? (
-              <ul className="divide-y divide-line">
-                {TOP_EVENTS.map((e) => (
-                  <li key={e.id} className="px-5 md:px-6 py-3.5 hover:bg-paper-2 transition-colors">
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
-                        <p className="text-[12.5px] text-ink-3 mt-0.5">{e.organizer}</p>
-                      </div>
-                      <p className="text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
-                        {e.revenue > 0 ? formatCurrency(e.revenue, e.currency) : "—"}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState
-                icon={CalendarCheck}
-                title="No published events"
-                body="Published events will appear here."
-                variant="inline"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Pending review */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
-          <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-            <div>
-              <h2 className="text-[15px] font-semibold tracking-tight text-ink">Pending review</h2>
-              <p className="text-[12px] text-ink-3 mt-0.5">{PENDING.length} items waiting on you</p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-[11px] font-semibold">
-              <AlertCircle size={11} /> Action needed
-            </span>
-          </div>
-          {PENDING.length > 0 ? (
             <ul className="divide-y divide-line">
-              {PENDING.map((p, i) => (
-                <li key={i} className="px-5 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-paper-2 text-ink-2 ring-1 ring-line">
-                        {p.kind}
-                      </span>
-                      <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{p.title}</p>
-                    </div>
-                    <p className="text-[12.5px] text-ink-2">{p.detail}</p>
-                    {p.kind === "Draft event" && p.description && (
-                      <div className="mt-2">
-                        <AiModerateButton title={p.title} description={p.description} category={p.category} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <form action={p.action.bind(null, p.id)}>
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-brand-600 text-white px-3 py-1.5 text-[12.5px] font-semibold shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
-                      >
-                        {p.primary}
-                      </button>
-                    </form>
-                  </div>
+              {recentOrders.length === 0 ? (
+                <li className="px-5 py-8 text-center text-[13px] text-ink-3">No orders yet</li>
+              ) : recentOrders.slice(0, 8).map((o, i) => (
+                <li key={i} className="px-5 py-3 flex items-center gap-3 hover:bg-paper-2 transition-colors">
+                  <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" ? "bg-emerald-500" : "bg-amber-400"}`} />
+                  <span className="flex-1 text-[13px] text-ink truncate">{o.contactName ?? "Guest"}</span>
+                  <span className="text-[12px] font-semibold text-ink tabular-nums">{formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}</span>
+                  <span className="text-[10.5px] text-ink-3 whitespace-nowrap hidden md:block">
+                    {o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+                  </span>
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+
+        {/* Published events */}
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
+          <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarCheck size={14} className="text-ink-3" />
+              <h2 className="text-[14px] font-semibold text-ink">Published events</h2>
+            </div>
+            <Link href="/admin/events" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              Manage all <ArrowUpRight size={11} />
+            </Link>
+          </div>
+          {topEventRows.length === 0 ? (
+            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No published events</p>
           ) : (
-            <EmptyState
-              icon={AlertCircle}
-              title="All clear"
-              body="No events, vendors, or refunds are waiting for review."
-              variant="inline"
-            />
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px]">
+                <thead>
+                  <tr className="border-b border-line text-[10.5px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <th className="text-left px-5 py-3">Event</th>
+                    <th className="text-left px-3 py-3">Organizer</th>
+                    <th className="text-right px-5 py-3">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {topEventRows.map((e) => {
+                    const rev = revMap.get(e.id)
+                    return (
+                      <tr key={e.id} className="hover:bg-paper-2 transition-colors">
+                        <td className="px-5 py-3 max-w-xs">
+                          <Link href={`/admin/events`} className="text-[13.5px] font-semibold text-ink hover:text-navy transition-colors line-clamp-1">
+                            {e.title}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3 text-[12.5px] text-ink-2">{e.organizerName ?? e.organizerEmail ?? "—"}</td>
+                        <td className="px-5 py-3 text-right text-[13px] font-bold text-ink tabular-nums">
+                          {rev ? formatCurrency(rev.revenue, rev.currency) : <span className="text-ink-3 font-normal">—</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
+        </div>
+
+        {/* Pending review — actionable section */}
+        <div id="review" className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
+          <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileWarning size={14} className="text-ink-3" />
+              <h2 className="text-[14px] font-semibold text-ink">Pending review</h2>
+              {pendingReview.length > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                  {pendingReview.length}
+                </span>
+              )}
+            </div>
+          </div>
+          {pendingReview.length === 0 ? (
+            <div className="px-5 py-8 flex items-center gap-3 text-[13px] text-emerald-700">
+              <CheckCircle2 size={16} className="text-emerald-500" />
+              All clear — nothing waiting for review.
+            </div>
+          ) : (
+            <ul className="divide-y divide-line">
+              {draftEvents.map((e) => (
+                <li key={e.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[9.5px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Draft event</span>
+                    </div>
+                    <p className="text-[13.5px] font-semibold text-ink">{e.title}</p>
+                    <p className="text-[12px] text-ink-2">by {e.organizerName ?? e.organizerEmail ?? "—"}</p>
+                    {e.description && (
+                      <div className="mt-2">
+                        <AiModerateButton title={e.title} description={e.description} category={e.category ?? ""} />
+                      </div>
+                    )}
+                  </div>
+                  <form action={publishEventAction.bind(null, e.id)} className="shrink-0">
+                    <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[12.5px] font-semibold hover:bg-ink/85 transition-colors">
+                      Publish
+                    </button>
+                  </form>
+                </li>
+              ))}
+              {unverifiedUsers.map((u) => (
+                <li key={u.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[9.5px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Unverified user</span>
+                    </div>
+                    <p className="text-[13.5px] font-semibold text-ink">{u.name ?? "—"}</p>
+                    <p className="text-[12px] text-ink-2">{u.email}</p>
+                  </div>
+                  <form action={verifyUserEmailAction.bind(null, u.id)} className="shrink-0">
+                    <button type="submit" className="rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[12.5px] font-semibold hover:bg-paper-2 transition-colors">
+                      Verify email
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Footer quick links */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] tp-fade-up-3">
+          {[
+            { label: "Users", href: "/admin/users", icon: Users },
+            { label: "Payouts", href: "/admin/payouts", icon: CreditCard },
+            { label: "Analytics", href: "/admin/analytics", icon: TrendingUp },
+            { label: "Settings", href: "/admin/settings", icon: Clock },
+          ].map(({ label, href, icon: Icon }) => (
+            <Link key={label} href={href} className="inline-flex items-center gap-1.5 text-ink-2 hover:text-ink transition-colors font-medium">
+              <Icon size={13} className="text-ink-3" /> {label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>

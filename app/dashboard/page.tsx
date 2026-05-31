@@ -1,14 +1,12 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import {
-  Calendar, Ticket, ArrowUpRight,
-  CheckCircle2, ClipboardList,
-  HelpCircle, Activity,
-} from "lucide-react"
 import { eq, count, gte, lt, desc, and, sql } from "drizzle-orm"
-import PageHeader from "@/components/dashboard/PageHeader"
-import EmptyState from "@/components/dashboard/EmptyState"
+import {
+  Calendar, Ticket, ArrowUpRight, QrCode,
+  MapPin, Clock, ShoppingBag,
+} from "lucide-react"
+
 import { db } from "@/db"
 import { orders, tickets, events } from "@/db/schema"
 
@@ -17,182 +15,222 @@ export default async function DashboardPage() {
   if (!session) redirect("/auth/signin")
   if (session.user.role === "admin")     redirect("/admin")
   if (session.user.role === "organizer") redirect("/organizer")
-  if (session.user.role === "vendor")    redirect("/vendors")
+  if (session.user.role === "vendor")    redirect("/vendors/dashboard")
 
   const userId = session.user.id
-  const attendeeName = session.user.name ?? "Attendee"
+  const attendeeName = session.user.name ?? "there"
+  const firstName = attendeeName.split(" ")[0]
   const now = new Date()
 
-  // Fetch real stats for the attendee
-  const upcomingEventsResult = await db
-    .select({ count: count(sql`DISTINCT ${events.id}`) })
-    .from(tickets)
-    .innerJoin(events, eq(events.id, tickets.eventId))
-    .where(and(eq(tickets.userId, userId), gte(events.startsAt, now)))
+  // Upcoming + past events the attendee has tickets for
+  const [upcomingResult, pastResult, totalTicketsResult, recentOrders, upcomingEvents] = await Promise.all([
+    db.select({ count: count(sql`DISTINCT ${events.id}`) })
+      .from(tickets).innerJoin(events, eq(events.id, tickets.eventId))
+      .where(and(eq(tickets.userId, userId), gte(events.startsAt, now))),
 
-  const pastEventsResult = await db
-    .select({ count: count(sql`DISTINCT ${events.id}`) })
-    .from(tickets)
-    .innerJoin(events, eq(events.id, tickets.eventId))
-    .where(and(eq(tickets.userId, userId), lt(events.startsAt, now)))
+    db.select({ count: count(sql`DISTINCT ${events.id}`) })
+      .from(tickets).innerJoin(events, eq(events.id, tickets.eventId))
+      .where(and(eq(tickets.userId, userId), lt(events.startsAt, now))),
 
-  const totalTicketsResult = await db
-    .select({ count: count() })
-    .from(tickets)
-    .where(eq(tickets.userId, userId))
+    db.select({ count: count() }).from(tickets).where(eq(tickets.userId, userId)),
 
-  const upcomingEventsCount = upcomingEventsResult[0]?.count ?? 0
-  const pastEventsCount = pastEventsResult[0]?.count ?? 0
-  const totalTicketsCount = totalTicketsResult[0]?.count ?? 0
-
-  // Fetch recent orders
-  const recentOrders = await db
-    .select({
+    db.select({
       id: orders.id,
       status: orders.status,
       totalAmount: orders.totalAmount,
       currency: orders.currency,
       createdAt: orders.createdAt,
       eventTitle: events.title,
-    })
-    .from(orders)
-    .leftJoin(events, eq(events.id, orders.eventId))
-    .where(eq(orders.userId, userId))
-    .orderBy(desc(orders.createdAt))
-    .limit(5)
+    }).from(orders).leftJoin(events, eq(events.id, orders.eventId))
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt)).limit(5),
 
-  const hasActivity = upcomingEventsCount > 0 || totalTicketsCount > 0 || recentOrders.length > 0
+    db.select({
+      eventTitle: events.title,
+      eventSlug: events.slug,
+      eventVenue: events.venue,
+      eventCity: events.city,
+      eventStartsAt: events.startsAt,
+      orderId: orders.id,
+    }).from(tickets)
+      .innerJoin(orders, eq(orders.id, tickets.orderId))
+      .innerJoin(events, eq(events.id, tickets.eventId))
+      .where(and(eq(tickets.userId, userId), gte(events.startsAt, now), eq(orders.status, "paid")))
+      .orderBy(events.startsAt).limit(3),
+  ])
+
+  const upcomingCount = upcomingResult[0]?.count ?? 0
+  const pastCount = pastResult[0]?.count ?? 0
+  const totalTickets = totalTicketsResult[0]?.count ?? 0
+
+  const formatEventDate = (d: Date) =>
+    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+
+  const daysUntil = (d: Date) => Math.ceil((d.getTime() - Date.now()) / 86400000)
+
+  // Deduplicate upcoming events by eventSlug
+  const seen = new Set<string>()
+  const uniqueUpcoming = upcomingEvents.filter(e => {
+    if (seen.has(e.eventSlug)) return false
+    seen.add(e.eventSlug)
+    return true
+  })
+
+  const hasActivity = totalTickets > 0 || recentOrders.length > 0
 
   return (
     <div className="tp-fade-up">
-      <PageHeader
-        eyebrow="Dashboard"
-        title={`Welcome back, ${attendeeName.split(" ")[0]}`}
-        subtitle={session.user.email ?? undefined}
-        width="xl"
-      />
+      {/* Header */}
+      <div className="border-b border-line bg-paper">
+        <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 md:py-10">
+          <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">My account</p>
+          <h1 className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none">
+            Hi, {firstName}
+          </h1>
+          {session.user.email && (
+            <p className="text-[13px] text-ink-3 mt-1.5">{session.user.email}</p>
+          )}
+        </div>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-12 space-y-8">
+      <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 space-y-8">
+
+        {/* Upcoming events — most important for an attendee */}
+        {uniqueUpcoming.length > 0 && (
+          <section className="tp-fade-up-1">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[17px] font-semibold text-ink">Coming up</h2>
+              <Link href="/orders" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+                All orders <ArrowUpRight size={12} />
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {uniqueUpcoming.map((e, i) => {
+                const days = daysUntil(e.eventStartsAt)
+                return (
+                  <Link key={i} href={`/orders/${e.orderId}`}
+                    className="flex items-center gap-4 rounded-2xl border border-line bg-paper p-4 hover:bg-paper-2 transition-colors">
+                    <div className="shrink-0 w-12 h-12 rounded-xl border border-line bg-paper-2 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] font-bold tracking-widest text-ink-3 uppercase leading-none">
+                        {e.eventStartsAt.toLocaleDateString("en-GB", { month: "short" })}
+                      </span>
+                      <span className="text-[20px] font-bold tracking-tight text-ink leading-none mt-0.5">
+                        {e.eventStartsAt.getDate()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14.5px] font-semibold text-ink truncate">{e.eventTitle}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        {e.eventVenue && (
+                          <span className="inline-flex items-center gap-1 text-[12px] text-ink-3">
+                            <MapPin size={11} /> {e.eventVenue}{e.eventCity ? `, ${e.eventCity}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {days <= 1 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-700 px-2.5 py-1 text-[11px] font-bold">
+                          <Clock size={11} /> Today
+                        </span>
+                      ) : days <= 7 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-[11px] font-semibold">
+                          {days}d away
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-ink-3">{days}d</span>
+                      )}
+                      <p className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-navy font-semibold">
+                        <QrCode size={11} /> View ticket
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Stats strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
+        <div className="grid grid-cols-3 border border-line rounded-2xl bg-paper overflow-hidden divide-x divide-line tp-fade-up-1">
           {[
-            { l: "Upcoming events", v: String(upcomingEventsCount), i: Calendar, trend: "" },
-            { l: "Total tickets",   v: String(totalTicketsCount), i: Ticket, trend: "All time" },
-            { l: "Past events",     v: String(pastEventsCount), i: CheckCircle2, trend: "Completed" },
-            { l: "Orders placed",   v: String(recentOrders.length), i: ClipboardList, trend: "Recent" },
-          ].map(({ l, v, i: Icon, trend }) => (
-            <div key={l} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
-              <div className="flex items-center gap-2 mb-2.5">
-                <Icon size={15} className="text-ink-3" />
-                <span className="text-[13px] text-ink-3">{l}</span>
-              </div>
-              <p className="text-[28px] md:text-[30px] font-bold tracking-tight text-ink leading-none tabular-nums">{v}</p>
-              {trend && <p className="text-[13px] text-ink-3 mt-2">{trend}</p>}
+            { label: "Upcoming", value: upcomingCount.toString(), icon: Calendar },
+            { label: "Past events", value: pastCount.toString(), icon: Ticket },
+            { label: "Total tickets", value: totalTickets.toString(), icon: QrCode },
+          ].map(({ label, value, icon: Icon }) => (
+            <div key={label} className="px-4 py-4 text-center">
+              <Icon size={14} className="text-ink-3 mx-auto mb-2" />
+              <p className="text-[22px] font-bold tracking-tight text-ink tabular-nums">{value}</p>
+              <p className="text-[11px] text-ink-3 mt-0.5">{label}</p>
             </div>
           ))}
         </div>
 
-        {/* Recent orders + quick links */}
-        <div className="grid grid-cols-12 gap-4 md:gap-6 tp-fade-up-2">
-          {/* Recent orders */}
-          <div className="col-span-12 md:col-span-8 rounded-2xl border border-line bg-paper overflow-hidden">
-            <div className="px-5 md:px-6 py-4 border-b border-line flex items-center justify-between">
-              <h2 className="text-[18px] font-semibold tracking-tight text-ink">Recent orders</h2>
-              <Link href="/orders" className="text-[13px] font-medium text-navy hover:underline">View all</Link>
-            </div>
-            {recentOrders.length === 0 ? (
-              <EmptyState
-                icon={ClipboardList}
-                title="No orders yet"
-                body="Your ticket purchases will appear here."
-                ctaLabel="Browse events"
-                ctaHref="/events"
-              />
-            ) : (
-              <div className="divide-y divide-line">
-                {recentOrders.map((order) => (
-                  <Link
-                    key={order.id}
-                    href={`/orders/${order.id}`}
-                    className="flex items-center justify-between px-5 md:px-6 py-4 hover:bg-paper-2 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[14px] font-medium text-ink truncate">{order.eventTitle ?? "Order"}</p>
-                      <p className="text-[12px] text-ink-3 mt-0.5">
-                        {order.status} · {order.createdAt?.toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className="text-[14px] font-semibold text-ink tabular-nums shrink-0 ml-4">
-                      {order.currency} {order.totalAmount}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick actions */}
-          <div className="col-span-12 md:col-span-4 flex flex-col gap-4">
-            {[
-              {
-                title: "Browse events",
-                body: "Find marathons, concerts, and more across Zimbabwe.",
-                href: "/events",
-                icon: Calendar,
-              },
-              {
-                title: "Order history",
-                body: "View all past tickets, merch, shuttles, and photo packs.",
-                href: "/orders",
-                icon: ClipboardList,
-              },
-              {
-                title: "Get help",
-                body: "FAQs, refund policy, and live support.",
-                href: "/help",
-                icon: HelpCircle,
-              },
-            ].map(({ title, body, href, icon: Icon }) => (
-              <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 tp-lift group">
-                <div className="w-8 h-8 rounded-lg bg-paper-2 border border-line flex items-center justify-center mb-3">
-                  <Icon size={15} className="text-ink-2" />
-                </div>
-                <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
-                <p className="text-[13.5px] text-ink-2 mt-1">{body}</p>
-                <p className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-navy group-hover:gap-1.5 transition-all">
-                  Open <ArrowUpRight size={12} />
-                </p>
+        {/* Recent orders */}
+        {hasActivity ? (
+          <section className="tp-fade-up-2">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[17px] font-semibold text-ink">Recent orders</h2>
+              <Link href="/orders" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+                All <ArrowUpRight size={12} />
               </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Activity feed */}
-        {hasActivity && (
-          <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
-            <div className="px-5 md:px-6 py-4 border-b border-line">
-              <h2 className="text-[18px] font-semibold tracking-tight text-ink">Activity</h2>
             </div>
-            <div className="px-5 md:px-6 py-4 space-y-4">
-              {recentOrders.slice(0, 3).map((order) => (
-                <div key={order.id} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-paper-2 border border-line flex items-center justify-center shrink-0">
-                    <Activity size={14} className="text-ink-3" />
-                  </div>
-                  <div>
-                    <p className="text-[14px] text-ink">
-                      <span className="font-medium">Order placed</span> for {order.eventTitle ?? "an event"}
-                    </p>
-                    <p className="text-[12px] text-ink-3 mt-0.5">
-                      {order.createdAt?.toLocaleDateString()} · {order.currency} {order.totalAmount}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+              {recentOrders.length === 0 ? (
+                <p className="px-5 py-8 text-center text-[13px] text-ink-3">No orders yet.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {recentOrders.map(order => (
+                    <Link key={order.id} href={`/orders/${order.id}`}
+                      className="flex items-center px-5 py-4 gap-4 hover:bg-paper-2 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium text-ink truncate">{order.eventTitle ?? "Order"}</p>
+                        <p className="text-[12px] text-ink-3 mt-0.5">
+                          {order.createdAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                          {" · "}
+                          <span className={order.status === "paid" ? "text-emerald-700 font-medium" : "text-amber-600"}>
+                            {order.status === "paid" ? "Paid" : order.status}
+                          </span>
+                        </p>
+                      </div>
+                      <span className="text-[14px] font-bold text-ink tabular-nums">
+                        {order.currency} {order.totalAmount}
+                      </span>
+                      <ArrowUpRight size={14} className="text-ink-3 shrink-0" />
+                    </Link>
+                  ))}
+                </ul>
+              )}
             </div>
-          </div>
+          </section>
+        ) : (
+          <section className="tp-fade-up-2">
+            <div className="rounded-2xl border border-dashed border-line bg-paper-2 p-10 text-center">
+              <ShoppingBag size={24} className="text-ink-3 mx-auto mb-3" />
+              <p className="text-[15px] font-semibold text-ink">No tickets yet</p>
+              <p className="text-[13px] text-ink-2 mt-1 mb-5">Find an event and get your first ticket.</p>
+              <Link href="/events"
+                className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors">
+                <Calendar size={14} /> Browse events
+              </Link>
+            </div>
+          </section>
         )}
+
+        {/* Quick actions */}
+        <div className="grid sm:grid-cols-3 gap-3 tp-fade-up-3">
+          {[
+            { title: "Browse events", body: "Find concerts, marathons, and more.", href: "/events", icon: Calendar },
+            { title: "My orders", body: "View all tickets and receipts.", href: "/orders", icon: Ticket },
+            { title: "Account settings", body: "Update your name, email, and password.", href: "/settings", icon: QrCode },
+          ].map(({ title, body, href, icon: Icon }) => (
+            <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 hover:bg-paper-2 transition-colors">
+              <Icon size={14} className="text-ink-3 mb-3" />
+              <p className="text-[14px] font-semibold text-ink">{title}</p>
+              <p className="text-[12.5px] text-ink-2 mt-0.5">{body}</p>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   )
