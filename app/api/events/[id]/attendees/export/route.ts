@@ -2,29 +2,25 @@ import { NextResponse } from "next/server"
 import { eq, and, inArray, desc, asc, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, tickets, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
-import { auth } from "@/auth"
+import { requireEventAccess } from "@/lib/event-access"
 
 type RouteParams = { params: Promise<{ id: string }> }
 
 export async function GET(_req: Request, ctx: RouteParams) {
-  const session = await auth()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   const { id } = await ctx.params
 
-  // Verify ownership
+  const access = await requireEventAccess(id)
+  if (!access.allowed) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   const [event] = await db
-    .select({ title: events.title, organizerId: events.organizerId })
+    .select({ title: events.title })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
   if (!event) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 })
-  }
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   // Fetch event questions
@@ -49,6 +45,8 @@ export async function GET(_req: Request, ctx: RouteParams) {
       ticketStatus: tickets.status,
       scannedAt: tickets.scannedAt,
       qrCode: tickets.qrCode,
+      holderName: tickets.holderName,
+      transferredAt: tickets.transferredAt,
     })
     .from(orders)
     .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
@@ -90,16 +88,16 @@ export async function GET(_req: Request, ctx: RouteParams) {
 
   // Build CSV
   const questionHeaders = questions.map((q) => escapeCsv(q.question)).join(",")
-  const header = `Name,Email,Phone,Ticket Type,Qty,Unit Price,Total,Checked In,QR Code${questionHeaders ? "," + questionHeaders : ""}`
+  const header = `Name,Email,Phone,Ticket Type,Qty,Unit Price,Total,Checked In,Holder (if transferred)${questionHeaders ? "," + questionHeaders : ""}`
   const csvRows = rows.map((r) => {
     const name = escapeCsv(r.guestName ?? "")
     const email = escapeCsv(r.guestEmail ?? "")
     const phone = escapeCsv(r.guestPhone ?? "")
     const tier = escapeCsv(r.tierName ?? "N/A")
     const checkedIn = r.scannedAt ? "Yes" : "No"
-    const qr = escapeCsv(r.qrCode ?? "")
+    const holder = escapeCsv(r.holderName ?? "")
     const qCols = questions.map((q) => escapeCsv(responseMap.get(r.orderId)?.get(q.id) ?? "")).join(",")
-    return `${name},${email},${phone},${tier},${r.quantity},${r.unitPrice},${r.total},${checkedIn},${qr}${qCols ? "," + qCols : ""}`
+    return `${name},${email},${phone},${tier},${r.quantity},${r.unitPrice},${r.total},${checkedIn},${holder}${qCols ? "," + qCols : ""}`
   })
 
   const csv = [header, ...csvRows].join("\n")

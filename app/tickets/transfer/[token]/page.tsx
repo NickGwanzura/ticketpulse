@@ -21,6 +21,7 @@ export default function ClaimTransferPage() {
   const [loading, setLoading] = useState(true)
   const [claiming, setClaiming] = useState(false)
   const [claimed, setClaimed] = useState(false)
+  const [newQrCode, setNewQrCode] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/tickets/transfer/${token}`)
@@ -39,7 +40,10 @@ export default function ClaimTransferPage() {
       const res = await fetch(`/api/tickets/transfer/${token}`, { method: "POST" })
       const data = await res.json()
       if (!res.ok) setError(data.error ?? "Failed to claim ticket")
-      else setClaimed(true)
+      else {
+        setClaimed(true)
+        if (data.newQrCode) setNewQrCode(data.newQrCode)
+      }
     } catch {
       setError("Something went wrong. Please try again.")
     } finally {
@@ -58,14 +62,30 @@ export default function ClaimTransferPage() {
 
   if (claimed) {
     return (
-      <div className="max-w-md mx-auto px-5 py-20 text-center">
+      <div className="max-w-md mx-auto px-5 py-16 text-center">
         <span className="inline-flex w-16 h-16 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-200 mb-5">
           <CheckCircle size={28} className="text-green-600" />
         </span>
         <h1 className="text-[24px] font-bold tracking-tight text-ink mb-2">Ticket claimed!</h1>
         <p className="text-[14px] text-ink-2 mb-6">
-          Your ticket for <strong>{info?.eventTitle}</strong> is now yours. Check your email for the full ticket and QR code.
+          Your ticket for <strong>{info?.eventTitle}</strong> is now yours. Present the QR below at the door.
         </p>
+
+        {newQrCode && (
+          <div className="mb-6 inline-block rounded-2xl border border-line bg-paper p-5 shadow-sm">
+            {newQrCode.startsWith("data:image") ? (
+              <img src={newQrCode} alt="Your ticket QR code" className="w-48 h-48 rounded-lg" />
+            ) : (
+              <div className="w-48 h-48 flex items-center justify-center bg-paper-2 rounded-lg text-[11px] text-ink-3 font-mono break-all p-2">
+                {newQrCode}
+              </div>
+            )}
+            <p className="mt-2 text-[12px] text-ink-3">Screenshot this QR code</p>
+          </div>
+        )}
+
+        <p className="text-[13px] text-ink-3 mb-6">A confirmation email has been sent to you.</p>
+
         {info?.eventSlug && (
           <Link
             href={`/events/${info.eventSlug}`}

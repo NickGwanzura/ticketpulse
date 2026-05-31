@@ -4,13 +4,25 @@ import { db } from "@/db"
 import { tickets, orders, events } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
 import { log } from "@/lib/logger"
+import { rateLimit } from "@/lib/rate-limit"
 import { randomBytes } from "crypto"
+
+// 3 transfer initiations per ticket per 60 minutes per IP
+const transferLimiter = rateLimit({ windowMs: 60_000 * 60, max: 3 })
 
 type Params = { id: string }
 
 // POST /api/tickets/[id]/transfer  — initiate a transfer
 // DELETE /api/tickets/[id]/transfer — cancel a pending transfer
 export async function POST(req: Request, ctx: { params: Promise<Params> }) {
+  const rl = transferLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many transfer attempts. Please wait before trying again." }, {
+      status: 429,
+      headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
+    })
+  }
+
   const { id } = await ctx.params
 
   let body: { recipientName?: string; recipientEmail?: string; orderId?: string }

@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 import { eq, and, inArray, desc, asc, sql } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, Download, Users } from "lucide-react"
+import { ArrowLeft, Download, Users, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, tickets, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
@@ -12,10 +12,20 @@ import EmptyState from "@/components/dashboard/EmptyState"
 
 export const metadata = { title: "Attendees" }
 
+const PAGE_SIZE = 50
 type RouteParams = { id: string }
 
-export default async function AttendeesPage({ params }: { params: Promise<RouteParams> }) {
+export default async function AttendeesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<RouteParams>
+  searchParams: Promise<{ page?: string }>
+}) {
   const { id } = await params
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const session = await auth()
   if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}/attendees`)
@@ -52,7 +62,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
   // One row per orderItem (buyer × tier). Filtered to orders that have
   // delivered tickets only. Do NOT join tickets here — that would produce
   // one row per individual ticket and inflate/duplicate results.
-  const rows = deliveredOrderIds.length === 0 ? [] : await db
+  const allRows = deliveredOrderIds.length === 0 ? [] : await db
     .select({
       orderId: orders.id,
       guestName: orders.guestName,
@@ -73,6 +83,10 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
       ),
     )
     .orderBy(desc(orders.createdAt))
+
+  const totalRows = allRows.length
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
+  const rows = allRows.slice(offset, offset + PAGE_SIZE)
 
   const orderIds = [...new Set(rows.map((r) => r.orderId))]
 
@@ -297,6 +311,31 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between text-[13px] text-ink-2">
+            <span>{totalRows} attendees · page {page} of {totalPages}</span>
+            <div className="flex items-center gap-1">
+              {page > 1 && (
+                <Link
+                  href={`/organizer/events/${id}/attendees?page=${page - 1}`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-line bg-paper px-3 py-1.5 hover:border-line-2 transition"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </Link>
+              )}
+              {page < totalPages && (
+                <Link
+                  href={`/organizer/events/${id}/attendees?page=${page + 1}`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-line bg-paper px-3 py-1.5 hover:border-line-2 transition"
+                >
+                  Next <ChevronRight size={14} />
+                </Link>
+              )}
             </div>
           </div>
         )}
