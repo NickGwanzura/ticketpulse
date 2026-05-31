@@ -531,7 +531,7 @@ export async function POST(req: Request) {
       debitPhone: formattedPhone,
       debitRegion: "ZW",
       debitCurrency: currency as "USD" | "ZWG",
-      debitRef: "ticketpulse",
+      debitRef: orderId,
       creditPhone: config.merchantPhone,
       creditRegion: "ZW",
       creditAccount: config.merchantPhone,

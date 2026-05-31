@@ -8,7 +8,7 @@ type Params = { trace: string }
 
 export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   const session = await auth()
-  if (!session?.user) {
+  if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   const { trace } = await ctx.params

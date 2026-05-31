@@ -7,7 +7,7 @@ import { log } from "@/lib/logger"
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (!session?.user) {
+  if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   try {
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
-    const lockKey = `sales-order:${customerIdString}:${Date.now()}`
+    const lockKey = `sales-order:${customerIdString}`
     if (!await acquireLock(lockKey)) {
       return NextResponse.json({ error: "A sales order is already being created. Please wait." }, { status: 429 })
     }

@@ -17,16 +17,16 @@ const CallbackBody = z.object({
 export async function POST(req: Request) {
   // ── Webhook secret verification ────────────────────────────────────────
   const webhookSecret = process.env.VELOCITY_WEBHOOK_SECRET
-  if (webhookSecret) {
-    const providedSignature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-api-key") ?? ""
-    if (providedSignature !== webhookSecret) {
-      log.warn("velocity callback - invalid webhook signature", {
-        provided: providedSignature ? `${providedSignature.slice(0, 8)}...` : "none",
-      })
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
-  } else {
-    log.warn("velocity callback - VELOCITY_WEBHOOK_SECRET not set, skipping signature verification")
+  if (!webhookSecret) {
+    log.error("velocity callback - VELOCITY_WEBHOOK_SECRET is not set; rejecting all callback requests")
+    return NextResponse.json({ error: "webhook not configured" }, { status: 401 })
+  }
+  const providedSignature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-api-key") ?? ""
+  if (providedSignature !== webhookSecret) {
+    log.warn("velocity callback - invalid webhook signature", {
+      provided: providedSignature ? `${providedSignature.slice(0, 8)}...` : "none",
+    })
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
   let rawBody: unknown

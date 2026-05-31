@@ -7,7 +7,7 @@ import { log } from "@/lib/logger"
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (!session?.user) {
+  if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   try {

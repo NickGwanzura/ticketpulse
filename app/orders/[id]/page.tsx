@@ -1,19 +1,37 @@
 "use client"
-import { useEffect, useState, use } from "react"
+import { Suspense } from "react"
+import { useEffect, useState, useRef, use } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw } from "lucide-react"
 import QrCode from "@/components/QrCode"
 
+// How long to poll after a card payment return before giving up (ms)
+const CARD_POLL_TIMEOUT_MS = 5 * 60 * 1000
+const CARD_POLL_INTERVAL_MS = 4_000
+
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<div className="max-w-5xl mx-auto px-5 py-20"><div className="h-8 w-40 bg-paper-2 rounded animate-pulse" /></div>}>
+      <OrderDetailInner params={params} />
+    </Suspense>
+  )
+}
+
+function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const { ready, getOrder } = useCart()
+  const searchParams = useSearchParams()
+  const welcomeFlag = searchParams.get("welcome") === "1"
+  const { ready, getOrder, placeOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
   const [resendingTickets, setResendingTickets] = useState(false)
   const [resendTicketNote, setResendTicketNote] = useState<string | null>(null)
+  const [pollingForCard, setPollingForCard] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const { qrByTier, loading: ticketsLoading } = useOrderTickets(id, order?.status === "paid")
 
   useEffect(() => {
@@ -36,6 +54,51 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       })
       .catch(() => setFetching(false))
   }, [ready, id, getOrder])
+
+  // Card payment recovery polling:
+  // After a Velocity card redirect, the checkout page is gone and its polling
+  // loop died. We restart a short poll here so the order flips to paid without
+  // the user having to wait for the cron job.
+  useEffect(() => {
+    if (!welcomeFlag || !order) return
+    if (order.status === "paid") return   // already confirmed, nothing to do
+
+    const startedAt = Date.now()
+    setPollingForCard(true)
+
+    pollRef.current = setInterval(async () => {
+      if (Date.now() - startedAt > CARD_POLL_TIMEOUT_MS) {
+        clearInterval(pollRef.current!)
+        setPollingForCard(false)
+        return
+      }
+      try {
+        const res = await fetch(`/api/checkout/velocity/status/${id}`, { cache: "no-store" })
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.paid) {
+          clearInterval(pollRef.current!)
+          setPollingForCard(false)
+          // Re-fetch the order from the server to get the updated status
+          const fresh = await fetch(`/api/orders/${id}/data`)
+          if (fresh.ok) {
+            const updated: OrderRecord = await fresh.json()
+            setOrder(updated)
+            placeOrder(
+              { name: updated.contact.name, email: updated.contact.email, phone: updated.contact.phone },
+              { method: updated.payment.method },
+              id,
+              "paid",
+            )
+          }
+        }
+      } catch {
+        // silently continue polling
+      }
+    }, CARD_POLL_INTERVAL_MS)
+
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [welcomeFlag, order?.status, id])
 
   async function resendTickets() {
     if (resendingTickets) return
@@ -86,6 +149,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div>
+      {/* Card payment confirmation banner — shows while polling after Velocity redirect */}
+      {pollingForCard && (
+        <div className="sticky top-0 z-40 border-b border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-3">
+          <RefreshCw size={14} className="text-amber-600 animate-spin shrink-0" />
+          <p className="text-[13px] font-medium text-amber-800">
+            Confirming your card payment — this usually takes a few seconds.
+          </p>
+        </div>
+      )}
       <div className="border-b border-line bg-paper-2">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-10 md:py-12">
           <Link href="/orders" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-5">

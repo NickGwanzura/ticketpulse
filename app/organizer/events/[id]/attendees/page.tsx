@@ -37,10 +37,22 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
     .where(eq(ticketQuestions.eventId, id))
     .orderBy(asc(ticketQuestions.sortOrder))
 
+  // ── Orders that have had tickets issued (delivery complete) ───────────────
+  // Fetch distinct order IDs that have at least one row in tickets for this
+  // event. This is the authoritative "tickets delivered" signal — an order
+  // can be paid but delivery may still be in-flight or failed.
+  const deliveredRows = await db
+    .selectDistinct({ orderId: tickets.orderId })
+    .from(tickets)
+    .where(eq(tickets.eventId, id))
+
+  const deliveredOrderIds = deliveredRows.map(r => r.orderId).filter((id): id is string => id !== null)
+
   // ── Attendee data ──────────────────────────────────────────────────────────
-  // One row per orderItem (buyer × tier). Do NOT join tickets here — that
-  // would produce one row per individual ticket and inflate/duplicate results.
-  const rows = await db
+  // One row per orderItem (buyer × tier). Filtered to orders that have
+  // delivered tickets only. Do NOT join tickets here — that would produce
+  // one row per individual ticket and inflate/duplicate results.
+  const rows = deliveredOrderIds.length === 0 ? [] : await db
     .select({
       orderId: orders.id,
       guestName: orders.guestName,
@@ -56,7 +68,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
     .where(
       and(
         eq(orders.eventId, id),
-        inArray(orders.status, ["paid", "awaiting_verification", "completed"]),
+        inArray(orders.id, deliveredOrderIds),
         eq(orderItems.type, "ticket"),
       ),
     )

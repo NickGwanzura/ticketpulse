@@ -60,8 +60,10 @@ export async function GET(_req: Request, ctx: RouteParams) {
     .where(
       and(
         eq(orders.eventId, id),
+        // Only export orders with tickets delivered — same filter as the attendees page
         inArray(orders.status, ["paid", "awaiting_verification", "completed"]),
         eq(orderItems.type, "ticket"),
+        sql`EXISTS (SELECT 1 FROM tickets t WHERE t.order_id = ${orders.id} AND t.event_id = ${orders.eventId})`,
       ),
     )
     .orderBy(desc(orders.createdAt))
