@@ -8,7 +8,6 @@ import { AlertCircle, MapPin, Save, Trash2, Loader2, Sparkles, Ticket } from "lu
 import Button from "@/components/ui/Button"
 import ImageUploader from "@/components/ui/ImageUploader"
 import VenueMap from "@/components/events/VenueMap"
-import { geocodeFromLocation } from "@/lib/geocode"
 import { updateEventAction, deleteEventAction, type UpdateEventState } from "./actions"
 import { deleteTierAction } from "../tiers/actions"
 import { formatCurrency } from "@/lib/utils"
@@ -232,7 +231,10 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
     geocodeTimer.current = setTimeout(async () => {
       setGeocoding(true)
       setGeocodeNotFound(false)
-      const result = await geocodeFromLocation(venue, city, country, address)
+      const params = new URLSearchParams({ venue, city, country })
+      if (address) params.set("address", address)
+      const res = await fetch(`/api/geocode?${params}`)
+      const result: { lat: number | null; lng: number | null } = await res.json()
       setLiveLat(result.lat?.toString() ?? null)
       setLiveLng(result.lng?.toString() ?? null)
       setGeocodeNotFound(result.lat === null || result.lng === null)

@@ -7,7 +7,6 @@ import { ArrowLeft, ImageIcon, Save, Sparkles, Loader2, MapPin } from "lucide-re
 
 import Button from "@/components/ui/Button"
 import VenueMap from "@/components/events/VenueMap"
-import { geocodeFromLocation } from "@/lib/geocode"
 import { createEventAction, type CreateEventState } from "./actions"
 import AiModerateButton from "@/components/ai/AiModerateButton"
 import AiTagSuggest from "@/components/ai/AiTagSuggest"
@@ -98,7 +97,10 @@ export default function NewEventForm() {
     geocodeTimer.current = setTimeout(async () => {
       setGeocoding(true)
       setGeocodeNotFound(false)
-      const result = await geocodeFromLocation(venue, city, country, address)
+      const params = new URLSearchParams({ venue, city, country })
+      if (address) params.set("address", address)
+      const res = await fetch(`/api/geocode?${params}`)
+      const result: { lat: number | null; lng: number | null } = await res.json()
       setLiveLat(result.lat?.toString() ?? null)
       setLiveLng(result.lng?.toString() ?? null)
       setGeocodeNotFound(result.lat === null || result.lng === null)

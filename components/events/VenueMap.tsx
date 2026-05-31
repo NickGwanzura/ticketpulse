@@ -67,32 +67,26 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
 
       <div className="rounded-xl border border-line overflow-hidden bg-paper shadow-sm">
         {/* Map embed — only when coordinates are available */}
-        {embedUrl && (
+        {embedUrl ? (
           <div className="relative w-full h-56 md:h-72">
             <iframe
               title={`Map showing ${venue}`}
-              width="100%"
-              height="100%"
-              frameBorder={0}
-              scrolling="no"
-              marginHeight={0}
-              marginWidth={0}
               src={embedUrl}
-              className="absolute inset-0"
+              className="absolute inset-0 w-full h-full"
+              style={{ border: "none" }}
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
+              sandbox="allow-scripts allow-same-origin"
             />
           </div>
-        )}
-
-        {/* Fallback banner when no coordinates but venue is known */}
-        {!embedUrl && fullAddress && (
+        ) : (
+          /* Fallback banner when no coordinates */
           <div className="relative w-full h-40 md:h-48 bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 flex items-center justify-center">
             <div className="text-center px-6">
-              <MapPin size={32} className="mx-auto mb-2 text-green-300" />
+              <MapPin size={32} className="mx-auto mb-2 text-sky-300" />
               <p className="text-sm font-medium text-ink-2">{venue}</p>
-              <p className="text-[12px] text-ink-3 mt-0.5">{fullAddress}</p>
+              {fullAddress && <p className="text-[12px] text-ink-3 mt-0.5">{fullAddress}</p>}
             </div>
           </div>
         )}

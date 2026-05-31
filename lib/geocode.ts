@@ -1,6 +1,9 @@
+import "server-only"
+
 /**
  * Geocode an address to lat/lng using OpenStreetMap Nominatim.
  * Free and does not require an API key for reasonable usage.
+ * Must run server-side so the correct User-Agent is sent to Nominatim.
  */
 
 export interface GeocodeResult {

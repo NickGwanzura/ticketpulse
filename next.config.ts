@@ -6,7 +6,7 @@ const csp = [
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data: blob: https://images.unsplash.com https://res.cloudinary.com https://*.r2.dev`,
   `font-src 'self' data:`,
-  `connect-src 'self' https://api.resend.com https://nominatim.openstreetmap.org https://*.r2.dev https://*.r2.cloudflarestorage.com`,
+  `connect-src 'self' https://api.resend.com https://*.r2.dev https://*.r2.cloudflarestorage.com`,
   `frame-src https://www.openstreetmap.org`,
   `form-action 'self'`,
   `frame-ancestors 'none'`,
