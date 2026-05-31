@@ -417,6 +417,28 @@ export async function POST(req: Request) {
 
   const { orderId } = creation
 
+  // Cancels the order AND releases the inventory reservation so seats aren't
+  // locked forever. Called on any Phase 2 failure (validation, config, API error).
+  const cancelWithInventoryRelease = async () => {
+    try {
+      const items = await db
+        .select({ tierId: orderItems.tierId, quantity: orderItems.quantity })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId))
+      for (const item of items) {
+        if (item.tierId) {
+          await db
+            .update(ticketTiers)
+            .set({ soldQuantity: sql`GREATEST(0, ${ticketTiers.soldQuantity} - ${item.quantity})` })
+            .where(eq(ticketTiers.id, item.tierId))
+        }
+      }
+    } catch (releaseErr) {
+      log.error("checkout - inventory release failed during cancel", { orderId, error: String(releaseErr) })
+    }
+    await db.update(orders).set({ status: "cancelled", updatedAt: new Date() }).where(eq(orders.id, orderId))
+  }
+
   const sessionId = req.headers.get("x-session-id") ?? crypto.randomUUID()
   const referrer = req.headers.get("referer")
   const userAgent = req.headers.get("user-agent")
@@ -499,18 +521,12 @@ export async function POST(req: Request) {
       currency,
     })
     if (validationError) {
-      await db
-        .update(orders)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(orders.id, orderId))
+      await cancelWithInventoryRelease()
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
     if (!config.merchantPhone) {
-      await db
-        .update(orders)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(orders.id, orderId))
+      await cancelWithInventoryRelease()
       return NextResponse.json({ error: "Merchant phone not configured" }, { status: 500 })
     }
 
@@ -615,10 +631,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Checkout failed"
     log.error("velocity checkout failed", { orderId, error: message })
-    await db
-      .update(orders)
-      .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(orders.id, orderId))
+    await cancelWithInventoryRelease()
     return NextResponse.json({ error: message }, { status: 502 })
   }
 }

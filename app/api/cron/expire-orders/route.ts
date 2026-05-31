@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, paymentLedger } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
+import { pollTransaction, normalizeVelocityPollResponse } from "@/services/velocity"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function POST(request: Request) {
@@ -64,6 +65,41 @@ export async function POST(request: Request) {
 
       skippedVelocity.push(order.id)
       continue
+    }
+
+    // Live-poll any order with a Velocity transaction trace that hasn't been
+    // confirmed yet. This acts as a last-resort safety net in case
+    // recheck-velocity missed it. On poll failure we skip (safer than expiring
+    // a potentially paid order).
+    if (velocityMeta?.transactionTrace) {
+      try {
+        const pollResult = await pollTransaction(velocityMeta.transactionTrace)
+        const normalized = normalizeVelocityPollResponse(pollResult)
+
+        if (normalized.localStatus === "PAID") {
+          log.warn("cron/expire-orders — live poll shows PAID, skipping expiry (recheck-velocity will finalize)", {
+            orderId: order.id,
+            transactionTrace: velocityMeta.transactionTrace,
+            pollStatus: normalized.velocityPollStatus,
+          })
+          skippedVelocity.push(order.id)
+          continue
+        }
+
+        log.info("cron/expire-orders — live poll confirmed not paid, proceeding with expiry", {
+          orderId: order.id,
+          localStatus: normalized.localStatus,
+          pollStatus: normalized.velocityPollStatus,
+        })
+      } catch (pollErr) {
+        log.warn("cron/expire-orders — live poll failed, skipping expiry to be safe", {
+          orderId: order.id,
+          transactionTrace: velocityMeta.transactionTrace,
+          error: String(pollErr),
+        })
+        skippedVelocity.push(order.id)
+        continue
+      }
     }
 
     // Determine whether inventory was reserved for this order.

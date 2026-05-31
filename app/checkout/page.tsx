@@ -63,6 +63,7 @@ export default function CheckoutPage() {
   const { items, ready, totalsByCurrency, placeOrder } = useCart()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [errorOrderId, setErrorOrderId] = useState<string | null>(null)
   const [pollingOrderId, setPollingOrderId] = useState<string | null>(null)
   const pollingContact = useRef<{ name: string; email: string; phone: string; method: string } | null>(null)
 
@@ -120,8 +121,9 @@ export default function CheckoutPage() {
         clearInterval(interval)
         sessionStorage.removeItem(startedAtKey)
         clearPollingSession()
+        setErrorOrderId(pollingOrderId)
         setPollingOrderId(null)
-        setSubmitError("The payment window has closed. If money was deducted, your tickets will be issued automatically once confirmed. Contact support for help.")
+        setSubmitError("The payment window closed before we got confirmation. If money was deducted, your tickets will be sent automatically once payment clears.")
         setSubmitting(false)
         return
       }
@@ -158,12 +160,14 @@ export default function CheckoutPage() {
           clearInterval(interval)
           sessionStorage.removeItem(startedAtKey)
           clearPollingSession()
+          const isExpired = data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
+          if (isExpired) setErrorOrderId(pollingOrderId)
           setPollingOrderId(null)
-          const msg =
-            data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
-              ? "The payment window expired. If money was deducted, it will be refunded automatically. Contact support if needed."
-              : "Payment was cancelled or declined. Please try again."
-          setSubmitError(msg)
+          setSubmitError(
+            isExpired
+              ? "The payment window expired. If money was deducted, your tickets will be sent automatically once your payment clears."
+              : "Payment was cancelled or declined. Please try again.",
+          )
           setSubmitting(false)
           return
         }
@@ -238,6 +242,7 @@ export default function CheckoutPage() {
     e.preventDefault()
     if (submitting) return
     setSubmitError(null)
+    setErrorOrderId(null)
     setSubmitting(true)
 
     // All items must be for the same event.
@@ -519,9 +524,17 @@ export default function CheckoutPage() {
           </section>
 
           {submitError && (
-            <p role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {submitError}
-            </p>
+            <div role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 space-y-1">
+              <p>{submitError}</p>
+              {errorOrderId && (
+                <Link
+                  href={`/orders/${errorOrderId}`}
+                  className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:text-red-700 transition-colors"
+                >
+                  Check order status <ArrowRight size={12} />
+                </Link>
+              )}
+            </div>
           )}
 
           {/* Submit (mobile) */}
