@@ -68,7 +68,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
         actions={
           <Link
             href={`/organizer/events/${id}`}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />
             Back to event
@@ -122,7 +122,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
                     </div>
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-ink truncate">{invite.email}</p>
-                      <p className="text-[11.5px] text-ink-3">
+                      <p className="text-[12px] text-ink-3">
                         Invited {invite.createdAt?.toLocaleDateString()} &middot;
                         Expires {invite.expiresAt.toLocaleDateString()}
                       </p>
@@ -186,7 +186,7 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
                       <p className="text-[13px] font-medium text-ink truncate">
                         {org.name ?? "Unnamed user"}
                       </p>
-                      <p className="text-[11.5px] text-ink-3">{org.email}</p>
+                      <p className="text-[12px] text-ink-3">{org.email}</p>
                     </div>
                   </div>
                   <form action="#" method="post">

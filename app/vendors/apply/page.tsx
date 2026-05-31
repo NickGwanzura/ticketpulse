@@ -15,14 +15,14 @@ export default function VendorsApplyPage() {
         <div className="grid lg:grid-cols-[1.1fr_1fr] gap-10 md:gap-14 items-start">
           {/* Intro */}
           <div>
-            <Link href="/vendors" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
+            <Link href="/vendors" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
               <span className="opacity-60">←</span> Back to vendors
             </Link>
             <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-5 shadow-sm shadow-ink/5">
               <Sparkles size={13} className="text-brand-600" />
               <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">For vendors</span>
             </div>
-            <h1 className="text-[34px] md:text-[48px] font-bold tracking-[-0.025em] leading-[1.05] text-ink">
+            <h1 className="text-[36px] md:text-[48px] font-bold tracking-[-0.025em] leading-[1.05] text-ink">
               List your service. <span className="text-brand-600">Get booked.</span>
             </h1>
             <p className="mt-4 text-[15px] md:text-[16px] leading-relaxed text-ink-2 max-w-md">
@@ -36,8 +36,8 @@ export default function VendorsApplyPage() {
                     <Icon size={16} className="text-brand-600" />
                   </span>
                   <div>
-                    <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>
-                    <p className="text-[13.5px] leading-relaxed text-ink-2 mt-0.5">{body}</p>
+                    <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
+                    <p className="text-[14px] leading-relaxed text-ink-2 mt-0.5">{body}</p>
                   </div>
                 </li>
               ))}
@@ -52,7 +52,7 @@ export default function VendorsApplyPage() {
                   "Public phone or email contact",
                   "Photos of past work (3+)",
                 ].map((c) => (
-                  <li key={c} className="flex items-center gap-2 text-[13.5px] text-ink-2">
+                  <li key={c} className="flex items-center gap-2 text-[14px] text-ink-2">
                     <Check size={14} className="text-brand-600 shrink-0" />
                     {c}
                   </li>
@@ -68,7 +68,7 @@ export default function VendorsApplyPage() {
 
             <form className="space-y-4">
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Business name</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Business name</label>
                 <input
                   type="text"
                   required
@@ -78,7 +78,7 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Category</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Category</label>
                 <select
                   required
                   className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
@@ -97,7 +97,7 @@ export default function VendorsApplyPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Primary city</label>
+                  <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Primary city</label>
                   <input
                     type="text"
                     required
@@ -106,7 +106,7 @@ export default function VendorsApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Phone</label>
+                  <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Phone</label>
                   <input
                     type="tel"
                     required
@@ -117,7 +117,7 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Contact email</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Contact email</label>
                 <input
                   type="email"
                   required
@@ -127,7 +127,7 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">About your service</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">About your service</label>
                 <textarea
                   rows={4}
                   required
@@ -137,7 +137,7 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Portfolio link (optional)</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Portfolio link (optional)</label>
                 <input
                   type="url"
                   placeholder="https://…"
@@ -145,7 +145,7 @@ export default function VendorsApplyPage() {
                 />
               </div>
 
-              <label className="flex items-start gap-2.5 text-[12.5px] text-ink-2 leading-relaxed pt-2">
+              <label className="flex items-start gap-2.5 text-[13px] text-ink-2 leading-relaxed pt-2">
                 <input type="checkbox" required className="mt-0.5 accent-navy" />
                 <span>
                   I agree to the <Link href="/legal/terms" className="text-navy font-semibold hover:underline">Vendor Terms</Link> and confirm the information above is accurate.
@@ -158,7 +158,7 @@ export default function VendorsApplyPage() {
               >
                 Submit application <ArrowRight size={15} />
               </button>
-              <p className="text-[11.5px] text-ink-3 text-center">No fee. Cancel any time.</p>
+              <p className="text-[12px] text-ink-3 text-center">No fee. Cancel any time.</p>
             </form>
           </div>
         </div>

@@ -83,7 +83,7 @@ export default function PhotoManager({ eventId, galleryId, initialPhotos }: Prop
         </div>
 
         {photos.length === 0 ? (
-          <p className="text-[12.5px] text-ink-3 px-1">No photos yet. Drop some files above.</p>
+          <p className="text-[13px] text-ink-3 px-1">No photos yet. Drop some files above.</p>
         ) : (
           <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {photos.map((p) => (

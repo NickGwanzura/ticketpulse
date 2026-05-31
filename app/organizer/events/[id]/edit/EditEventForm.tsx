@@ -319,7 +319,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
                   type="button"
                   onClick={handleGenerateDesc}
                   disabled={genDesc}
-                  className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
                 >
                   {genDesc ? (
                     <Loader2 size={12} className="animate-spin" />
@@ -349,7 +349,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               />
               <span className="text-[13px] text-ink">Hide my name from the event page</span>
             </label>
-            <p className="mt-1 text-[11.5px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
+            <p className="mt-1 text-[12px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
           </div>
 
           <div className="md:col-span-2">
@@ -363,7 +363,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               placeholder="FAQ, what to bring, dress code, parking info, refund policy, accessibility details..."
               className={inputCls()}
             />
-            <p className="mt-1 text-[11.5px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
+            <p className="mt-1 text-[12px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
           </div>
 
           {/* Location */}
@@ -465,7 +465,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               defaultValue={event.googleMapsUrl ?? ""}
               className={inputCls()}
             />
-            <p className="mt-1 text-[11.5px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
+            <p className="mt-1 text-[12px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
           </div>
 
           <div className="md:col-span-2 mt-2">
@@ -494,7 +494,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               existingTags={tags}
               onTagsChange={setTags}
             />
-            <p className="mt-1 text-[11.5px] text-ink-3">Up to 10. AI-suggested tags appear below.</p>
+            <p className="mt-1 text-[12px] text-ink-3">Up to 10. AI-suggested tags appear below.</p>
           </div>
 
           {/* AI Tools */}
@@ -532,13 +532,13 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-[13px] font-semibold text-ink">Ticket types</h3>
-            <p className="text-[12.5px] text-ink-3 mt-0.5">
+            <p className="text-[13px] text-ink-3 mt-0.5">
               {tiers.length} tier{tiers.length !== 1 ? "s" : ""} created
             </p>
           </div>
           <Link
             href={`/organizer/events/${event.id}/tiers`}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2 text-[12.5px] font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2 text-[13px] font-medium text-ink hover:border-line-2 active:scale-[0.99] transition"
           >
             <Ticket size={13} /> Manage tiers
           </Link>
@@ -605,7 +605,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
 
       <div className="border-t border-line pt-6">
         <h3 className="text-[13px] font-semibold text-ink mb-1.5">Danger zone</h3>
-        <p className="text-[12.5px] text-ink-3 mb-3">Deleting this event removes its galleries, photos, and merch links. Sold tickets are kept for accounting.</p>
+        <p className="text-[13px] text-ink-3 mb-3">Deleting this event removes its galleries, photos, and merch links. Sold tickets are kept for accounting.</p>
         <form
           action={deleteEventAction}
           onSubmit={(e) => {

@@ -80,7 +80,7 @@ export default async function PurchaseFunnel({ eventIds }: Props) {
     return (
       <div className="rounded-2xl border border-line bg-paper p-5 md:p-6">
         <h3 className="text-[15px] font-semibold tracking-tight text-ink mb-1">Purchase journey funnel</h3>
-        <p className="text-[12.5px] text-ink-3 mb-5">Where attendees drop off between checkout and entry.</p>
+        <p className="text-[13px] text-ink-3 mb-5">Where attendees drop off between checkout and entry.</p>
         <div className="text-center py-10">
           <div className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-paper ring-1 ring-line mb-4">
             <ShoppingCart size={19} className="text-ink-3" />
@@ -99,7 +99,7 @@ export default async function PurchaseFunnel({ eventIds }: Props) {
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[15px] font-semibold tracking-tight text-ink">Purchase journey funnel</h3>
       </div>
-      <p className="text-[12.5px] text-ink-3 mb-5">Where attendees drop off between checkout and entry.</p>
+      <p className="text-[13px] text-ink-3 mb-5">Where attendees drop off between checkout and entry.</p>
 
       <div className="space-y-3">
         {stages.map((s, i) => {
@@ -127,7 +127,7 @@ export default async function PurchaseFunnel({ eventIds }: Props) {
 
               {/* Drop-off indicator */}
               {drop !== null && drop > 0 && (
-                <p className="text-[10.5px] text-ink-3 mt-0.5 ml-10 flex items-center gap-1">
+                <p className="text-[11px] text-ink-3 mt-0.5 ml-10 flex items-center gap-1">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-300" />
                   {drop}% dropped off
                 </p>
@@ -140,7 +140,7 @@ export default async function PurchaseFunnel({ eventIds }: Props) {
       {/* Summary insight */}
       {firstCount > 0 && (
         <div className="mt-5 pt-4 border-t border-line">
-          <p className="text-[11.5px] text-ink-3 leading-relaxed">
+          <p className="text-[12px] text-ink-3 leading-relaxed">
             <span className="font-semibold text-ink">{stages[stages.length - 1].count.toLocaleString()}</span> of{' '}
             <span className="font-semibold text-ink">{firstCount.toLocaleString()}</span> attendees who started checkout{' '}
             made it through to entry{' '}

@@ -159,7 +159,7 @@ export default function EventCard({
             {/* Hover shine */}
             <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             {/* Category label */}
-            <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[9.5px] font-semibold tracking-wide px-2.5 py-1 rounded-full ring-1 ring-white/20`}>
+            <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full ring-1 ring-white/20`}>
               {visual.emoji} {category}
             </span>
           </>
@@ -223,7 +223,7 @@ export default function EventCard({
 
       {/* Body */}
       <div className="flex flex-1 flex-col p-5">
-        <p className={`text-[10.5px] font-semibold tracking-[0.18em] uppercase mb-2 ${visual.tint}`}>{category}</p>
+        <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-2 ${visual.tint}`}>{category}</p>
 
         <h3 className="text-[16px] font-semibold leading-snug tracking-tight text-ink mb-3 line-clamp-2 group-hover:text-navy-700 transition-colors">
           {title}
@@ -244,7 +244,7 @@ export default function EventCard({
         {!soldOut && status === "published" && capacity > 0 && going > 0 && (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-ink-2">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2">
                 <Users size={11} className="text-ink-3" />
                 <span><span className="font-semibold text-ink">{going.toLocaleString()}</span> going</span>
               </span>
@@ -265,7 +265,7 @@ export default function EventCard({
           <div>
             {lowestPrice != null ? (
               <>
-                <span className="text-[10.5px] text-ink-3">From</span>
+                <span className="text-[11px] text-ink-3">From</span>
                 <span className="ml-1.5 text-[16px] font-bold tracking-tight text-ink">
                   {formatCurrency(lowestPrice, currency)}
                 </span>

@@ -103,7 +103,7 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
           <div className="min-w-0">
             <p className="text-sm font-semibold text-ink">{venue}</p>
             {fullAddress && (
-              <p className="text-[12.5px] text-ink-3 mt-0.5 leading-snug">{fullAddress}</p>
+              <p className="text-[13px] text-ink-3 mt-0.5 leading-snug">{fullAddress}</p>
             )}
           </div>
 

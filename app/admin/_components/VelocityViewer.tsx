@@ -394,7 +394,7 @@ export default function VelocityViewer({ initialData }: Props) {
 
         {/* Auto-scroll status */}
         {enriched.length > 0 && (
-          <span className="text-[10.5px] text-ink-3 tabular-nums">
+          <span className="text-[11px] text-ink-3 tabular-nums">
             {enriched.length} order{enriched.length !== 1 ? "s" : ""}
             {isLive && (
               <span className="ml-1 text-emerald-600">· watching</span>
@@ -416,7 +416,7 @@ export default function VelocityViewer({ initialData }: Props) {
               <Icon size={16} className={tone} />
             </span>
             <div>
-              <p className="text-[11.5px] text-ink-3 mb-0.5">{label}</p>
+              <p className="text-[12px] text-ink-3 mb-0.5">{label}</p>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums transition-all">
                 {value}
               </p>
@@ -430,10 +430,10 @@ export default function VelocityViewer({ initialData }: Props) {
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 tp-fade-up-1">
           <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-[12.5px] font-semibold text-amber-800">
+            <p className="text-[13px] font-semibold text-amber-800">
               {formatCurrency(stats.pendingSettlement, "USD")} confirmed by gateway but not yet finalized
             </p>
-            <p className="text-[11.5px] text-amber-700 mt-0.5">
+            <p className="text-[12px] text-amber-700 mt-0.5">
               The gateway recorded payment success but these orders are still pending or awaiting verification in TicketPulse.
               Use <span className="font-semibold">Recheck</span> on each row below, or run the reconciliation cron to recover them automatically.
             </p>
@@ -491,7 +491,7 @@ export default function VelocityViewer({ initialData }: Props) {
                   setStatusFilter(value)
                 }}
                 aria-current={isActive ? "page" : undefined}
-                className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
+                className={`rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                   isActive
                     ? "bg-paper-2 text-ink font-semibold ring-1 ring-line"
                     : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
@@ -531,12 +531,12 @@ export default function VelocityViewer({ initialData }: Props) {
                     return (
                       <tr key={o.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-3.5">
-                          <span className="text-[11.5px] font-mono font-semibold text-ink-2 truncate block max-w-[120px]" title={o.id}>
+                          <span className="text-[12px] font-mono font-semibold text-ink-2 truncate block max-w-[120px]" title={o.id}>
                             #{o.id.slice(0, 8)}
                           </span>
                         </td>
                         <td className="px-3 py-3.5 max-w-[160px]">
-                          <p className="text-[12.5px] text-ink truncate">{customerName(o)}</p>
+                          <p className="text-[13px] text-ink truncate">{customerName(o)}</p>
                           {o.guestEmail && (
                             <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                           )}
@@ -545,7 +545,7 @@ export default function VelocityViewer({ initialData }: Props) {
                           )}
                         </td>
                         <td className="px-3 py-3.5 max-w-[180px]">
-                          <span className="text-[12.5px] text-ink-2 line-clamp-1">
+                          <span className="text-[13px] text-ink-2 line-clamp-1">
                             {o.eventTitle ?? "—"}
                           </span>
                         </td>
@@ -567,12 +567,12 @@ export default function VelocityViewer({ initialData }: Props) {
                         <td className="px-3 py-3.5">
                           {v?.pollStatus ? (
                             <div className="flex flex-col gap-0.5">
-                              <span className={`inline-flex items-center gap-1.5 w-fit text-[10.5px] font-semibold tracking-wide px-2 py-1 rounded-full ${POLL_STYLES[v.pollStatus] ?? "bg-paper-2 text-ink-3"}`}>
+                              <span className={`inline-flex items-center gap-1.5 w-fit text-[11px] font-semibold tracking-wide px-2 py-1 rounded-full ${POLL_STYLES[v.pollStatus] ?? "bg-paper-2 text-ink-3"}`}>
                                 {pollIcon(v.pollStatus)}
                                 {POLL_LABEL[v.pollStatus] ?? v.pollStatus}
                               </span>
                               {v.finalizedAt && (
-                                <span className="text-[9.5px] text-brand-600 font-medium">
+                                <span className="text-[10px] text-brand-600 font-medium">
                                   Finalized {formatDateShort(v.finalizedAt)}
                                 </span>
                               )}
@@ -584,17 +584,17 @@ export default function VelocityViewer({ initialData }: Props) {
                         <td className="px-3 py-3.5">
                           <div className="flex flex-col gap-1">
                             <span
-                              className={`inline-block w-fit text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${LOCAL_STYLES[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
+                              className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${LOCAL_STYLES[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
                             >
                               {LOCAL_LABEL[o.status ?? ""] ?? o.status}
                             </span>
                             {o.status === "awaiting_verification" && o.verificationSentAt && (
-                              <span className="text-[9.5px] text-blue-600 font-medium">
+                              <span className="text-[10px] text-blue-600 font-medium">
                                 Sent {formatDateShort(o.verificationSentAt)}
                               </span>
                             )}
                             {o.paidAt && (
-                              <span className="text-[9.5px] text-brand-600 font-medium">
+                              <span className="text-[10px] text-brand-600 font-medium">
                                 Paid {formatDateShort(o.paidAt)}
                               </span>
                             )}
@@ -603,21 +603,21 @@ export default function VelocityViewer({ initialData }: Props) {
                         <td className="px-3 py-3.5 max-w-[140px]">
                           <div className="flex flex-col gap-0.5">
                             {v?.transactionTrace ? (
-                              <span className="text-[9.5px] font-mono text-ink-3 truncate" title={v.transactionTrace}>
+                              <span className="text-[10px] font-mono text-ink-3 truncate" title={v.transactionTrace}>
                                 TX: {v.transactionTrace.slice(0, 14)}
                               </span>
                             ) : (
-                              <span className="text-[9.5px] text-ink-3 italic">No TX trace</span>
+                              <span className="text-[10px] text-ink-3 italic">No TX trace</span>
                             )}
                             {v?.salesOrderTrace ? (
-                              <span className="text-[9.5px] font-mono text-ink-3 truncate" title={v.salesOrderTrace}>
+                              <span className="text-[10px] font-mono text-ink-3 truncate" title={v.salesOrderTrace}>
                                 SO: {v.salesOrderTrace.slice(0, 14)}
                               </span>
                             ) : (
-                              <span className="text-[9.5px] text-ink-3 italic">No SO trace</span>
+                              <span className="text-[10px] text-ink-3 italic">No SO trace</span>
                             )}
                             {v?.invoiceRef && (
-                              <span className="text-[9.5px] font-mono text-brand-600 truncate" title={v.invoiceRef}>
+                              <span className="text-[10px] font-mono text-brand-600 truncate" title={v.invoiceRef}>
                                 INV: {v.invoiceRef.slice(0, 14)}
                               </span>
                             )}
@@ -673,10 +673,10 @@ export default function VelocityViewer({ initialData }: Props) {
                         <p className="text-[11px] font-mono font-semibold text-ink-3">
                           #{o.id.slice(0, 8)}
                         </p>
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
+                        <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
                           {customerName(o)}
                         </p>
-                        <p className="text-[11.5px] text-ink-3 line-clamp-1">
+                        <p className="text-[12px] text-ink-3 line-clamp-1">
                           {o.eventTitle ?? "—"}
                         </p>
                       </div>
@@ -706,30 +706,30 @@ export default function VelocityViewer({ initialData }: Props) {
                           </span>
                         )}
                         {v?.pollStatus && (
-                          <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-2 py-0.5 rounded-full ${POLL_STYLES[v.pollStatus] ?? "bg-paper-2 text-ink-3"}`}>
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${POLL_STYLES[v.pollStatus] ?? "bg-paper-2 text-ink-3"}`}>
                             {pollIcon(v.pollStatus)}
                             {POLL_LABEL[v.pollStatus] ?? v.pollStatus}
                           </span>
                         )}
                       </div>
                       {v?.transactionTrace && (
-                        <p className="text-[9.5px] font-mono text-ink-3 truncate" title={v.transactionTrace}>
+                        <p className="text-[10px] font-mono text-ink-3 truncate" title={v.transactionTrace}>
                           TX: {v.transactionTrace.slice(0, 20)}
                         </p>
                       )}
                       {v?.salesOrderTrace && (
-                        <p className="text-[9.5px] font-mono text-ink-3 truncate" title={v.salesOrderTrace}>
+                        <p className="text-[10px] font-mono text-ink-3 truncate" title={v.salesOrderTrace}>
                           SO: {v.salesOrderTrace.slice(0, 20)}
                         </p>
                       )}
                       {v?.invoiceRef && (
-                        <p className="text-[9.5px] font-mono text-brand-600 truncate" title={v.invoiceRef}>
+                        <p className="text-[10px] font-mono text-brand-600 truncate" title={v.invoiceRef}>
                           INV: {v.invoiceRef.slice(0, 20)}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between text-[11.5px] text-ink-3 mt-2">
+                    <div className="flex items-center justify-between text-[12px] text-ink-3 mt-2">
                       <span className="inline-flex items-center gap-1.5">
                         {o.status === "awaiting_verification" && o.verificationSentAt && (
                           <span className="text-blue-600">Verification sent {formatDateShort(o.verificationSentAt)}</span>
@@ -783,7 +783,7 @@ export default function VelocityViewer({ initialData }: Props) {
             <p className="text-[15px] font-semibold text-ink mb-1">
               {query ? "No matching Velocity transactions" : "No Velocity transactions yet"}
             </p>
-            <p className="text-[12.5px] text-ink-3 max-w-sm mx-auto">
+            <p className="text-[13px] text-ink-3 max-w-sm mx-auto">
               {query
                 ? `No transactions match "${query}". Try a different search term.`
                 : "Orders processed through Velocity Africa will appear here once customers start checking out."}
@@ -793,7 +793,7 @@ export default function VelocityViewer({ initialData }: Props) {
       </div>
 
       {query && enriched.length > 0 && (
-        <p className="text-[12.5px] text-ink-3 text-center tp-fade-up-3">
+        <p className="text-[13px] text-ink-3 text-center tp-fade-up-3">
           Showing {enriched.length} result{enriched.length !== 1 ? "s" : ""} for{" "}
           <span className="font-medium text-ink-2">&ldquo;{query}&rdquo;</span>
           {" · "}
@@ -847,7 +847,7 @@ export default function VelocityViewer({ initialData }: Props) {
                     {t.label}
                   </span>
                   <span
-                    className={`inline-block px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider rounded-full ${
+                    className={`inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
                       t.type === "paid"
                         ? "bg-emerald-200 text-emerald-800"
                         : t.type === "fixed"
@@ -861,7 +861,7 @@ export default function VelocityViewer({ initialData }: Props) {
                 <p className="text-[13px] font-semibold text-ink mt-0.5 leading-tight truncate">
                   {t.customerName}
                 </p>
-                <p className="text-[11.5px] text-ink-3 truncate mt-0.5">
+                <p className="text-[12px] text-ink-3 truncate mt-0.5">
                   {t.eventTitle}
                 </p>
                 <p className="text-[12px] text-ink-2 mt-1">

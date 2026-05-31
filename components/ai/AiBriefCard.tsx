@@ -37,7 +37,7 @@ export default function AiBriefCard({
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-blue hover:text-green-700 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue hover:text-green-700 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           {brief ? "Refresh" : "Generate"}
@@ -47,7 +47,7 @@ export default function AiBriefCard({
       {error && <p className="text-[12px] text-rose-600 mb-2">{error}</p>}
 
       {!brief && !loading && (
-        <p className="text-[12.5px] text-ink-2 leading-relaxed">
+        <p className="text-[13px] text-ink-2 leading-relaxed">
           Click <strong>Generate</strong> for an AI-powered summary of platform health.
         </p>
       )}
@@ -62,11 +62,11 @@ export default function AiBriefCard({
 
       {brief && !loading && (
         <>
-          <p className="text-[12.5px] text-ink-2 leading-relaxed">{brief.summary}</p>
+          <p className="text-[13px] text-ink-2 leading-relaxed">{brief.summary}</p>
           {brief.highlights.length > 0 && (
             <ul className="mt-3 space-y-1">
               {brief.highlights.map((h, i) => (
-                <li key={i} className="text-[11.5px] text-ink-2 flex items-start gap-2">
+                <li key={i} className="text-[12px] text-ink-2 flex items-start gap-2">
                   <span className="text-blue mt-0.5 shrink-0">✦</span>
                   {h}
                 </li>

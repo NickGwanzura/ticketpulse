@@ -43,7 +43,7 @@ export default function StatCard({
               <Icon size={12} className={iconColor} />
             </span>
           )}
-          <span className="text-[11.5px] text-ink-3">{label}</span>
+          <span className="text-[12px] text-ink-3">{label}</span>
         </div>
         <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
           {value}
@@ -51,7 +51,7 @@ export default function StatCard({
       </div>
       <div className="mt-3 flex items-center justify-between gap-3">
         {trendLabel && (
-          <span className={cn("inline-flex items-center gap-1 text-[11.5px] font-medium", trendColor)}>
+          <span className={cn("inline-flex items-center gap-1 text-[12px] font-medium", trendColor)}>
             <TrendIcon size={11} /> {trendLabel}
           </span>
         )}

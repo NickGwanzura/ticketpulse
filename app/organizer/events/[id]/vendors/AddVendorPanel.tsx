@@ -61,8 +61,8 @@ export default function AddVendorPanel({
     <div className="rounded-2xl border border-dashed border-line bg-paper-2/40 p-5 md:p-6">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p className="text-[14.5px] font-semibold text-ink">Vendors from marketplace</p>
-          <p className="text-[12.5px] text-ink-2 mt-0.5">
+          <p className="text-[15px] font-semibold text-ink">Vendors from marketplace</p>
+          <p className="text-[13px] text-ink-2 mt-0.5">
             Browse vendors on TicketPulse and add them as optional add-ons for this event.
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function AddVendorPanel({
             setSelectedVendor(null)
             setSearch("")
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-brand-700 transition"
         >
           {open ? <><X size={13} /> Close</> : <><Plus size={13} /> Add vendor</>}
         </button>
@@ -149,7 +149,7 @@ export default function AddVendorPanel({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-ink">{selectedVendor.businessName}</p>
-                  <p className="text-[12.5px] text-ink-2">
+                  <p className="text-[13px] text-ink-2">
                     {vendorCategoryLabel(selectedVendor.category)}
                     {selectedVendor.city ? ` · ${selectedVendor.city}` : ""}
                   </p>
@@ -168,7 +168,7 @@ export default function AddVendorPanel({
                 <input type="hidden" name="vendorId" value={selectedVendor.id} />
 
                 <div>
-                  <label className="block text-[12.5px] font-medium text-ink mb-1">
+                  <label className="block text-[13px] font-medium text-ink mb-1">
                     Package name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -183,7 +183,7 @@ export default function AddVendorPanel({
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-medium text-ink mb-1">
+                  <label className="block text-[13px] font-medium text-ink mb-1">
                     Package description
                   </label>
                   <textarea
@@ -196,7 +196,7 @@ export default function AddVendorPanel({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[12.5px] font-medium text-ink mb-1">
+                    <label className="block text-[13px] font-medium text-ink mb-1">
                       Price <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -213,7 +213,7 @@ export default function AddVendorPanel({
                     )}
                   </div>
                   <div>
-                    <label className="block text-[12.5px] font-medium text-ink mb-1">
+                    <label className="block text-[13px] font-medium text-ink mb-1">
                       Currency
                     </label>
                     <select
@@ -229,7 +229,7 @@ export default function AddVendorPanel({
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-medium text-ink mb-1">
+                  <label className="block text-[13px] font-medium text-ink mb-1">
                     Max capacity
                   </label>
                   <input
@@ -239,7 +239,7 @@ export default function AddVendorPanel({
                     placeholder="Leave blank for unlimited"
                     className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
-                  <p className="mt-1 text-[11.5px] text-ink-3">
+                  <p className="mt-1 text-[12px] text-ink-3">
                     Maximum number of ticket buyers who can purchase this add-on.
                   </p>
                   {state.fieldErrors?.maxCapacity && (
@@ -260,7 +260,7 @@ export default function AddVendorPanel({
                   <button
                     type="button"
                     onClick={() => setSelectedVendor(null)}
-                    className="text-[12.5px] text-ink-2 hover:text-ink font-medium px-3 py-2"
+                    className="text-[13px] text-ink-2 hover:text-ink font-medium px-3 py-2"
                   >
                     Cancel
                   </button>

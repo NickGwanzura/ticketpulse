@@ -149,14 +149,14 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: num
           <div className="absolute inset-0 [background:radial-gradient(400px_circle_at_30%_20%,rgba(255,255,255,0.65),transparent_60%)]" />
         )}
         {!ticket.coverImage && <span className="text-3xl relative">{ticket.emoji}</span>}
-        <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 ${ticket.badge.color} text-[9.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full`}>
+        <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 ${ticket.badge.color} text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full`}>
           {ticket.badge.label}
         </span>
       </div>
       <div className="p-3.5">
-        <p className={`text-[9.5px] font-semibold tracking-[0.18em] uppercase ${ticket.accent} mb-1`}>Ticket</p>
+        <p className={`text-[10px] font-semibold tracking-[0.18em] uppercase ${ticket.accent} mb-1`}>Ticket</p>
         <p className="text-[13px] font-semibold tracking-tight text-ink line-clamp-1">{ticket.title}</p>
-        <div className="mt-2 space-y-1 text-[11.5px] text-ink-2">
+        <div className="mt-2 space-y-1 text-[12px] text-ink-2">
           <p className="inline-flex items-center gap-1.5"><Calendar size={11} className="text-ink-3" /> {formatDateShort(ticket.date)}</p>
           <p className="inline-flex items-center gap-1.5 truncate"><MapPin size={11} className="text-ink-3 shrink-0" /> <span className="truncate">{ticket.venue}</span></p>
         </div>
@@ -171,7 +171,7 @@ function HeroTicketCard({ ticket, index = 0 }: { ticket: HeroTicket; index?: num
               <span className="text-green-700">Free entry</span>
             )}
           </span>
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-navy">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-navy">
             View <ArrowUpRight size={11} />
           </span>
         </div>
@@ -339,7 +339,7 @@ export default async function Home() {
                   <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
                   <span className="relative block w-2 h-2 rounded-full bg-green-500" />
                 </span>
-                <span className="text-[11.5px] font-semibold tracking-[0.04em] text-ink">
+                <span className="text-[12px] font-semibold tracking-[0.04em] text-ink">
                   <span className="text-green-700">Live</span>
                   <span className="text-ink-3"> · launched May 2026</span>
                 </span>
@@ -355,7 +355,7 @@ export default async function Home() {
                 </span>
               </h1>
 
-              <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
+              <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
                 Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, and your printable PDF + mobile QR land instantly. Account secured later, on your terms.
               </p>
 
@@ -392,8 +392,8 @@ export default async function Home() {
                   <ShieldCheck size={16} className="text-brand-600" />
                 </span>
                 <div className="leading-tight">
-                  <p className="text-[12.5px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
-                  <p className="text-[11.5px] text-ink-3 mt-0.5">Sell, deliver, scan: one platform, no third-party stack.</p>
+                  <p className="text-[13px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
+                  <p className="text-[12px] text-ink-3 mt-0.5">Sell, deliver, scan: one platform, no third-party stack.</p>
                 </div>
               </div>
             </div>
@@ -432,8 +432,8 @@ export default async function Home() {
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="rounded-2xl border border-dashed border-line bg-paper/70 backdrop-blur p-8 text-center max-w-sm">
-                    <p className="text-[13.5px] font-semibold tracking-tight text-ink">Events drop soon.</p>
-                    <p className="mt-1.5 text-[12.5px] text-ink-2">The first tickets land here the moment organizers go live.</p>
+                    <p className="text-[14px] font-semibold tracking-tight text-ink">Events drop soon.</p>
+                    <p className="mt-1.5 text-[13px] text-ink-2">The first tickets land here the moment organizers go live.</p>
                   </div>
                 </div>
               )}
@@ -452,8 +452,8 @@ export default async function Home() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-line bg-paper/70 backdrop-blur p-8 text-center max-w-sm mx-auto">
-                <p className="text-[13.5px] font-semibold tracking-tight text-ink">Events drop soon.</p>
-                <p className="mt-1.5 text-[12.5px] text-ink-2">The first tickets land here the moment organizers go live.</p>
+                <p className="text-[14px] font-semibold tracking-tight text-ink">Events drop soon.</p>
+                <p className="mt-1.5 text-[13px] text-ink-2">The first tickets land here the moment organizers go live.</p>
               </div>
             )}
           </div>
@@ -472,7 +472,7 @@ export default async function Home() {
                   <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none pb-0.5">
                     {s.value}
                   </p>
-                  <p className="mt-1.5 text-[12.5px] text-ink-3">{s.label}</p>
+                  <p className="mt-1.5 text-[13px] text-ink-3">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -571,7 +571,7 @@ export default async function Home() {
                         </li>
                       ))}
                       {catEvents.length > 2 && (
-                        <li className="text-[10.5px] text-navy font-medium">+{catEvents.length - 2} more</li>
+                        <li className="text-[11px] text-navy font-medium">+{catEvents.length - 2} more</li>
                       )}
                     </ul>
                   ) : (
@@ -613,11 +613,11 @@ export default async function Home() {
                 <span className="inline-flex w-12 h-12 items-center justify-center rounded-2xl bg-green-50 ring-1 ring-brand-500/15 group-hover:bg-green-100 group-hover:ring-brand-500/25 transition-all duration-300">
                   <Icon size={22} className="text-brand-600" />
                 </span>
-                <span className="text-[10.5px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
+                <span className="text-[11px] font-semibold tracking-[0.2em] text-ink-3 uppercase">Step {i + 1}</span>
               </div>
 
-              <h3 className="relative text-[19px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
-              <p className="relative text-[14.5px] leading-relaxed text-ink-2">{body}</p>
+              <h3 className="relative text-[18px] font-semibold tracking-tight text-ink mb-1.5">{title}</h3>
+              <p className="relative text-[15px] leading-relaxed text-ink-2">{body}</p>
 
               <div className="pointer-events-none absolute -bottom-16 -right-12 w-40 h-40 rounded-full bg-green-500/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" aria-hidden />
             </div>
@@ -639,8 +639,8 @@ export default async function Home() {
               <span className={`inline-flex w-11 h-11 items-center justify-center rounded-xl bg-gradient-to-br ${tone} ring-1 ${ring} shrink-0 mb-3.5`}>
                 <Icon size={18} className={accent} />
               </span>
-              <p className="text-[14.5px] font-semibold tracking-tight text-ink">{k}</p>
-              <p className="mt-1 text-[12.5px] text-ink-2 leading-relaxed">{v}</p>
+              <p className="text-[15px] font-semibold tracking-tight text-ink">{k}</p>
+              <p className="mt-1 text-[13px] text-ink-2 leading-relaxed">{v}</p>
             </div>
           ))}
         </div>
@@ -700,7 +700,7 @@ export default async function Home() {
                 <h2 className="tp-fade-up-1 font-bold tracking-[-0.02em] text-[28px] md:text-[44px] leading-[1.05]">
                   Sell out your next event.
                 </h2>
-                <p className="tp-fade-up-2 mt-4 text-[15.5px] md:text-[17px] leading-relaxed text-white/80 max-w-lg">
+                <p className="tp-fade-up-2 mt-4 text-[15px] md:text-[16px] leading-relaxed text-white/80 max-w-lg">
                   Launch in minutes. Verified payouts, mobile QR entry, and built-in shuttle, merch, and photo bundles. Keep more of every ticket.
                 </p>
                 <div className="tp-fade-up-3 mt-7 flex flex-wrap gap-3">
@@ -742,7 +742,7 @@ export default async function Home() {
                     <p className="text-[22px] md:text-[26px] font-bold tracking-tight leading-none pb-1">
                       {k}
                     </p>
-                    <p className="text-[12.5px] text-white/70 mt-1.5 leading-snug">{l}</p>
+                    <p className="text-[13px] text-white/70 mt-1.5 leading-snug">{l}</p>
                   </div>
                 ))}
               </div>

@@ -156,7 +156,7 @@ export default async function AdminEventsPage({
                 <Icon size={16} className={tone} />
               </span>
               <div>
-                <p className="text-[11.5px] text-ink-3 mb-0.5">{label}</p>
+                <p className="text-[12px] text-ink-3 mb-0.5">{label}</p>
                 <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
               </div>
             </div>
@@ -210,14 +210,14 @@ export default async function AdminEventsPage({
                         <tr key={e.id} className="hover:bg-paper-2 transition-colors">
                           <td className="px-5 py-3.5 max-w-xs">
                             <Link href={`/events/${e.slug}`} className="block">
-                              <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
-                              <p className="text-[11.5px] text-ink-3 mt-0.5">{e.city}</p>
+                              <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
+                              <p className="text-[12px] text-ink-3 mt-0.5">{e.city}</p>
                             </Link>
                           </td>
-                          <td className="px-3 py-3.5 text-[12.5px] text-ink-2 max-w-[180px] truncate">{organizer}</td>
-                          <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">{formatDateShort(e.startsAt)}</td>
+                          <td className="px-3 py-3.5 text-[13px] text-ink-2 max-w-[180px] truncate">{organizer}</td>
+                          <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">{formatDateShort(e.startsAt)}</td>
                           <td className="px-3 py-3.5">
-                            <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[status]}`}>
+                            <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[status]}`}>
                               {STATUS_LABEL[status]}
                             </span>
                           </td>
@@ -233,7 +233,7 @@ export default async function AdminEventsPage({
                             </div>
                           </td>
                           <td className="px-3 py-3.5 text-right whitespace-nowrap">
-                            <p className="text-[12.5px] font-semibold text-ink">
+                            <p className="text-[13px] font-semibold text-ink">
                               {sold.toLocaleString()} <span className="text-ink-3 font-normal">/ {capacity.toLocaleString()}</span>
                             </p>
                             <div className="w-20 h-1 bg-paper-2 rounded-full mt-1 ml-auto overflow-hidden">
@@ -342,9 +342,9 @@ export default async function AdminEventsPage({
                             {e.featured && <Star size={11} className="text-amber-500 fill-amber-400" />}
                           </div>
                           <Link href={`/events/${e.slug}`} className="block">
-                            <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
+                            <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1">{e.title}</p>
                           </Link>
-                          <p className="text-[11.5px] text-ink-3 mt-0.5 truncate">{organizer} · {e.city}</p>
+                          <p className="text-[12px] text-ink-3 mt-0.5 truncate">{organizer} · {e.city}</p>
                         </div>
                         <p className="text-[13px] font-bold tracking-tight text-ink whitespace-nowrap">
                           {rev ? formatCurrency(rev.revenue, rev.currency) : <span className="text-ink-3 font-normal">—</span>}

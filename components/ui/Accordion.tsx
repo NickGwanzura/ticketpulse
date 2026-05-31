@@ -20,7 +20,7 @@ export function AccordionItem({ q, a }: AccordionItemProps) {
         />
       </summary>
       <div className="tp-accordion-content">
-        <div className="px-5 pb-5 text-[13.5px] text-ink-2 leading-[1.65]">{a}</div>
+        <div className="px-5 pb-5 text-[14px] text-ink-2 leading-[1.65]">{a}</div>
       </div>
     </details>
   )

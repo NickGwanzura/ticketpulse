@@ -99,12 +99,12 @@ export default async function PayoutsDashboardPage() {
               </span>
               <div>
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(availableBalance, "USD")} available</p>
-                <p className="text-[12.5px] text-ink-2">Request a payout to your EcoCash or bank account.</p>
+                <p className="text-[13px] text-ink-2">Request a payout to your EcoCash or bank account.</p>
               </div>
             </div>
             <Link
               href="/payouts/request"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
             >
               <Send size={13} /> Request payout
             </Link>
@@ -134,20 +134,20 @@ export default async function PayoutsDashboardPage() {
                     {payouts.map((p) => (
                       <tr key={p.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-4">
-                          <p className="text-[13.5px] font-semibold tracking-tight text-ink">{p.eventTitle ?? "General"}</p>
+                          <p className="text-[14px] font-semibold tracking-tight text-ink">{p.eventTitle ?? "General"}</p>
                           <p className="text-[12px] text-ink-3 mt-0.5">{p.id.slice(0, 8)}</p>
                         </td>
                         <td className="px-3 py-4">
-                          <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
+                          <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
                             {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                             {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}
                           </span>
                         </td>
-                        <td className="px-3 py-4 text-[12.5px] text-ink-2 whitespace-nowrap">
+                        <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">
                           {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
                         </td>
                         <td className="px-3 py-4">
-                          <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
+                          <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
                             {STATUS_LABEL[p.status as PayoutStatus]}
                           </span>
                         </td>
@@ -166,14 +166,14 @@ export default async function PayoutsDashboardPage() {
                   <li key={p.id} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0">
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{p.eventTitle ?? "General"}</p>
+                        <p className="text-[14px] font-semibold tracking-tight text-ink truncate">{p.eventTitle ?? "General"}</p>
                         <p className="text-[12px] text-ink-3 mt-0.5">{p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}</p>
                       </div>
                       <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[p.status as PayoutStatus]}`}>
                         {STATUS_LABEL[p.status as PayoutStatus]}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 text-[12.5px]">
+                    <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
                         {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                         {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}

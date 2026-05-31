@@ -60,10 +60,10 @@ export default function TierCard({
               <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-green-50 text-navy">
                 <Ticket size={13} />
               </span>
-              <p className="text-[15.5px] font-semibold text-ink truncate">{tier.name}</p>
+              <p className="text-[15px] font-semibold text-ink truncate">{tier.name}</p>
             </div>
             {tier.description && (
-              <p className="text-[12.5px] text-ink-2 line-clamp-2">{tier.description}</p>
+              <p className="text-[13px] text-ink-2 line-clamp-2">{tier.description}</p>
             )}
           </div>
           <p className="text-[15px] font-bold tracking-tight text-ink whitespace-nowrap">
@@ -93,7 +93,7 @@ export default function TierCard({
           <button
             type="button"
             onClick={() => setEditing((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2"
           >
             {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
           </button>
@@ -101,14 +101,14 @@ export default function TierCard({
           <button
             type="button"
             onClick={() => setShowingSample((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-brand-200 hover:text-green-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-brand-200 hover:text-green-700"
           >
             {showingSample ? <><X size={12} /> Close</> : <><Eye size={12} /> Test ticket</>}
           </button>
 
           {deleteConfirm ? (
             <div className="inline-flex items-center gap-1">
-              <span className="text-[10.5px] text-rose-700 font-medium whitespace-nowrap">
+              <span className="text-[11px] text-rose-700 font-medium whitespace-nowrap">
                 {sold > 0 ? "Also cancels sold tickets — delete?" : "Delete tier?"}
               </span>
               <form action={deleteTierAction}>

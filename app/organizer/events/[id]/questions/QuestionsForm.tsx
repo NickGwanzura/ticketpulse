@@ -105,7 +105,7 @@ export default function QuestionsForm({
                 <GripVertical size={16} className="text-ink-3 mt-2.5 shrink-0" />
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
-                    <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+                    <label className="block text-[12px] font-medium text-ink-2 mb-1.5">
                       Question {index + 1}
                     </label>
                     <input
@@ -124,7 +124,7 @@ export default function QuestionsForm({
                       onChange={(e) => updateQuestion(index, { required: e.target.checked })}
                       className="rounded border-line text-brand-600 focus:ring-brand-500"
                     />
-                    <span className="text-[12.5px] text-ink-2">Required</span>
+                    <span className="text-[13px] text-ink-2">Required</span>
                   </label>
                 </div>
                 <button
@@ -144,7 +144,7 @@ export default function QuestionsForm({
           <button
             type="button"
             onClick={addQuestion}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-[12.5px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2 text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition"
           >
             <Plus size={14} /> Add question
           </button>
@@ -167,7 +167,7 @@ export default function QuestionsForm({
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-80"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-80"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
             Save questions

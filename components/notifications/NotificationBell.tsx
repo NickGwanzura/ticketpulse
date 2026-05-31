@@ -242,7 +242,7 @@ export default function NotificationBell() {
               <button
                 onClick={markAllRead}
                 disabled={marking}
-                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-navy hover:text-brand-600 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-navy hover:text-brand-600 disabled:opacity-50 transition-colors"
               >
                 {marking ? (
                   <Loader2 size={11} className="animate-spin" />
@@ -259,7 +259,7 @@ export default function NotificationBell() {
             {items.length === 0 ? (
               <div className="px-4 py-8 text-center">
                 <Bell size={20} className="mx-auto text-ink-3 mb-2" />
-                <p className="text-[12.5px] text-ink-3">No notifications yet</p>
+                <p className="text-[13px] text-ink-3">No notifications yet</p>
               </div>
             ) : (
               items.map((n) => (
@@ -273,7 +273,7 @@ export default function NotificationBell() {
                     <span className="text-base shrink-0">{typeIcon(n.type)}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-[12.5px] font-semibold text-ink leading-snug">
+                        <p className="text-[13px] font-semibold text-ink leading-snug">
                           {n.link ? (
                             <Link
                               href={n.link}
@@ -297,10 +297,10 @@ export default function NotificationBell() {
                           </button>
                         )}
                       </div>
-                      <p className="text-[11.5px] text-ink-2 mt-0.5 leading-relaxed">
+                      <p className="text-[12px] text-ink-2 mt-0.5 leading-relaxed">
                         {n.body}
                       </p>
-                      <p className="text-[10.5px] text-ink-3 mt-1">
+                      <p className="text-[11px] text-ink-3 mt-1">
                         {timeAgo(n.createdAt)}
                       </p>
                     </div>

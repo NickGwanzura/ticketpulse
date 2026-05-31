@@ -196,18 +196,18 @@ export default function AdminCommunicationsPage() {
                       <Users size={14} className={audience === opt.value ? "text-brand-600" : "text-ink-3"} />
                       <p className="text-[13px] font-semibold text-ink">{opt.label}</p>
                     </div>
-                    <p className="text-[11.5px] text-ink-2">{opt.description}</p>
+                    <p className="text-[12px] text-ink-2">{opt.description}</p>
                   </button>
                 ))}
               </div>
 
               <div>
-                <p className="text-[11.5px] text-ink-3 mb-2.5 font-medium">Channels</p>
+                <p className="text-[12px] text-ink-3 mb-2.5 font-medium">Channels</p>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <div
                       onClick={() => setEmail(!email)}
-                      className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
+                      className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
                         email
                           ? "border-green-400 bg-green-50 text-green-700"
                           : "border-line text-ink-2 hover:bg-paper-2"
@@ -220,7 +220,7 @@ export default function AdminCommunicationsPage() {
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <div
                       onClick={() => setWhatsapp(!whatsapp)}
-                      className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
+                      className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
                         whatsapp
                           ? "border-green-400 bg-green-50 text-green-700"
                           : "border-line text-ink-2 hover:bg-paper-2"
@@ -286,7 +286,7 @@ export default function AdminCommunicationsPage() {
               <h2 className="text-[14px] font-semibold tracking-tight text-ink">Compose</h2>
               <div className="space-y-3">
                 <div>
-                  <label className="text-[11.5px] font-medium text-ink-3 mb-1.5 block">Subject</label>
+                  <label className="text-[12px] font-medium text-ink-3 mb-1.5 block">Subject</label>
                   <input
                     type="text"
                     value={subject}
@@ -296,7 +296,7 @@ export default function AdminCommunicationsPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11.5px] font-medium text-ink-3 mb-1.5 block">
+                  <label className="text-[12px] font-medium text-ink-3 mb-1.5 block">
                     Message
                     <span className="text-ink-3 font-normal ml-1">
                       (use {"{name}"} for personal greeting, {"{audience}"} for audience label)

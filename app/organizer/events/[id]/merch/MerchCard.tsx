@@ -43,13 +43,13 @@ export default function MerchCard({ eventId, merch }: { eventId: string; merch: 
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-[15.5px] font-semibold text-ink truncate">{merch.name}</p>
-                <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${merch.active ? "bg-green-50 text-green-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
+                <p className="text-[15px] font-semibold text-ink truncate">{merch.name}</p>
+                <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${merch.active ? "bg-green-50 text-green-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
                   {merch.active ? "Active" : "Hidden"}
                 </span>
               </div>
               {merch.description && (
-                <p className="text-[12.5px] text-ink-2 line-clamp-2">{merch.description}</p>
+                <p className="text-[13px] text-ink-2 line-clamp-2">{merch.description}</p>
               )}
             </div>
             <p className="text-[15px] font-bold tracking-tight text-ink whitespace-nowrap">
@@ -70,7 +70,7 @@ export default function MerchCard({ eventId, merch }: { eventId: string; merch: 
             <button
               type="button"
               onClick={() => setEditing((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2"
             >
               {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
             </button>
@@ -81,7 +81,7 @@ export default function MerchCard({ eventId, merch }: { eventId: string; merch: 
               <input type="hidden" name="next" value={(!merch.active).toString()} />
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2"
               >
                 <Power size={12} /> {merch.active ? "Hide" : "Make active"}
               </button>

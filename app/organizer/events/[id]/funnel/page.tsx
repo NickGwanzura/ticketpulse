@@ -45,7 +45,7 @@ export default async function FunnelPage({ params }: { params: Promise<RoutePara
             <ArrowLeft size={14} />
           </Link>
           <div>
-            <p className="text-[11.5px] font-semibold text-ink-3 tracking-widest uppercase">Sales funnel</p>
+            <p className="text-[12px] font-semibold text-ink-3 tracking-widest uppercase">Sales funnel</p>
             <h1 className="text-[20px] font-bold text-ink">{event.title}</h1>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default async function FunnelPage({ params }: { params: Promise<RoutePara
           <div className="rounded-2xl border border-line bg-paper p-10 text-center">
             <TrendingUp size={32} className="mx-auto mb-3 text-ink-3" />
             <h2 className="text-[16px] font-semibold text-ink">No data yet</h2>
-            <p className="text-[12.5px] text-ink-3 mt-1">Funnel data will appear once buyers start visiting this event.</p>
+            <p className="text-[13px] text-ink-3 mt-1">Funnel data will appear once buyers start visiting this event.</p>
           </div>
         ) : (
           <>
@@ -103,9 +103,9 @@ export default async function FunnelPage({ params }: { params: Promise<RoutePara
                   if (i === 0) {
                     return (
                       <div key={stage.stage} className="flex items-center gap-4">
-                        <span className="w-36 shrink-0 text-[12.5px] text-ink font-medium">{stage.stage}</span>
+                        <span className="w-36 shrink-0 text-[13px] text-ink font-medium">{stage.stage}</span>
                         <div className="flex-1 h-[26px] bg-navy/10 rounded-lg flex items-center px-3">
-                          <span className="text-[12.5px] font-bold tabular-nums text-navy">{stage.count.toLocaleString()}</span>
+                          <span className="text-[13px] font-bold tabular-nums text-navy">{stage.count.toLocaleString()}</span>
                         </div>
                       </div>
                     )
@@ -113,13 +113,13 @@ export default async function FunnelPage({ params }: { params: Promise<RoutePara
                   const barPct = Math.max(4, Math.round((stage.count / funnel[0].count) * 100))
                   return (
                     <div key={stage.stage} className="flex items-center gap-4">
-                      <span className="w-36 shrink-0 text-[12.5px] text-ink-2">{stage.stage}</span>
+                      <span className="w-36 shrink-0 text-[13px] text-ink-2">{stage.stage}</span>
                       <div className="flex-1 h-[26px] bg-paper-2 rounded-lg overflow-hidden relative">
                         <div
                           className="h-full bg-navy/70 rounded-lg flex items-center px-3 transition-all"
                           style={{ width: `${barPct}%` }}
                         >
-                          <span className="text-[12.5px] font-bold tabular-nums text-white">{stage.count.toLocaleString()}</span>
+                          <span className="text-[13px] font-bold tabular-nums text-white">{stage.count.toLocaleString()}</span>
                         </div>
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-ink-3 font-medium">
                           {stage.dropoff}%

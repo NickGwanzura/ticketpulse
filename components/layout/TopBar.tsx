@@ -66,7 +66,7 @@ export default function TopBar() {
             <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-70" />
             <span className="relative block w-1.5 h-1.5 rounded-full bg-green-400" />
           </span>
-          <span className="text-[10.5px] font-semibold tracking-[0.18em] text-white/80 uppercase">Live</span>
+          <span className="text-[11px] font-semibold tracking-[0.18em] text-white/80 uppercase">Live</span>
           <span className="hidden md:inline text-white/30">·</span>
         </span>
 
@@ -77,7 +77,7 @@ export default function TopBar() {
               <p
                 key={i}
                 aria-hidden={i !== idx}
-                className={`absolute inset-0 flex items-center gap-2 text-[12px] md:text-[12.5px] text-white/85 transition-all duration-500 ${
+                className={`absolute inset-0 flex items-center gap-2 text-[12px] md:text-[13px] text-white/85 transition-all duration-500 ${
                   i === idx ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5 pointer-events-none"
                 }`}
               >

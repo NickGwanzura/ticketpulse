@@ -127,7 +127,7 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
           type="date"
           value={form.date}
           onChange={(e) => handleChange("date", e.target.value)}
-          className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+          className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[14px] text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
         />
       </div>
       <div>
@@ -137,7 +137,7 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
           placeholder="e.g. 250"
           value={form.guestCount}
           onChange={(e) => handleChange("guestCount", e.target.value)}
-          className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+          className="w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
         />
       </div>
       <div>
@@ -149,9 +149,9 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
           placeholder="Full name"
           value={form.name}
           onChange={(e) => handleChange("name", e.target.value)}
-          className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${errors.name ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
+          className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${errors.name ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
         />
-        {errors.name && <p className="mt-1 text-[11.5px] text-rose-600">{errors.name}</p>}
+        {errors.name && <p className="mt-1 text-[12px] text-rose-600">{errors.name}</p>}
       </div>
       <div>
         <label className="block text-[11px] font-medium text-ink-2 mb-1.5">
@@ -162,9 +162,9 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
           placeholder="you@example.com"
           value={form.email}
           onChange={(e) => handleChange("email", e.target.value)}
-          className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${errors.email ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
+          className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition ${errors.email ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
         />
-        {errors.email && <p className="mt-1 text-[11.5px] text-rose-600">{errors.email}</p>}
+        {errors.email && <p className="mt-1 text-[12px] text-rose-600">{errors.email}</p>}
       </div>
       <div>
         <label className="block text-[11px] font-medium text-ink-2 mb-1.5">
@@ -175,9 +175,9 @@ export default function EnquiryForm({ vendorSlug, vendorId, vendorName, response
           placeholder="What are you planning?"
           value={form.message}
           onChange={(e) => handleChange("message", e.target.value)}
-          className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[13.5px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition resize-none ${errors.message ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
+          className={`w-full bg-paper border rounded-xl px-3.5 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-4 transition resize-none ${errors.message ? "border-rose-400 focus:border-rose-400 focus:ring-rose-100" : "border-line focus:border-green-500 focus:ring-brand-500/10"}`}
         />
-        {errors.message && <p className="mt-1 text-[11.5px] text-rose-600">{errors.message}</p>}
+        {errors.message && <p className="mt-1 text-[12px] text-rose-600">{errors.message}</p>}
       </div>
       <button
         type="submit"

@@ -185,7 +185,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                 <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-paper-2 ring-1 ring-line">
                   <Icon size={13} className="text-ink-2" />
                 </span>
-                <span className="text-[11.5px] text-ink-3">{label}</span>
+                <span className="text-[12px] text-ink-3">{label}</span>
               </div>
               <p className={`text-[22px] md:text-[24px] font-bold tracking-tight leading-none tabular-nums ${color}`}>{value}</p>
             </div>
@@ -204,7 +204,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                 <h2 className="text-[16px] font-semibold tracking-tight text-ink">Ticket tiers</h2>
                 <Link
                   href={`/organizer/events/${id}/tiers`}
-                  className="text-[12.5px] font-medium text-navy hover:underline"
+                  className="text-[13px] font-medium text-navy hover:underline"
                 >
                   Manage
                 </Link>
@@ -250,7 +250,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                 <h2 className="text-[16px] font-semibold tracking-tight text-ink">Recent orders</h2>
                 <Link
                   href={`/organizer/events/${id}/attendees`}
-                  className="text-[12.5px] font-medium text-navy hover:underline"
+                  className="text-[13px] font-medium text-navy hover:underline"
                 >
                   View all
                 </Link>
@@ -268,7 +268,7 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
                     <div key={`${o.guestEmail}-${o.createdAt}`} className="px-5 md:px-6 py-3 flex items-center justify-between">
                       <div className="min-w-0">
                         <p className="text-[13px] font-medium text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>
-                        <p className="text-[11.5px] text-ink-3">{o.guestEmail}</p>
+                        <p className="text-[12px] text-ink-3">{o.guestEmail}</p>
                       </div>
                       <div className="text-right shrink-0 ml-4">
                         <p className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? currency)}</p>

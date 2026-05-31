@@ -21,10 +21,10 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
   return (
     <form action={formAction} className="space-y-5">
       {state.error && !state.fieldErrors && (
-        <p className="text-[12.5px] text-red-500">{state.error}</p>
+        <p className="text-[13px] text-red-500">{state.error}</p>
       )}
       {state.ok && state.message && (
-        <p className="text-[12.5px] text-brand-600">{state.message}</p>
+        <p className="text-[13px] text-brand-600">{state.message}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -39,7 +39,7 @@ export default function PromoCreateForm({ eventId }: { eventId: string }) {
             className={inputCls(!!state.fieldErrors?.code)}
           />
           {state.fieldErrors?.code && (
-            <p className="text-[11.5px] text-red-500 mt-1">{state.fieldErrors.code}</p>
+            <p className="text-[12px] text-red-500 mt-1">{state.fieldErrors.code}</p>
           )}
         </div>
 

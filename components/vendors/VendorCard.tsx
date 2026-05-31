@@ -27,7 +27,7 @@ export default function VendorCard({ vendor }: VendorCardProps) {
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-center gap-2 mb-2">
-          <span className={`text-[10.5px] font-semibold tracking-[0.16em] uppercase ${visual.accent}`}>
+          <span className={`text-[11px] font-semibold tracking-[0.16em] uppercase ${visual.accent}`}>
             {visual.label}
           </span>
         </div>
@@ -37,7 +37,7 @@ export default function VendorCard({ vendor }: VendorCardProps) {
         </h3>
         <p className="text-[13px] text-ink-2 line-clamp-2 mb-4">{vendor.tagline}</p>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-2 mb-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-ink-2 mb-4">
           <span className="inline-flex items-center gap-1">
             <Star size={12} className="text-amber-500 fill-amber-500" />
             <span className="font-semibold text-ink">{vendor.rating.toFixed(1)}</span>
@@ -59,7 +59,7 @@ export default function VendorCard({ vendor }: VendorCardProps) {
               {formatCurrency(vendor.priceFrom, vendor.currency)}
             </span>
           </div>
-          <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy group-hover:gap-1.5 transition-all">
+          <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-navy group-hover:gap-1.5 transition-all">
             View <ArrowUpRight size={13} />
           </span>
         </div>

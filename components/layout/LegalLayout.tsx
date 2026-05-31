@@ -20,7 +20,7 @@ export default function LegalLayout({ kicker, title, lastUpdated, intro, section
     <div>
       <section className="border-b border-line bg-paper-2">
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-12 md:pt-16 pb-10 md:pb-14">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
             <ArrowLeft size={13} /> Home
           </Link>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">{kicker}</p>
@@ -60,7 +60,7 @@ export default function LegalLayout({ kicker, title, lastUpdated, intro, section
                   {String(i + 1).padStart(2, "0")} · {s.title.split(" ").slice(0, 2).join(" ")}
                 </p>
                 <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight leading-tight text-ink mb-4">{s.title}</h2>
-                <div className="text-[14.5px] leading-relaxed text-ink-2 space-y-3 [&_a]:text-navy [&_a]:font-semibold [&_a:hover]:underline [&_strong]:text-ink [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:marker:text-ink-3">
+                <div className="text-[15px] leading-relaxed text-ink-2 space-y-3 [&_a]:text-navy [&_a]:font-semibold [&_a:hover]:underline [&_strong]:text-ink [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:marker:text-ink-3">
                   {s.body}
                 </div>
               </section>

@@ -43,7 +43,7 @@ function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
       <div className="flex-1 h-1 bg-paper-3 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[10.5px] text-ink-3 tabular-nums shrink-0">{pct}%</span>
+      <span className="text-[11px] text-ink-3 tabular-nums shrink-0">{pct}%</span>
     </div>
   )
 }
@@ -130,15 +130,15 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-6 md:py-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Organizer</p>
-            <h1 className="text-[26px] md:text-[30px] font-bold tracking-tight text-ink leading-none">
+            <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
               {firstName}&apos;s events
             </h1>
             {commissionRate === 0 ? (
-              <span className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-emerald-700">
+              <span className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-700">
                 <CheckCircle2 size={12} /> Free listing — no platform fee
               </span>
             ) : (
-              <span className="mt-2 inline-flex text-[11.5px] text-ink-3">
+              <span className="mt-2 inline-flex text-[12px] text-ink-3">
                 {commissionRate}% platform fee per sale
               </span>
             )}
@@ -169,7 +169,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
         {draftCount > 0 && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3">
             <AlertCircle size={14} className="text-amber-600 shrink-0" />
-            <p className="text-[12.5px] text-amber-800 flex-1">
+            <p className="text-[13px] text-amber-800 flex-1">
               {draftCount} draft event{draftCount !== 1 ? "s" : ""} not yet published.{" "}
               <Link href={`/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit`} className="font-semibold underline">
                 Open draft
@@ -189,7 +189,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <div key={label} className="px-5 py-5">
               <div className="flex items-center gap-1.5 mb-3">
                 <Icon size={12} className="text-ink-3" />
-                <span className="text-[11.5px] text-ink-3">{label}</span>
+                <span className="text-[12px] text-ink-3">{label}</span>
               </div>
               <p className="text-[22px] md:text-[24px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
             </div>
@@ -227,12 +227,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                       <div key={e.id} className="p-5">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <Link href={`/organizer/events/${e.id}`} className="flex-1 min-w-0">
-                            <p className="text-[14.5px] font-semibold text-ink line-clamp-1">{e.title}</p>
+                            <p className="text-[15px] font-semibold text-ink line-clamp-1">{e.title}</p>
                             <p className="text-[12px] text-ink-3 mt-0.5">{e.venue} · {e.startsAt.toLocaleDateString()}</p>
                           </Link>
                           <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                            <span className="text-[11.5px] text-ink-2">{s.label}</span>
+                            <span className="text-[12px] text-ink-2">{s.label}</span>
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
@@ -260,7 +260,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 {/* Desktop */}
                 <table className="hidden md:table w-full">
                   <thead>
-                    <tr className="border-b border-line text-[10.5px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-5 py-3">Event</th>
                       <th className="text-left px-3 py-3">Date</th>
                       <th className="text-right px-3 py-3">Capacity</th>
@@ -322,7 +322,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-4">Earnings</p>
               <p className="text-[28px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(availableBalance, "USD")}</p>
               <p className="text-[12px] text-ink-3 mt-0.5 mb-5">available balance</p>
-              <div className="space-y-2.5 text-[12.5px] pb-5 border-b border-line mb-4">
+              <div className="space-y-2.5 text-[13px] pb-5 border-b border-line mb-4">
                 <div className="flex justify-between">
                   <span className="text-ink-2">Net revenue</span>
                   <span className="font-semibold text-ink tabular-nums">{formatCurrency(net, "USD")}</span>
@@ -365,7 +365,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           <div className="rounded-2xl border border-line bg-paper p-5">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-[15px] font-semibold text-ink">Sales by event</h2>
-              <Link href="/organizer/orders" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              <Link href="/organizer/orders" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 All orders <ArrowUpRight size={11} />
               </Link>
             </div>
@@ -403,8 +403,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                   <li key={i} className="px-5 py-3.5 flex items-center gap-3">
                     <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" || o.status === "completed" ? "bg-emerald-500" : "bg-rose-400"}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13.5px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>
-                      <p className="text-[11.5px] text-ink-3">{o.createdAt ? timeAgo(new Date(o.createdAt)) : "—"} · {o.paymentMethod?.toUpperCase() ?? "—"}</p>
+                      <p className="text-[14px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>
+                      <p className="text-[12px] text-ink-3">{o.createdAt ? timeAgo(new Date(o.createdAt)) : "—"} · {o.paymentMethod?.toUpperCase() ?? "—"}</p>
                     </div>
                     <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}</span>
                   </li>
@@ -424,7 +424,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <div>
               <p className="text-[10px] font-semibold tracking-[0.18em] text-white/60 uppercase mb-1">Gate entry</p>
               <p className="text-[16px] font-bold tracking-tight text-white">Open scanner</p>
-              <p className="text-[12.5px] text-white/70 mt-1 leading-relaxed">
+              <p className="text-[13px] text-white/70 mt-1 leading-relaxed">
                 Reads PDF, mobile QR, and wallet passes. No extra hardware.
               </p>
             </div>
@@ -438,7 +438,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 hover:bg-paper-2 transition-colors">
               <Icon size={14} className="text-ink-3 mb-3" />
               <p className="text-[14px] font-semibold text-ink">{title}</p>
-              <p className="text-[12.5px] text-ink-2 mt-0.5 leading-snug">{body}</p>
+              <p className="text-[13px] text-ink-2 mt-0.5 leading-snug">{body}</p>
             </Link>
           ))}
         </div>

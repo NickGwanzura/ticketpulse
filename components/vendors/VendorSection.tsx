@@ -94,7 +94,7 @@ export default function VendorSection({ listings, eventId, eventSlug, eventTitle
                           </span>
                         )}
                       </div>
-                      <p className="text-[13.5px] font-medium text-ink">{listing.packageName}</p>
+                      <p className="text-[14px] font-medium text-ink">{listing.packageName}</p>
                       {listing.packageDescription && (
                         <p className="text-xs text-ink-2 mt-0.5 line-clamp-2">{listing.packageDescription}</p>
                       )}

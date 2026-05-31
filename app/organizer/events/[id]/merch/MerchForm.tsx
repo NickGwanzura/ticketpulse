@@ -123,13 +123,13 @@ export default function MerchForm({ eventId, merch, onDone }: Props) {
         <div>
           <label htmlFor="sizes" className="block text-[13px] font-medium text-ink mb-1.5">Sizes</label>
           <input id="sizes" name="sizes" type="text" defaultValue={(merch?.sizes ?? []).join(", ")} placeholder="S, M, L, XL" className={inputCls()} />
-          <p className="mt-1 text-[11.5px] text-ink-3">Comma-separated. Leave blank for one-size items.</p>
+          <p className="mt-1 text-[12px] text-ink-3">Comma-separated. Leave blank for one-size items.</p>
         </div>
 
         <div>
           <label htmlFor="colors" className="block text-[13px] font-medium text-ink mb-1.5">Colors</label>
           <input id="colors" name="colors" type="text" defaultValue={(merch?.colors ?? []).join(", ")} placeholder="Black, White, Navy" className={inputCls()} />
-          <p className="mt-1 text-[11.5px] text-ink-3">Comma-separated.</p>
+          <p className="mt-1 text-[12px] text-ink-3">Comma-separated.</p>
         </div>
       </div>
 

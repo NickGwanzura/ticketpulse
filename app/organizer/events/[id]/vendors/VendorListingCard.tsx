@@ -78,11 +78,11 @@ export default function VendorListingCard({
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-[15.5px] font-semibold text-ink truncate">
+                <p className="text-[15px] font-semibold text-ink truncate">
                   {listing.packageName}
                 </p>
                 <span
-                  className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${
+                  className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${
                     listing.available && !listing.booked
                       ? "bg-green-50 text-green-700"
                       : listing.booked
@@ -93,7 +93,7 @@ export default function VendorListingCard({
                   {listing.booked ? "Booked" : listing.available ? "Active" : "Hidden"}
                 </span>
               </div>
-              <p className="text-[12.5px] text-ink-2">
+              <p className="text-[13px] text-ink-2">
                 {listing.vendor.businessName}
                 {listing.vendor.verified && (
                   <span className="ml-1 text-brand-600">✓ Verified</span>
@@ -108,7 +108,7 @@ export default function VendorListingCard({
                 )}
               </p>
               {listing.packageDescription && (
-                <p className="text-[12.5px] text-ink-2 mt-1 line-clamp-2">
+                <p className="text-[13px] text-ink-2 mt-1 line-clamp-2">
                   {listing.packageDescription}
                 </p>
               )}
@@ -130,7 +130,7 @@ export default function VendorListingCard({
               onClick={() => {
                 setEditing((v) => !v)
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2"
             >
               {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
             </button>
@@ -149,7 +149,7 @@ export default function VendorListingCard({
               <button
                 type="submit"
                 disabled={listing.booked}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Power size={12} />
                 {listing.booked ? "Booked" : listing.available ? "Hide" : "Show"}
@@ -166,7 +166,7 @@ export default function VendorListingCard({
                     e.preventDefault()
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-rose-600 hover:border-rose-300"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-rose-600 hover:border-rose-300"
               >
                 <Trash2 size={12} /> Remove
               </button>
@@ -181,19 +181,19 @@ export default function VendorListingCard({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11.5px] font-medium text-ink mb-1">
+                  <label className="block text-[12px] font-medium text-ink mb-1">
                     Package name
                   </label>
                   <input
                     name="packageName"
                     defaultValue={listing.packageName}
                     required
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11.5px] font-medium text-ink mb-1">Price</label>
+                    <label className="block text-[12px] font-medium text-ink mb-1">Price</label>
                     <input
                       name="price"
                       type="number"
@@ -201,15 +201,15 @@ export default function VendorListingCard({
                       min="0"
                       defaultValue={listing.price}
                       required
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11.5px] font-medium text-ink mb-1">Currency</label>
+                    <label className="block text-[12px] font-medium text-ink mb-1">Currency</label>
                     <select
                       name="currency"
                       defaultValue={listing.currency}
-                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
+                      className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
@@ -220,24 +220,24 @@ export default function VendorListingCard({
               </div>
 
               <div>
-                <label className="block text-[11.5px] font-medium text-ink mb-1">Description</label>
+                <label className="block text-[12px] font-medium text-ink mb-1">Description</label>
                 <textarea
                   name="packageDescription"
                   rows={2}
                   defaultValue={listing.packageDescription ?? ""}
-                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15 resize-none"
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15 resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11.5px] font-medium text-ink mb-1">Max capacity</label>
+                  <label className="block text-[12px] font-medium text-ink mb-1">Max capacity</label>
                   <input
                     name="maxCapacity"
                     type="number"
                     min="1"
                     defaultValue={listing.maxCapacity ?? ""}
-                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[13.5px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
+                    className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-[14px] text-ink focus:outline-none focus:ring-4 focus:border-line-2 focus:ring-brand-500/15"
                   />
                 </div>
                 <div className="flex items-end pb-2">

@@ -110,7 +110,7 @@ export default async function SignUpPage({
                     className="sr-only peer"
                   />
                   <Icon size={16} className="mx-auto text-ink-2 peer-checked:text-navy mb-1.5" />
-                  <span className="block text-[12.5px] font-semibold text-ink">{label}</span>
+                  <span className="block text-[13px] font-semibold text-ink">{label}</span>
                   <span className="block text-[10px] text-ink-3 mt-0.5 leading-tight">{body}</span>
                 </label>
               ))}

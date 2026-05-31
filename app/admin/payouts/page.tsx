@@ -78,7 +78,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                 <Icon size={16} className={tone} />
               </span>
               <div>
-                <p className="text-[11.5px] text-ink-3 mb-0.5">{label}</p>
+                <p className="text-[12px] text-ink-3 mb-0.5">{label}</p>
                 <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
               </div>
             </div>
@@ -94,12 +94,12 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
               </span>
               <div>
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(pendingTotal, "USD")} ready to review</p>
-                <p className="text-[12.5px] text-ink-2">{stats.pending} payout request{stats.pending !== 1 ? "s" : ""} pending approval.</p>
+                <p className="text-[13px] text-ink-2">{stats.pending} payout request{stats.pending !== 1 ? "s" : ""} pending approval.</p>
               </div>
             </div>
             <Link
               href="/admin/payouts?status=pending"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors"
             >
               <Send size={13} /> Review pending
             </Link>
@@ -126,7 +126,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                 }`}
               >
                 {label}
-                <span className={`inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full px-1 text-[10.5px] font-bold ${
+                <span className={`inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full px-1 text-[11px] font-bold ${
                   isActive ? "bg-navy text-white" : "bg-paper-2 text-ink-3 ring-1 ring-line"
                 }`}>{count}</span>
               </Link>
@@ -154,7 +154,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     {payoutRows.map((p) => (
                       <tr key={p.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-4">
-                          <p className="text-[13.5px] font-semibold tracking-tight text-ink">{p.organizerName ?? "—"}</p>
+                          <p className="text-[14px] font-semibold tracking-tight text-ink">{p.organizerName ?? "—"}</p>
                           <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">
                             {p.eventTitle ?? "General"} · {p.id.slice(0, 8)}
                             {p.rejectionReason && (
@@ -163,14 +163,14 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                           </p>
                         </td>
                         <td className="px-3 py-4">
-                          <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ink-2">
+                          <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
                             {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                             {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}
                           </span>
                         </td>
-                        <td className="px-3 py-4 text-[12.5px] text-ink-2 whitespace-nowrap">{p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}</td>
+                        <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}</td>
                         <td className="px-3 py-4">
-                          <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
+                          <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
                             {STATUS_LABEL[p.status as PayoutStatus]}
                           </span>
                         </td>
@@ -189,8 +189,8 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                                 </form>
                                 <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
                                   <div className="flex items-center gap-1">
-                                    <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1.5 text-[10.5px] font-semibold text-white hover:bg-red-700 transition-colors">
+                                    <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-700 transition-colors">
                                       <XCircle size={10} /> Reject
                                     </button>
                                   </div>
@@ -208,8 +208,8 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                                 </form>
                                 <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
                                   <div className="flex items-center gap-1">
-                                    <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[10.5px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                                    <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
                                       <CheckCircle2 size={10} /> Pay
                                     </button>
                                   </div>
@@ -221,8 +221,8 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                             {p.status === "processing" && (
                               <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
                                 <div className="flex items-center gap-1">
-                                  <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[10.5px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                                  <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
                                     <CheckCircle2 size={10} /> Pay
                                   </button>
                                 </div>
@@ -231,12 +231,12 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
 
                             {/* Paid — show proof reference */}
                             {p.status === "paid" && p.proofReference && (
-                              <span className="text-[10.5px] text-ink-3 font-medium">Ref: {p.proofReference}</span>
+                              <span className="text-[11px] text-ink-3 font-medium">Ref: {p.proofReference}</span>
                             )}
 
                             {/* Rejected — show reason */}
                             {p.status === "rejected" && p.rejectionReason && (
-                              <span className="text-[10.5px] text-red-600 max-w-[120px] truncate" title={p.rejectionReason}>
+                              <span className="text-[11px] text-red-600 max-w-[120px] truncate" title={p.rejectionReason}>
                                 {p.rejectionReason}
                               </span>
                             )}
@@ -254,14 +254,14 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                   <li key={p.id} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0">
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{p.organizerName ?? "—"}</p>
+                        <p className="text-[14px] font-semibold tracking-tight text-ink truncate">{p.organizerName ?? "—"}</p>
                         <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.eventTitle ?? "General"}</p>
                       </div>
                       <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[p.status as PayoutStatus]}`}>
                         {STATUS_LABEL[p.status as PayoutStatus]}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 text-[12.5px]">
+                    <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
                         {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                         {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"} · {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
@@ -278,7 +278,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                           <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700">Approve</button>
                         </form>
                         <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
-                          <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px]" />
+                          <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
                           <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Reject</button>
                         </form>
                       </div>
@@ -289,7 +289,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                           <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Process</button>
                         </form>
                         <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
-                          <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px]" />
+                          <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
                           <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Pay</button>
                         </form>
                       </div>
@@ -298,7 +298,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                       <div className="mt-3">
                         <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
                           <div className="flex items-center gap-1">
-                            <input name="proofRef" type="text" placeholder="Ref..." className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[10.5px]" />
+                            <input name="proofRef" type="text" placeholder="Ref..." className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
                             <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Mark paid</button>
                           </div>
                         </form>

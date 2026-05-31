@@ -45,7 +45,7 @@ export default async function AccountPage() {
           <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
             {user.name ?? "Your account"}
           </h1>
-          <p className="mt-1.5 text-[14.5px] text-ink-2">{user.email}</p>
+          <p className="mt-1.5 text-[15px] text-ink-2">{user.email}</p>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export default async function AccountPage() {
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-semibold tracking-tight text-ink">Vendor dashboard</p>
-              <p className="text-[12.5px] text-ink-2 mt-0.5">Edit your business profile, logo, and portfolio.</p>
+              <p className="text-[13px] text-ink-2 mt-0.5">Edit your business profile, logo, and portfolio.</p>
             </div>
             <ArrowUpRight size={16} className="text-ink-3 group-hover:text-ink transition-colors shrink-0" />
           </Link>
@@ -123,7 +123,7 @@ export default async function AccountPage() {
               <label key={p.title} className="flex items-start gap-4 p-5 cursor-pointer">
                 <div className="flex-1">
                   <p className="text-[14px] font-semibold tracking-tight text-ink">{p.title}</p>
-                  <p className="text-[12.5px] text-ink-2 mt-0.5">{p.body}</p>
+                  <p className="text-[13px] text-ink-2 mt-0.5">{p.body}</p>
                 </div>
                 <input type="checkbox" defaultChecked={i < 2} className="mt-1.5 w-4 h-4 accent-navy" />
               </label>
@@ -132,7 +132,7 @@ export default async function AccountPage() {
 
           <div className="mt-4 rounded-2xl border border-line bg-paper p-5 flex items-center gap-3">
             <Globe size={16} className="text-ink-3" />
-            <span className="text-[13.5px] font-medium text-ink flex-1">Language &amp; region</span>
+            <span className="text-[14px] font-medium text-ink flex-1">Language &amp; region</span>
             <select className="bg-paper-2 border border-line rounded-lg px-3 py-1.5 text-[13px] text-ink">
               <option>English (Zimbabwe)</option>
               <option>English (UK)</option>
@@ -152,7 +152,7 @@ export default async function AccountPage() {
               <ShieldCheck size={16} className="text-brand-600 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Two-factor authentication</p>
-                <p className="text-[12.5px] text-ink-2 mt-0.5">Extra layer of security on sign-in.</p>
+                <p className="text-[13px] text-ink-2 mt-0.5">Extra layer of security on sign-in.</p>
               </div>
               <button className="text-[13px] font-semibold text-navy hover:underline">Set up</button>
             </div>
@@ -160,7 +160,7 @@ export default async function AccountPage() {
               <Lock size={16} className="text-ink-3 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Active sessions</p>
-                <p className="text-[12.5px] text-ink-2 mt-0.5">1 device, this browser. Sign out everywhere if you suspect access.</p>
+                <p className="text-[13px] text-ink-2 mt-0.5">1 device, this browser. Sign out everywhere if you suspect access.</p>
               </div>
               <form
                 action={async () => {
@@ -177,7 +177,7 @@ export default async function AccountPage() {
               <LogOut size={16} className="text-ink-3 mt-0.5" />
               <div className="flex-1">
                 <p className="text-[14px] font-semibold tracking-tight text-ink">Sign out of this browser</p>
-                <p className="text-[12.5px] text-ink-2 mt-0.5">End your current session, your tickets stay in your account.</p>
+                <p className="text-[13px] text-ink-2 mt-0.5">End your current session, your tickets stay in your account.</p>
               </div>
               <Link
                 href="/logout"
@@ -192,7 +192,7 @@ export default async function AccountPage() {
             <p className="flex-1 text-[13px] text-ink-2">
               <span className="font-semibold text-rose-700">Delete account</span>, permanently remove your account and bookings. This can&apos;t be undone.
             </p>
-            <button className="text-[12.5px] font-semibold text-rose-700 hover:underline shrink-0">Delete</button>
+            <button className="text-[13px] font-semibold text-rose-700 hover:underline shrink-0">Delete</button>
           </div>
         </section>
 

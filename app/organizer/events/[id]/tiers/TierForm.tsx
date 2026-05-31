@@ -117,7 +117,7 @@ export default function TierForm({ eventId, tier, onDone }: Props) {
         <div>
           <label htmlFor="salesStart" className="block text-[13px] font-medium text-ink mb-1.5">Sales start <span className="text-ink-3 font-normal">(optional)</span></label>
           <input id="salesStart" name="salesStart" type="datetime-local" defaultValue={toLocalInputValue(tier?.salesStart ?? null)} className={inputCls()} />
-          <p className="mt-1 text-[11.5px] text-ink-3">Leave blank to start selling immediately.</p>
+          <p className="mt-1 text-[12px] text-ink-3">Leave blank to start selling immediately.</p>
         </div>
 
         <div>

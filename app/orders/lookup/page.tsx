@@ -90,7 +90,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm hover:bg-brand-700 transition"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm hover:bg-brand-700 transition"
         >
           <Search size={14} /> Search
         </button>
@@ -104,7 +104,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
             No orders found for <span className="font-medium">{trimmedEmail}</span>.
             Make sure you use the same email you entered at checkout.
           </p>
-          <p className="mt-4 text-[12.5px] text-ink-3">
+          <p className="mt-4 text-[13px] text-ink-3">
             Still can&apos;t find it?{" "}
             <a href="mailto:support@ticketpulse.tech" className="underline hover:text-ink transition">
               Contact support

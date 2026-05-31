@@ -135,7 +135,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
           <Search size={22} className="text-ink-3" />
         </div>
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
-        <p className="mt-2 text-[14.5px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
+        <p className="mt-2 text-[15px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
         <p className="mt-1 text-[13px] text-ink-3">If you just purchased, check your email — it may take a moment to appear here.</p>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
           <ArrowLeft size={14} /> All orders
@@ -160,7 +160,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       )}
       <div className="border-b border-line bg-paper-2">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-10 md:py-12">
-          <Link href="/orders" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-5">
+          <Link href="/orders" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-5">
             <ArrowLeft size={13} /> All orders
           </Link>
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -169,7 +169,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               <h1 className="text-[28px] md:text-[36px] font-bold tracking-tight leading-tight text-ink">
                 {lineCount} {lineCount === 1 ? "item" : "items"}
               </h1>
-              <p className="mt-1.5 text-[13.5px] text-ink-2">{formatDate(order.createdAt)}</p>
+              <p className="mt-1.5 text-[14px] text-ink-2">{formatDate(order.createdAt)}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -209,15 +209,15 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 <div key={`${line.key}-${i}`} className="relative rounded-2xl border border-line bg-paper overflow-hidden">
                   <div className="flex items-stretch">
                     <div className="flex-1 p-5 md:p-6 min-w-0">
-                      <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase">Ticket {i + 1} of {line.qty}</p>
-                      <p className="mt-1.5 text-[15.5px] font-semibold tracking-tight text-ink line-clamp-1">{line.eventTitle}</p>
+                      <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Ticket {i + 1} of {line.qty}</p>
+                      <p className="mt-1.5 text-[15px] font-semibold tracking-tight text-ink line-clamp-1">{line.eventTitle}</p>
                       <p className="text-[13px] text-ink-2">{line.tierName}</p>
                       {order.status === "paid" && (
-                        <p className="mt-3 text-[12.5px] text-ink-3 inline-flex items-center gap-1.5">
+                        <p className="mt-3 text-[13px] text-ink-3 inline-flex items-center gap-1.5">
                           <Calendar size={12} /> Issued {formatDate(order.createdAt)}
                         </p>
                       )}
-                      <Link href={`/events/${line.eventSlug}`} className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all">
+                      <Link href={`/events/${line.eventSlug}`} className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all">
                         View event <ArrowUpRight size={12} />
                       </Link>
                     </div>
@@ -278,7 +278,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               ))}
             </div>
 
-            <div className="space-y-2 pt-4 border-t border-line text-[12.5px]">
+            <div className="space-y-2 pt-4 border-t border-line text-[13px]">
               <p className="inline-flex items-center gap-2 text-ink-2"><Mail size={12} className="text-ink-3" /> {order.contact.email}</p>
               <p className="inline-flex items-center gap-2 text-ink-2"><Smartphone size={12} className="text-ink-3" /> {order.payment.method.toUpperCase()}</p>
             </div>
@@ -299,7 +299,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                   {resendingTickets ? "Sending…" : "Resend ticket email"}
                 </button>
                 {resendTicketNote && (
-                  <p className={`mt-2 text-[11.5px] text-center ${resendTicketNote.startsWith("Sent") ? "text-green-700" : "text-ink-3"}`}>
+                  <p className={`mt-2 text-[12px] text-center ${resendTicketNote.startsWith("Sent") ? "text-green-700" : "text-ink-3"}`}>
                     {resendTicketNote}
                   </p>
                 )}

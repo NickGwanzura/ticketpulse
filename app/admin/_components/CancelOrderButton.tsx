@@ -59,7 +59,7 @@ export default function CancelOrderButton({
     <form action={formAction} className="relative inline-flex items-center">
       {confirming ? (
         <div className="inline-flex items-center gap-1">
-          <span className="text-[10.5px] text-rose-700 font-medium whitespace-nowrap">
+          <span className="text-[11px] text-rose-700 font-medium whitespace-nowrap">
             Are you sure?
           </span>
           <button

@@ -242,7 +242,7 @@ export default async function OrganizerOrdersPage({
                   key={value}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
+                  className={`rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-paper-2 text-ink font-semibold ring-1 ring-line"
                       : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
@@ -282,7 +282,7 @@ export default async function OrganizerOrdersPage({
                       return (
                         <tr key={o.id} className="hover:bg-paper-2 transition-colors">
                           <td className="px-5 py-3.5 max-w-[180px]">
-                            <p className="text-[12.5px] text-ink truncate">{customerName(o)}</p>
+                            <p className="text-[13px] text-ink truncate">{customerName(o)}</p>
                             {o.guestEmail && (
                               <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                             )}
@@ -291,7 +291,7 @@ export default async function OrganizerOrdersPage({
                             )}
                           </td>
                           <td className="px-3 py-3.5 max-w-[180px]">
-                            <span className="text-[12.5px] text-ink-2 line-clamp-1">
+                            <span className="text-[13px] text-ink-2 line-clamp-1">
                               {eventTitle}
                             </span>
                           </td>
@@ -309,7 +309,7 @@ export default async function OrganizerOrdersPage({
                           </td>
                           <td className="px-3 py-3.5">
                             <span
-                              className={`inline-block w-fit text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
+                              className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
                             >
                               {STATUS_LABEL[o.status ?? ""] ?? o.status}
                             </span>
@@ -323,11 +323,11 @@ export default async function OrganizerOrdersPage({
                           <td className="px-3 py-3.5">
                             {getDeliveryBadge(o.metadata as Record<string, unknown> | null)}
                           </td>
-                          <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
+                          <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">
                             {o.createdAt ? formatDateShort(o.createdAt) : "—"}
                           </td>
                           <td className="px-3 py-3.5 text-right">
-                            <span className="text-[13.5px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
+                            <span className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
                               {formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}
                             </span>
                           </td>
@@ -383,10 +383,10 @@ export default async function OrganizerOrdersPage({
                           <p className="text-[11px] font-mono font-semibold text-ink-3">
                             #{o.id.slice(0, 8)}
                           </p>
-                          <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
+                          <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
                             {customerName(o)}
                           </p>
-                          <p className="text-[11.5px] text-ink-3 line-clamp-1">{eventTitle}</p>
+                          <p className="text-[12px] text-ink-3 line-clamp-1">{eventTitle}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
@@ -454,7 +454,7 @@ export default async function OrganizerOrdersPage({
         </div>
 
         {query && orderRows.length > 0 && (
-          <p className="text-[12.5px] text-ink-3 text-center tp-fade-up-3">
+          <p className="text-[13px] text-ink-3 text-center tp-fade-up-3">
             Showing {orderRows.length} result{orderRows.length !== 1 ? "s" : ""} for{" "}
             <span className="font-medium text-ink-2">&ldquo;{query}&rdquo;</span>
             {" · "}

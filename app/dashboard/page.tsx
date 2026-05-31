@@ -99,8 +99,8 @@ export default async function DashboardPage() {
         {uniqueUpcoming.length > 0 && (
           <section className="tp-fade-up-1">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[17px] font-semibold text-ink">Coming up</h2>
-              <Link href="/orders" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              <h2 className="text-[16px] font-semibold text-ink">Coming up</h2>
+              <Link href="/orders" className="text-[13px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 All orders <ArrowUpRight size={12} />
               </Link>
             </div>
@@ -119,7 +119,7 @@ export default async function DashboardPage() {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14.5px] font-semibold text-ink truncate">{e.eventTitle}</p>
+                      <p className="text-[15px] font-semibold text-ink truncate">{e.eventTitle}</p>
                       <div className="flex items-center gap-3 mt-0.5">
                         {e.eventVenue && (
                           <span className="inline-flex items-center gap-1 text-[12px] text-ink-3">
@@ -140,7 +140,7 @@ export default async function DashboardPage() {
                       ) : (
                         <span className="text-[12px] text-ink-3">{days}d</span>
                       )}
-                      <p className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-navy font-semibold">
+                      <p className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-navy font-semibold">
                         <QrCode size={11} /> View ticket
                       </p>
                     </div>
@@ -170,8 +170,8 @@ export default async function DashboardPage() {
         {hasActivity ? (
           <section className="tp-fade-up-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[17px] font-semibold text-ink">Recent orders</h2>
-              <Link href="/orders" className="text-[12.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              <h2 className="text-[16px] font-semibold text-ink">Recent orders</h2>
+              <Link href="/orders" className="text-[13px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 All <ArrowUpRight size={12} />
               </Link>
             </div>
@@ -227,7 +227,7 @@ export default async function DashboardPage() {
             <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 hover:bg-paper-2 transition-colors">
               <Icon size={14} className="text-ink-3 mb-3" />
               <p className="text-[14px] font-semibold text-ink">{title}</p>
-              <p className="text-[12.5px] text-ink-2 mt-0.5">{body}</p>
+              <p className="text-[13px] text-ink-2 mt-0.5">{body}</p>
             </Link>
           ))}
         </div>

@@ -64,7 +64,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
         {/* Back link */}
         <Link
           href="/payouts"
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-6"
         >
           <ArrowLeft size={14} /> Back to payouts
         </Link>
@@ -73,7 +73,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
           {/* Header */}
           <div className="px-6 pt-6 pb-4 border-b border-line">
             <h1 className="text-[22px] font-bold tracking-tight text-ink">Request payout</h1>
-            <p className="text-[13.5px] text-ink-2 mt-1">
+            <p className="text-[14px] text-ink-2 mt-1">
               Available balance: <span className="font-semibold text-ink tabular-nums">{formatCurrency(balance.availableBalance, "USD")}</span>
             </p>
           </div>
@@ -89,7 +89,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
 
             {/* Amount */}
             <div>
-              <label className="text-[12.5px] font-semibold text-ink mb-1.5 block">Amount (USD)</label>
+              <label className="text-[13px] font-semibold text-ink mb-1.5 block">Amount (USD)</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-ink-3 font-semibold">$</span>
                 <input
@@ -114,7 +114,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                 <button
                   type="button"
                   onClick={() => setAmount(balance.availableBalance.toFixed(2))}
-                  className="text-[11.5px] text-brand-600 font-medium hover:text-brand-700 mt-1.5 transition-colors"
+                  className="text-[12px] text-brand-600 font-medium hover:text-brand-700 mt-1.5 transition-colors"
                 >
                   Max: {formatCurrency(balance.availableBalance, "USD")}
                 </button>
@@ -123,7 +123,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
 
             {/* Payout method */}
             <div>
-              <label className="text-[12.5px] font-semibold text-ink mb-1.5 block">Payout method</label>
+              <label className="text-[13px] font-semibold text-ink mb-1.5 block">Payout method</label>
               <div className="grid grid-cols-3 gap-2">
                 {(Object.entries(METHOD_LABELS) as [PayoutMethod, string][]).map(([key, label]) => {
                   const Icon = METHOD_ICONS[key]
@@ -151,7 +151,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
             {/* EcoCash details */}
             {method === "ecocash" && (
               <div>
-                <label className="text-[12.5px] font-semibold text-ink mb-1.5 block">EcoCash number</label>
+                <label className="text-[13px] font-semibold text-ink mb-1.5 block">EcoCash number</label>
                 <input
                   name="ecocashNumber"
                   type="tel"
@@ -161,7 +161,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                   required
                   className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600 transition"
                 />
-                <p className="text-[11.5px] text-ink-3 mt-1">Funds sent to this EcoCash number</p>
+                <p className="text-[12px] text-ink-3 mt-1">Funds sent to this EcoCash number</p>
               </div>
             )}
 
@@ -169,7 +169,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
             {(method === "bank_usd" || method === "bank_zar") && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-[12.5px] font-semibold text-ink mb-1.5 block">Bank name</label>
+                  <label className="text-[13px] font-semibold text-ink mb-1.5 block">Bank name</label>
                   <input
                     name="bankName"
                     type="text"
@@ -181,7 +181,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[12.5px] font-semibold text-ink mb-1.5 block">Account number</label>
+                  <label className="text-[13px] font-semibold text-ink mb-1.5 block">Account number</label>
                   <input
                     name="accountNumber"
                     type="text"
@@ -193,7 +193,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[12.5px] font-semibold text-ink mb-1.5 block">Account holder name</label>
+                  <label className="text-[13px] font-semibold text-ink mb-1.5 block">Account holder name</label>
                   <input
                     name="accountName"
                     type="text"
@@ -226,7 +226,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
         </div>
 
         {/* Summary card */}
-        <div className="mt-4 rounded-xl border border-line bg-paper p-5 grid grid-cols-3 gap-4 text-center text-[12.5px]">
+        <div className="mt-4 rounded-xl border border-line bg-paper p-5 grid grid-cols-3 gap-4 text-center text-[13px]">
           <div>
             <p className="text-ink-3 mb-0.5">Commission</p>
             <p className="font-semibold text-ink">{balance.commissionRate}%</p>

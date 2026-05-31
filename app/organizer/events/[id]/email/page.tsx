@@ -68,7 +68,7 @@ export default function EmailPage() {
         actions={
           <Link
             href={`/organizer/events/${eventId}/edit`}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />
             Back to event
@@ -90,7 +90,7 @@ export default function EmailPage() {
         <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 space-y-6">
           <div className="space-y-1">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Compose message</h2>
-            <p className="text-[12.5px] text-ink-3">
+            <p className="text-[13px] text-ink-3">
               Use <code className="text-blue text-[12px]">{`{name}`}</code> for the recipient's first name and{" "}
               <code className="text-blue text-[12px]">{`{event}`}</code> for the event name.
               {recipientCount !== null && (
@@ -133,7 +133,7 @@ export default function EmailPage() {
               maxLength={50000}
               rows={8}
             />
-            <p className="mt-1 text-[11.5px] text-ink-3 text-right">{message.length} / 50,000</p>
+            <p className="mt-1 text-[12px] text-ink-3 text-right">{message.length} / 50,000</p>
           </div>
 
           {/* Actions */}

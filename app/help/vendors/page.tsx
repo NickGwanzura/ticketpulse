@@ -24,7 +24,7 @@ export default function HelpVendorsPage() {
       <section className="relative overflow-hidden border-b border-line">
         <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-10 md:pb-14">
-          <Link href="/help" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
+          <Link href="/help" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
             <ArrowLeft size={13} /> All help topics
           </Link>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
@@ -49,7 +49,7 @@ export default function HelpVendorsPage() {
             <div key={s.n} className="rounded-2xl border border-line bg-paper p-6">
               <span className="text-[11px] font-mono font-semibold text-blue">{s.n}</span>
               <p className="mt-3 text-[16px] font-semibold tracking-tight text-ink">{s.title}</p>
-              <p className="mt-1.5 text-[13.5px] text-ink-2 leading-relaxed">{s.body}</p>
+              <p className="mt-1.5 text-[14px] text-ink-2 leading-relaxed">{s.body}</p>
             </div>
           ))}
         </div>
@@ -71,7 +71,7 @@ export default function HelpVendorsPage() {
                   <Icon size={17} className="text-brand-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
-                <p className="text-[13.5px] text-ink-2 mt-1.5 leading-relaxed">{body}</p>
+                <p className="text-[14px] text-ink-2 mt-1.5 leading-relaxed">{body}</p>
               </div>
             ))}
           </div>

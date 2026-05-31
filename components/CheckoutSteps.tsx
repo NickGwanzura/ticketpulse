@@ -33,7 +33,7 @@ export default function CheckoutSteps({ active }: { active: StepId }) {
                 {state === "done" ? <Check size={13} strokeWidth={3} /> : <Icon size={13} />}
               </span>
               <span
-                className={`hidden sm:block text-[12.5px] font-medium tracking-tight ${
+                className={`hidden sm:block text-[13px] font-medium tracking-tight ${
                   state === "active" ? "text-ink" : state === "done" ? "text-ink-2" : "text-ink-3"
                 }`}
               >

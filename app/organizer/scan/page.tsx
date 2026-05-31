@@ -265,7 +265,7 @@ export default function OrganizerScanPage() {
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-6">
         {/* Trust strip */}
-        <div className="rounded-2xl border border-line bg-paper p-4 md:p-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-[12.5px] text-ink-2">
+        <div className="rounded-2xl border border-line bg-paper p-4 md:p-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-ink-2">
           <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-brand-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
           <span className="inline-flex items-center gap-2"><Ticket size={14} className="text-ink-3" /> Reads PDF, mobile QR, and Apple/Google Wallet.</span>
           <span className={`inline-flex items-center gap-2 ${online ? "text-green-700" : "text-amber-700"}`}>
@@ -283,7 +283,7 @@ export default function OrganizerScanPage() {
             { l: "Total scans", v: stats.total, color: "text-ink" },
           ].map((k) => (
             <div key={k.l} className="rounded-2xl border border-line bg-paper p-5">
-              <p className="text-[11.5px] text-ink-3">{k.l}</p>
+              <p className="text-[12px] text-ink-3">{k.l}</p>
               <p className={`mt-1 text-[28px] font-bold tracking-tight tabular-nums ${k.color}`}>{k.v}</p>
             </div>
           ))}
@@ -390,7 +390,7 @@ export default function OrganizerScanPage() {
               {!latest ? (
                 <div className="tp-fade-up">
                   <p className="text-[13px] font-semibold text-ink mb-1">Awaiting first scan</p>
-                  <p className="text-[12.5px] text-ink-2">Hold a QR code in front of the camera, or enter a code manually.</p>
+                  <p className="text-[13px] text-ink-2">Hold a QR code in front of the camera, or enter a code manually.</p>
                 </div>
               ) : (
                 <>
@@ -406,7 +406,7 @@ export default function OrganizerScanPage() {
                       {latest.status === "valid" ? "Admit one" : latest.status === "duplicate" ? "Already scanned" : "Not recognized"}
                     </span>
                     {latest.isStaffTicket && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[10.5px] font-semibold text-purple-700">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[11px] font-semibold text-purple-700">
                         <User size={11} /> Staff
                       </span>
                     )}
@@ -432,8 +432,8 @@ export default function OrganizerScanPage() {
                       <p className="text-[16px] font-semibold tracking-tight text-ink line-clamp-2">
                         {latest.eventTitle ?? "Unknown ticket"}
                       </p>
-                      {latest.tierName && <p className="text-[12.5px] text-ink-2 mt-0.5">{latest.tierName}</p>}
-                      {latest.holder && <p className="text-[12.5px] text-ink-2 mt-0.5">Holder: <span className="font-medium text-ink">{latest.holder}</span></p>}
+                      {latest.tierName && <p className="text-[13px] text-ink-2 mt-0.5">{latest.tierName}</p>}
+                      {latest.holder && <p className="text-[13px] text-ink-2 mt-0.5">Holder: <span className="font-medium text-ink">{latest.holder}</span></p>}
                     </>
                   )}
 
@@ -442,7 +442,7 @@ export default function OrganizerScanPage() {
                     <span className="block h-px bg-green-500/40 rounded-full" style={{ animation: "tp-progress 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both" }} />
                   </span>
 
-                  <p className="mt-2 text-[10.5px] font-mono text-ink-3 tabular-nums break-all">{latest.code}</p>
+                  <p className="mt-2 text-[11px] font-mono text-ink-3 tabular-nums break-all">{latest.code}</p>
                 </>
               )}
             </div>
@@ -452,7 +452,7 @@ export default function OrganizerScanPage() {
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
                 <h3 className="text-[14px] font-semibold tracking-tight text-ink">Recent scans</h3>
                 {recent.length > 0 && (
-                  <button onClick={clearLog} className="inline-flex items-center gap-1 text-[11.5px] text-ink-3 hover:text-ink transition-colors">
+                  <button onClick={clearLog} className="inline-flex items-center gap-1 text-[12px] text-ink-3 hover:text-ink transition-colors">
                     <Trash2 size={12} /> Clear
                   </button>
                 )}
@@ -480,7 +480,7 @@ export default function OrganizerScanPage() {
                               </span>
                             )}
                           </p>
-                          <p className="text-[10.5px] font-mono text-ink-3 truncate">{r.code}</p>
+                          <p className="text-[11px] font-mono text-ink-3 truncate">{r.code}</p>
                         </div>
                         <p className="text-[11px] text-ink-3 shrink-0 tabular-nums">
                           {new Date(r.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

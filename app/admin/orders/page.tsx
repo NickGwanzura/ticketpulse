@@ -275,7 +275,7 @@ export default async function AdminOrdersPage({
                 <Icon size={16} className={tone} />
               </span>
               <div>
-                <p className="text-[11.5px] text-ink-3 mb-0.5">{label}</p>
+                <p className="text-[12px] text-ink-3 mb-0.5">{label}</p>
                 <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">
                   {value}
                 </p>
@@ -320,7 +320,7 @@ export default async function AdminOrdersPage({
                   key={value}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
+                  className={`rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-paper-2 text-ink font-semibold ring-1 ring-line"
                       : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
@@ -360,12 +360,12 @@ export default async function AdminOrdersPage({
                     {orderRows.map((o) => (
                       <tr key={o.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-3.5">
-                          <span className="text-[11.5px] font-mono font-semibold text-ink-2 truncate block max-w-[140px]" title={o.id}>
+                          <span className="text-[12px] font-mono font-semibold text-ink-2 truncate block max-w-[140px]" title={o.id}>
                             #{o.id.slice(0, 8)}
                           </span>
                         </td>
                         <td className="px-3 py-3.5 max-w-[180px]">
-                          <p className="text-[12.5px] text-ink truncate">{customerName(o)}</p>
+                          <p className="text-[13px] text-ink truncate">{customerName(o)}</p>
                           {o.guestEmail && (
                             <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                           )}
@@ -377,7 +377,7 @@ export default async function AdminOrdersPage({
                           )}
                         </td>
                         <td className="px-3 py-3.5 max-w-[200px]">
-                          <span className="text-[12.5px] text-ink-2 line-clamp-1">
+                          <span className="text-[13px] text-ink-2 line-clamp-1">
                             {o.eventTitle ?? "—"}
                           </span>
                         </td>
@@ -433,7 +433,7 @@ export default async function AdminOrdersPage({
                         <td className="px-3 py-3.5">
                           <div className="flex flex-col gap-1">
                             <span
-                              className={`inline-block w-fit text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
+                              className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
                             >
                               {STATUS_LABEL[o.status ?? ""] ?? o.status}
                             </span>
@@ -460,7 +460,7 @@ export default async function AdminOrdersPage({
                         <td className="px-3 py-3.5">
                           <DeliveryBadge metadata={o.metadata} />
                         </td>
-                        <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
+                        <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">
                           <div className="flex flex-col">
                             <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
                             {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
@@ -471,7 +471,7 @@ export default async function AdminOrdersPage({
                           </div>
                         </td>
                         <td className="px-3 py-3.5 text-right">
-                          <span className="text-[13.5px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
+                          <span className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
                             {formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}
                           </span>
                         </td>
@@ -498,7 +498,7 @@ export default async function AdminOrdersPage({
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
                                   <Download size={12} />
                                   Tickets
@@ -512,7 +512,7 @@ export default async function AdminOrdersPage({
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
                                   <Download size={12} />
                                   Tickets
@@ -545,10 +545,10 @@ export default async function AdminOrdersPage({
                         <p className="text-[11px] font-mono font-semibold text-ink-3">
                           #{o.id.slice(0, 8)}
                         </p>
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
+                        <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
                           {o.guestName || o.guestEmail || "—"}
                         </p>
-                        <p className="text-[11.5px] text-ink-3 line-clamp-1">
+                        <p className="text-[12px] text-ink-3 line-clamp-1">
                           {o.eventTitle ?? "—"}
                         </p>
                       </div>
@@ -574,13 +574,13 @@ export default async function AdminOrdersPage({
                     )}
                     {/* Verification detail for awaiting_verification */}
                     {o.status === "awaiting_verification" && (
-                      <p className="text-[10.5px] text-blue-600 font-medium mt-1">
+                      <p className="text-[11px] text-blue-600 font-medium mt-1">
                         {o.verificationSentAt
                           ? `Verification sent ${formatDateShort(o.verificationSentAt)}`
                           : "Not yet verified"}
                       </p>
                     )}
-                    <div className="flex items-center justify-between text-[11.5px] text-ink-3 mt-2">
+                    <div className="flex items-center justify-between text-[12px] text-ink-3 mt-2">
                         <span className="inline-flex items-center gap-1.5">
                           {o.paymentMethod ? (
                             <>
@@ -695,7 +695,7 @@ export default async function AdminOrdersPage({
         </div>
 
         {query && orderRows.length > 0 && (
-          <p className="text-[12.5px] text-ink-3 text-center tp-fade-up-3">
+          <p className="text-[13px] text-ink-3 text-center tp-fade-up-3">
             Showing {orderRows.length} result{orderRows.length !== 1 ? "s" : ""} for{" "}
             <span className="font-medium text-ink-2">&ldquo;{query}&rdquo;</span>
             {" · "}

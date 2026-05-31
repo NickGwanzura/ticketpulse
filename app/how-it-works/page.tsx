@@ -130,7 +130,7 @@ export default function HowItWorksPage() {
           <h1 className="text-[40px] md:text-[64px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
             Tickets in three taps. <span className="text-brand-600">Sales in three steps.</span>
           </h1>
-          <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
+          <p className="mt-5 md:mt-6 text-[16px] md:text-[18px] leading-relaxed text-ink-2 max-w-2xl">
             Buying a ticket, hosting an event, or selling a service: here&apos;s what happens, and how pre-sales fit in. Live and running since May 2026.
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function HowItWorksPage() {
                 <Icon size={17} className="text-brand-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
-              <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
+              <p className="text-[14px] leading-relaxed text-ink-2">{body}</p>
             </li>
           ))}
         </ol>
@@ -164,8 +164,8 @@ export default function HowItWorksPage() {
               <Smartphone size={18} className="text-brand-600" />
             </span>
             <div>
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">Why no signup?</p>
-              <p className="text-[14.5px] font-semibold tracking-tight text-ink leading-snug">
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">Why no signup?</p>
+              <p className="text-[15px] font-semibold tracking-tight text-ink leading-snug">
                 Last-minute decisions deserve last-minute checkouts.
               </p>
               <p className="mt-1.5 text-[13px] text-ink-2 leading-relaxed max-w-xl">
@@ -175,7 +175,7 @@ export default function HowItWorksPage() {
           </div>
           <Link
             href="/events"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition shrink-0"
           >
             Try it now <ArrowRight size={14} />
           </Link>
@@ -202,7 +202,7 @@ export default function HowItWorksPage() {
                   <Icon size={17} className="text-brand-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
-                <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
+                <p className="text-[14px] leading-relaxed text-ink-2">{body}</p>
               </li>
             ))}
           </ol>
@@ -254,7 +254,7 @@ export default function HowItWorksPage() {
                     <Icon size={17} className="text-brand-600" />
                   </span>
                   <div>
-                    <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>
+                    <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
                     <p className="text-[13px] leading-relaxed text-ink-2 mt-1">{body}</p>
                   </div>
                 </li>
@@ -281,7 +281,7 @@ export default function HowItWorksPage() {
                   <Icon size={17} className="text-brand-600" />
                 </span>
                 <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
-                <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
+                <p className="text-[14px] leading-relaxed text-ink-2">{body}</p>
               </li>
             ))}
           </ol>

@@ -82,7 +82,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label htmlFor="businessName" className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+              <label htmlFor="businessName" className="block text-[12px] font-medium text-ink-2 mb-1.5">
                 Business name
               </label>
               <div className="relative">
@@ -99,7 +99,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
             </div>
 
             <div className="md:col-span-2">
-              <label htmlFor="description" className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+              <label htmlFor="description" className="block text-[12px] font-medium text-ink-2 mb-1.5">
                 About your service
               </label>
               <textarea
@@ -113,7 +113,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+              <label htmlFor="phone" className="block text-[12px] font-medium text-ink-2 mb-1.5">
                 Phone
               </label>
               <div className="relative">
@@ -130,7 +130,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+              <label htmlFor="email" className="block text-[12px] font-medium text-ink-2 mb-1.5">
                 Contact email
               </label>
               <div className="relative">
@@ -147,7 +147,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
             </div>
 
             <div>
-              <label htmlFor="city" className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+              <label htmlFor="city" className="block text-[12px] font-medium text-ink-2 mb-1.5">
                 Primary city
               </label>
               <div className="relative">
@@ -164,7 +164,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
             </div>
 
             <div>
-              <label htmlFor="priceRange" className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+              <label htmlFor="priceRange" className="block text-[12px] font-medium text-ink-2 mb-1.5">
                 Price range
               </label>
               <div className="relative">
@@ -207,12 +207,12 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 pt-2">
         <div className="flex-1 min-h-[1.25rem]" aria-live="polite">
           {status.kind === "saved" && (
-            <p className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-green-700">
+            <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-700">
               <Check size={14} /> Profile saved.
             </p>
           )}
           {status.kind === "error" && (
-            <p className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-rose-700">
+            <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-rose-700">
               <AlertCircle size={14} /> {status.message}
             </p>
           )}

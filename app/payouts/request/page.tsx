@@ -21,7 +21,7 @@ export default async function RequestPayoutPage() {
             <Banknote size={22} className="text-amber-600" />
           </div>
           <h1 className="text-[20px] font-bold tracking-tight text-ink">No funds available</h1>
-          <p className="text-[13.5px] text-ink-2 mt-2 max-w-xs mx-auto">
+          <p className="text-[14px] text-ink-2 mt-2 max-w-xs mx-auto">
             Your available balance is zero. Revenue from paid ticket sales will appear here after TicketPulse deducts the platform fee.
           </p>
           <Link

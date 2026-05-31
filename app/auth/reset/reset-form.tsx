@@ -50,7 +50,7 @@ export default function ResetForm({ token }: { token: string }) {
       className="rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.03] space-y-4"
     >
       <div>
-        <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">New password</label>
+        <label className="block text-[12px] font-medium text-ink-2 mb-1.5">New password</label>
         <div className="relative">
           <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
@@ -67,7 +67,7 @@ export default function ResetForm({ token }: { token: string }) {
         </div>
       </div>
       <div>
-        <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Confirm new password</label>
+        <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Confirm new password</label>
         <div className="relative">
           <Lock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
           <input
@@ -85,7 +85,7 @@ export default function ResetForm({ token }: { token: string }) {
       </div>
 
       {error ? (
-        <p className="text-[12.5px] font-medium text-rose-600">{error}</p>
+        <p className="text-[13px] font-medium text-rose-600">{error}</p>
       ) : null}
 
       <button

@@ -92,8 +92,8 @@ export default function PricingPage() {
                   <Icon size={14} className="text-brand-600" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[12.5px] font-semibold tracking-tight text-ink">{k}</p>
-                  <p className="text-[11.5px] text-ink-2 leading-snug">{v}</p>
+                  <p className="text-[13px] font-semibold tracking-tight text-ink">{k}</p>
+                  <p className="text-[12px] text-ink-2 leading-snug">{v}</p>
                 </div>
               </div>
             ))}
@@ -174,7 +174,7 @@ export default function PricingPage() {
           <FAQSection items={FAQ} />
           <div className="mt-10 rounded-2xl border border-line bg-paper p-5 flex items-start gap-3">
             <ShieldCheck size={16} className="text-brand-600 mt-0.5 shrink-0" />
-            <p className="text-[13.5px] text-ink-2 leading-relaxed">
+            <p className="text-[14px] text-ink-2 leading-relaxed">
               <span className="font-semibold text-ink">No surprise fees.</span>{" "}
               We publish every cent we charge. If you spot a fee that isn&apos;t listed here,{" "}
               <Link href="/contact" className="text-navy font-semibold hover:underline">tell us</Link> and we&apos;ll refund it.

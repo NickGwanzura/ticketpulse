@@ -123,7 +123,7 @@ export default function HelpOrganizersPage() {
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-10 md:pb-14">
           <Link
             href="/help"
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink mb-6 transition-colors"
           >
             <ArrowLeft size={13} />
             Back to help center
@@ -134,7 +134,7 @@ export default function HelpOrganizersPage() {
               For organizers
             </span>
           </div>
-          <h1 className="text-[34px] md:text-[52px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
+          <h1 className="text-[36px] md:text-[52px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
             Everything you need to sell tickets.
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-xl leading-relaxed">
@@ -163,10 +163,10 @@ export default function HelpOrganizersPage() {
               <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
                 <Icon size={17} className="text-brand-600" />
               </span>
-              <p className="text-[14.5px] font-semibold tracking-tight text-ink mb-1.5">
+              <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">
                 {title}
               </p>
-              <p className="text-[12.5px] leading-relaxed text-ink-2">{body}</p>
+              <p className="text-[13px] leading-relaxed text-ink-2">{body}</p>
             </li>
           ))}
         </ol>
@@ -191,7 +191,7 @@ export default function HelpOrganizersPage() {
                   <Icon size={17} className="text-brand-600" />
                 </span>
                 <div>
-                  <p className="text-[14.5px] font-semibold tracking-tight text-ink">
+                  <p className="text-[15px] font-semibold tracking-tight text-ink">
                     {title}
                   </p>
                   <p className="text-[13px] leading-relaxed text-ink-2 mt-1">{body}</p>
@@ -207,7 +207,7 @@ export default function HelpOrganizersPage() {
                 <Clock3 size={18} className="text-brand-600" />
               </span>
               <div>
-                <p className="text-[14.5px] font-semibold tracking-tight text-ink leading-snug">
+                <p className="text-[15px] font-semibold tracking-tight text-ink leading-snug">
                   Payouts within 24 hours
                 </p>
                 <p className="mt-1 text-[13px] text-ink-2 leading-relaxed max-w-xl">
@@ -217,7 +217,7 @@ export default function HelpOrganizersPage() {
             </div>
             <Link
               href="/auth/signup?role=organizer"
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition shrink-0"
             >
               Start selling <ArrowRight size={14} />
             </Link>

@@ -18,7 +18,7 @@ export default function GlobalError({
     <div className="min-h-screen flex items-center justify-center px-5">
       <div className="max-w-md w-full text-center">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">Error</p>
-        <h1 className="text-[28px] md:text-[34px] font-bold tracking-[-0.02em] text-ink mb-3">
+        <h1 className="text-[28px] md:text-[36px] font-bold tracking-[-0.02em] text-ink mb-3">
           Something went wrong.
         </h1>
         <p className="text-[15px] text-ink-2 leading-relaxed mb-8">

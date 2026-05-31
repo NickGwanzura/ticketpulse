@@ -14,8 +14,8 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
     <div className="rounded-2xl border border-dashed border-line bg-paper-2/40 p-5">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <p className="text-[14.5px] font-semibold text-ink">Invite an organiser</p>
-          <p className="text-[12.5px] text-ink-2 mt-0.5">
+          <p className="text-[15px] font-semibold text-ink">Invite an organiser</p>
+          <p className="text-[13px] text-ink-2 mt-0.5">
             Send an email invitation to someone you trust to help manage this event.
           </p>
         </div>
@@ -25,7 +25,7 @@ export default function InviteOrganiserForm({ eventId }: { eventId: string }) {
         <input type="hidden" name="eventId" value={eventId} />
 
         <div>
-          <label htmlFor="email" className="block text-[12.5px] font-medium text-ink mb-1.5">
+          <label htmlFor="email" className="block text-[13px] font-medium text-ink mb-1.5">
             Email address
           </label>
           <div className="flex items-stretch gap-2">

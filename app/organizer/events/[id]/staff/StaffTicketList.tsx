@@ -85,8 +85,8 @@ export default function StaffTicketList({
               return (
                 <tr key={t.id} className="hover:bg-paper-2 transition-colors">
                   <td className="px-5 py-3.5 text-[13px] font-medium text-ink">{t.staffName ?? "—"}</td>
-                  <td className="px-3 py-3.5 text-[12.5px] text-ink-2">{t.staffRole ?? "—"}</td>
-                  <td className="px-3 py-3.5 text-[12.5px] text-ink-2">
+                  <td className="px-3 py-3.5 text-[13px] text-ink-2">{t.staffRole ?? "—"}</td>
+                  <td className="px-3 py-3.5 text-[13px] text-ink-2">
                     <span className="flex items-center gap-1">
                       <Phone size={11} className="text-ink-3" />
                       {t.staffPhone ?? "—"}
@@ -103,7 +103,7 @@ export default function StaffTicketList({
                     </button>
                   </td>
                   <td className="px-3 py-3.5 text-center">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold ${badge.cls}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badge.cls}`}>
                       <BadgeIcon size={10} />
                       {badge.label}
                     </span>
@@ -123,7 +123,7 @@ export default function StaffTicketList({
                               e.preventDefault()
                             }
                           }}
-                          className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-2 hover:text-rose-600 hover:border-rose-300 transition"
+                          className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[12px] font-medium text-ink-2 hover:text-rose-600 hover:border-rose-300 transition"
                         >
                           <XCircle size={11} /> Cancel
                         </button>

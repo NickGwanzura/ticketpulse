@@ -188,7 +188,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
             >
               <ArrowLeft size={14} /> Back
             </Link>
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-[11.5px] text-[#5a6d7c]">
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-[12px] text-[#5a6d7c]">
               <ShieldCheck size={12} className="text-brand-600" /> {flat.length} {flat.length === 1 ? "ticket" : "tickets"}
             </span>
           </div>
@@ -262,7 +262,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
                     </span>
 
                     {/* Event title */}
-                    <h2 className="text-[17px] font-bold leading-[1.2] text-[#0a2540] break-words">
+                    <h2 className="text-[16px] font-bold leading-[1.2] text-[#0a2540] break-words">
                       {line.eventTitle}
                     </h2>
 

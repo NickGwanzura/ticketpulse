@@ -74,15 +74,15 @@ export default async function VendorsPage({
           <div className="mt-8 grid grid-cols-3 max-w-md gap-4">
             <div>
               <p className="text-[22px] md:text-[26px] font-bold tracking-tight text-ink leading-none">{VENDORS.length}+</p>
-              <p className="text-[12.5px] text-ink-3 mt-1.5">Active vendors</p>
+              <p className="text-[13px] text-ink-3 mt-1.5">Active vendors</p>
             </div>
             <div>
               <p className="text-[22px] md:text-[26px] font-bold tracking-tight text-ink leading-none">{verifiedCount}</p>
-              <p className="text-[12.5px] text-ink-3 mt-1.5">Verified</p>
+              <p className="text-[13px] text-ink-3 mt-1.5">Verified</p>
             </div>
             <div>
               <p className="text-[22px] md:text-[26px] font-bold tracking-tight text-ink leading-none">{cityCount}</p>
-              <p className="text-[12.5px] text-ink-3 mt-1.5">Cities served</p>
+              <p className="text-[13px] text-ink-3 mt-1.5">Cities served</p>
             </div>
           </div>
         </div>

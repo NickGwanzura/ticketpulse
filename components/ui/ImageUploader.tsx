@@ -305,7 +305,7 @@ export default function ImageUploader(props: Props) {
 
               {/* Primary badge (multi mode) */}
               {multiple && i === 0 && (
-                <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-md bg-navy/90 text-white text-[10.5px] font-semibold px-1.5 py-0.5 tracking-tight">
+                <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-md bg-navy/90 text-white text-[11px] font-semibold px-1.5 py-0.5 tracking-tight">
                   <Star size={10} strokeWidth={3} className="fill-white" /> Primary
                 </span>
               )}
@@ -353,7 +353,7 @@ export default function ImageUploader(props: Props) {
             <li
               key={u.id}
               className={cn(
-                "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-[12.5px]",
+                "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-[13px]",
                 u.error
                   ? "border-rose-200 bg-rose-50 text-rose-700"
                   : "border-line bg-paper-2 text-ink-2",
@@ -417,7 +417,7 @@ export default function ImageUploader(props: Props) {
           <p className="text-[13px] font-medium text-ink tracking-tight">
             Drop {multiple ? "images" : "an image"} or click to upload
           </p>
-          <p className="text-[11.5px] text-ink-3">
+          <p className="text-[12px] text-ink-3">
             JPG, PNG, WebP, AVIF · up to {formatBytes(limit)}
             {multiple && remaining < maxItems
               ? ` · ${remaining} of ${maxItems} slots left`
@@ -439,13 +439,13 @@ export default function ImageUploader(props: Props) {
       )}
 
       {triggerDisabled && remaining === 0 && multiple && (
-        <p className="text-[11.5px] text-ink-3">
+        <p className="text-[12px] text-ink-3">
           Maximum of {maxItems} {maxItems === 1 ? "image" : "images"} reached. Remove one to add another.
         </p>
       )}
 
       {helperText && (
-        <p className="text-[11.5px] text-ink-3">{helperText}</p>
+        <p className="text-[12px] text-ink-3">{helperText}</p>
       )}
     </div>
   )

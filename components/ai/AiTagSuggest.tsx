@@ -55,7 +55,7 @@ export default function AiTagSuggest({ title, description, category, existingTag
           type="button"
           onClick={generate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-2 hover:text-navy transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-2 hover:text-navy transition-colors disabled:opacity-50"
         >
           {loading ? (
             <Loader size={12} className="animate-spin" />
@@ -87,7 +87,7 @@ export default function AiTagSuggest({ title, description, category, existingTag
       {/* Suggested tags */}
       {suggested.length > 0 && !allSuggestedUsed && (
         <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10.5px] text-ink-3 self-center">Suggestions:</span>
+          <span className="text-[11px] text-ink-3 self-center">Suggestions:</span>
           {suggested.map((tag) => {
             const alreadyAdded = existingTags.includes(tag)
             return (

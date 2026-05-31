@@ -163,7 +163,7 @@ export default async function AdminUsersPage({
                 <span className={`inline-flex w-7 h-7 items-center justify-center rounded-lg ${bg}`}>
                   <Icon size={13} className={tone} />
                 </span>
-                <span className="text-[11.5px] text-ink-3]">{label}</span>
+                <span className="text-[12px] text-ink-3]">{label}</span>
               </div>
               <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none tabular-nums">{value.toLocaleString()}</p>
             </div>
@@ -190,7 +190,7 @@ export default async function AdminUsersPage({
                 <Link
                   key={p.value}
                   href={`/admin/users?${queryString(p.value)}`}
-                  className={`rounded-lg px-3.5 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
+                  className={`rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                     isActive ? "bg-paper-2 text-ink font-semibold ring-1 ring-line" : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
                   }`}
                 >
@@ -223,27 +223,27 @@ export default async function AdminUsersPage({
                       <tr key={u.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <span className={`inline-flex w-9 h-9 items-center justify-center rounded-full text-[12.5px] font-bold ${colorFor(u.name ?? u.email)}`}>
+                            <span className={`inline-flex w-9 h-9 items-center justify-center rounded-full text-[13px] font-bold ${colorFor(u.name ?? u.email)}`}>
                               {initial(u.name, u.email)}
                             </span>
                             <div className="min-w-0">
-                              <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{u.name ?? "—"}</p>
-                              <p className="text-[11.5px] text-ink-3 line-clamp-1">{u.email}</p>
+                              <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1">{u.name ?? "—"}</p>
+                              <p className="text-[12px] text-ink-3 line-clamp-1">{u.email}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-3 py-3.5">
-                          <span className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${ROLE_STYLE[u.role as Role]}`}>
+                          <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${ROLE_STYLE[u.role as Role]}`}>
                             {u.role}
                           </span>
                         </td>
                         <td className="px-3 py-3.5">
                           {u.emailVerified ? (
-                            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-emerald-700">
+                            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700">
                               <BadgeCheck size={13} /> Verified
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[11.5px] font-medium text-ink-3">
+                            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-3">
                               <BadgeX size={13} /> Unverified
                             </span>
                           )}
@@ -255,7 +255,7 @@ export default async function AdminUsersPage({
                             <span className="text-[12px] text-ink-3">—</span>
                           )}
                         </td>
-                        <td className="px-3 py-3.5 text-[12.5px] text-ink-2 whitespace-nowrap">
+                        <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">
                           {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                         </td>
                         <td className="px-3 py-3.5 text-right">
@@ -298,8 +298,8 @@ export default async function AdminUsersPage({
                         {initial(u.name, u.email)}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink line-clamp-1">{u.name ?? "—"}</p>
-                        <p className="text-[11.5px] text-ink-3 line-clamp-1">{u.email}</p>
+                        <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1">{u.name ?? "—"}</p>
+                        <p className="text-[12px] text-ink-3 line-clamp-1">{u.email}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mb-3">

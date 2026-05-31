@@ -115,12 +115,12 @@ export default function Footer() {
                   <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-70" />
                   <span className="relative block w-1.5 h-1.5 rounded-full bg-green-400" />
                 </span>
-                <span className="text-[10.5px] font-semibold tracking-[0.18em] text-white/85 uppercase">Newsletter · Weekly</span>
+                <span className="text-[11px] font-semibold tracking-[0.18em] text-white/85 uppercase">Newsletter · Weekly</span>
               </span>
-              <h2 className="font-bold tracking-[-0.025em] leading-[1.05] text-[34px] md:text-[52px]">
+              <h2 className="font-bold tracking-[-0.025em] leading-[1.05] text-[36px] md:text-[52px]">
                 Get tickets <span className="text-blue-300">before they sell out.</span>
               </h2>
-              <p className="mt-4 text-[14.5px] md:text-[16px] text-white/70 max-w-md leading-relaxed">
+              <p className="mt-4 text-[15px] md:text-[16px] text-white/70 max-w-md leading-relaxed">
                 A curated digest of what&apos;s on near you, plus pre-sale codes from the organizers we work with. No spam, unsubscribe in one click.
               </p>
             </div>
@@ -137,17 +137,17 @@ export default function Footer() {
                     aria-label="Email address"
                     placeholder="you@example.com"
                     disabled
-                    className="w-full h-14 rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur pl-11 pr-4 text-[14.5px] text-white placeholder:text-white/40 focus:outline-none focus:border-green-500/60 focus:ring-4 focus:ring-brand-500/20 transition"
+                    className="w-full h-14 rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur pl-11 pr-4 text-[15px] text-white placeholder:text-white/40 focus:outline-none focus:border-green-500/60 focus:ring-4 focus:ring-brand-500/20 transition"
                   />
                 </div>
                 <div
-                  className="w-full h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-white text-navy font-semibold text-[14.5px] shadow-[0_18px_50px_-20px_rgba(255,255,255,0.45)] opacity-50 mt-3"
+                  className="w-full h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-white text-navy font-semibold text-[15px] shadow-[0_18px_50px_-20px_rgba(255,255,255,0.45)] opacity-50 mt-3"
                 >
                   Subscribe to the digest
                   <ArrowRight size={15} />
                 </div>
               </div>
-              <p className="text-[11.5px] text-white/45 leading-relaxed">
+              <p className="text-[12px] text-white/45 leading-relaxed">
                 By subscribing you agree to our{" "}
                 <Link href="/legal/privacy" className="underline decoration-white/30 underline-offset-2 hover:text-white/70">privacy policy</Link>.
               </p>
@@ -167,7 +167,7 @@ export default function Footer() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold tracking-tight text-white">{k}</p>
-                  <p className="text-[11.5px] text-white/55 leading-snug">{v}</p>
+                  <p className="text-[12px] text-white/55 leading-snug">{v}</p>
                 </div>
               </div>
             ))}
@@ -189,7 +189,7 @@ export default function Footer() {
               Zimbabwe&apos;s ticketing platform. Sell, deliver, scan: one stack, built in Harare and live since May 2026.
             </p>
 
-            <div className="mt-5 inline-flex items-start gap-2 text-[12.5px] text-white/55">
+            <div className="mt-5 inline-flex items-start gap-2 text-[13px] text-white/55">
               <MapPin size={13} className="text-white/45 mt-0.5 shrink-0" />
               <span className="leading-relaxed">Harare CBD, Zimbabwe</span>
             </div>
@@ -212,7 +212,7 @@ export default function Footer() {
 
             {/* Payments */}
             <div className="mt-7">
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">We accept</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">We accept</p>
               <div className="flex flex-wrap gap-1.5">
                 {["EcoCash", "Visa", "USD", "ZAR"].map((m) => (
                   <span
@@ -227,17 +227,17 @@ export default function Footer() {
 
             {/* Mobile apps */}
             <div className="mt-6">
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">Mobile apps</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">Mobile apps</p>
               <div className="flex flex-wrap gap-1.5">
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/75">
                   <Apple size={11} className="text-white/55" />
                   iOS
-                  <span className="ml-1 rounded bg-green-500/30 px-1 py-px text-[9.5px] font-semibold tracking-wide uppercase text-green-200">Soon</span>
+                  <span className="ml-1 rounded bg-green-500/30 px-1 py-px text-[10px] font-semibold tracking-wide uppercase text-green-200">Soon</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/75">
                   <Smartphone size={11} className="text-white/55" />
                   Android
-                  <span className="ml-1 rounded bg-green-500/30 px-1 py-px text-[9.5px] font-semibold tracking-wide uppercase text-green-200">Soon</span>
+                  <span className="ml-1 rounded bg-green-500/30 px-1 py-px text-[10px] font-semibold tracking-wide uppercase text-green-200">Soon</span>
                 </span>
               </div>
             </div>
@@ -245,7 +245,7 @@ export default function Footer() {
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-4">
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-4">
                 {col.title}
               </p>
               <ul className="space-y-2.5">
@@ -253,7 +253,7 @@ export default function Footer() {
                   <li key={label}>
                     <Link
                       href={href}
-                      className="text-[13.5px] text-white/70 hover:text-white transition-colors inline-flex items-center group"
+                      className="text-[14px] text-white/70 hover:text-white transition-colors inline-flex items-center group"
                     >
                       {label}
                       <ArrowRight

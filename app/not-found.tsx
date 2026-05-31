@@ -11,22 +11,22 @@ export default function NotFound() {
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-4">
           404 Not found
         </p>
-        <h1 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-[1.1] text-ink mb-3">
+        <h1 className="text-[28px] md:text-[36px] font-bold tracking-tight leading-[1.1] text-ink mb-3">
           This page slipped past us.
         </h1>
-        <p className="text-[14.5px] text-ink-2 mb-8">
+        <p className="text-[15px] text-ink-2 mb-8">
           The link may have moved, been removed, or never existed.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             Back to home
           </Link>
           <Link
             href="/events"
-            className="inline-flex items-center justify-center rounded-lg border border-line bg-paper-2 px-5 py-2.5 text-[13.5px] font-semibold text-ink-2 hover:bg-paper-3 transition-colors"
+            className="inline-flex items-center justify-center rounded-lg border border-line bg-paper-2 px-5 py-2.5 text-[14px] font-semibold text-ink-2 hover:bg-paper-3 transition-colors"
           >
             Browse events
           </Link>

@@ -69,7 +69,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
           <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-brand-700 transition"
             >
               <Download size={13} />
               Print preview
@@ -107,7 +107,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
               </svg>
               <div>
                 <p className="text-[11px] font-bold tracking-tight text-ink">TicketPulse</p>
-                <p className="text-[8.5px] text-ink-3">Verified digital ticket</p>
+                <p className="text-[9px] text-ink-3">Verified digital ticket</p>
               </div>
             </div>
             <div className="text-right">
@@ -210,7 +210,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
 
         {/* QR test hint */}
         {qrUrl && (
-          <div className="mt-4 rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[12.5px] text-green-800 flex items-start gap-2.5">
+          <div className="mt-4 rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] text-green-800 flex items-start gap-2.5">
             <QrCode size={15} className="mt-0.5 shrink-0" />
             <div>
               <p className="font-semibold mb-0.5">Scan to test</p>
@@ -225,7 +225,7 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
 
         {/* Description */}
         {tier.description && (
-          <div className="mt-4 text-[12.5px] text-ink-2 leading-relaxed">
+          <div className="mt-4 text-[13px] text-ink-2 leading-relaxed">
             <span className="font-semibold text-ink">Tier description:</span> {tier.description}
           </div>
         )}

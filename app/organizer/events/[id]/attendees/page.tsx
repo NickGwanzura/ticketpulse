@@ -131,7 +131,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
         actions={
           <Link
             href={`/organizer/events/${id}/edit`}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />
             Back to event
@@ -156,7 +156,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
           <a
             href={`/api/events/${id}/attendees/export`}
             download
-            className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[12.5px] font-medium text-white hover:bg-ink-2 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white hover:bg-ink-2 transition"
           >
             <Download size={14} />
             Download CSV
@@ -284,7 +284,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                         {questions.map((q) => {
                           const answer = orderResponses?.get(q.id)
                           return (
-                            <div key={q.id} className="text-[11.5px]">
+                            <div key={q.id} className="text-[12px]">
                               <span className="text-ink-3">{q.question}:</span>{" "}
                               <span className="text-ink-2">{answer ?? "—"}</span>
                             </div>

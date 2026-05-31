@@ -76,19 +76,19 @@ export default function ContactPage() {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Your name</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Your name</label>
                 <input type="text" name="name" required placeholder="Tendai Moyo"
                   className={inputBaseClass} />
               </div>
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Email</label>
                 <input type="email" name="email" required placeholder="you@example.com"
                   className={inputBaseClass} />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Topic</label>
+              <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Topic</label>
               <select name="topic" required className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition">
                 <option value="">Choose a topic…</option>
                 {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -96,7 +96,7 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Message</label>
+              <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Message</label>
               <textarea name="message" rows={6} required placeholder="Tell us a bit more…"
                 className={`${inputBaseClass} resize-none`} />
             </div>
@@ -130,8 +130,8 @@ export default function ContactPage() {
                   <Icon size={16} className="text-brand-600" />
                 </span>
                 <div className="flex-1">
-                  <p className="text-[14.5px] font-semibold tracking-tight text-ink">{title}</p>
-                  <p className="text-[12.5px] text-ink-3">{body}</p>
+                  <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
+                  <p className="text-[13px] text-ink-3">{body}</p>
                   <p className="text-[13px] font-medium text-navy mt-1.5">{value}</p>
                 </div>
               </div>
@@ -144,8 +144,8 @@ export default function ContactPage() {
                 <MapPin size={16} className="text-ink-2" />
               </span>
               <div>
-                <p className="text-[14.5px] font-semibold tracking-tight text-ink">Office</p>
-                <p className="text-[12.5px] text-ink-2 mt-1 leading-relaxed">
+                <p className="text-[15px] font-semibold tracking-tight text-ink">Office</p>
+                <p className="text-[13px] text-ink-2 mt-1 leading-relaxed">
                   Harare CBD<br />
                   Zimbabwe
                 </p>

@@ -190,7 +190,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
         <p className="text-[10px] font-semibold tracking-widest text-ink-3 uppercase mb-2">Accepted payments</p>
         <div className="flex gap-1.5 justify-center flex-wrap">
           {["EcoCash", "USD", "ZWL", "Paynow", "Card"].map((m) => (
-            <span key={m} className="text-[10.5px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-1 rounded-md">
+            <span key={m} className="text-[11px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-1 rounded-md">
               {m}
             </span>
           ))}

@@ -61,7 +61,7 @@ export default function OrdersPage() {
           <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
             Your orders
           </h1>
-          <p className="mt-1.5 text-[14.5px] text-ink-2">{orders.length} {orders.length === 1 ? "order" : "orders"} total</p>
+          <p className="mt-1.5 text-[15px] text-ink-2">{orders.length} {orders.length === 1 ? "order" : "orders"} total</p>
         </div>
       </div>
 
@@ -69,11 +69,11 @@ export default function OrdersPage() {
         {orders.length === 0 ? (
           <div className="text-center py-8 md:py-14">
             <EmptyTickets />
-            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 text-[10.5px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm shadow-ink/5">
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm shadow-ink/5">
               <Sparkles size={11} className="text-brand-600" /> No orders yet
             </p>
             <h2 className="mt-5 text-[24px] md:text-[28px] font-bold tracking-tight text-ink">Your tickets will live here.</h2>
-            <p className="mt-3 text-[14.5px] text-ink-2 max-w-sm mx-auto">After your first checkout, every QR code, receipt, and refund is one tap away.</p>
+            <p className="mt-3 text-[15px] text-ink-2 max-w-sm mx-auto">After your first checkout, every QR code, receipt, and refund is one tap away.</p>
             <Link
               href="/events"
               className="mt-7 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition shadow-sm shadow-brand-600/20"
@@ -110,14 +110,14 @@ export default function OrdersPage() {
                       <p className="text-[15px] font-semibold tracking-tight text-ink line-clamp-1">
                         {eventNames.join(", ")}
                       </p>
-                      <p className="text-[12.5px] text-ink-3 mt-0.5">
+                      <p className="text-[13px] text-ink-3 mt-0.5">
                         {lineCount} {lineCount === 1 ? "item" : "items"} · {formatDate(o.createdAt)}
                       </p>
                     </div>
 
                     <div className="text-right shrink-0">
                       {Object.entries(o.totalsByCurrency).map(([cur, total]) => (
-                        <p key={cur} className="text-[14.5px] font-bold tracking-tight text-ink whitespace-nowrap">
+                        <p key={cur} className="text-[15px] font-bold tracking-tight text-ink whitespace-nowrap">
                           {formatCurrency(total, cur)}
                         </p>
                       ))}

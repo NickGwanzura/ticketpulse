@@ -65,7 +65,7 @@ export default function WhatsAppPage() {
         actions={
           <Link
             href={`/organizer/events/${eventId}/edit`}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />
             Back to event
@@ -84,7 +84,7 @@ export default function WhatsAppPage() {
               <h2 className="text-[15px] font-semibold tracking-tight text-ink">
                 WhatsApp messaging
               </h2>
-              <p className="text-[12.5px] text-ink-3 leading-relaxed">
+              <p className="text-[13px] text-ink-3 leading-relaxed">
                 Send a WhatsApp message to all attendees who provided a phone
                 number during checkout. Messages are sent via the connected
                 WhatsApp Business account with a 3-second delay between each
@@ -103,7 +103,7 @@ export default function WhatsAppPage() {
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">
               Compose message
             </h2>
-            <p className="text-[12.5px] text-ink-3">
+            <p className="text-[13px] text-ink-3">
               Use <code className="text-blue text-[12px]">{`{name}`}</code> for
               the recipient's first name and{" "}
               <code className="text-blue text-[12px]">{`{event}`}</code> for the
@@ -138,7 +138,7 @@ export default function WhatsAppPage() {
               rows={10}
             />
             <div className="flex justify-between mt-1">
-              <p className="text-[11.5px] text-ink-3">
+              <p className="text-[12px] text-ink-3">
                 Preview:{" "}
                 {message
                   .replace(/\{name\}/g, "John")
@@ -147,7 +147,7 @@ export default function WhatsAppPage() {
                 {message.length > 80 ? "..." : ""}
               </p>
               <p
-                className={`text-[11.5px] ${
+                className={`text-[12px] ${
                   charCount > 4096 ? "text-red-500 font-semibold" : "text-ink-3"
                 }`}
               >
@@ -193,7 +193,7 @@ export default function WhatsAppPage() {
               WhatsApp messages dispatched to {bulkState.sent} of{" "}
               {bulkState.total} attendees.
               {bulkState.batchId && (
-                <span className="block text-[11.5px] mt-1 text-brand-600">
+                <span className="block text-[12px] mt-1 text-brand-600">
                   Batch ID: {bulkState.batchId}
                 </span>
               )}

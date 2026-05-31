@@ -30,7 +30,7 @@ export default async function AdminSettingsPage() {
 
           <div className="p-5 md:p-6 space-y-5">
             <div>
-              <label htmlFor="platformName" className="block text-[12.5px] font-semibold text-ink mb-1.5">
+              <label htmlFor="platformName" className="block text-[13px] font-semibold text-ink mb-1.5">
                 Platform name
               </label>
               <input
@@ -39,12 +39,12 @@ export default async function AdminSettingsPage() {
                 type="text"
                 defaultValue={settings.platformName}
                 required
-                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
+                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[14px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
               />
             </div>
 
             <div>
-              <label htmlFor="supportEmail" className="block text-[12.5px] font-semibold text-ink mb-1.5">
+              <label htmlFor="supportEmail" className="block text-[13px] font-semibold text-ink mb-1.5">
                 Support email
               </label>
               <input
@@ -53,13 +53,13 @@ export default async function AdminSettingsPage() {
                 type="email"
                 defaultValue={settings.supportEmail}
                 required
-                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
+                className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[14px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="defaultCurrency" className="block text-[12.5px] font-semibold text-ink mb-1.5">
+                <label htmlFor="defaultCurrency" className="block text-[13px] font-semibold text-ink mb-1.5">
                   Default currency
                 </label>
                 <select
@@ -67,7 +67,7 @@ export default async function AdminSettingsPage() {
                   name="defaultCurrency"
                   defaultValue={settings.defaultCurrency}
                   required
-                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
+                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[14px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
                 >
                   <option value="USD">USD</option>
                   <option value="ZWL">ZWL</option>
@@ -76,7 +76,7 @@ export default async function AdminSettingsPage() {
               </div>
 
               <div>
-                <label htmlFor="platformFeePercent" className="block text-[12.5px] font-semibold text-ink mb-1.5">
+                <label htmlFor="platformFeePercent" className="block text-[13px] font-semibold text-ink mb-1.5">
                   Platform fee (%)
                 </label>
                 <input
@@ -88,7 +88,7 @@ export default async function AdminSettingsPage() {
                   min={0}
                   max={100}
                   required
-                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13.5px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
+                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[14px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
                 />
               </div>
             </div>
@@ -114,12 +114,12 @@ export default async function AdminSettingsPage() {
           </div>
 
           <div className="px-5 md:px-6 py-4 border-t border-line bg-paper-2 flex items-center justify-between gap-3">
-            <p className="text-[11.5px] text-ink-3">
+            <p className="text-[12px] text-ink-3">
               Last updated {settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : "—"}
             </p>
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
             >
               <Save size={14} /> Save changes
             </button>

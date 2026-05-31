@@ -32,7 +32,7 @@ export default async function LogoutPage() {
           </div>
 
           <h1 className="text-[22px] font-bold tracking-tight text-ink">Sign out of TicketPulse?</h1>
-          <p className="mt-2 text-[13.5px] text-ink-2 leading-relaxed">
+          <p className="mt-2 text-[14px] text-ink-2 leading-relaxed">
             You&apos;ll need to sign in again to access tickets, orders, and your dashboard.
           </p>
 
@@ -42,7 +42,7 @@ export default async function LogoutPage() {
             </span>
             <div className="min-w-0">
               <p className="text-[13px] font-semibold tracking-tight text-ink truncate">{session.user.name ?? "Account"}</p>
-              <p className="text-[11.5px] text-ink-3 truncate">{session.user.email}</p>
+              <p className="text-[12px] text-ink-3 truncate">{session.user.email}</p>
             </div>
           </div>
 

@@ -136,7 +136,7 @@ export default async function ComingSoonPage({
             <span className="relative block w-1.5 h-1.5 rounded-full bg-green-500" />
           </span>
           <Sparkles size={12} className="text-brand-600" />
-          <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">
+          <span className="text-[11px] font-semibold tracking-[0.18em] text-ink uppercase">
             Launching Soon
           </span>
         </div>
@@ -145,7 +145,7 @@ export default async function ComingSoonPage({
         <h1 className="mt-5 text-[32px] sm:text-[42px] md:text-[52px] font-bold tracking-tight text-ink leading-[1.05]">
           Every event. <br className="sm:hidden" /> One ticket.
         </h1>
-        <p className="mt-4 text-[14.5px] sm:text-[16px] text-ink-2 max-w-lg mx-auto leading-relaxed">
+        <p className="mt-4 text-[15px] sm:text-[16px] text-ink-2 max-w-lg mx-auto leading-relaxed">
           Zimbabwe&apos;s premier event ticketing platform goes live{" "}
           <span className="font-semibold text-ink">{launchLabel} CAT</span>.
           Tickets, merch, shuttles and photo packs in one place.
@@ -167,7 +167,7 @@ export default async function ComingSoonPage({
                 <Icon size={14} className="text-brand-600" />
               </span>
               <p className="text-[13px] font-semibold tracking-tight text-ink">{title}</p>
-              <p className="text-[11.5px] text-ink-2 mt-0.5 leading-snug">{body}</p>
+              <p className="text-[12px] text-ink-2 mt-0.5 leading-snug">{body}</p>
             </li>
           ))}
         </ul>
@@ -177,7 +177,7 @@ export default async function ComingSoonPage({
           action={unlock}
           className="mt-10 mx-auto max-w-sm rounded-2xl border border-line bg-paper/85 backdrop-blur p-5 shadow-[0_16px_44px_-20px_rgba(10,37,64,0.18)]"
         >
-          <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-3">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-3">
             Have early access?
           </p>
           <div className="relative">

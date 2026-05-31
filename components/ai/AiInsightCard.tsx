@@ -52,7 +52,7 @@ export default function AiInsightCard({
       )}
 
       {result && !loading && (
-        <p className="text-[12.5px] text-amber-900 leading-relaxed">{result.insight}</p>
+        <p className="text-[13px] text-amber-900 leading-relaxed">{result.insight}</p>
       )}
     </div>
   )

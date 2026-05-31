@@ -127,7 +127,7 @@ export default function HeroEventCard({
           {/* Countdown + CTA row */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {remaining && (
-              <span className={`inline-flex items-center gap-1.5 backdrop-blur-sm text-[12.5px] font-semibold px-3.5 py-2 rounded-full ring-1 ${
+              <span className={`inline-flex items-center gap-1.5 backdrop-blur-sm text-[13px] font-semibold px-3.5 py-2 rounded-full ring-1 ${
                 remaining.kind === "soon"
                   ? "bg-rose-500/20 text-rose-200 ring-rose-400/40"
                   : remaining.kind === "near"

@@ -71,7 +71,7 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
               <span className="font-mono text-[14px] font-bold tracking-tight text-ink">{code.code}</span>
               <span
                 className={cn(
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold",
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
                   code.type === "percent"
                     ? "bg-green-100 text-green-700"
                     : "bg-indigo-100 text-indigo-700",
@@ -80,12 +80,12 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
                 {discountLabel}
               </span>
               {isExpired && (
-                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10.5px] font-semibold text-red-600">
+                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-600">
                   Expired
                 </span>
               )}
               {isMaxed && !isExpired && (
-                <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10.5px] font-semibold text-orange-600">
+                <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-600">
                   Maxed out
                 </span>
               )}

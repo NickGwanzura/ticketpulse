@@ -27,7 +27,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
         <div className="absolute inset-0 [background:radial-gradient(900px_circle_at_30%_-10%,rgba(255,255,255,0.7),transparent_55%)] pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-5 md:px-8 pt-10 md:pt-16 pb-10 md:pb-14">
-          <Link href="/vendors" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
+          <Link href="/vendors" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
             <span className="opacity-60">←</span> All vendors
           </Link>
 
@@ -38,11 +38,11 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className={`text-[10.5px] font-semibold tracking-[0.18em] uppercase ${visual.accent}`}>
+                  <span className={`text-[11px] font-semibold tracking-[0.18em] uppercase ${visual.accent}`}>
                     {visual.label}
                   </span>
                   {vendor.verified && (
-                    <span className="inline-flex items-center gap-1 bg-paper ring-1 ring-line text-ink text-[10.5px] font-semibold tracking-wide px-2 py-0.5 rounded-full">
+                    <span className="inline-flex items-center gap-1 bg-paper ring-1 ring-line text-ink text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full">
                       <ShieldCheck size={11} className="text-brand-600" /> Verified
                     </span>
                   )}
@@ -50,7 +50,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                 <h1 className="text-[28px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
                   {vendor.businessName}
                 </h1>
-                <p className="mt-2 text-[14.5px] md:text-[16px] text-ink-2 max-w-xl">{vendor.tagline}</p>
+                <p className="mt-2 text-[15px] md:text-[16px] text-ink-2 max-w-xl">{vendor.tagline}</p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-ink-2">
                   <span className="inline-flex items-center gap-1.5">
@@ -145,11 +145,11 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                     )}
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                       <div className="flex-1">
-                        <h3 className="text-[17px] font-semibold tracking-tight text-ink">{pkg.name}</h3>
-                        <p className="text-[13.5px] text-ink-2 mt-1">{pkg.description}</p>
+                        <h3 className="text-[16px] font-semibold tracking-tight text-ink">{pkg.name}</h3>
+                        <p className="text-[14px] text-ink-2 mt-1">{pkg.description}</p>
                         <ul className="mt-4 space-y-1.5">
                           {pkg.bullets.map((b) => (
-                            <li key={b} className="flex items-start gap-2 text-[13.5px] text-ink-2">
+                            <li key={b} className="flex items-start gap-2 text-[14px] text-ink-2">
                               <Check size={14} className="text-brand-600 mt-0.5 shrink-0" />
                               <span>{b}</span>
                             </li>
@@ -183,8 +183,8 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                       {visual.emoji}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14.5px] font-semibold tracking-tight text-ink truncate">{p.title}</p>
-                      <p className="text-[12.5px] text-ink-3 mt-0.5">{p.venue}</p>
+                      <p className="text-[15px] font-semibold tracking-tight text-ink truncate">{p.title}</p>
+                      <p className="text-[13px] text-ink-3 mt-0.5">{p.venue}</p>
                     </div>
                     <span className="text-[12px] font-medium text-ink-2 bg-paper-2 border border-line px-2.5 py-1 rounded-md">
                       {p.year}
@@ -206,15 +206,15 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               />
 
               <div className="border-t border-line pt-5 space-y-2.5">
-                <div className="flex items-center gap-2.5 text-[12.5px] text-ink-2">
+                <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
                   <Phone size={13} className="text-ink-3" />
                   <span className="text-ink font-medium">+263 77 hidden, sign in to view</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-[12.5px] text-ink-2">
+                <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
                   <Mail size={13} className="text-ink-3" />
                   <span className="text-ink font-medium">Sign in to view</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-[12.5px] text-ink-2">
+                <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
                   <Globe size={13} className="text-ink-3" />
                   <span>Public profile · ticketpulse.co.zw/v/{vendor.slug}</span>
                 </div>

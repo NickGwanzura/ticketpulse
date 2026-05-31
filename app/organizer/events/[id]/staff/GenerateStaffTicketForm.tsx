@@ -22,14 +22,14 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
 
   return (
     <div className="rounded-2xl border border-dashed border-line bg-paper-2/40 p-5">
-      <p className="text-[14.5px] font-semibold text-ink mb-3">Generate staff ticket</p>
+      <p className="text-[15px] font-semibold text-ink mb-3">Generate staff ticket</p>
 
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="eventId" value={eventId} />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block text-[12.5px] font-medium text-ink mb-1">Staff name *</label>
+            <label className="block text-[13px] font-medium text-ink mb-1">Staff name *</label>
             <input
               name="staffName"
               type="text"
@@ -43,7 +43,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
           </div>
 
           <div>
-            <label className="block text-[12.5px] font-medium text-ink mb-1">Role *</label>
+            <label className="block text-[13px] font-medium text-ink mb-1">Role *</label>
             <select
               name="staffRole"
               required
@@ -61,7 +61,7 @@ export default function GenerateStaffTicketForm({ eventId }: { eventId: string }
           </div>
 
           <div>
-            <label className="block text-[12.5px] font-medium text-ink mb-1">Phone *</label>
+            <label className="block text-[13px] font-medium text-ink mb-1">Phone *</label>
             <input
               name="staffPhone"
               type="tel"

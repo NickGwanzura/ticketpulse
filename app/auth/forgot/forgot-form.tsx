@@ -31,7 +31,7 @@ export default function ForgotForm() {
         <p className="text-sm text-ink leading-relaxed">
           If an account exists for that email, we&apos;ve sent reset instructions. Check your inbox.
         </p>
-        <p className="text-[12.5px] text-ink-3 mt-3 leading-relaxed">
+        <p className="text-[13px] text-ink-3 mt-3 leading-relaxed">
           The link expires in one hour. Didn&apos;t see anything? Check your spam folder, or try again with a different address.
         </p>
       </div>
@@ -44,7 +44,7 @@ export default function ForgotForm() {
       className="rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.03] space-y-4"
     >
       <div>
-        <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
+        <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Email</label>
         <div className="relative">
           <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
           <input

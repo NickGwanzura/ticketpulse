@@ -76,7 +76,7 @@ export default function AccountForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
         <div>
-          <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Full name</label>
+          <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Full name</label>
           <input
             type="text"
             value={name}
@@ -86,7 +86,7 @@ export default function AccountForm({
           />
         </div>
         <div>
-          <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
+          <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Email</label>
           <div className="relative">
             <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
             <input
@@ -98,7 +98,7 @@ export default function AccountForm({
           </div>
         </div>
         <div>
-          <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Phone</label>
+          <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Phone</label>
           <div className="relative">
             <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
             <input
@@ -112,7 +112,7 @@ export default function AccountForm({
           </div>
         </div>
         <div>
-          <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Bio</label>
+          <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Bio</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
@@ -125,10 +125,10 @@ export default function AccountForm({
       </div>
 
       {error && (
-        <p className="text-[12.5px] text-rose-600 font-medium">{error}</p>
+        <p className="text-[13px] text-rose-600 font-medium">{error}</p>
       )}
       {saved && (
-        <p className="text-[12.5px] text-brand-600 font-medium">Changes saved.</p>
+        <p className="text-[13px] text-brand-600 font-medium">Changes saved.</p>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-2">

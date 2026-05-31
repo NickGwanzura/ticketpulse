@@ -69,7 +69,7 @@ export default function AiSocialButton({
         <button
           onClick={generate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-blue hover:text-green-700 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-blue hover:text-green-700 transition-colors disabled:opacity-50"
         >
           {loading ? (
             <Loader size={12} className="animate-spin" />

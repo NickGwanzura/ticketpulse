@@ -62,7 +62,7 @@ export default async function LiveDashboardPage({ params }: { params: Promise<Ro
         actions={
           <Link
             href={`/organizer/events/${id}/edit`}
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-3 hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />
             Back to event

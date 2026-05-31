@@ -58,13 +58,13 @@ export default function CookiesNotice() {
               <button
                 type="button"
                 onClick={dismiss}
-                className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 text-white text-[12.5px] font-semibold tracking-tight px-4 py-2 hover:bg-brand-700 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 text-white text-[13px] font-semibold tracking-tight px-4 py-2 hover:bg-brand-700 transition-colors"
               >
                 Got it
               </button>
               <Link
                 href="/legal/cookies"
-                className="inline-flex items-center text-[12.5px] font-semibold tracking-tight text-ink-2 hover:text-ink px-3 py-2"
+                className="inline-flex items-center text-[13px] font-semibold tracking-tight text-ink-2 hover:text-ink px-3 py-2"
               >
                 Details
               </Link>

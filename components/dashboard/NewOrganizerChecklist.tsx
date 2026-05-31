@@ -64,7 +64,7 @@ export default function NewOrganizerChecklist({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Getting started</h2>
-            <p className="text-[12.5px] text-ink-3 mt-0.5">
+            <p className="text-[13px] text-ink-3 mt-0.5">
               {completed === steps.length
                 ? "You're all set! Your event is live and ready."
                 : `${completed} of ${steps.length} completed`}
@@ -119,7 +119,7 @@ export default function NewOrganizerChecklist({
                     </span>
                   )}
                 </div>
-                <p className={`text-[12.5px] mt-0.5 ${step.done ? "text-ink-3" : "text-ink-2"}`}>
+                <p className={`text-[13px] mt-0.5 ${step.done ? "text-ink-3" : "text-ink-2"}`}>
                   {step.desc}
                 </p>
               </div>

@@ -113,7 +113,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
         {!isDashboardRoute && (
           <Link
             href="/"
-            className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[19px] tracking-tight text-ink"
+            className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[18px] tracking-tight text-ink"
             aria-label="TicketPulse home"
           >
             <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
@@ -129,7 +129,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               type="button"
               onClick={() => setEventsOpen((v) => !v)}
               aria-expanded={eventsOpen}
-              className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors ${
+              className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[14px] font-medium transition-colors ${
                 eventsActive || eventsOpen ? "text-ink bg-paper-2" : "text-ink-2 hover:text-ink hover:bg-paper-2"
               }`}
             >
@@ -143,7 +143,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               <Link
                 key={label}
                 href={href}
-                className={`relative rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors ${
+                className={`relative rounded-lg px-3 py-2 text-[14px] font-medium transition-colors ${
                   isActive ? "text-ink" : "text-ink-2 hover:text-ink hover:bg-paper-2"
                 }`}
               >
@@ -190,7 +190,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           >
             <ShoppingBag size={15} />
             {ready && totalCount > 0 && (
-              <span className="inline-flex min-w-[20px] h-[20px] items-center justify-center rounded-full bg-navy text-white text-[10.5px] font-bold px-1">
+              <span className="inline-flex min-w-[20px] h-[20px] items-center justify-center rounded-full bg-navy text-white text-[11px] font-bold px-1">
                 {totalCount > 99 ? "99+" : totalCount}
               </span>
             )}
@@ -276,13 +276,13 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           <div className="md:hidden flex items-center gap-1">
             <Link
               href="/auth/signin"
-              className="hidden sm:inline-flex h-9 items-center rounded-lg px-2.5 text-[12.5px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
+              className="hidden sm:inline-flex h-9 items-center rounded-lg px-2.5 text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/auth/signup"
-              className="hidden sm:inline-flex h-9 items-center rounded-lg bg-brand-600 px-2.5 text-[12.5px] font-semibold text-white hover:bg-brand-700 transition-colors"
+              className="hidden sm:inline-flex h-9 items-center rounded-lg bg-brand-600 px-2.5 text-[13px] font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               Sign up
             </Link>
@@ -305,7 +305,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           <div role="dialog" aria-modal="true" aria-label="Event categories" className="absolute left-0 right-0 top-16 md:top-24 z-40 border-t border-line bg-paper/95 backdrop-blur-sm md:backdrop-blur-xl shadow-[0_24px_60px_-24px_rgba(10,37,64,0.18)] animate-[tp-fade-in_0.2s_ease-out]">
             <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8">
               <div>
-                <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">By category</p>
+                <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">By category</p>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                   {CATEGORIES.map(({ label, value, desc, icon: Icon, accent, ring }) => (
                     <Link
@@ -317,24 +317,24 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                         <Icon size={15} className={accent} />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[13.5px] font-semibold tracking-tight text-ink group-hover:text-navy-700 transition-colors">{label}</p>
-                        <p className="text-[11.5px] text-ink-3">{desc}</p>
+                        <p className="text-[14px] font-semibold tracking-tight text-ink group-hover:text-navy-700 transition-colors">{label}</p>
+                        <p className="text-[12px] text-ink-3">{desc}</p>
                       </div>
                     </Link>
                   ))}
                 </div>
                 <div className="mt-3 pt-3 border-t border-line flex items-center justify-between">
-                  <Link href="/events" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all">
+                  <Link href="/events" className="inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all">
                     Browse all events <ArrowUpRight size={12} />
                   </Link>
-                  <Link href="/auth/signup?role=organizer" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors">
+                  <Link href="/auth/signup?role=organizer" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors">
                     <CalendarCog size={12} /> Sell tickets
                   </Link>
                 </div>
               </div>
 
               <div>
-                <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">Featured</p>
+                <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">Featured</p>
                 <div className="space-y-2">
                   {featured.length > 0 ? (
                     featured.map((f) => (
@@ -346,7 +346,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                         <span className="shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-lg bg-paper-2 ring-1 ring-line text-ink-2">{(CATEGORY_ICON[f.category.toLowerCase()] ?? Ticket)({ size: 18 })}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-semibold tracking-tight text-ink line-clamp-1">{f.title}</p>
-                          <p className="text-[11.5px] text-ink-3">{f.date}</p>
+                          <p className="text-[12px] text-ink-3">{f.date}</p>
                         </div>
                         <ArrowUpRight size={13} className="text-ink-3 group-hover:text-navy transition-colors shrink-0" />
                       </Link>
@@ -359,7 +359,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                 </div>
                 <div className="mt-3 rounded-xl bg-green-50/60 border border-green-500/15 p-3.5">
                   <p className="text-[12px] font-semibold text-ink">For organizers</p>
-                  <p className="text-[11.5px] text-ink-2 mt-0.5 leading-relaxed">Launch your event in minutes. Verified payouts and built-in shuttle, merch, photos.</p>
+                  <p className="text-[12px] text-ink-2 mt-0.5 leading-relaxed">Launch your event in minutes. Verified payouts and built-in shuttle, merch, photos.</p>
                   <Link href="/auth/signup?role=organizer" className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-navy hover:gap-1.5 transition-all">
                     Start selling <ArrowRight size={11} />
                   </Link>
@@ -398,7 +398,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
 
             {/* Categories grid */}
             <div>
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-2.5">Categories</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-2.5">Categories</p>
               <div className="grid grid-cols-2 gap-2">
                 {CATEGORIES.map(({ label, value, icon: Icon, accent, ring }) => (
                   <Link
@@ -422,7 +422,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-ink">Sell tickets</p>
-                <p className="text-[11.5px] text-ink-2">Launch in minutes, verified payouts.</p>
+                <p className="text-[12px] text-ink-2">Launch in minutes, verified payouts.</p>
               </div>
               <ArrowRight size={14} className="text-ink-2 shrink-0" />
             </Link>
@@ -432,7 +432,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold tracking-tight text-ink">Apply as a vendor</p>
-                <p className="text-[11.5px] text-ink-2">Get booked across Zimbabwe.</p>
+                <p className="text-[12px] text-ink-2">Get booked across Zimbabwe.</p>
               </div>
               <ArrowRight size={14} className="text-ink-2 shrink-0" />
             </Link>

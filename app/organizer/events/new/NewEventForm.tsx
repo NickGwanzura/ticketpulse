@@ -228,7 +228,7 @@ export default function NewEventForm() {
             existingTags={tags}
             onTagsChange={setTags}
           />
-          <p className="mt-1 text-[11.5px] text-ink-3">Up to 10. AI-suggested tags appear below.</p>
+          <p className="mt-1 text-[12px] text-ink-3">Up to 10. AI-suggested tags appear below.</p>
         </div>
 
         <div className="md:col-span-2">
@@ -243,7 +243,7 @@ export default function NewEventForm() {
                   if (form) handleGenerateDesc(form)
                 }}
                 disabled={genDesc}
-                className="inline-flex items-center gap-1 text-[11.5px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
               >
                 {genDesc ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -278,7 +278,7 @@ export default function NewEventForm() {
             />
             <span className="text-[13px] text-ink">Hide my name from the event page</span>
           </label>
-          <p className="mt-1 text-[11.5px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
+          <p className="mt-1 text-[12px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
         </div>
 
         <div className="md:col-span-2">
@@ -291,7 +291,7 @@ export default function NewEventForm() {
             placeholder="FAQ, what to bring, dress code, parking info, refund policy, accessibility details..."
             className={inputCls()}
           />
-          <p className="mt-1 text-[11.5px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
+          <p className="mt-1 text-[12px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
         </div>
 
         {/* Location */}
@@ -430,7 +430,7 @@ export default function NewEventForm() {
             placeholder="https://maps.google.com/?q=..."
             className={inputCls()}
           />
-          <p className="mt-1 text-[11.5px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
+          <p className="mt-1 text-[12px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
         </div>
 
         <div>

@@ -305,12 +305,12 @@ export default async function AdminOrderDetailPage({
                 </span>
               </div>
               {pdfVersion && pdfVersion !== "A6_V1" && (
-                <p className="text-[11.5px] text-amber-600 mt-2">
+                <p className="text-[12px] text-amber-600 mt-2">
                   This order uses an older PDF format. Click &ldquo;Regenerate A6 PDF&rdquo; above to upgrade.
                 </p>
               )}
               {!pdfVersion && orderTickets.length > 0 && (
-                <p className="text-[11.5px] text-amber-600 mt-2">
+                <p className="text-[12px] text-amber-600 mt-2">
                   PDF version not tracked. Click &ldquo;Regenerate A6 PDF&rdquo; above to generate with the latest A6 template.
                 </p>
               )}
@@ -336,7 +336,7 @@ export default async function AdminOrderDetailPage({
                   </div>
                   <div className="text-right">
                     <span
-                      className={`text-[10.5px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${
+                      className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${
                         t.status === "used"
                           ? "bg-emerald-50 text-emerald-700"
                           : t.status === "cancelled"

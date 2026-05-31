@@ -169,14 +169,14 @@ export default async function AdminOverviewPage() {
         <div className="px-5 md:px-8 py-6 md:py-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Admin</p>
-            <h1 className="text-[26px] md:text-[30px] font-bold tracking-tight text-ink leading-none">Platform overview</h1>
+            <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">Platform overview</h1>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <PollNowButton />
-            <Link href="/admin/velocity" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2 text-[12.5px] font-medium text-ink hover:border-line-2 transition-colors">
+            <Link href="/admin/velocity" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
               <Zap size={13} className="text-amber-500" /> Velocity
             </Link>
-            <Link href="/admin/orders" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-ink/90 transition-colors">
+            <Link href="/admin/orders" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink/90 transition-colors">
               <Activity size={13} /> All orders
             </Link>
           </div>
@@ -214,7 +214,7 @@ export default async function AdminOverviewPage() {
             ].map(({ label, value, sub, spark }, i) => (
               <div key={i} className="px-5 py-5 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11.5px] text-ink-3 mb-2">{label}</p>
+                  <p className="text-[12px] text-ink-3 mb-2">{label}</p>
                   <p className="text-[24px] md:text-[26px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
                   <div className="mt-1.5">{sub}</div>
                 </div>
@@ -245,7 +245,7 @@ export default async function AdminOverviewPage() {
                 <Zap size={14} className="text-amber-500" />
                 <h2 className="text-[14px] font-semibold text-ink">Velocity</h2>
               </div>
-              <Link href="/admin/velocity" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              <Link href="/admin/velocity" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 Viewer <ArrowUpRight size={11} />
               </Link>
             </div>
@@ -256,7 +256,7 @@ export default async function AdminOverviewPage() {
                 { label: "Completed orders", value: velocityPaid.toLocaleString(), accent: "text-ink" },
               ].map(({ label, value, accent }) => (
                 <div key={label} className="px-5 py-3.5 flex items-center justify-between">
-                  <span className="text-[12.5px] text-ink-2">{label}</span>
+                  <span className="text-[13px] text-ink-2">{label}</span>
                   <span className={`text-[14px] font-bold tabular-nums ${accent}`}>{value}</span>
                 </div>
               ))}
@@ -267,7 +267,7 @@ export default async function AdminOverviewPage() {
           <div className="rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 py-4 border-b border-line flex items-center justify-between">
               <h2 className="text-[14px] font-semibold text-ink">Recent orders</h2>
-              <Link href="/admin/orders" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              <Link href="/admin/orders" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 All <ArrowUpRight size={11} />
               </Link>
             </div>
@@ -279,7 +279,7 @@ export default async function AdminOverviewPage() {
                   <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" ? "bg-emerald-500" : "bg-amber-400"}`} />
                   <span className="flex-1 text-[13px] text-ink truncate">{o.contactName ?? "Guest"}</span>
                   <span className="text-[12px] font-semibold text-ink tabular-nums">{formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}</span>
-                  <span className="text-[10.5px] text-ink-3 whitespace-nowrap hidden md:block">
+                  <span className="text-[11px] text-ink-3 whitespace-nowrap hidden md:block">
                     {o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
                   </span>
                 </li>
@@ -295,7 +295,7 @@ export default async function AdminOverviewPage() {
               <CalendarCheck size={14} className="text-ink-3" />
               <h2 className="text-[14px] font-semibold text-ink">Published events</h2>
             </div>
-            <Link href="/admin/events" className="text-[11.5px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+            <Link href="/admin/events" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
               Manage all <ArrowUpRight size={11} />
             </Link>
           </div>
@@ -305,7 +305,7 @@ export default async function AdminOverviewPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px]">
                 <thead>
-                  <tr className="border-b border-line text-[10.5px] font-semibold tracking-widest text-ink-3 uppercase">
+                  <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                     <th className="text-left px-5 py-3">Event</th>
                     <th className="text-left px-3 py-3">Organizer</th>
                     <th className="text-right px-5 py-3">Revenue</th>
@@ -317,11 +317,11 @@ export default async function AdminOverviewPage() {
                     return (
                       <tr key={e.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-3 max-w-xs">
-                          <Link href={`/admin/events`} className="text-[13.5px] font-semibold text-ink hover:text-navy transition-colors line-clamp-1">
+                          <Link href={`/admin/events`} className="text-[14px] font-semibold text-ink hover:text-navy transition-colors line-clamp-1">
                             {e.title}
                           </Link>
                         </td>
-                        <td className="px-3 py-3 text-[12.5px] text-ink-2">{e.organizerName ?? e.organizerEmail ?? "—"}</td>
+                        <td className="px-3 py-3 text-[13px] text-ink-2">{e.organizerName ?? e.organizerEmail ?? "—"}</td>
                         <td className="px-5 py-3 text-right text-[13px] font-bold text-ink tabular-nums">
                           {rev ? formatCurrency(rev.revenue, rev.currency) : <span className="text-ink-3 font-normal">—</span>}
                         </td>
@@ -358,9 +358,9 @@ export default async function AdminOverviewPage() {
                 <li key={e.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[9.5px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Draft event</span>
+                      <span className="text-[10px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Draft event</span>
                     </div>
-                    <p className="text-[13.5px] font-semibold text-ink">{e.title}</p>
+                    <p className="text-[14px] font-semibold text-ink">{e.title}</p>
                     <p className="text-[12px] text-ink-2">by {e.organizerName ?? e.organizerEmail ?? "—"}</p>
                     {e.description && (
                       <div className="mt-2">
@@ -369,7 +369,7 @@ export default async function AdminOverviewPage() {
                     )}
                   </div>
                   <form action={publishEventAction.bind(null, e.id)} className="shrink-0">
-                    <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[12.5px] font-semibold hover:bg-ink/85 transition-colors">
+                    <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
                       Publish
                     </button>
                   </form>
@@ -379,13 +379,13 @@ export default async function AdminOverviewPage() {
                 <li key={u.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[9.5px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Unverified user</span>
+                      <span className="text-[10px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Unverified user</span>
                     </div>
-                    <p className="text-[13.5px] font-semibold text-ink">{u.name ?? "—"}</p>
+                    <p className="text-[14px] font-semibold text-ink">{u.name ?? "—"}</p>
                     <p className="text-[12px] text-ink-2">{u.email}</p>
                   </div>
                   <form action={verifyUserEmailAction.bind(null, u.id)} className="shrink-0">
-                    <button type="submit" className="rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[12.5px] font-semibold hover:bg-paper-2 transition-colors">
+                    <button type="submit" className="rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors">
                       Verify email
                     </button>
                   </form>
@@ -396,7 +396,7 @@ export default async function AdminOverviewPage() {
         </div>
 
         {/* Footer quick links */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] tp-fade-up-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] tp-fade-up-3">
           {[
             { label: "Users", href: "/admin/users", icon: Users },
             { label: "Payouts", href: "/admin/payouts", icon: CreditCard },

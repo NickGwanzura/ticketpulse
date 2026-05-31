@@ -66,7 +66,7 @@ function CheckoutSuccessInner() {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
-        <p className="mt-2 text-[14.5px] text-ink-2">We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</p>
+        <p className="mt-2 text-[15px] text-ink-2">We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</p>
         <p className="mt-1 text-[13px] text-ink-3">If you just completed a purchase, check your email — it may take a moment to appear here.</p>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
           See your orders <ArrowRight size={14} />
@@ -116,7 +116,7 @@ function CheckoutSuccessInner() {
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-4 shadow-sm shadow-ink/5">
             <Sparkles size={12} className="text-brand-600" />
-            <span className="text-[10.5px] font-semibold tracking-[0.18em] text-ink uppercase">Order confirmed</span>
+            <span className="text-[11px] font-semibold tracking-[0.18em] text-ink uppercase">Order confirmed</span>
           </div>
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
             You&apos;re going!
@@ -167,15 +167,15 @@ function CheckoutSuccessInner() {
                   <div key={`${line.key}-${i}`} className="relative rounded-2xl border border-line bg-paper overflow-hidden">
                     <div className="flex items-stretch">
                       <div className="flex-1 p-5 md:p-6 min-w-0">
-                        <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase">Ticket {i + 1} of {line.qty}</p>
+                        <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Ticket {i + 1} of {line.qty}</p>
                         <p className="mt-1.5 text-[16px] font-semibold tracking-tight text-ink line-clamp-1">{line.eventTitle}</p>
                         <p className="text-[13px] text-ink-2">{line.tierName}</p>
-                        <p className="mt-3 text-[12.5px] text-ink-3 inline-flex items-center gap-1.5">
+                        <p className="mt-3 text-[13px] text-ink-3 inline-flex items-center gap-1.5">
                           <Calendar size={12} /> {formatDate(order.createdAt)}
                         </p>
                         <Link
                           href={`/events/${line.eventSlug}`}
-                          className="mt-4 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all"
+                          className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all"
                         >
                           View event <ArrowUpRight size={12} />
                         </Link>
@@ -237,17 +237,17 @@ function CheckoutSuccessInner() {
             ))}
           </div>
 
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-[12.5px] pt-5 border-t border-line">
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-[13px] pt-5 border-t border-line">
             <div>
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-1">Name</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-1">Name</p>
               <p className="text-ink font-medium">{order.contact.name}</p>
             </div>
             <div>
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-1">Email</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-1">Email</p>
               <p className="text-ink font-medium truncate inline-flex items-center gap-1.5"><Mail size={11} className="text-ink-3" /> {order.contact.email}</p>
             </div>
             <div>
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-1">Payment</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-1">Payment</p>
               <p className="text-ink font-medium inline-flex items-center gap-1.5"><Smartphone size={11} className="text-ink-3" /> {order.payment.method.toUpperCase()}</p>
             </div>
           </div>

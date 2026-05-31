@@ -90,7 +90,7 @@ export default function HelpPage() {
               </div>
               {searchResults.map(({ q, a }) => (
                 <details key={q} className="group px-4 py-3 cursor-pointer">
-                  <summary className="text-[13.5px] font-medium text-ink list-none flex items-start gap-2 [&::-webkit-details-marker]:hidden">
+                  <summary className="text-[14px] font-medium text-ink list-none flex items-start gap-2 [&::-webkit-details-marker]:hidden">
                     <span className="shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full bg-green-500/60" />
                     {q}
                   </summary>
@@ -117,8 +117,8 @@ export default function HelpPage() {
                 <Icon size={17} className="text-brand-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
-              <p className="text-[12.5px] text-ink-2 mt-1">{body}</p>
-              <p className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy group-hover:gap-1.5 transition-all">
+              <p className="text-[13px] text-ink-2 mt-1">{body}</p>
+              <p className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-navy group-hover:gap-1.5 transition-all">
                 Open <ArrowRight size={11} />
               </p>
             </Link>
@@ -161,7 +161,7 @@ export default function HelpPage() {
           <div>
             <p className="text-[15px] font-semibold tracking-tight text-ink">Live chat</p>
             <p className="text-[13px] text-ink-2 mt-0.5">Mon to Fri, 8:00 to 18:00 CAT. Average reply: 4 minutes.</p>
-            <p className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy">
+            <p className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-navy">
               Open chat <ArrowRight size={11} />
             </p>
           </div>
@@ -173,7 +173,7 @@ export default function HelpPage() {
           <div>
             <p className="text-[15px] font-semibold tracking-tight text-ink">Email support</p>
             <p className="text-[13px] text-ink-2 mt-0.5">Replies within 4 business hours.</p>
-            <p className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy">
+            <p className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-navy">
               hello@ticketpulse.co.zw <ArrowRight size={11} />
             </p>
           </div>

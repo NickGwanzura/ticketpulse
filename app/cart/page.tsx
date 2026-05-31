@@ -111,11 +111,11 @@ export default function CartPage() {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-12 md:py-20 text-center">
         <EmptyTickets />
-        <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 text-[10.5px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm shadow-ink/5">
+        <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm shadow-ink/5">
           <Sparkles size={11} className="text-brand-600" /> Your cart is empty
         </p>
         <h1 className="mt-5 text-[28px] md:text-[36px] font-bold tracking-tight text-ink">Add a few tickets first.</h1>
-        <p className="mt-3 text-[14.5px] text-ink-2 max-w-md mx-auto leading-relaxed">
+        <p className="mt-3 text-[15px] text-ink-2 max-w-md mx-auto leading-relaxed">
           Browse events, pick your tier, and they&apos;ll land here for one quick checkout.
         </p>
         <div className="mt-7 flex flex-wrap gap-2 justify-center">
@@ -156,7 +156,7 @@ export default function CartPage() {
                     {group.eventTitle}
                   </Link>
                 </div>
-                <Link href={`/events/${group.eventSlug}`} className="hidden sm:inline-flex items-center gap-1 text-[12.5px] font-semibold text-navy hover:gap-1.5 transition-all shrink-0">
+                <Link href={`/events/${group.eventSlug}`} className="hidden sm:inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all shrink-0">
                   Add more <ArrowRight size={12} />
                 </Link>
               </div>
@@ -168,9 +168,9 @@ export default function CartPage() {
                       {lineEmoji(line)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase">{line.kind}</p>
+                      <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">{line.kind}</p>
                       <p className="text-[14px] font-semibold tracking-tight text-ink mt-0.5">{lineLabel(line)}</p>
-                      <p className="text-[12.5px] text-ink-3 mt-0.5">
+                      <p className="text-[13px] text-ink-3 mt-0.5">
                         {formatCurrency(line.price, line.currency)} × {line.qty}
                       </p>
 
@@ -244,14 +244,14 @@ export default function CartPage() {
               ))}
             </div>
 
-            <div className="flex items-center justify-between text-[12.5px] text-ink-3 pb-4 border-b border-line">
+            <div className="flex items-center justify-between text-[13px] text-ink-3 pb-4 border-b border-line">
               <span>Booking fees</span>
               <span className="text-green-700 font-medium">Free</span>
             </div>
 
             <Link
               href="/checkout"
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
+              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
             >
               Proceed to checkout <ArrowRight size={15} />
             </Link>
@@ -271,7 +271,7 @@ export default function CartPage() {
               <p className="text-[10px] font-semibold tracking-widest text-ink-3 uppercase mb-2">Accepted payments</p>
               <div className="flex gap-1.5 flex-wrap">
                 {["EcoCash", "ZAR", "Card"].map((m) => (
-                  <span key={m} className="text-[10.5px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-1 rounded-md">
+                  <span key={m} className="text-[11px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-1 rounded-md">
                     {m}
                   </span>
                 ))}
@@ -285,7 +285,7 @@ export default function CartPage() {
       <div className="lg:hidden sticky bottom-0 z-30 border-t border-line bg-paper/95 backdrop-blur-xl px-5 py-3 shadow-[0_-8px_24px_-12px_rgba(10,37,64,0.15)]">
         <div className="flex items-center justify-between gap-3 max-w-3xl mx-auto">
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold tracking-widest text-ink-3 uppercase">Total</p>
+            <p className="text-[11px] font-semibold tracking-widest text-ink-3 uppercase">Total</p>
             <p className="text-[16px] font-bold tracking-tight text-ink truncate">
               {Object.entries(totalsByCurrency).map(([cur, total], i) => (
                 <span key={cur}>{i > 0 && <span className="text-ink-3 font-normal mx-1">·</span>}{formatCurrency(total, cur)}</span>
@@ -294,7 +294,7 @@ export default function CartPage() {
           </div>
           <Link
             href="/checkout"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[13.5px] font-semibold text-white shadow-sm shadow-brand-600/20 active:scale-[0.99] transition shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 active:scale-[0.99] transition shrink-0"
           >
             Checkout <ArrowRight size={13} />
           </Link>

@@ -164,10 +164,10 @@ export default function AuditTrail({ order }: Props) {
                 <div>
                   <p className="text-[14px] font-medium text-ink">{event.title}</p>
                   {event.detail && (
-                    <p className="text-[12.5px] text-ink-3 mt-0.5">{event.detail}</p>
+                    <p className="text-[13px] text-ink-3 mt-0.5">{event.detail}</p>
                   )}
                   {event.timestamp && (
-                    <p className="text-[11.5px] text-ink-3 mt-0.5">
+                    <p className="text-[12px] text-ink-3 mt-0.5">
                       {new Date(event.timestamp).toLocaleString()}
                     </p>
                   )}

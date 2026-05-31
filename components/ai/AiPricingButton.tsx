@@ -30,7 +30,7 @@ export default function AiPricingButton({
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-2 hover:text-navy transition-colors disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-2 hover:text-navy transition-colors disabled:opacity-50"
       >
         <Sparkles size={12} />
         {loading ? "Thinking…" : result ? "Refresh pricing" : "AI pricing suggestion"}

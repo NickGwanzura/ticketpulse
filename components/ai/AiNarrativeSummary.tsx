@@ -29,7 +29,7 @@ export default function AiNarrativeSummary(props: Props) {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-green-700 hover:text-green-900 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-green-700 hover:text-green-900 transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
           {result ? "Refresh" : "Generate"}
@@ -39,7 +39,7 @@ export default function AiNarrativeSummary(props: Props) {
       {error && <p className="text-[12px] text-rose-600 mb-2">{error}</p>}
 
       {!result && !loading && (
-        <p className="text-[12.5px] text-ink-2 leading-relaxed">
+        <p className="text-[13px] text-ink-2 leading-relaxed">
           Click <strong>Generate</strong> for an AI-powered narrative of your analytics.
         </p>
       )}
@@ -52,7 +52,7 @@ export default function AiNarrativeSummary(props: Props) {
       )}
 
       {result && !loading && (
-        <p className="text-[12.5px] text-ink-2 leading-relaxed">{result.narrative}</p>
+        <p className="text-[13px] text-ink-2 leading-relaxed">{result.narrative}</p>
       )}
     </div>
   )

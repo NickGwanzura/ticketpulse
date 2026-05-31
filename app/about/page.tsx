@@ -46,7 +46,7 @@ export default function AboutPage() {
           <h1 className="text-[40px] md:text-[64px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
             Tickets that work, <span className="text-brand-600">where you live.</span>
           </h1>
-          <p className="mt-5 md:mt-6 text-[16px] md:text-[19px] leading-relaxed text-ink-2 max-w-2xl">
+          <p className="mt-5 md:mt-6 text-[16px] md:text-[18px] leading-relaxed text-ink-2 max-w-2xl">
             We&apos;re a Zimbabwean ticketing platform, built in Harare for the way events actually run here: patchy data, four currencies, mobile money and a culture of last-minute decisions. We launched in May 2026 with one anchor event and a single belief: organizers and vendors deserve technology that respects them.
           </p>
 
@@ -74,7 +74,7 @@ export default function AboutPage() {
                 <Icon size={17} className="text-brand-600" />
               </span>
               <p className="text-[15px] font-semibold tracking-tight text-ink mb-1.5">{title}</p>
-              <p className="text-[13.5px] leading-relaxed text-ink-2">{body}</p>
+              <p className="text-[14px] leading-relaxed text-ink-2">{body}</p>
             </div>
           ))}
         </div>
@@ -98,7 +98,7 @@ export default function AboutPage() {
                   </span>
                   <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-1 ${isNow ? "text-green-700" : "text-brand-600"}`}>{m.year}</p>
                   <p className="text-[16px] font-semibold tracking-tight text-ink">{m.title}</p>
-                  <p className="text-[13.5px] text-ink-2 mt-1 leading-relaxed">{m.body}</p>
+                  <p className="text-[14px] text-ink-2 mt-1 leading-relaxed">{m.body}</p>
                 </li>
               )
             })}

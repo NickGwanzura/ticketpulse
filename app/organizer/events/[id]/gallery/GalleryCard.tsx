@@ -53,16 +53,16 @@ export default function GalleryCard({ eventId, gallery, photos }: Props) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-[15.5px] font-semibold text-ink truncate">{gallery.name}</p>
-              <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${gallery.isPublic ? "bg-green-50 text-green-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
+              <p className="text-[15px] font-semibold text-ink truncate">{gallery.name}</p>
+              <span className={`inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${gallery.isPublic ? "bg-green-50 text-green-700" : "bg-paper-2 text-ink-2 ring-1 ring-line"}`}>
                 {gallery.isPublic ? <Eye size={10} /> : <EyeOff size={10} />}
                 {gallery.isPublic ? "Public" : "Hidden"}
               </span>
             </div>
             {gallery.description && (
-              <p className="text-[12.5px] text-ink-2 line-clamp-2">{gallery.description}</p>
+              <p className="text-[13px] text-ink-2 line-clamp-2">{gallery.description}</p>
             )}
-            <p className="text-[11.5px] text-ink-3 mt-1.5">
+            <p className="text-[12px] text-ink-3 mt-1.5">
               {gallery.photoCount ?? 0} photos · {price > 0 ? `${formatCurrency(price, gallery.currency ?? "USD")} pack` : "Free pack"}
             </p>
           </div>
@@ -70,7 +70,7 @@ export default function GalleryCard({ eventId, gallery, photos }: Props) {
             <button
               type="button"
               onClick={() => setEditing((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[12.5px] font-medium text-ink hover:border-line-2"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2"
             >
               {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
             </button>

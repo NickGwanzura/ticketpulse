@@ -26,7 +26,7 @@ export default async function AuthErrorPage({
           <AlertTriangle size={22} className="text-rose-600" />
         </div>
         <h1 className="text-[26px] font-bold tracking-tight text-ink">{err.title}</h1>
-        <p className="mt-2 text-[14.5px] text-ink-2 leading-relaxed">{err.body}</p>
+        <p className="mt-2 text-[15px] text-ink-2 leading-relaxed">{err.body}</p>
         <p className="mt-3 text-[11px] font-mono text-ink-3 bg-paper border border-line inline-block px-2 py-1 rounded">
           code: {code}
         </p>
@@ -46,7 +46,7 @@ export default async function AuthErrorPage({
           </Link>
         </div>
 
-        <Link href="/" className="mt-8 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors">
+        <Link href="/" className="mt-8 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors">
           <ArrowLeft size={13} /> Back home
         </Link>
       </div>

@@ -38,11 +38,11 @@ export default function TransportSection({ routes }: TransportSectionProps) {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="text-[10.5px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-0.5 rounded-full">
+                    <span className="text-[11px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-0.5 rounded-full">
                       {vehicleLabel(route.vehicleType)}
                     </span>
                     {route.operator.verified && (
-                      <span className="flex items-center gap-1 text-[10.5px] font-medium text-green-700">
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-green-700">
                         <CheckCircle size={11} /> Verified
                       </span>
                     )}

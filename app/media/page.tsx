@@ -28,7 +28,7 @@ export default function MediaPage() {
             High-resolution photo packs from every TicketPulse event. Free to browse, pay only if you want to download.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-[12.5px] text-ink-3">
+          <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-[13px] text-ink-3">
             <span className="inline-flex items-center gap-2"><Camera size={14} className="text-brand-600" /> Photo galleries coming after each event</span>
             <span className="inline-flex items-center gap-2"><Download size={14} className="text-brand-600" /> Original-quality downloads</span>
           </div>

@@ -321,9 +321,9 @@ export default async function AdminAnalyticsPage({
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-5 md:px-6 pt-5 pb-4 border-b border-line">
             <div>
-              <p className="text-[11.5px] text-ink-3 mb-1">Revenue over time</p>
+              <p className="text-[12px] text-ink-3 mb-1">Revenue over time</p>
               <div className="flex items-baseline gap-3">
-                <p className="text-[26px] md:text-[30px] font-bold tracking-tight text-ink leading-none">
+                <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
                   {formatCurrency(currentRevenue, "USD")}
                 </p>
                 {prevRevenue > 0 && (
@@ -408,7 +408,7 @@ export default async function AdminAnalyticsPage({
                 <p className="text-[11px] text-ink-3 mb-1.5">{label}</p>
                 <p className="text-[18px] font-bold tracking-tight text-ink leading-none">{value}</p>
                 {delta !== 0 && (
-                  <span className={`mt-2 inline-flex items-center gap-1 text-[11.5px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
+                  <span className={`mt-2 inline-flex items-center gap-1 text-[12px] font-medium ${up ? "text-green-700" : "text-rose-700"}`}>
                     {up ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
                     {Math.abs(delta).toFixed(1)}%
                   </span>
@@ -434,9 +434,9 @@ export default async function AdminAnalyticsPage({
               {salesMix.map(({ label, revenue, pct }) => (
                 <li key={label} className="px-5 md:px-6 py-4">
                   <div className="flex items-baseline justify-between gap-4 mb-2">
-                    <p className="text-[13.5px] font-semibold tracking-tight text-ink capitalize">{label}</p>
+                    <p className="text-[14px] font-semibold tracking-tight text-ink capitalize">{label}</p>
                     <div className="flex items-baseline gap-3 whitespace-nowrap">
-                      <span className="text-[13.5px] font-bold text-ink">{formatCurrency(revenue, "USD")}</span>
+                      <span className="text-[14px] font-bold text-ink">{formatCurrency(revenue, "USD")}</span>
                       <span className="text-[12px] text-ink-3">{pct.toFixed(1)}%</span>
                     </div>
                   </div>
@@ -478,7 +478,7 @@ export default async function AdminAnalyticsPage({
             {ORGANIZERS.length > 0 ? (
               <table className="w-full">
                 <thead>
-                  <tr className="text-[10.5px] font-semibold tracking-widest text-ink-3 uppercase border-b border-line">
+                  <tr className="text-[11px] font-semibold tracking-widest text-ink-3 uppercase border-b border-line">
                     <th className="text-left px-5 py-2.5 font-semibold">Organizer</th>
                     <th className="text-right px-5 py-2.5 font-semibold">Events</th>
                     <th className="text-right px-5 py-2.5 font-semibold">Revenue</th>
@@ -487,9 +487,9 @@ export default async function AdminAnalyticsPage({
                 <tbody className="divide-y divide-line">
                   {ORGANIZERS.map((o) => (
                     <tr key={o.name} className="hover:bg-paper-2 transition-colors">
-                      <td className="px-5 py-3 text-[12.5px] font-semibold text-ink truncate max-w-[140px]">{o.name}</td>
-                      <td className="px-5 py-3 text-right text-[12.5px] text-ink-2">{o.events}</td>
-                      <td className="px-5 py-3 text-right text-[12.5px] font-bold text-ink whitespace-nowrap">
+                      <td className="px-5 py-3 text-[13px] font-semibold text-ink truncate max-w-[140px]">{o.name}</td>
+                      <td className="px-5 py-3 text-right text-[13px] text-ink-2">{o.events}</td>
+                      <td className="px-5 py-3 text-right text-[13px] font-bold text-ink whitespace-nowrap">
                         {formatCurrency(o.revenue, "USD")}
                       </td>
                     </tr>
@@ -517,14 +517,14 @@ export default async function AdminAnalyticsPage({
                 {CITIES.map(({ name, revenue, pct }) => (
                   <li key={name} className="px-5 py-3">
                     <div className="flex items-baseline justify-between gap-3 mb-1.5">
-                      <p className="text-[12.5px] font-semibold text-ink">{name}</p>
-                      <p className="text-[12.5px] font-bold text-ink whitespace-nowrap">{formatCurrency(revenue, "USD")}</p>
+                      <p className="text-[13px] font-semibold text-ink">{name}</p>
+                      <p className="text-[13px] font-bold text-ink whitespace-nowrap">{formatCurrency(revenue, "USD")}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1 bg-paper-2 rounded-full overflow-hidden">
                         <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-[10.5px] text-ink-3 whitespace-nowrap tabular-nums">{pct.toFixed(1)}%</span>
+                      <span className="text-[11px] text-ink-3 whitespace-nowrap tabular-nums">{pct.toFixed(1)}%</span>
                     </div>
                   </li>
                 ))}
@@ -555,11 +555,11 @@ export default async function AdminAnalyticsPage({
                 <ul className="mt-4 space-y-2.5">
                   {PAYMENTS.map(({ label, pct, color }) => (
                     <li key={label} className="flex items-center justify-between gap-3">
-                      <span className="inline-flex items-center gap-2 text-[12.5px] text-ink-2">
+                      <span className="inline-flex items-center gap-2 text-[13px] text-ink-2">
                         <span className={`inline-block w-2.5 h-2.5 rounded-sm ${color}`} />
                         {label}
                       </span>
-                      <span className="text-[12.5px] font-bold text-ink">{pct.toFixed(1)}%</span>
+                      <span className="text-[13px] font-bold text-ink">{pct.toFixed(1)}%</span>
                     </li>
                   ))}
                 </ul>

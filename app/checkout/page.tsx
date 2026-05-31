@@ -228,7 +228,7 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Nothing to check out yet</h1>
-        <p className="mt-2 text-[14.5px] text-ink-2">Add tickets to your cart first.</p>
+        <p className="mt-2 text-[15px] text-ink-2">Add tickets to your cart first.</p>
         <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition">
           Browse events <ArrowRight size={14} />
         </Link>
@@ -363,7 +363,7 @@ export default function CheckoutPage() {
       )}
       <div className="border-b border-line bg-paper-2">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12">
-          <Link href="/cart" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink transition-colors mb-5">
+          <Link href="/cart" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-5">
             <ArrowLeft size={13} /> Back to cart
           </Link>
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
@@ -399,7 +399,7 @@ export default function CheckoutPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Full name</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Full name</label>
                 <div className="relative">
                   <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
                   <input
@@ -414,7 +414,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Email</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Email</label>
                 <div className="relative">
                   <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
                   <input
@@ -430,7 +430,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">Phone</label>
+                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Phone</label>
                 <div className="relative">
                   <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
                   <input
@@ -458,7 +458,7 @@ export default function CheckoutPage() {
               <div className="space-y-4">
                 {eventQuestions.map((q) => (
                   <div key={q.id}>
-                    <label className="block text-[11.5px] font-medium text-ink-2 mb-1.5">
+                    <label className="block text-[12px] font-medium text-ink-2 mb-1.5">
                       {q.question}
                       {q.required && <span className="text-red-500 ml-0.5">*</span>}
                     </label>
@@ -512,7 +512,7 @@ export default function CheckoutPage() {
                               </span>
                               <div className="flex-1 min-w-0">
                                 <p className="text-[14px] font-semibold tracking-tight text-ink">{label}</p>
-                                <p className="text-[12.5px] text-ink-2 mt-0.5">{body}</p>
+                                <p className="text-[13px] text-ink-2 mt-0.5">{body}</p>
                               </div>
                               {checked && <Check size={16} className="text-navy mt-1 shrink-0" />}
                             </div>
@@ -541,7 +541,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90"
+            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90"
           >
             {submitting
               ? form.payment === "velocity-card"
@@ -559,7 +559,7 @@ export default function CheckoutPage() {
 
             <ul className="space-y-3 mb-5 max-h-72 overflow-y-auto pr-1">
               {items.map((line) => (
-                <li key={line.key} className="flex items-start gap-3 text-[12.5px]">
+                <li key={line.key} className="flex items-start gap-3 text-[13px]">
                   <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-line-2 mt-2" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold tracking-tight text-ink line-clamp-1">
@@ -582,7 +582,7 @@ export default function CheckoutPage() {
               {appliedPromo ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-green-700">
+                    <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-700">
                       <Tag size={13} /> {appliedPromo.code}
                     </span>
                     <button
@@ -606,7 +606,7 @@ export default function CheckoutPage() {
                       value={promoInput}
                       onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                       placeholder="Promo code"
-                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[12.5px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-green-500"
+                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 transition focus:outline-none focus:ring-2 focus:ring-blue/30 focus:border-green-500"
                     />
                     <button
                       type="button"
@@ -649,7 +649,7 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                   {promoError && (
-                    <p className="text-[11.5px] text-red-500">{promoError}</p>
+                    <p className="text-[12px] text-red-500">{promoError}</p>
                   )}
                 </div>
               )}
@@ -677,7 +677,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[14.5px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
+              className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
             >
               {submitting
                 ? form.payment === "velocity-card"
@@ -686,7 +686,7 @@ export default function CheckoutPage() {
                 : <><Lock size={14} /> Place order</>}
             </button>
 
-            <p className="mt-3 text-[11.5px] text-ink-3 text-center inline-flex items-center justify-center gap-1.5 w-full">
+            <p className="mt-3 text-[12px] text-ink-3 text-center inline-flex items-center justify-center gap-1.5 w-full">
               <Lock size={11} /> Secured by TicketPulse · escrowed
             </p>
           </div>
@@ -724,17 +724,17 @@ function PaymentWaitingOverlay({
           </span>
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">{label}</p>
-            <h3 className="text-[17px] font-semibold tracking-tight text-ink">
+            <h3 className="text-[16px] font-semibold tracking-tight text-ink">
               {isCard ? "Complete payment" : "Check your phone"}
             </h3>
           </div>
         </div>
-        <p className="mt-4 text-[13.5px] text-ink-2 leading-relaxed">
+        <p className="mt-4 text-[14px] text-ink-2 leading-relaxed">
           {isCard
             ? "We're redirecting you to complete the payment. Once confirmed, you'll be moved forward automatically."
             : <>Processing payment through Velocity. Waiting for <span className="font-semibold text-ink">{phone}</span> to approve the EcoCash prompt. We&apos;ll move you forward as soon as it clears.</>}
         </p>
-        <div className="mt-5 inline-flex items-center gap-2 text-[12.5px] text-ink-3">
+        <div className="mt-5 inline-flex items-center gap-2 text-[13px] text-ink-3">
           <Loader2 size={13} className="animate-spin text-blue" />
           Waiting for confirmation…
         </div>

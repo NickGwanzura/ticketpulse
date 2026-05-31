@@ -253,7 +253,7 @@ export default function RecoveryPanel({
                 onClick={diagnosis.primaryAction.action}
                 disabled={loading !== null}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[13.5px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[14px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                   diagnosis.severity === "warning"
                     ? "bg-amber-600 text-white hover:bg-amber-700"
                     : "bg-rose-600 text-white hover:bg-rose-700",

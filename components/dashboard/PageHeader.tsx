@@ -59,7 +59,7 @@ export default function PageHeader({
           <p className="text-[12px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
             {eyebrow}
           </p>
-          <h1 className="text-[30px] md:text-[40px] font-bold tracking-tight leading-[1.1] text-ink">
+          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-[1.1] text-ink">
             {title}
           </h1>
           {subtitle && (

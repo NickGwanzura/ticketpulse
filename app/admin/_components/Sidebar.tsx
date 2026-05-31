@@ -33,14 +33,14 @@ export default function Sidebar({ name, email }: { name: string; email: string }
           </Link>
         </div>
         <div className="px-5 py-4 border-b border-line">
-          <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Admin</p>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Admin</p>
           <div className="flex items-center gap-2.5">
             <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-navy text-white">
               <Shield size={16} />
             </span>
             <div className="min-w-0">
-              <p className="text-[13.5px] font-semibold tracking-tight text-ink truncate">{name}</p>
-              <p className="text-[11.5px] text-ink-3 truncate">{email}</p>
+              <p className="text-[14px] font-semibold tracking-tight text-ink truncate">{name}</p>
+              <p className="text-[12px] text-ink-3 truncate">{email}</p>
             </div>
           </div>
         </div>
@@ -52,7 +52,7 @@ export default function Sidebar({ name, email }: { name: string; email: string }
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors ${
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] transition-colors ${
                   active
                     ? "bg-paper-2 text-ink font-semibold"
                     : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
@@ -68,7 +68,7 @@ export default function Sidebar({ name, email }: { name: string; email: string }
         <div className="px-3 pt-2 pb-4 border-t border-line">
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-[13.5px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
+            className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-[14px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
           >
             <LogOut size={15} className="text-ink-3" /> Sign out
           </button>
@@ -83,8 +83,8 @@ export default function Sidebar({ name, email }: { name: string; email: string }
               <Shield size={14} />
             </span>
             <div className="min-w-0">
-              <p className="text-[10.5px] font-semibold tracking-[0.18em] text-blue uppercase leading-none">Admin</p>
-              <p className="text-[12.5px] font-semibold tracking-tight text-ink truncate mt-0.5">{name}</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase leading-none">Admin</p>
+              <p className="text-[13px] font-semibold tracking-tight text-ink truncate mt-0.5">{name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export default function Sidebar({ name, email }: { name: string; email: string }
               <Link
                 key={href}
                 href={href}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] whitespace-nowrap transition-colors ${
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                   active
                     ? "bg-paper-2 text-ink font-semibold"
                     : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
