@@ -173,22 +173,27 @@ export async function POST(req: Request) {
         })
         .where(and(eq(orders.id, order.id), inArray(orders.status, ["pending", "awaiting_verification"])))
 
-      const delivery = await deliverTicketForPaidOrder(order.id)
+      // Record in ledger before delivery so re-runs are idempotent
+      try {
+        await db.insert(paymentLedger).values({
+          orderId: order.id,
+          eventId: order.eventId,
+          transactionTrace,
+          salesOrderTrace,
+          invoiceId,
+          amount: order.totalAmount,
+          currency: order.currency ?? "USD",
+          processor: "velocity",
+          velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
+          localStatus: "paid",
+          source: "callback",
+          rawPayload: rawBody as Record<string, unknown>,
+        })
+      } catch {
+        // Duplicate — already recorded, safe to continue
+      }
 
-      await db.insert(paymentLedger).values({
-        orderId: order.id,
-        eventId: order.eventId,
-        transactionTrace,
-        salesOrderTrace,
-        invoiceId,
-        amount: order.totalAmount,
-        currency: order.currency ?? "USD",
-        processor: "velocity",
-        velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
-        localStatus: "paid",
-        source: "callback",
-        rawPayload: rawBody as Record<string, unknown>,
-      })
+      const delivery = await deliverTicketForPaidOrder(order.id)
 
       log.info("velocity callback - order processed", {
         orderId: order.id,

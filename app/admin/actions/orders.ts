@@ -41,23 +41,12 @@ export async function resendOrderEmailAction(orderId: string) {
     throw new Error("Cannot resend email for order with status \"pending\". Only paid or awaiting-verification orders are supported.")
   }
 
-  // ── Awaiting verification → resend magic link ───────────────────────────
+  // Magic links were removed. awaiting_verification orders must be recovered
+  // via the admin recovery actions (completeAndSendAction) or the fix script.
   if (order.status === "awaiting_verification") {
-    const finalizeUrl = `${appUrl}/api/orders/${orderId}/finalize`
-
-    await signIn("resend", {
-      email: recipient,
-      redirectTo: finalizeUrl,
-      redirect: false,
-    })
-
-    await db
-      .update(orders)
-      .set({ verificationSentAt: new Date(), updatedAt: new Date() })
-      .where(eq(orders.id, orderId))
-
-    revalidatePath("/admin/orders")
-    return
+    throw new Error(
+      "Magic links have been removed. Use "Recover & Send Tickets" from the order detail page to resolve this order.",
+    )
   }
 
   // ── Paid → resend order confirmation ────────────────────────────────────

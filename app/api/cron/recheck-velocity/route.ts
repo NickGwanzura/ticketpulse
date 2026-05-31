@@ -182,23 +182,28 @@ export async function POST(request: Request) {
         paidAmount,
       })
 
+      // ── Record in ledger first so re-runs are idempotent ─────────────
+      try {
+        await db.insert(paymentLedger).values({
+          orderId: order.id,
+          eventId: order.eventId,
+          transactionTrace: velocityMeta.transactionTrace,
+          salesOrderTrace: velocityMeta.salesOrderTrace,
+          invoiceId,
+          amount: order.totalAmount,
+          currency: order.currency ?? "USD",
+          processor: "velocity",
+          velocityPollStatus: "SUCCESS",
+          localStatus: "paid",
+          source: "cron",
+          rawPayload: null,
+        })
+      } catch {
+        // Duplicate — already recorded, safe to continue
+      }
+
       // ── Generate tickets and send confirmation ────────────────────────
       const delivery = await deliverTicketForPaidOrder(order.id)
-
-      await db.insert(paymentLedger).values({
-        orderId: order.id,
-        eventId: order.eventId,
-        transactionTrace: velocityMeta.transactionTrace,
-        salesOrderTrace: velocityMeta.salesOrderTrace,
-        invoiceId,
-        amount: order.totalAmount,
-        currency: order.currency ?? "USD",
-        processor: "velocity",
-        velocityPollStatus: "SUCCESS",
-        localStatus: "paid",
-        source: "cron",
-        rawPayload: null,
-      })
 
       log.info("cron/recheck-velocity — delivery result", {
         orderId: order.id,
@@ -222,10 +227,41 @@ export async function POST(request: Request) {
     }
   }
 
+  // ── Retry EMAIL_FAILED deliveries ─────────────────────────────────────────
+  // Find paid orders whose ticket email failed and retry delivery.
+  const emailFailedOrders = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(
+      and(
+        inArray(orders.status, ["paid", "completed"]),
+        sql`${orders.metadata}->'delivery'->>'status' = 'EMAIL_FAILED'`,
+        lt(orders.updatedAt, cutoff),
+      ),
+    )
+    .limit(10)
+
+  let retriedCount = 0
+  for (const order of emailFailedOrders) {
+    try {
+      const delivery = await deliverTicketForPaidOrder(order.id)
+      if (delivery.emailSent) {
+        retriedCount++
+        log.info("cron/recheck-velocity — retried EMAIL_FAILED delivery", { orderId: order.id })
+      }
+    } catch (err) {
+      log.error("cron/recheck-velocity — retry delivery failed", {
+        orderId: order.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+
   const elapsed = Date.now() - startedAt
   log.info("cron/recheck-velocity — run complete", {
     checked: targetOrders.length,
     fixed: fixedCount,
+    retried: retriedCount,
     errors: errorCount,
     elapsedMs: elapsed,
   })
@@ -233,6 +269,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     checked: targetOrders.length,
     fixed: fixedCount,
+    retried: retriedCount,
     errors: errorCount,
     elapsedMs: elapsed,
     results,

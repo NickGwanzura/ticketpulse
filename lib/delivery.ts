@@ -9,6 +9,7 @@ import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
 import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
+import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 
 export type DeliveryStatus =
   | "NOT_STARTED"
@@ -59,6 +60,29 @@ function getDeliveryMeta(meta: Record<string, unknown>): DeliveryMetadata {
  * Returns a summary of what was done.
  */
 export async function deliverTicketForPaidOrder(orderId: string): Promise<{
+  success: boolean
+  status: DeliveryStatus
+  ticketCount: number
+  emailSent: boolean
+  error: string | null
+}> {
+  // Prevent concurrent delivery for the same order (e.g. cron + admin click at the same time).
+  // If the lock is already held another process is mid-delivery — return early.
+  const lockKey = `delivery:${orderId}`
+  const locked = await acquireLock(lockKey)
+  if (!locked) {
+    log.info("delivery - lock contended, another process is delivering", { orderId })
+    return { success: true, status: "DELIVERED", ticketCount: 0, emailSent: false, error: null }
+  }
+
+  try {
+    return await _deliver(orderId)
+  } finally {
+    await releaseLock(lockKey).catch(() => {})
+  }
+}
+
+async function _deliver(orderId: string): Promise<{
   success: boolean
   status: DeliveryStatus
   ticketCount: number

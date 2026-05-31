@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { lte, and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, orderItems, ticketTiers, tickets, paymentLedger } from "@/db/schema"
+import { orders, orderItems, ticketTiers, tickets, paymentLedger, events } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
+import { sendEmail } from "@/lib/email"
 import { pollTransaction, normalizeVelocityPollResponse } from "@/services/velocity"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
@@ -14,13 +15,13 @@ export async function POST(request: Request) {
   const awaitingCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
 
   const pendingStale = await db
-    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency })
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName })
     .from(orders)
     .where(and(eq(orders.status, "pending"), lte(orders.createdAt, pendingCutoff)))
     .limit(50)
 
   const awaitingStale = await db
-    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency })
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName })
     .from(orders)
     .where(and(eq(orders.status, "awaiting_verification"), lte(orders.createdAt, awaitingCutoff)))
     .limit(50)
@@ -178,6 +179,41 @@ export async function POST(request: Request) {
       expired: expireIds,
       skippedVelocity,
     })
+
+    // ── Notify buyers whose orders were expired ─────────────────────────
+    const expiredOrders = staleOrders.filter(
+      (o) => expireIds.includes(o.id) && o.guestEmail,
+    )
+    if (expiredOrders.length > 0) {
+      const eventIds = [...new Set(expiredOrders.map((o) => o.eventId))]
+      const eventRows = await db
+        .select({ id: events.id, title: events.title })
+        .from(events)
+        .where(inArray(events.id, eventIds))
+      const eventTitleMap = new Map(eventRows.map((e) => [e.id, e.title]))
+
+      await Promise.allSettled(
+        expiredOrders.map((order) => {
+          const eventTitle = eventTitleMap.get(order.eventId) ?? "your event"
+          const name = order.guestName ?? "there"
+          return sendEmail({
+            to: order.guestEmail!,
+            subject: `Your order has expired — ${eventTitle}`,
+            html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+<h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Your order has expired</h2>
+<p>Hi ${name},</p>
+<p>Your order for <strong>${eventTitle}</strong> expired because we didn't receive payment confirmation in time.</p>
+<p>If money was deducted from your account, please contact us with your order reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${order.id.slice(0, 8).toUpperCase()}</code> and we'll sort it out.</p>
+<p>You're welcome to try again — tickets may still be available.</p>
+<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · support@ticketpulse.tech</p>
+</div>`,
+            text: `Hi ${name},\n\nYour order for ${eventTitle} has expired. If money was deducted, contact us with reference ${order.id.slice(0, 8).toUpperCase()}.\n\nYou can try again — tickets may still be available.\n\nTicketPulse`,
+          }).catch((err) =>
+            log.warn("cron/expire-orders — expiry email failed", { orderId: order.id, error: String(err) }),
+          )
+        }),
+      )
+    }
   }
 
   return NextResponse.json({
