@@ -7,6 +7,12 @@ export type TicketRecord = {
   tierId: string | null
   tierName: string | null
   scannedAt: string | null
+  transferToEmail: string | null
+  transferToName: string | null
+  transferExpiresAt: string | null
+  transferredAt: string | null
+  holderName: string | null
+  holderEmail: string | null
 }
 
 /**
@@ -62,11 +68,16 @@ export function useOrderTickets(orderId: string, enabled: boolean) {
   }, [orderId, enabled])
 
   const qrByTier = new Map<string, string[]>()
+  const recordsByTier = new Map<string, TicketRecord[]>()
   for (const t of records) {
-    if (!t.tierId || !t.qrCode) continue
-    if (!qrByTier.has(t.tierId)) qrByTier.set(t.tierId, [])
-    qrByTier.get(t.tierId)!.push(t.qrCode)
+    if (!t.tierId) continue
+    if (t.qrCode) {
+      if (!qrByTier.has(t.tierId)) qrByTier.set(t.tierId, [])
+      qrByTier.get(t.tierId)!.push(t.qrCode)
+    }
+    if (!recordsByTier.has(t.tierId)) recordsByTier.set(t.tierId, [])
+    recordsByTier.get(t.tierId)!.push(t)
   }
 
-  return { records, qrByTier, loading }
+  return { records, qrByTier, recordsByTier, loading }
 }

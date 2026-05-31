@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle } from "lucide-react"
 import QrCode from "@/components/QrCode"
 
 // How long to poll after a card payment return before giving up (ms)
@@ -32,7 +32,42 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const [resendTicketNote, setResendTicketNote] = useState<string | null>(null)
   const [pollingForCard, setPollingForCard] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const { qrByTier, loading: ticketsLoading } = useOrderTickets(id, order?.status === "paid")
+  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, order?.status === "paid")
+  const [transferStates, setTransferStates] = useState<Record<string, {
+    open: boolean; name: string; email: string; submitting: boolean; note: string | null; done: boolean
+  }>>({})
+
+  function getTransfer(ticketId: string) {
+    return transferStates[ticketId] ?? { open: false, name: "", email: "", submitting: false, note: null, done: false }
+  }
+  function setTransfer(ticketId: string, patch: Partial<typeof transferStates[string]>) {
+    setTransferStates((s) => ({ ...s, [ticketId]: { ...getTransfer(ticketId), ...patch } }))
+  }
+
+  async function submitTransfer(ticketId: string) {
+    const t = getTransfer(ticketId)
+    if (!t.name.trim() || !t.email.trim()) return
+    setTransfer(ticketId, { submitting: true, note: null })
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/transfer`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ recipientName: t.name, recipientEmail: t.email, orderId: id }),
+      })
+      const data = await res.json()
+      if (!res.ok) setTransfer(ticketId, { submitting: false, note: data.error ?? "Transfer failed" })
+      else setTransfer(ticketId, { submitting: false, done: true, note: `Transfer email sent to ${t.email}` })
+    } catch {
+      setTransfer(ticketId, { submitting: false, note: "Something went wrong. Please try again." })
+    }
+  }
+
+  async function cancelTransfer(ticketId: string) {
+    try {
+      await fetch(`/api/tickets/${ticketId}/transfer`, { method: "DELETE" })
+      setTransfer(ticketId, { open: false, done: false, note: null, name: "", email: "" })
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     if (!ready) return
@@ -205,6 +240,13 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               line.kind === "ticket" ? Array.from({ length: line.qty }).map((_, i) => {
                 const qrValue = qrByTier.get(line.tierId)?.[i] ?? `${order.id}-${line.key}-${i}`
                 const hasRealQr = !!qrByTier.get(line.tierId)?.[i]
+                const ticketRecord = recordsByTier.get(line.tierId)?.[i]
+                const ticketId = ticketRecord?.id
+                const isTransferred = !!ticketRecord?.transferredAt
+                const isPending = !!ticketRecord?.transferToEmail && !isTransferred
+                const holderName = ticketRecord?.holderName
+                const ts = ticketId ? getTransfer(ticketId) : null
+
                 return (
                 <div key={`${line.key}-${i}`} className="relative rounded-2xl border border-line bg-paper overflow-hidden">
                   <div className="flex items-stretch">
@@ -212,6 +254,9 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">Ticket {i + 1} of {line.qty}</p>
                       <p className="mt-1.5 text-[15px] font-semibold tracking-tight text-ink line-clamp-1">{line.eventTitle}</p>
                       <p className="text-[13px] text-ink-2">{line.tierName}</p>
+                      {holderName && (
+                        <p className="mt-1 text-[12px] text-emerald-700 font-medium">Holder: {holderName}</p>
+                      )}
                       {order.status === "paid" && (
                         <p className="mt-3 text-[13px] text-ink-3 inline-flex items-center gap-1.5">
                           <Calendar size={12} /> Issued {formatDate(order.createdAt)}
@@ -220,6 +265,84 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       <Link href={`/events/${line.eventSlug}`} className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all">
                         View event <ArrowUpRight size={12} />
                       </Link>
+
+                      {/* Transfer section */}
+                      {order.status === "paid" && ticketId && !isTransferred && (
+                        <div className="mt-4 pt-4 border-t border-line">
+                          {isPending && !ts?.done ? (
+                            <div className="space-y-1.5">
+                              <p className="text-[12px] text-amber-700 font-medium">
+                                Transfer pending — waiting for {ticketRecord.transferToName} to accept
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => cancelTransfer(ticketId)}
+                                className="text-[12px] text-ink-3 underline hover:text-red-500 transition"
+                              >
+                                Cancel transfer
+                              </button>
+                            </div>
+                          ) : ts?.done ? (
+                            <p className="text-[12px] text-green-700 font-medium inline-flex items-center gap-1.5">
+                              <CheckCircle size={13} /> {ts.note}
+                            </p>
+                          ) : ts?.open ? (
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Recipient name"
+                                  value={ts.name}
+                                  onChange={(e) => setTransfer(ticketId, { name: e.target.value })}
+                                  className="flex-1 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/20 transition"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setTransfer(ticketId, { open: false })}
+                                  className="text-ink-3 hover:text-ink transition"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                              <input
+                                type="email"
+                                placeholder="Recipient email"
+                                value={ts.email}
+                                onChange={(e) => setTransfer(ticketId, { email: e.target.value })}
+                                className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/20 transition"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => submitTransfer(ticketId)}
+                                disabled={ts.submitting || !ts.name.trim() || !ts.email.trim()}
+                                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-[13px] font-semibold text-white hover:bg-navy/90 disabled:opacity-50 transition"
+                              >
+                                {ts.submitting ? <Loader2 size={13} className="animate-spin" /> : <ArrowRightLeft size={13} />}
+                                {ts.submitting ? "Sending…" : "Send transfer"}
+                              </button>
+                              {ts.note && (
+                                <p className="text-[12px] text-red-600">{ts.note}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setTransfer(ticketId, { open: true })}
+                              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-ink transition"
+                            >
+                              <ArrowRightLeft size={13} /> Transfer ticket
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {isTransferred && (
+                        <div className="mt-4 pt-4 border-t border-line">
+                          <p className="text-[12px] text-ink-3 font-medium">
+                            Transferred to {ticketRecord.holderName ?? "new holder"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="relative flex items-center">
                       <span className="absolute -top-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
@@ -227,7 +350,12 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       <span className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
                     </div>
                     <div className="p-4 md:p-5 bg-paper-2 flex flex-col items-center justify-center gap-2">
-                      <QrCode value={qrValue} size={120} className="rounded-lg ring-1 ring-line" />
+                      <div className={isTransferred ? "opacity-30 pointer-events-none" : ""}>
+                        <QrCode value={qrValue} size={120} className="rounded-lg ring-1 ring-line" />
+                      </div>
+                      {isTransferred && (
+                        <p className="text-[11px] text-ink-3 text-center font-medium">Transferred</p>
+                      )}
                       {!hasRealQr && order.status === "paid" && ticketsLoading && (
                         <p className="text-[10px] text-ink-3 inline-flex items-center gap-1">
                           <Loader2 size={10} className="animate-spin" /> Generating ticket…

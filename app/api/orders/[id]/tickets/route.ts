@@ -14,6 +14,12 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
       tierId: tickets.tierId,
       tierName: ticketTiers.name,
       scannedAt: tickets.scannedAt,
+      transferToEmail: tickets.transferToEmail,
+      transferToName: tickets.transferToName,
+      transferExpiresAt: tickets.transferExpiresAt,
+      transferredAt: tickets.transferredAt,
+      holderName: tickets.holderName,
+      holderEmail: tickets.holderEmail,
     })
     .from(tickets)
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))

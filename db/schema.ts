@@ -222,6 +222,14 @@ export const tickets = pgTable("tickets", {
   staffRole: staffRoleEnum("staff_role"),
   staffName: text("staff_name"),
   staffPhone: text("staff_phone"),
+  // Transfer fields
+  transferToken: text("transfer_token").unique(),
+  transferToEmail: text("transfer_to_email"),
+  transferToName: text("transfer_to_name"),
+  transferExpiresAt: timestamp("transfer_expires_at"),
+  transferredAt: timestamp("transferred_at"),
+  holderName: text("holder_name"),
+  holderEmail: text("holder_email"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("tickets_event_id_idx").on(table.eventId),
