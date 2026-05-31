@@ -20,6 +20,7 @@ export type DeliveryStatus =
   | "WHATSAPP_SENT"
   | "DELIVERED"
   | "FAILED"
+  | "IN_PROGRESS"
 
 export type DeliveryMetadata = {
   status: DeliveryStatus
@@ -72,7 +73,7 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
   const locked = await acquireLock(lockKey)
   if (!locked) {
     log.info("delivery - lock contended, another process is delivering", { orderId })
-    return { success: true, status: "DELIVERED", ticketCount: 0, emailSent: false, error: null }
+    return { success: true, status: "IN_PROGRESS", ticketCount: 0, emailSent: false, error: null }
   }
 
   try {

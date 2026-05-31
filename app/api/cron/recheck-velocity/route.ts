@@ -171,7 +171,9 @@ export async function POST(request: Request) {
           status: "paid",
           paidAt: new Date(),
           paymentRef: invoiceId,
-          metadata: sql`${JSON.stringify(updatedMeta)}::jsonb`,
+          // Merge only the velocity key — preserves promo, inventoryReserved,
+          // questionResponses, and delivery metadata set by other parts of the system.
+          metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity}', ${JSON.stringify(updatedMeta.velocity)}::jsonb)`,
           updatedAt: new Date(),
         })
         .where(and(eq(orders.id, order.id), inArray(orders.status, ["pending", "awaiting_verification"])))

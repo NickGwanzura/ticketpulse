@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { tickets, ticketTiers, events, orders } from "@/db/schema"
 import { auth } from "@/auth"
+import { requireEventAccess } from "@/lib/event-access"
 
 export type ScanResult =
   | { ok: true; status: "new" | "duplicate"; ticket: { eventTitle: string; tierName: string; holder?: string; isStaffTicket?: boolean; staffRole?: string; staffName?: string } }
@@ -29,6 +30,7 @@ export async function markTicketScannedAction(rawCode: string): Promise<ScanResu
   const [ticket] = await db
     .select({
       id: tickets.id,
+      eventId: tickets.eventId,
       scannedAt: tickets.scannedAt,
       orderId: tickets.orderId,
       status: tickets.status,
@@ -46,6 +48,14 @@ export async function markTicketScannedAction(rawCode: string): Promise<ScanResu
 
   if (!ticket) {
     return { ok: false, error: "Ticket not found" }
+  }
+
+  // Verify the scanner owns or co-organises this event
+  if (ticket.eventId) {
+    const access = await requireEventAccess(ticket.eventId)
+    if (!access.allowed) {
+      return { ok: false, error: "You are not authorized to scan tickets for this event" }
+    }
   }
 
   // Handle cancelled tickets

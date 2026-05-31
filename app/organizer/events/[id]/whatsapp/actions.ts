@@ -6,6 +6,7 @@ import { db } from "@/db"
 import { events, orders, users } from "@/db/schema"
 import { auth } from "@/auth"
 import { sendBulk, sendText, formatChatId, isSessionReady, type BulkMessageItem } from "@/lib/whatsapp"
+import { requireEventAccess } from "@/lib/event-access"
 
 const SendSchema = z.object({
   message: z
@@ -22,22 +23,9 @@ export type WhatsAppFormState = {
   batchId?: string
 }
 
-async function requireEventOwnership(eventId: string) {
-  const session = await auth()
-  if (!session) throw new Error("Not authenticated")
-
-  const [event] = await db
-    .select({ organizerId: events.organizerId, title: events.title })
-    .from(events)
-    .where(eq(events.id, eventId))
-    .limit(1)
-
-  if (!event) throw new Error("Event not found")
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    throw new Error("Forbidden")
-  }
-
-  return { session, eventTitle: event.title }
+async function getEventTitle(eventId: string): Promise<string> {
+  const [ev] = await db.select({ title: events.title }).from(events).where(eq(events.id, eventId)).limit(1)
+  return ev?.title ?? "your event"
 }
 
 async function getAttendeePhones(eventId: string) {
@@ -65,6 +53,8 @@ async function getAttendeePhones(eventId: string) {
 }
 
 export async function getAttendeePhoneCount(eventId: string): Promise<number> {
+  const access = await requireEventAccess(eventId)
+  if (!access.allowed) return 0
   const rows = await db
     .select({ guestPhone: orders.guestPhone })
     .from(orders)
@@ -97,7 +87,9 @@ export async function sendBulkWhatsAppAction(
   formData: FormData,
 ): Promise<WhatsAppFormState> {
   try {
-    const { eventTitle } = await requireEventOwnership(eventId)
+    const access = await requireEventAccess(eventId)
+    if (!access.allowed) throw new Error("Forbidden")
+    const eventTitle = await getEventTitle(eventId)
 
     const parsed = SendSchema.safeParse({
       message: formData.get("message"),
@@ -165,7 +157,10 @@ export async function sendTestWhatsAppAction(
   formData: FormData,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const { session, eventTitle } = await requireEventOwnership(eventId)
+    const access = await requireEventAccess(eventId)
+    if (!access.allowed) throw new Error("Forbidden")
+    const eventTitle = await getEventTitle(eventId)
+    const session = await auth()
 
     const parsed = SendSchema.safeParse({
       message: formData.get("message"),

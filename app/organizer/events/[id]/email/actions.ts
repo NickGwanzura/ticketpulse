@@ -7,6 +7,7 @@ import { events, orders } from "@/db/schema"
 import { auth } from "@/auth"
 import { sendEmail } from "@/lib/email"
 import { eventEmailTemplate } from "@/lib/email-templates"
+import { requireEventAccess } from "@/lib/event-access"
 
 const SendSchema = z.object({
   subject: z.string().min(1, "Subject is required").max(200, "Subject too long"),
@@ -20,22 +21,9 @@ export type EmailFormState = {
   total?: number
 }
 
-async function requireEventOwnership(eventId: string) {
-  const session = await auth()
-  if (!session) throw new Error("Not authenticated")
-
-  const [event] = await db
-    .select({ organizerId: events.organizerId, title: events.title })
-    .from(events)
-    .where(eq(events.id, eventId))
-    .limit(1)
-
-  if (!event) throw new Error("Event not found")
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    throw new Error("Forbidden")
-  }
-
-  return { session, eventTitle: event.title }
+async function getEventTitle(eventId: string): Promise<string> {
+  const [ev] = await db.select({ title: events.title }).from(events).where(eq(events.id, eventId)).limit(1)
+  return ev?.title ?? "your event"
 }
 
 async function getAttendeeEmails(eventId: string) {
@@ -63,6 +51,8 @@ async function getAttendeeEmails(eventId: string) {
 }
 
 export async function getAttendeeEmailCount(eventId: string): Promise<number> {
+  const access = await requireEventAccess(eventId)
+  if (!access.allowed) return 0
   const rows = await db
     .select({ guestEmail: orders.guestEmail })
     .from(orders)
@@ -86,7 +76,9 @@ export async function sendBulkEmailAction(
   formData: FormData,
 ): Promise<EmailFormState> {
   try {
-    const { eventTitle } = await requireEventOwnership(eventId)
+    const access = await requireEventAccess(eventId)
+    if (!access.allowed) throw new Error("Forbidden")
+    const eventTitle = await getEventTitle(eventId)
 
     const parsed = SendSchema.safeParse({
       subject: formData.get("subject"),
@@ -137,11 +129,13 @@ export async function sendBulkEmailAction(
 }
 
 export async function sendTestEmailAction(
-  _eventId: string,
+  eventId: string,
   _prev: { ok: boolean; error?: string } | undefined,
   formData: FormData,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    const access = await requireEventAccess(eventId)
+    if (!access.allowed) throw new Error("Forbidden")
     const session = await auth()
     if (!session) throw new Error("Not authenticated")
 

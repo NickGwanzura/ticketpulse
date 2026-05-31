@@ -185,17 +185,21 @@ export async function POST(request: Request) {
       (o) => expireIds.includes(o.id) && o.guestEmail,
     )
     if (expiredOrders.length > 0) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
       const eventIds = [...new Set(expiredOrders.map((o) => o.eventId))]
       const eventRows = await db
-        .select({ id: events.id, title: events.title })
+        .select({ id: events.id, title: events.title, slug: events.slug })
         .from(events)
         .where(inArray(events.id, eventIds))
-      const eventTitleMap = new Map(eventRows.map((e) => [e.id, e.title]))
+      const eventMap = new Map(eventRows.map((e) => [e.id, e]))
 
       await Promise.allSettled(
         expiredOrders.map((order) => {
-          const eventTitle = eventTitleMap.get(order.eventId) ?? "your event"
+          const ev = eventMap.get(order.eventId)
+          const eventTitle = ev?.title ?? "your event"
+          const eventUrl = ev?.slug ? `${appUrl}/events/${ev.slug}` : null
           const name = order.guestName ?? "there"
+          const ref = order.id.slice(0, 8).toUpperCase()
           return sendEmail({
             to: order.guestEmail!,
             subject: `Your order has expired — ${eventTitle}`,
@@ -203,11 +207,11 @@ export async function POST(request: Request) {
 <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Your order has expired</h2>
 <p>Hi ${name},</p>
 <p>Your order for <strong>${eventTitle}</strong> expired because we didn't receive payment confirmation in time.</p>
-<p>If money was deducted from your account, please contact us with your order reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${order.id.slice(0, 8).toUpperCase()}</code> and we'll sort it out.</p>
-<p>You're welcome to try again — tickets may still be available.</p>
-<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · support@ticketpulse.tech</p>
+<p>If money was deducted from your account, please contact us with your order reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${ref}</code> and we'll sort it out.</p>
+${eventUrl ? `<p style="margin-top:16px"><a href="${eventUrl}" style="display:inline-block;background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">Try again →</a></p>` : ""}
+<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse &middot; <a href="mailto:support@ticketpulse.tech" style="color:#6b7280">support@ticketpulse.tech</a></p>
 </div>`,
-            text: `Hi ${name},\n\nYour order for ${eventTitle} has expired. If money was deducted, contact us with reference ${order.id.slice(0, 8).toUpperCase()}.\n\nYou can try again — tickets may still be available.\n\nTicketPulse`,
+            text: `Hi ${name},\n\nYour order for ${eventTitle} has expired. If money was deducted, contact us with reference ${ref}.\n\n${eventUrl ? `Try again: ${eventUrl}\n\n` : ""}TicketPulse`,
           }).catch((err) =>
             log.warn("cron/expire-orders — expiry email failed", { orderId: order.id, error: String(err) }),
           )
