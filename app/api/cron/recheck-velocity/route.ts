@@ -229,27 +229,32 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── Retry EMAIL_FAILED deliveries ─────────────────────────────────────────
-  // Find paid orders whose ticket email failed and retry delivery.
-  const emailFailedOrders = await db
+  // ── Retry failed deliveries ───────────────────────────────────────────────
+  // Covers EMAIL_FAILED (email bounced), FAILED (delivery threw), and null
+  // (free/promo orders where delivery was killed before writing status).
+  const failedDeliveryOrders = await db
     .select({ id: orders.id })
     .from(orders)
     .where(
       and(
         inArray(orders.status, ["paid", "completed"]),
-        sql`${orders.metadata}->'delivery'->>'status' = 'EMAIL_FAILED'`,
+        sql`(
+          ${orders.metadata}->'delivery'->>'status' IN ('EMAIL_FAILED', 'FAILED')
+          OR ${orders.metadata}->'delivery' IS NULL
+          OR ${orders.metadata}->>'delivery' IS NULL
+        )`,
         lt(orders.updatedAt, cutoff),
       ),
     )
     .limit(10)
 
   let retriedCount = 0
-  for (const order of emailFailedOrders) {
+  for (const order of failedDeliveryOrders) {
     try {
       const delivery = await deliverTicketForPaidOrder(order.id)
       if (delivery.emailSent) {
         retriedCount++
-        log.info("cron/recheck-velocity — retried EMAIL_FAILED delivery", { orderId: order.id })
+        log.info("cron/recheck-velocity — retried failed delivery", { orderId: order.id, status: delivery.status })
       }
     } catch (err) {
       log.error("cron/recheck-velocity — retry delivery failed", {

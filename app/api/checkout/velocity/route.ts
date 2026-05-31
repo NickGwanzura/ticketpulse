@@ -454,9 +454,15 @@ export async function POST(req: Request) {
       .set({ status: "paid", paidAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, orderId))
 
-    deliverTicketForPaidOrder(orderId).catch((err) =>
-      log.error("velocity checkout - free order delivery failed", { orderId, error: String(err) }),
-    )
+    // Await delivery so failures are written to delivery metadata and picked
+    // up by the recheck-velocity cron. Free checkouts have no payment step so
+    // the extra seconds are acceptable.
+    try {
+      await deliverTicketForPaidOrder(orderId)
+    } catch (err) {
+      log.error("velocity checkout - free order delivery failed", { orderId, error: String(err) })
+      // Order is marked paid — cron will retry delivery via EMAIL_FAILED/FAILED check
+    }
 
     trackEvent({ event: "PAYMENT_CONFIRMED", eventId: event.id, orderId, paymentMethod: parsed.paymentMethod, amount: 0 })
 

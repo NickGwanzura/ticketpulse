@@ -353,6 +353,7 @@ export default function CheckoutPage() {
         <PaymentWaitingOverlay
           method={form.payment}
           phone={form.phone}
+          orderId={pollingOrderId}
           onCancel={() => {
             clearPollingSession()
             setPollingOrderId(null)
@@ -697,13 +698,32 @@ export default function CheckoutPage() {
 }
 
 function PaymentWaitingOverlay({
-  method, phone, onCancel,
-}: { method: string; phone: string; onCancel: () => void }) {
+  method, phone, orderId, onCancel,
+}: { method: string; phone: string; orderId: string; onCancel: () => void }) {
+  const [timeLeftMs, setTimeLeftMs] = useState<number>(POLL_TIMEOUT_MS)
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel() }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [onCancel])
+
+  // Countdown from session-stored start time
+  useEffect(() => {
+    const key = `poll_started:${orderId}`
+    const stored = sessionStorage.getItem(key)
+    const startedAt = stored ? Number(stored) : Date.now()
+
+    const tick = () => setTimeLeftMs(Math.max(0, POLL_TIMEOUT_MS - (Date.now() - startedAt)))
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [orderId])
+
+  const mins = Math.floor(timeLeftMs / 60_000)
+  const secs = Math.floor((timeLeftMs % 60_000) / 1000)
+  const countdownLabel = `${mins}:${secs.toString().padStart(2, "0")}`
+  const isLow = timeLeftMs < 60_000
 
   const label = method === "velocity-ecocash" ? "EcoCash" : "Card"
   const isCard = method === "velocity-card"
@@ -732,12 +752,24 @@ function PaymentWaitingOverlay({
         <p className="mt-4 text-[14px] text-ink-2 leading-relaxed">
           {isCard
             ? "We're redirecting you to complete the payment. Once confirmed, you'll be moved forward automatically."
-            : <>Processing payment through Velocity. Waiting for <span className="font-semibold text-ink">{phone}</span> to approve the EcoCash prompt. We&apos;ll move you forward as soon as it clears.</>}
+            : <>Waiting for <span className="font-semibold text-ink">{phone}</span> to approve the EcoCash prompt. We&apos;ll move you forward as soon as it clears.</>}
         </p>
-        <div className="mt-5 inline-flex items-center gap-2 text-[13px] text-ink-3">
-          <Loader2 size={13} className="animate-spin text-blue" />
-          Waiting for confirmation…
+        <div className="mt-5 flex items-center justify-between">
+          <div className="inline-flex items-center gap-2 text-[13px] text-ink-3">
+            <Loader2 size={13} className="animate-spin text-blue" />
+            Waiting for confirmation…
+          </div>
+          {!isCard && (
+            <span className={`text-[12px] font-mono tabular-nums ${isLow ? "text-amber-600 font-semibold" : "text-ink-3"}`}>
+              {countdownLabel}
+            </span>
+          )}
         </div>
+        {isLow && !isCard && (
+          <p className="mt-2 text-[12px] text-amber-600">
+            Running low — approve the prompt on your phone now.
+          </p>
+        )}
       </div>
     </div>
   )
