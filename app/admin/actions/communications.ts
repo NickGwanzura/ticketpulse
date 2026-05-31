@@ -76,8 +76,14 @@ export async function sendCommunicationAction(
       return body.replace(/\{name\}/g, first ?? "there").replace(/\{audience\}/g, audience)
     }
 
-    for (const u of mailRecipients) {
-      try {
+    // Process in chunks of 10 concurrent sends to avoid overwhelming the
+    // email provider and hitting serverless function timeouts on large lists.
+    const CHUNK = 10
+    for (let i = 0; i < mailRecipients.length; i += CHUNK) {
+      const chunk = mailRecipients.slice(i, i + CHUNK)
+      await Promise.all(
+        chunk.map(async (u) => {
+    try {
         const personalised = personaliseBody(u.name)
         const { html, text } = (() => {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
@@ -127,16 +133,22 @@ export async function sendCommunicationAction(
           error: err instanceof Error ? err.message : "unknown error",
         })
       }
+        }),
+      )
     }
   }
 
   // ── WhatsApp ────────────────────────────────────────────────────────────
   if (channels.includes("whatsapp")) {
     const waRecipients = targetUsers.filter((u) => u.phone)
+    const { sendText, formatChatId } = await import("@/lib/whatsapp")
 
-    for (const u of waRecipients) {
+    const WA_CHUNK = 5
+    for (let i = 0; i < waRecipients.length; i += WA_CHUNK) {
+      const chunk = waRecipients.slice(i, i + WA_CHUNK)
+      await Promise.all(
+        chunk.map(async (u) => {
       try {
-        const { sendText, formatChatId } = await import("@/lib/whatsapp")
         const first = u.name?.split(" ")[0]?.trim()
         const personalised = body
           .replace(/\{name\}/g, first ?? "there")
@@ -151,6 +163,8 @@ export async function sendCommunicationAction(
           error: err instanceof Error ? err.message : "unknown error",
         })
       }
+        }),
+      )
     }
   }
 

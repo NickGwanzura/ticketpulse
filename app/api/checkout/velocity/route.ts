@@ -292,7 +292,9 @@ export async function POST(req: Request) {
   // auto-releases on commit. DB writes are atomic; HTTP calls happen after.
   const lockKey = `velocity-checkout:${parsed.email}:${event.id}`
 
-  const creation = await withLock(lockKey, async (tx) => {
+  let creation: { orderId: string } | null
+  try {
+    creation = await withLock(lockKey, async (tx) => {
     const [order] = await tx
       .insert(orders)
       .values({
@@ -305,7 +307,7 @@ export async function POST(req: Request) {
         guestEmail: parsed.email,
         guestName: parsed.name,
         guestPhone: parsed.phone,
-        metadata: baseMeta,
+        metadata: { ...baseMeta, inventoryReserved: true },
       })
       .returning({ id: orders.id })
 
@@ -344,6 +346,29 @@ export async function POST(req: Request) {
 
     await tx.insert(orderItems).values(orderItemValues)
 
+    // ── Atomic inventory reservation (CAS) ────────────────────────────────
+    // Increment soldQuantity for each tier inside this transaction.
+    // The WHERE guard (totalQuantity - soldQuantity >= requested) ensures we
+    // never exceed capacity even under concurrent requests. If the update
+    // returns no rows the tier was taken — roll back and surface an error.
+    for (const item of ticketItems) {
+      const tier = tierById.get(item.tierId)!
+      const [reserved] = await tx
+        .update(ticketTiers)
+        .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${item.quantity}` })
+        .where(
+          and(
+            eq(ticketTiers.id, item.tierId),
+            sql`${ticketTiers.totalQuantity} - COALESCE(${ticketTiers.soldQuantity}, 0) >= ${item.quantity}`,
+          ),
+        )
+        .returning({ id: ticketTiers.id })
+
+      if (!reserved) {
+        throw new Error(`"${tier.name}" just sold out — please choose fewer tickets or a different tier`)
+      }
+    }
+
     if (appliedPromo) {
       await tx
         .update(promoCodes)
@@ -351,8 +376,14 @@ export async function POST(req: Request) {
         .where(eq(promoCodes.id, appliedPromo.id))
     }
 
-    return { orderId: order.id }
-  })
+      return { orderId: order.id }
+    })
+  } catch (err) {
+    // CAS reservation failed (tier sold out) or DB error — surface as 409
+    const msg = err instanceof Error ? err.message : "Checkout failed"
+    log.warn("velocity checkout - order creation failed", { error: msg, email: parsed.email, eventId: event.id })
+    return NextResponse.json({ error: msg }, { status: 409 })
+  }
 
   if (!creation) {
     // Lock contention: a concurrent request is creating an order at this exact

@@ -202,19 +202,24 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
           tierName: ticketValues[i].tierName,
         }))
 
-        // Update soldQuantity for all tiers concurrently
-        const tierCounts = new Map<string, number>()
-        for (const t of ticketValues) {
-          tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+        // Only increment soldQuantity for orders that did NOT reserve inventory
+        // at checkout time. New orders set metadata.inventoryReserved = true and
+        // already incremented soldQuantity atomically in the checkout transaction.
+        const inventoryReserved = meta.inventoryReserved === true
+        if (!inventoryReserved) {
+          const tierCounts = new Map<string, number>()
+          for (const t of ticketValues) {
+            tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+          }
+          await Promise.all(
+            Array.from(tierCounts).map(([tierId, count]) =>
+              db
+                .update(ticketTiers)
+                .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+                .where(eq(ticketTiers.id, tierId)),
+            ),
+          )
         }
-        await Promise.all(
-          Array.from(tierCounts).map(([tierId, count]) =>
-            db
-              .update(ticketTiers)
-              .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
-              .where(eq(ticketTiers.id, tierId)),
-          ),
-        )
 
         ticketCount = ticketValues.length
 

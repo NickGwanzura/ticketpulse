@@ -105,16 +105,22 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       if (ticketValues.length > 0) {
         await tx.insert(tickets).values(ticketValues)
 
-        // Update sold quantities for each tier
-        const tierCounts = new Map<string, number>()
-        for (const t of ticketValues) {
-          tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
-        }
-        for (const [tierId, count] of tierCounts) {
-          await tx
-            .update(ticketTiers)
-            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
-            .where(eq(ticketTiers.id, tierId))
+        // Only increment soldQuantity for legacy orders without checkout reservation.
+        // Orders created through the normal checkout flow set metadata.inventoryReserved
+        // = true and already incremented soldQuantity atomically at order creation.
+        const orderMeta = (order.metadata ?? {}) as Record<string, unknown>
+        const inventoryReserved = orderMeta.inventoryReserved === true
+        if (!inventoryReserved) {
+          const tierCounts = new Map<string, number>()
+          for (const t of ticketValues) {
+            tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
+          }
+          for (const [tierId, count] of tierCounts) {
+            await tx
+              .update(ticketTiers)
+              .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${count}` })
+              .where(eq(ticketTiers.id, tierId))
+          }
         }
       }
 

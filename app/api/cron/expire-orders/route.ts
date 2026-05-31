@@ -66,24 +66,45 @@ export async function POST(request: Request) {
       continue
     }
 
-    // Only decrement soldQuantity if tickets were actually created for this order.
-    // soldQuantity is incremented at ticket delivery time, not at checkout.
-    // Expiring an order that never paid (no tickets) must not touch inventory.
-    const orderTickets = await db
-      .select({ tierId: tickets.tierId })
-      .from(tickets)
-      .where(eq(tickets.orderId, order.id))
+    // Determine whether inventory was reserved for this order.
+    // New orders (inventoryReserved=true): soldQuantity was incremented at checkout,
+    //   so we always decrement using orderItems quantities.
+    // Legacy orders: soldQuantity is only incremented at ticket delivery,
+    //   so we only decrement if tickets were actually created.
+    const orderMeta = (order.metadata ?? {}) as Record<string, unknown>
+    const inventoryReserved = orderMeta.inventoryReserved === true
 
-    if (orderTickets.length > 0) {
-      const tierMap = new Map<string, number>()
-      for (const t of orderTickets) {
-        if (t.tierId) tierMap.set(t.tierId, (tierMap.get(t.tierId) ?? 0) + 1)
+    let tierDecrement: Map<string, number> | null = null
+
+    if (inventoryReserved) {
+      const items = await db
+        .select({ tierId: orderItems.tierId, quantity: orderItems.quantity })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, order.id))
+      tierDecrement = new Map()
+      for (const item of items) {
+        if (item.tierId) tierDecrement.set(item.tierId, (tierDecrement.get(item.tierId) ?? 0) + item.quantity)
       }
+    } else {
+      // Legacy: only decrement if tickets were physically created
+      const orderTickets = await db
+        .select({ tierId: tickets.tierId })
+        .from(tickets)
+        .where(eq(tickets.orderId, order.id))
+      if (orderTickets.length > 0) {
+        tierDecrement = new Map()
+        for (const t of orderTickets) {
+          if (t.tierId) tierDecrement.set(t.tierId, (tierDecrement.get(t.tierId) ?? 0) + 1)
+        }
+      }
+    }
+
+    if (tierDecrement && tierDecrement.size > 0) {
       await Promise.all(
-        Array.from(tierMap).map(([tierId, qty]) =>
+        Array.from(tierDecrement).map(([tierId, qty]) =>
           db
             .update(ticketTiers)
-            .set({ soldQuantity: sql`${ticketTiers.soldQuantity} - ${qty}` })
+            .set({ soldQuantity: sql`GREATEST(0, ${ticketTiers.soldQuantity} - ${qty})` })
             .where(eq(ticketTiers.id, tierId)),
         ),
       )

@@ -63,6 +63,11 @@ export default function NewEventForm() {
   const [genLoc, setGenLoc] = useState(false)
   const [tags, setTags] = useState<string[]>([])
 
+  // Tracked for AI button context
+  const [title, setTitle] = useState("")
+  const [category, setCategory] = useState("")
+  const [startsAt, setStartsAt] = useState("")
+
   // Location fields (controlled for live geocoding preview)
   const [venue, setVenue] = useState("")
   const [city, setCity] = useState("")
@@ -189,6 +194,8 @@ export default function NewEventForm() {
             maxLength={160}
             placeholder="Summer Sounds 2026"
             className={inputCls(!!errs.title)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
           <FieldError message={errs.title} />
         </div>
@@ -199,7 +206,8 @@ export default function NewEventForm() {
             id="category"
             name="category"
             required
-            defaultValue=""
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
             className={inputCls(!!errs.category)}
           >
             <option value="" disabled>Pick a category</option>
@@ -431,6 +439,8 @@ export default function NewEventForm() {
             type="datetime-local"
             required
             className={inputCls(!!errs.startsAt)}
+            value={startsAt}
+            onChange={(e) => setStartsAt(e.target.value)}
           />
           <FieldError message={errs.startsAt} />
         </div>
@@ -446,29 +456,33 @@ export default function NewEventForm() {
           <FieldError message={errs.endsAt} />
         </div>
 
-        {/* AI Tools */}
-        <div className="md:col-span-2 mt-2">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">AI Tools</p>
-        </div>
+        {/* AI Tools — only shown once the minimum fields are filled */}
+        {title && category && venue && city && (
+          <>
+            <div className="md:col-span-2 mt-2">
+              <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">AI Tools</p>
+            </div>
 
-        <div className="md:col-span-2 space-y-3">
-          <AiSocialButton
-            eventTitle=""
-            category=""
-            eventDate=""
-            venue=""
-            city=""
-          />
-        </div>
+            <div className="md:col-span-2 space-y-3">
+              <AiSocialButton
+                eventTitle={title}
+                category={category}
+                eventDate={startsAt ? new Date(startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
+                venue={venue}
+                city={city}
+              />
+            </div>
 
-        <div className="md:col-span-2">
-          <AiPricingButton
-            eventTitle=""
-            category=""
-            venue=""
-            city=""
-          />
-        </div>
+            <div className="md:col-span-2">
+              <AiPricingButton
+                eventTitle={title}
+                category={category}
+                venue={venue}
+                city={city}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="rounded-xl border border-dashed border-line bg-paper-2/40 p-4 flex items-start gap-3">
