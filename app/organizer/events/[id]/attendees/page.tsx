@@ -139,7 +139,7 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
         }
       />
 
-      <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
+      <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
         {/* Summary bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-paper p-5">
           <div className="flex flex-wrap items-center gap-6 text-[13px]">
@@ -184,7 +184,9 @@ export default async function AttendeesPage({ params }: { params: Promise<RouteP
                     <th className="px-3 py-3.5 text-right">Qty</th>
                     <th className="px-3 py-3.5 text-center">Checked in</th>
                     {questions.map((q) => (
-                      <th key={q.id} className="px-3 py-3.5 text-left max-w-[180px]">{q.question}</th>
+                      <th key={q.id} className="px-3 py-3.5 text-left w-[160px] min-w-[160px] max-w-[160px]">
+                        <span className="block truncate" title={q.question}>{q.question}</span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
