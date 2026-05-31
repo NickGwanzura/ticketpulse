@@ -49,14 +49,22 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
     ? `https://www.openstreetmap.org/?mlat=${latNum}&mlng=${lngNum}#map=15/${latNum}/${lngNum}`
     : null
 
-  // Embed iframe URL (only when coordinates are valid)
+  // Embed iframe URL — prefer OSM with coords, fall back to Google Maps search embed
   const padding = 0.02
   const bbox = hasCoords
     ? `${lngNum - padding},${latNum - padding},${lngNum + padding},${latNum + padding}`
     : null
-  const embedUrl = bbox
+  const osmEmbedUrl = bbox
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${latNum},${lngNum}`
     : null
+
+  // Google Maps search embed — works without an API key using the address
+  const searchQuery = [venue, address, city, country].filter(Boolean).join(", ")
+  const googleSearchEmbedUrl = searchQuery
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(searchQuery)}&output=embed&z=15`
+    : null
+
+  const embedUrl = osmEmbedUrl ?? googleSearchEmbedUrl
 
   return (
     <section>
@@ -77,7 +85,7 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
               allowFullScreen
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              sandbox="allow-scripts allow-same-origin"
+              sandbox="allow-scripts allow-same-origin allow-popups"
             />
           </div>
         ) : (
