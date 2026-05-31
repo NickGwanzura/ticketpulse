@@ -45,7 +45,7 @@ export async function resendOrderEmailAction(orderId: string) {
   // via the admin recovery actions (completeAndSendAction) or the fix script.
   if (order.status === "awaiting_verification") {
     throw new Error(
-      "Magic links have been removed. Use "Recover & Send Tickets" from the order detail page to resolve this order.",
+      'Magic links have been removed. Use "Recover & Send Tickets" from the order detail page to resolve this order.',
     )
   }
 

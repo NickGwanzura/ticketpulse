@@ -161,6 +161,7 @@ export async function sendTestWhatsAppAction(
     if (!access.allowed) throw new Error("Forbidden")
     const eventTitle = await getEventTitle(eventId)
     const session = await auth()
+    if (!session) throw new Error("Not authenticated")
 
     const parsed = SendSchema.safeParse({
       message: formData.get("message"),

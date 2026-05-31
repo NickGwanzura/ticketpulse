@@ -16,7 +16,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
 
   let results: {
     id: string
-    status: string
+    status: string | null
     totalAmount: string | null
     currency: string | null
     createdAt: Date | null
@@ -144,8 +144,8 @@ export default async function OrderLookupPage({ searchParams }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor[order.status] ?? "text-ink-2 bg-paper-2"}`}>
-                    {statusLabel[order.status] ?? order.status}
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${(order.status && statusColor[order.status]) ?? "text-ink-2 bg-paper-2"}`}>
+                    {(order.status && statusLabel[order.status]) ?? order.status ?? "Unknown"}
                   </span>
                   <ArrowRight size={14} className="text-ink-3 group-hover:text-ink transition" />
                 </div>
