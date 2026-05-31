@@ -257,10 +257,31 @@ export async function pollTransaction(
 export async function finalizeWorkflow(
   salesOrderTrace: string,
 ): Promise<FinalizeWorkflowResponse> {
-  return velocityRequest<FinalizeWorkflowResponse>(
-    `/sales-orders/update-workflow/${salesOrderTrace}`,
-    { method: "PUT" },
-  )
+  try {
+    return await velocityRequest<FinalizeWorkflowResponse>(
+      `/sales-orders/update-workflow/${salesOrderTrace}`,
+      { method: "PUT" },
+    )
+  } catch (err) {
+    // "Sales order is not fully paid" is a timing issue: Velocity's transaction
+    // ledger and sales-order system are eventually consistent. The poll confirms
+    // the payment, but Velocity's internal reconciliation job may not have
+    // applied it to the SO yet. Wait 3 s and retry once before surfacing the
+    // error — that window is almost always enough for the SO to catch up.
+    const msg = err instanceof Error ? err.message.toLowerCase() : ""
+    if (msg.includes("not fully paid") || msg.includes("outstanding")) {
+      log.warn("finalizeWorkflow - sales order not yet reconciled, retrying in 3 s", {
+        salesOrderTrace,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      await new Promise((r) => setTimeout(r, 3000))
+      return velocityRequest<FinalizeWorkflowResponse>(
+        `/sales-orders/update-workflow/${salesOrderTrace}`,
+        { method: "PUT" },
+      )
+    }
+    throw err
+  }
 }
 
 export function validatePhone(phone: string): boolean {
