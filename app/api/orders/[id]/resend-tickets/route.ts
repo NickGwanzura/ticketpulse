@@ -3,13 +3,24 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
+import { rateLimit } from "@/lib/rate-limit"
 
 type Params = { id: string }
 
-const RESEND_COOLDOWN_MS = 60 * 1000 // 1 minute between resends per order
+// 3 resends per order per hour — keyed by orderId so cron/admin updates
+// don't interfere with the buyer's cooldown window
+const resendLimiter = rateLimit({ windowMs: 60_000 * 60, max: 3 })
 
 export async function POST(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
+
+  const rl = resendLimiter.check(id)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many resend requests for this order. Please wait before trying again." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
 
   const [order] = await db
     .select()
@@ -32,17 +43,6 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.json(
       { error: "Order has no guest email on file." },
       { status: 400 },
-    )
-  }
-
-  // Simple cooldown to prevent spam
-  if (
-    order.updatedAt &&
-    Date.now() - order.updatedAt.getTime() < RESEND_COOLDOWN_MS
-  ) {
-    return NextResponse.json(
-      { error: "Please wait a moment before resending." },
-      { status: 429 },
     )
   }
 
@@ -114,11 +114,6 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       )
     }
 
-    // Update updatedAt to enforce cooldown on subsequent resends
-    await db
-      .update(orders)
-      .set({ updatedAt: new Date() })
-      .where(eq(orders.id, id))
   } catch (err) {
     console.error("[resend-tickets] failed to send:", err)
     return NextResponse.json(
