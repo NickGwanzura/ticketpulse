@@ -7,7 +7,7 @@ const csp = [
   `img-src 'self' data: blob: https://images.unsplash.com https://res.cloudinary.com https://*.r2.dev`,
   `font-src 'self' data:`,
   `connect-src 'self' https://api.resend.com https://*.r2.dev https://*.r2.cloudflarestorage.com`,
-  `frame-src https://www.openstreetmap.org`,
+  `frame-src https://www.openstreetmap.org https://maps.google.com https://www.google.com`,
   `form-action 'self'`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
