@@ -1,0 +1,22 @@
+import { NextResponse } from "next/server"
+import { eq } from "drizzle-orm"
+import { db } from "@/db"
+import { tickets, ticketTiers } from "@/db/schema"
+
+type Params = { id: string }
+
+export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+  const { id } = await ctx.params
+  const rows = await db
+    .select({
+      id: tickets.id,
+      qrCode: tickets.qrCode,
+      tierId: tickets.tierId,
+      tierName: ticketTiers.name,
+      scannedAt: tickets.scannedAt,
+    })
+    .from(tickets)
+    .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+    .where(eq(tickets.orderId, id))
+  return NextResponse.json(rows)
+}

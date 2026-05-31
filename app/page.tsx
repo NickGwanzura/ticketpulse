@@ -57,8 +57,8 @@ interface HeroTicket {
 }
 
 const FAQ = [
-  { q: "Do I need an account to buy tickets?",      a: "No. Pay first with just your name, email, and phone. We hold your seat and email a magic link. One click verifies the email, releases your tickets, and creates your account passwordless. You can set a password later from your account settings, or never. The tickets work either way." },
-  { q: "How do I get my ticket after I buy?",       a: "Instantly after you click the magic link. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once. The QR is bound to your account, so you can sign in on any device the day-of." },
+  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox and WhatsApp the moment payment clears. Your account is auto-created — no password required." },
+  { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once." },
   { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet. It reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
   { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24 to 72h for cards)." },
   { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
@@ -122,7 +122,7 @@ function buildStats(eventsOnSale: number) {
 
 const STEPS = [
   { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
-  { icon: FileText,          title: "One-click verify",     body: "We email a magic link the moment you pay. Click it once and your printable PDF + mobile QR drop in. Your ticket also arrives by WhatsApp — all at once. Your account is created and signed in. Set a password later if you want." },
+  { icon: FileText,          title: "Instant delivery",     body: "The moment payment clears, your PDF ticket and WhatsApp message land simultaneously. No link to click, no waiting." },
   { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Your ticket QR and event details land directly on your phone via WhatsApp after purchase. No app to download, no email to search for — it's right in your chat." },
   { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, wallet pass, or your WhatsApp chat. End to end on TicketPulse. No third-party scanners." },
 ]
@@ -356,7 +356,7 @@ export default async function Home() {
               </h1>
 
               <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16.5px] md:text-[19px] leading-relaxed text-ink-2 max-w-xl">
-                Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, we email a magic link, and your printable PDF + mobile QR land in seconds. Account secured later, on your terms.
+                Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, and your printable PDF + mobile QR land instantly. Account secured later, on your terms.
               </p>
 
               <form action="/events" className="tp-fade-up-3 mt-10 md:mt-9 flex flex-col sm:flex-row gap-3 md:gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">

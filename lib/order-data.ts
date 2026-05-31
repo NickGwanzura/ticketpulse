@@ -7,9 +7,9 @@ import type { OrderRecord } from "@/lib/cart-context"
  * Fetch a finalized order from the database and return it in the
  * `OrderRecord` shape that the client pages expect.
  *
- * For orders that aren't yet finalized ("pending", "awaiting_verification")
- * we still return a minimal record so pages can show the correct UI
- * instead of "Order not found".
+ * For orders that aren't yet finalized ("pending") we still return a
+ * minimal record so pages can show the correct UI instead of
+ * "Order not found".
  */
 export async function getOrderFromDb(orderId: string): Promise<OrderRecord | null> {
   try {
@@ -33,7 +33,7 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
 
     // Map DB status to the client-side union.
     const clientStatus = order.status === "paid" ? "paid" as const
-      : order.status === "awaiting_verification" || order.status === "pending" ? "pending" as const
+      : order.status === "pending" ? "pending" as const
       : "refunded" as const
 
     // Fetch event details

@@ -36,8 +36,8 @@ const ATTENDEE_STEPS = [
   },
   {
     icon: Ticket,
-    title: "One-click verify",
-    body: "We email a magic link. Click once: tickets release, account auto-created passwordless. Your ticket also arrives by WhatsApp — no app to download. Set a password later, or don't. Your call.",
+    title: "Instant delivery",
+    body: "The moment payment clears, your printable PDF ticket arrives by email and WhatsApp simultaneously. Account auto-created — sign in any time to view or reprint.",
   },
   {
     icon: ScanLine,

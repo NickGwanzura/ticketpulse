@@ -55,7 +55,7 @@ const TIERS = [
 ]
 
 const FAQ = [
-  { q: "Do attendees need an account to buy?", a: "No, and that's by design. Buyers check out with just name, email, and phone. We hold the seat, email a magic link, and one click verifies them and releases the tickets. The account is auto-created passwordless. Cuts cart abandonment dramatically, and your ticket conversion goes up." },
+  { q: "Do attendees need an account to buy?", a: "No, and that's by design. Buyers check out with just name, email, and phone. The moment payment clears, tickets arrive instantly by email PDF and WhatsApp. The account is auto-created passwordless. Cuts cart abandonment dramatically." },
   { q: "How does the 5% organizer fee work?", a: "We deduct 5% from each ticket sold and pay out the rest directly to your linked EcoCash, ZAR, or USD account on event completion. There are no monthly fees, no setup fees, and no charges if you don't sell." },
   { q: "Is the gate scanner included in the 5%?", a: "Yes. The 5% covers the full pipeline: sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
   { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash processing fees out of our 5% on amounts under USD 50. For Visa card payments above USD 50, a 2.5% processor fee is passed through." },

@@ -24,10 +24,9 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.redirect(`${origin}/checkout?error=not_found`)
   }
 
-  // Already paid — send to order page.
-  const paidStatuses = new Set(["paid", "awaiting_verification"])
-  if (paidStatuses.has(order.status ?? "")) {
-    return NextResponse.redirect(`${origin}/orders/${id}?awaiting=1`)
+  // Already paid — send straight to order page.
+  if (order.status === "paid") {
+    return NextResponse.redirect(`${origin}/orders/${id}?welcome=1`)
   }
 
   if (order.status !== "pending") {
@@ -38,7 +37,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     orderId: id,
   })
 
-  // Redirect to the orders page — client-side polling will pick up
-  // the transaction status and finalize the workflow when ready.
-  return NextResponse.redirect(`${origin}/orders/${id}?awaiting=1`)
+  // Still pending — redirect to the orders page where client-side polling
+  // picks up the transaction status and finalizes the workflow when ready.
+  return NextResponse.redirect(`${origin}/orders/${id}?welcome=1`)
 }

@@ -12,7 +12,7 @@ import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity
 // Must match POLL_TIMEOUT_MS in app/checkout/page.tsx.
 const POLL_TIMEOUT_MS = 5 * 60 * 1000
 
-const PAID_STATUSES = new Set(["paid", "awaiting_verification"])
+const PAID_STATUSES = new Set(["paid"])
 
 type Params = { id: string }
 

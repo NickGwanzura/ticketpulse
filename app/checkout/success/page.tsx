@@ -3,9 +3,10 @@ import { Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
+import { useOrderTickets } from "@/lib/use-order-tickets"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import {
-  ArrowRight, Mail, Smartphone, Calendar, Download, ArrowUpRight, Sparkles, Share2, CalendarPlus,
+  ArrowRight, Mail, Smartphone, Calendar, Download, ArrowUpRight, Sparkles, Share2, CalendarPlus, Loader2,
 } from "lucide-react"
 import QrCode from "@/components/QrCode"
 import AnimatedCheck from "@/components/AnimatedCheck"
@@ -30,6 +31,7 @@ function CheckoutSuccessInner() {
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
+  const { qrByTier, loading: ticketsLoading } = useOrderTickets(id, order?.status === "paid")
 
   useEffect(() => {
     if (!ready) return
@@ -158,7 +160,10 @@ function CheckoutSuccessInner() {
             <h2 className="text-[22px] font-bold tracking-tight text-ink mb-5">Present at the gate</h2>
             <div className="space-y-3">
               {tickets.map((line) => (
-                line.kind === "ticket" ? Array.from({ length: line.qty }).map((_, i) => (
+                line.kind === "ticket" ? Array.from({ length: line.qty }).map((_, i) => {
+                  const qrValue = qrByTier.get(line.tierId)?.[i] ?? `${order.id}-${line.key}-${i}`
+                  const hasRealQr = !!qrByTier.get(line.tierId)?.[i]
+                  return (
                   <div key={`${line.key}-${i}`} className="relative rounded-2xl border border-line bg-paper overflow-hidden">
                     <div className="flex items-stretch">
                       <div className="flex-1 p-5 md:p-6 min-w-0">
@@ -182,14 +187,20 @@ function CheckoutSuccessInner() {
                         <span className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
                       </div>
                       <div className="p-4 md:p-5 bg-paper-2 flex flex-col items-center justify-center gap-2">
-                        <QrCode value={`${order.id}-${line.key}-${i}`} size={120} className="rounded-lg ring-1 ring-line" />
+                        <QrCode value={qrValue} size={120} className="rounded-lg ring-1 ring-line" />
+                        {!hasRealQr && order.status === "paid" && ticketsLoading && (
+                          <p className="text-[10px] text-ink-3 inline-flex items-center gap-1">
+                            <Loader2 size={10} className="animate-spin" /> Generating ticket…
+                          </p>
+                        )}
                         <p className="text-[10px] font-mono text-ink-3 tabular-nums">
                           {order.id.slice(-6)}-{(i + 1).toString().padStart(2, "0")}
                         </p>
                       </div>
                     </div>
                   </div>
-                )) : null
+                  )
+                }) : null
               ))}
             </div>
           </section>

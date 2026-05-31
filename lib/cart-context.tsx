@@ -29,7 +29,7 @@ export type CartLineInput =
 export interface OrderRecord {
   id: string
   createdAt: string
-  status: "paid" | "pending" | "awaiting_verification" | "refunded"
+  status: "paid" | "pending" | "refunded"
   items: CartLine[]
   totalsByCurrency: Record<string, number>
   contact: { name: string; email: string; phone: string }
