@@ -77,9 +77,11 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, allOrders, recentOrdersRaw, settingsRow, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
-    eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, soldQuantity: ticketTiers.soldQuantity, price: ticketTiers.price, currency: ticketTiers.currency }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
+  const [allTiers, allOrders, soldByEvent, recentOrdersRaw, settingsRow, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
+    eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, status: orders.status }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"]))) : Promise.resolve([]),
+    // Count from confirmed order items — not soldQuantity which includes pending reservations
+    eventIds.length > 0 ? db.select({ eventId: orders.eventId, totalSold: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int` }).from(orders).innerJoin(orderItems, eq(orderItems.orderId, orders.id)).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"]), eq(orderItems.type, "ticket"))).groupBy(orders.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
     db.select({ value: platformSettings.value }).from(platformSettings).where(and(eq(platformSettings.key, "platform_fee_percent"), eq(platformSettings.env, "prod"))).limit(1),
     db.select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` }).from(payouts).where(and(eq(payouts.userId, session.user.id), sql`${payouts.status} in ('pending', 'approved', 'processing')`)),
@@ -97,7 +99,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const tiers = allTiers.filter(t => t.eventId === r.id)
     const evOrders = allOrders.filter(o => o.eventId === r.id)
     const capacity = tiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
-    const sold = tiers.reduce((s, t) => s + (t.soldQuantity ?? 0), 0)
+    // Use confirmed order quantities — accurate regardless of soldQuantity drift
+    const sold = soldByEvent.find(s => s.eventId === r.id)?.totalSold ?? 0
     const revenue = evOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
     const currency = tiers[0]?.currency ?? evOrders[0]?.currency ?? "USD"
     return { ...r, capacity, sold, revenue, currency, status: r.status ?? "draft" }
