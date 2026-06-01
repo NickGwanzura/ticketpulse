@@ -294,6 +294,15 @@ export default function Footer() {
             </Link>
             <span className="hidden md:inline text-white/15">·</span>
             <p className="text-[12px] text-white/45">© {new Date().getFullYear()} TicketPulse. Built in Harare.</p>
+            <span className="hidden md:inline text-white/15">·</span>
+            <a
+              href="https://velocity.qantra.co.zw/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[12px] text-white/45 hover:text-white/75 transition-colors"
+            >
+              Powered by <span className="font-medium text-white/60">Velocity Payments</span>
+            </a>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-5">
             <button className="inline-flex items-center gap-1.5 text-[12px] text-white/55 hover:text-white/85 transition-colors">
