@@ -276,13 +276,13 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           <div className="md:hidden flex items-center gap-1">
             <Link
               href="/auth/signin"
-              className="hidden sm:inline-flex h-9 items-center rounded-lg px-2.5 text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
+              className="inline-flex h-9 items-center rounded-lg px-2.5 text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/auth/signup"
-              className="hidden sm:inline-flex h-9 items-center rounded-lg bg-brand-600 px-2.5 text-[13px] font-semibold text-white hover:bg-brand-700 transition-colors"
+              className="inline-flex h-9 items-center rounded-lg bg-brand-600 px-2.5 text-[13px] font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               Sign up
             </Link>
@@ -379,6 +379,18 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
           <div className="md:hidden fixed inset-0 z-30 bg-ink/20 backdrop-blur-[1px]" onClick={() => setMenuOpen(false)} aria-hidden />
           <div role="dialog" aria-modal="true" aria-label="Navigation menu" className="md:hidden relative z-40 border-t border-line bg-paper">
           <div className="max-w-7xl mx-auto px-5 py-4 space-y-5">
+            {/* Auth — top of drawer for unauthenticated users */}
+            {!session && (
+              <div className="grid grid-cols-2 gap-2">
+                <Link href="/auth/signin" className="flex items-center justify-center rounded-xl border border-line bg-paper px-4 py-3 text-[14px] font-medium text-ink">
+                  Sign in
+                </Link>
+                <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-3 text-[14px] font-semibold text-white">
+                  Sign up <ArrowRight size={13} />
+                </Link>
+              </div>
+            )}
+
             {/* Search */}
             <Link href="/events" className="flex items-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm text-ink-2">
               <Search size={15} className="text-ink-3" /> Search events…
@@ -394,25 +406,6 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                   {label}
                 </Link>
               ))}
-            </div>
-
-            {/* Categories grid */}
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-2.5">Categories</p>
-              <div className="grid grid-cols-2 gap-2">
-                {CATEGORIES.map(({ label, value, icon: Icon, accent, ring }) => (
-                  <Link
-                    key={value}
-                    href={`/events?category=${value}`}
-                    className="flex items-center gap-2 rounded-xl border border-line bg-paper p-3 hover:border-line-2 transition-colors"
-                  >
-                    <span className={`shrink-0 inline-flex w-8 h-8 items-center justify-center rounded-lg bg-paper ring-1 ${ring}`}>
-                      <Icon size={14} className={accent} />
-                    </span>
-                    <span className="text-[13px] font-semibold tracking-tight text-ink">{label}</span>
-                  </Link>
-                ))}
-              </div>
             </div>
 
             {/* Sell row */}
@@ -437,38 +430,22 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               <ArrowRight size={14} className="text-ink-2 shrink-0" />
             </Link>
 
-            {/* Auth */}
-            <div className="pt-2">
-              {session ? (
-                <div className="space-y-2">
-                  {session.user.role === "admin" && (
-                    <Link href="/admin" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
-                      <Shield size={15} /> Admin
-                    </Link>
-                  )}
-                  <Link href="/dashboard" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
-                    <LayoutDashboard size={15} /> Dashboard
+            {/* Account actions for signed-in users */}
+            {session && (
+              <div className="space-y-2 pt-2">
+                {session.user.role === "admin" && (
+                  <Link href="/admin" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
+                    <Shield size={15} /> Admin
                   </Link>
-                  <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">
-                    <LogOut size={15} /> Sign out
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link href="/auth/signin" className="flex items-center justify-center rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
-                      Sign in
-                    </Link>
-                    <Link href="/auth/signup" className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">
-                      Sign up <ArrowRight size={13} />
-                    </Link>
-                  </div>
-                  <Link href="/events" className="flex items-center justify-center gap-1.5 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink hover:bg-paper-2 transition-colors">
-                    Browse events <ArrowRight size={13} />
-                  </Link>
-                </div>
-              )}
-            </div>
+                )}
+                <Link href="/dashboard" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
+                  <LayoutDashboard size={15} /> Dashboard
+                </Link>
+                <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">
+                  <LogOut size={15} /> Sign out
+                </button>
+              </div>
+            )}
           </div>
         </div>
         </>
