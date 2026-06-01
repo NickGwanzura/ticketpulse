@@ -45,6 +45,9 @@ type Props = {
     maxPerOrder: number | null
     salesStart: Date | null
     salesEnd: Date | null
+    earlyBirdPrice: string | null
+    earlyBirdUntil: Date | null
+    earlyBirdQuantity: number | null
   }
   onDone?: () => void
 }
@@ -124,6 +127,29 @@ export default function TierForm({ eventId, tier, onDone }: Props) {
           <label htmlFor="salesEnd" className="block text-[13px] font-medium text-ink mb-1.5">Sales end <span className="text-ink-3 font-normal">(optional)</span></label>
           <input id="salesEnd" name="salesEnd" type="datetime-local" defaultValue={toLocalInputValue(tier?.salesEnd ?? null)} className={inputCls(!!errs.salesEnd)} />
           <FieldError message={errs.salesEnd} />
+        </div>
+      </div>
+
+      {/* Early bird pricing */}
+      <div className="rounded-xl border border-line bg-paper-2 p-4 space-y-4">
+        <div>
+          <p className="text-[13px] font-semibold text-ink mb-0.5">Early bird pricing <span className="text-ink-3 font-normal">(optional)</span></p>
+          <p className="text-[12px] text-ink-3">Offer a lower price that auto-switches to the regular price after a date or quantity.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="earlyBirdPrice" className="block text-[13px] font-medium text-ink mb-1.5">Early bird price</label>
+            <input id="earlyBirdPrice" name="earlyBirdPrice" type="number" min="0" step="0.01" defaultValue={tier?.earlyBirdPrice ?? ""} placeholder="15.00" className={inputCls()} />
+          </div>
+          <div>
+            <label htmlFor="earlyBirdUntil" className="block text-[13px] font-medium text-ink mb-1.5">Available until</label>
+            <input id="earlyBirdUntil" name="earlyBirdUntil" type="datetime-local" defaultValue={toLocalInputValue(tier?.earlyBirdUntil ?? null)} className={inputCls()} />
+          </div>
+          <div>
+            <label htmlFor="earlyBirdQuantity" className="block text-[13px] font-medium text-ink mb-1.5">Max qty at early price</label>
+            <input id="earlyBirdQuantity" name="earlyBirdQuantity" type="number" min="1" step="1" defaultValue={tier?.earlyBirdQuantity ?? ""} placeholder="50" className={inputCls()} />
+            <p className="mt-1 text-[12px] text-ink-3">Switches to regular price after this many sold.</p>
+          </div>
         </div>
       </div>
 

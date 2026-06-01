@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet } from "lucide-react"
 import QrCode from "@/components/QrCode"
 
 // How long to poll after a card payment return before giving up (ms)
@@ -412,7 +412,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
             </div>
 
             {order.status === "paid" && (
-              <div className="mt-4 pt-4 border-t border-line">
+              <div className="mt-4 pt-4 border-t border-line space-y-2">
                 <button
                   type="button"
                   onClick={resendTickets}
@@ -431,11 +431,54 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                     {resendTicketNote}
                   </p>
                 )}
+                {/* Wallet buttons */}
+                <div className="flex gap-2 pt-1">
+                  <a
+                    href={`/api/orders/${order.id}/wallet/apple`}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink hover:border-line-2 transition"
+                  >
+                    <Wallet size={13} /> Apple Wallet
+                  </a>
+                  <GoogleWalletButton orderId={order.id} />
+                </div>
               </div>
             )}
           </div>
         </aside>
       </div>
     </div>
+  )
+}
+
+function GoogleWalletButton({ orderId }: { orderId: string }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/orders/${orderId}/wallet/google`)
+      const data = await res.json()
+      if (!res.ok) { setError(data.error ?? "Not available"); return }
+      window.open(data.url, "_blank")
+    } catch {
+      setError("Failed to generate pass")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={save}
+      disabled={loading}
+      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink hover:border-line-2 disabled:opacity-60 transition"
+      title={error ?? undefined}
+    >
+      {loading ? <Loader2 size={13} className="animate-spin" /> : <Wallet size={13} />}
+      Google Wallet
+    </button>
   )
 }

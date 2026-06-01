@@ -156,6 +156,9 @@ export default function TierCard({
               maxPerOrder: tier.maxPerOrder,
               salesStart: tier.salesStart,
               salesEnd: tier.salesEnd,
+              earlyBirdPrice: (tier as { earlyBirdPrice?: string | null }).earlyBirdPrice ?? null,
+              earlyBirdUntil: (tier as { earlyBirdUntil?: Date | null }).earlyBirdUntil ?? null,
+              earlyBirdQuantity: (tier as { earlyBirdQuantity?: number | null }).earlyBirdQuantity ?? null,
             }}
             onDone={() => setEditing(false)}
           />

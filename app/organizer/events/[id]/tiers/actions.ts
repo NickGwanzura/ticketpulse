@@ -50,16 +50,19 @@ async function requireTierOwnership(tierId: string) {
 }
 
 const SaveSchema = z.object({
-  eventId:       z.uuid(),
-  tierId:        z.uuid().optional(),
-  name:          z.string().trim().min(1, "Name is required").max(160),
-  description:   z.string().trim().max(2000).optional(),
-  price:         z.string().min(1, "Price is required"),
-  currency:      z.string().trim().min(1).max(8).default("USD"),
-  totalQuantity: z.string().min(1, "Capacity is required"),
-  maxPerOrder:   z.string().optional(),
-  salesStart:    z.string().optional(),
-  salesEnd:      z.string().optional(),
+  eventId:           z.uuid(),
+  tierId:            z.uuid().optional(),
+  name:              z.string().trim().min(1, "Name is required").max(160),
+  description:       z.string().trim().max(2000).optional(),
+  price:             z.string().min(1, "Price is required"),
+  currency:          z.string().trim().min(1).max(8).default("USD"),
+  totalQuantity:     z.string().min(1, "Capacity is required"),
+  maxPerOrder:       z.string().optional(),
+  salesStart:        z.string().optional(),
+  salesEnd:          z.string().optional(),
+  earlyBirdPrice:    z.string().optional(),
+  earlyBirdUntil:    z.string().optional(),
+  earlyBirdQuantity: z.string().optional(),
 })
 
 export type TierFormState = {
@@ -88,16 +91,19 @@ export async function saveTierAction(
   formData: FormData,
 ): Promise<TierFormState> {
   const raw = {
-    eventId:       formData.get("eventId")?.toString() ?? "",
-    tierId:        formData.get("tierId")?.toString() || undefined,
-    name:          formData.get("name")?.toString() ?? "",
-    description:   formData.get("description")?.toString() ?? undefined,
-    price:         formData.get("price")?.toString() ?? "",
-    currency:      formData.get("currency")?.toString() || "USD",
-    totalQuantity: formData.get("totalQuantity")?.toString() ?? "",
-    maxPerOrder:   formData.get("maxPerOrder")?.toString() ?? undefined,
-    salesStart:    formData.get("salesStart")?.toString() ?? undefined,
-    salesEnd:      formData.get("salesEnd")?.toString() ?? undefined,
+    eventId:           formData.get("eventId")?.toString() ?? "",
+    tierId:            formData.get("tierId")?.toString() || undefined,
+    name:              formData.get("name")?.toString() ?? "",
+    description:       formData.get("description")?.toString() ?? undefined,
+    price:             formData.get("price")?.toString() ?? "",
+    currency:          formData.get("currency")?.toString() || "USD",
+    totalQuantity:     formData.get("totalQuantity")?.toString() ?? "",
+    maxPerOrder:       formData.get("maxPerOrder")?.toString() ?? undefined,
+    salesStart:        formData.get("salesStart")?.toString() ?? undefined,
+    salesEnd:          formData.get("salesEnd")?.toString() ?? undefined,
+    earlyBirdPrice:    formData.get("earlyBirdPrice")?.toString() ?? undefined,
+    earlyBirdUntil:    formData.get("earlyBirdUntil")?.toString() ?? undefined,
+    earlyBirdQuantity: formData.get("earlyBirdQuantity")?.toString() ?? undefined,
   }
 
   const parsed = SaveSchema.safeParse(raw)
@@ -139,6 +145,13 @@ export async function saveTierAction(
     return { ok: false, error: "Sales must end after they start.", fieldErrors: { salesEnd: "Must be after sales start" } }
   }
 
+  const earlyBirdPrice = data.earlyBirdPrice ? Number.parseFloat(data.earlyBirdPrice) : null
+  const earlyBirdUntil = parseDateTimeLocal(data.earlyBirdUntil)
+  const earlyBirdQuantity = data.earlyBirdQuantity ? Number.parseInt(data.earlyBirdQuantity, 10) : null
+  if (earlyBirdPrice !== null && (Number.isNaN(earlyBirdPrice) || earlyBirdPrice < 0 || earlyBirdPrice >= price)) {
+    return { ok: false, error: "Early bird price must be less than the regular price." }
+  }
+
   if (data.tierId) {
     const ownerCheck = await requireTierOwnership(data.tierId)
     if (!ownerCheck.ok || ownerCheck.tier.eventId !== data.eventId) {
@@ -157,27 +170,33 @@ export async function saveTierAction(
     await db
       .update(ticketTiers)
       .set({
-        name:          data.name,
-        description:   data.description || null,
-        price:         price.toFixed(2),
-        currency:      data.currency,
-        totalQuantity: total,
+        name:              data.name,
+        description:       data.description || null,
+        price:             price.toFixed(2),
+        currency:          data.currency,
+        totalQuantity:     total,
         maxPerOrder,
         salesStart,
         salesEnd,
+        earlyBirdPrice:    earlyBirdPrice !== null ? earlyBirdPrice.toFixed(2) : null,
+        earlyBirdUntil,
+        earlyBirdQuantity: earlyBirdQuantity || null,
       })
       .where(eq(ticketTiers.id, data.tierId))
   } else {
     await db.insert(ticketTiers).values({
-      eventId:       data.eventId,
-      name:          data.name,
-      description:   data.description || null,
-      price:         price.toFixed(2),
-      currency:      data.currency,
-      totalQuantity: total,
+      eventId:           data.eventId,
+      name:              data.name,
+      description:       data.description || null,
+      price:             price.toFixed(2),
+      currency:          data.currency,
+      totalQuantity:     total,
       maxPerOrder,
       salesStart,
       salesEnd,
+      earlyBirdPrice:    earlyBirdPrice !== null ? earlyBirdPrice.toFixed(2) : null,
+      earlyBirdUntil,
+      earlyBirdQuantity: earlyBirdQuantity || null,
     })
   }
 

@@ -203,6 +203,10 @@ export const ticketTiers = pgTable("ticket_tiers", {
   maxPerOrder: integer("max_per_order").default(10),
   salesStart: timestamp("sales_start"),
   salesEnd: timestamp("sales_end"),
+  // Early bird pricing — active until earlyBirdUntil date OR earlyBirdQuantity sold, whichever comes first
+  earlyBirdPrice: decimal("early_bird_price", { precision: 10, scale: 2 }),
+  earlyBirdUntil: timestamp("early_bird_until"),
+  earlyBirdQuantity: integer("early_bird_quantity"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("ticket_tiers_event_id_idx").on(table.eventId),

@@ -1,7 +1,7 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Minus, Plus, ShoppingBag, Check } from "lucide-react"
+import { Minus, Plus, ShoppingBag, Check, Zap } from "lucide-react"
 import { useCart } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"
 
@@ -14,6 +14,29 @@ interface Tier {
   totalQuantity: number
   soldQuantity: number
   maxPerOrder: number
+  earlyBirdPrice: number | null
+  earlyBirdUntil: Date | string | null
+  earlyBirdQuantity: number | null
+}
+
+function useEffectivePrice(tier: Tier): { price: number; isEarlyBird: boolean; expiresAt: Date | null; spotsLeft: number | null } {
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    if (!tier.earlyBirdPrice || !tier.earlyBirdUntil) return
+    const id = setInterval(() => setNow(new Date()), 10_000)
+    return () => clearInterval(id)
+  }, [tier.earlyBirdPrice, tier.earlyBirdUntil])
+
+  if (!tier.earlyBirdPrice) return { price: tier.price, isEarlyBird: false, expiresAt: null, spotsLeft: null }
+
+  const expiresAt = tier.earlyBirdUntil ? new Date(tier.earlyBirdUntil) : null
+  const dateExpired = expiresAt && now >= expiresAt
+  const spotsLeft = tier.earlyBirdQuantity !== null ? Math.max(0, tier.earlyBirdQuantity - tier.soldQuantity) : null
+  const qtyExpired = spotsLeft !== null && spotsLeft <= 0
+
+  const isEarlyBird = !dateExpired && !qtyExpired
+  return { price: isEarlyBird ? tier.earlyBirdPrice : tier.price, isEarlyBird, expiresAt, spotsLeft: isEarlyBird ? spotsLeft : null }
 }
 
 interface TicketSelectorProps {
@@ -31,6 +54,19 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
 
   const baseCurrency = tiers[0]?.currency ?? "USD"
 
+  // Build effective prices for all tiers (hooks must be called at top level)
+  const effectivePrices = tiers.map((t) => {
+    if (!t.earlyBirdPrice) return { price: t.price, isEarlyBird: false, expiresAt: null, spotsLeft: null }
+    const expiresAt = t.earlyBirdUntil ? new Date(t.earlyBirdUntil) : null
+    const now = new Date()
+    const dateExpired = expiresAt && now >= expiresAt
+    const spotsLeft = t.earlyBirdQuantity !== null ? Math.max(0, t.earlyBirdQuantity - t.soldQuantity) : null
+    const qtyExpired = spotsLeft !== null && spotsLeft <= 0
+    const isEarlyBird = !dateExpired && !qtyExpired
+    return { price: isEarlyBird ? t.earlyBirdPrice : t.price, isEarlyBird, expiresAt, spotsLeft: isEarlyBird ? spotsLeft : null }
+  })
+  const priceMap = Object.fromEntries(tiers.map((t, i) => [t.id, effectivePrices[i]]))
+
   const update = (id: string, delta: number, max: number) => {
     setQtys((prev) => {
       const next = Math.max(0, Math.min(max, (prev[id] ?? 0) + delta))
@@ -38,7 +74,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
     })
   }
 
-  const total = tiers.reduce((s, t) => s + (qtys[t.id] ?? 0) * t.price, 0)
+  const total = tiers.reduce((s, t) => s + (qtys[t.id] ?? 0) * (priceMap[t.id]?.price ?? t.price), 0)
   const lineCount = Object.values(qtys).reduce((s, q) => s + q, 0)
   const hasMixedCurrencies = new Set(tiers.filter((t) => (qtys[t.id] ?? 0) > 0).map((t) => t.currency)).size > 1
 
@@ -53,7 +89,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
           tierId: t.id,
           tierName: t.name,
           emoji,
-          price: t.price,
+          price: priceMap[t.id]?.price ?? t.price,
           currency: t.currency,
           qty,
         })
@@ -75,7 +111,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
           tierId: t.id,
           tierName: t.name,
           emoji,
-          price: t.price,
+          price: priceMap[t.id]?.price ?? t.price,
           currency: t.currency,
           qty,
         })
@@ -95,6 +131,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
           const soldOut = remaining <= 0
           const qty = qtys[tier.id] ?? 0
           const max = Math.min(tier.maxPerOrder, remaining)
+          const ep = priceMap[tier.id]!
 
           return (
             <div
@@ -107,10 +144,23 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                   : "border-line bg-paper hover:border-line-2"
               }`}
             >
+              {ep.isEarlyBird && (
+                <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                  <Zap size={9} /> EARLY BIRD
+                </span>
+              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-semibold tracking-tight text-ink">{tier.name}</p>
                   <p className="text-xs text-ink-2 mt-0.5">{tier.description}</p>
+                  {ep.isEarlyBird && ep.spotsLeft !== null && (
+                    <p className="text-[11px] mt-1 font-medium text-amber-700">{ep.spotsLeft} spot{ep.spotsLeft !== 1 ? "s" : ""} at early bird price</p>
+                  )}
+                  {ep.isEarlyBird && ep.expiresAt && ep.spotsLeft === null && (
+                    <p className="text-[11px] mt-1 font-medium text-amber-700">
+                      Early bird ends {ep.expiresAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </p>
+                  )}
                   <p className={`text-[11px] mt-1.5 font-medium ${
                     soldOut ? "text-rose-700" : remaining <= 20 ? "text-amber-700" : "text-green-700"
                   }`}>
@@ -119,8 +169,11 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[15px] font-bold tracking-tight text-ink">
-                    {formatCurrency(tier.price, tier.currency)}
+                    {formatCurrency(ep.price, tier.currency)}
                   </p>
+                  {ep.isEarlyBird && (
+                    <p className="text-[11px] text-ink-3 line-through">{formatCurrency(tier.price, tier.currency)}</p>
+                  )}
                   <p className="text-[10px] text-ink-3">per entry</p>
                 </div>
               </div>

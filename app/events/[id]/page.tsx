@@ -162,6 +162,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     totalQuantity: t.totalQuantity,
     soldQuantity: t.soldQuantity ?? 0,
     maxPerOrder: t.maxPerOrder ?? 10,
+    earlyBirdPrice: t.earlyBirdPrice ? Number(t.earlyBirdPrice) : null,
+    earlyBirdUntil: t.earlyBirdUntil ?? null,
+    earlyBirdQuantity: t.earlyBirdQuantity ?? null,
   }))
 
   const vendorListingsData: VendorListing[] = vendorListingRows.map((r) => ({

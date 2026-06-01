@@ -177,10 +177,18 @@ export async function POST(req: Request) {
   }
   const currency = [...allCurrencies][0] ?? "USD"
 
+  // Compute effective price — uses early bird price if still active
+  function effectivePrice(t: typeof tiers[number]): number {
+    if (!t.earlyBirdPrice) return Number(t.price)
+    const dateExpired = t.earlyBirdUntil && new Date() >= new Date(t.earlyBirdUntil)
+    const qtyExpired = t.earlyBirdQuantity !== null && (t.soldQuantity ?? 0) >= t.earlyBirdQuantity
+    return (dateExpired || qtyExpired) ? Number(t.price) : Number(t.earlyBirdPrice)
+  }
+
   let total = 0
   for (const item of ticketItems) {
     const t = tierById.get(item.tierId)!
-    total += Number(t.price) * item.quantity
+    total += effectivePrice(t) * item.quantity
   }
   for (const item of vendorAddonItems) {
     const v = vendorAddonPrices.get(item.listingId)!
@@ -322,7 +330,7 @@ export async function POST(req: Request) {
 
     for (const item of ticketItems) {
       const t = tierById.get(item.tierId)!
-      const unit = Number(t.price)
+      const unit = effectivePrice(t)
       orderItemValues.push({
         orderId: order.id,
         tierId: item.tierId,
