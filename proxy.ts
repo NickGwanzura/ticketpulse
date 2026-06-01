@@ -7,7 +7,10 @@ import { authConfig } from "@/auth.config"
 // re-init NextAuth here with the Edge-safe authConfig only.
 const { auth } = NextAuth(authConfig)
 
-const protectedRoutes = ["/dashboard", "/organizer", "/account", "/orders", "/payouts", "/cart", "/checkout"]
+// NOTE: /orders, /cart, /checkout are intentionally NOT protected.
+// Order pages are accessed by UUID (128-bit random — unguessable).
+// Cart and checkout are guest-friendly flows that must not require auth.
+const protectedRoutes = ["/dashboard", "/organizer", "/account", "/payouts"]
 const authRoutes = ["/auth/signin", "/auth/signup"]
 const ACCESS_COOKIE = "tp_access"
 
