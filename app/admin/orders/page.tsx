@@ -349,7 +349,6 @@ export default async function AdminOrdersPage({
                       <th className="text-left px-3 py-3 font-semibold">Status</th>
                       <th className="text-left px-3 py-3 font-semibold">Payment</th>
                       <th className="text-left px-3 py-3 font-semibold">Fulfilment</th>
-                      <th className="text-left px-3 py-3 font-semibold">PDF</th>
                       <th className="text-left px-3 py-3 font-semibold">Delivery</th>
                       <th className="text-left px-3 py-3 font-semibold">Date</th>
                       <th className="text-right px-3 py-3 font-semibold">Amount</th>
@@ -359,118 +358,63 @@ export default async function AdminOrdersPage({
                   <tbody className="divide-y divide-line">
                     {orderRows.map((o) => (
                       <tr key={o.id} className="hover:bg-paper-2 transition-colors">
-                        <td className="px-5 py-3.5">
+                        <td className="px-5 py-2">
                           <span className="text-[12px] font-mono font-semibold text-ink-2 truncate block max-w-[140px]" title={o.id}>
                             #{o.id.slice(0, 8)}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5 max-w-[180px]">
+                        <td className="px-3 py-2 max-w-[160px]">
                           <p className="text-[13px] text-ink truncate">{customerName(o)}</p>
-                          {o.guestEmail && (
-                            <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
-                          )}
-                          {o.guestPhone && (
-                            <p className="text-[11px] text-ink-3 truncate">{o.guestPhone}</p>
-                          )}
-                          {!o.guestPhone && !o.guestEmail && (
-                            <p className="text-[11px] text-ink-3">No contact info</p>
-                          )}
+                          <p className="text-[11px] text-ink-3 truncate">{o.guestEmail ?? o.guestPhone ?? "—"}</p>
                         </td>
-                        <td className="px-3 py-3.5 max-w-[200px]">
-                          <span className="text-[13px] text-ink-2 line-clamp-1">
-                            {o.eventTitle ?? "—"}
+                        <td className="px-3 py-2 max-w-[160px]">
+                          <span className="text-[13px] text-ink-2 line-clamp-1">{o.eventTitle ?? "—"}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          {(() => {
+                            const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+                            const v = meta.velocity
+                            const pollStatus = v?.pollStatus
+                            const tooltip = [
+                              v?.salesOrderTrace ? `SO: ${v.salesOrderTrace}` : "",
+                              v?.transactionTrace ? `TX: ${v.transactionTrace}` : "",
+                            ].filter(Boolean).join("\n")
+                            return (
+                              <div className="inline-flex items-center gap-1.5" title={tooltip || undefined}>
+                                <Smartphone size={12} className="text-green-700 shrink-0" />
+                                <span className="text-[12px] text-ink-2 whitespace-nowrap">
+                                  {o.paymentMethod ?? <span className="italic text-ink-3">—</span>}
+                                </span>
+                                {pollStatus && (
+                                  <span className={`text-[10px] font-semibold ${pollStatus === "SUCCESS" ? "text-emerald-600" : pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
+                                    {pollStatus}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}>
+                            {STATUS_LABEL[o.status ?? ""] ?? o.status}
                           </span>
                         </td>
-                        <td className="px-3 py-3.5">
-                          {o.paymentMethod ? (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-2">
-                                <Smartphone size={12} className="text-green-700" />
-                                {o.paymentMethod}
-                              </span>
-                              {o.paymentRef && (
-                                <span className="text-[10px] font-mono text-ink-3 truncate max-w-[140px]" title={o.paymentRef}>
-                                  Ref: {o.paymentRef.slice(0, 20)}
-                                </span>
-                              )}
-                              {(() => {
-                                const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-                                if (!meta.velocity) return null
-                                return (
-                                  <>
-                                    {meta.velocity.pollStatus && (
-                                      <span className={`text-[10px] font-medium ${meta.velocity.pollStatus === "SUCCESS" ? "text-brand-600" : meta.velocity.pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
-                                        {meta.velocity.pollStatus}
-                                      </span>
-                                    )}
-                                    {meta.velocity.salesOrderTrace && (
-                                      <span className="text-[9px] font-mono text-ink-3 truncate max-w-[140px]" title={meta.velocity.salesOrderTrace}>
-                                        SO: {meta.velocity.salesOrderTrace.slice(0, 16)}
-                                      </span>
-                                    )}
-                                    {meta.velocity.transactionTrace && (
-                                      <span className="text-[9px] font-mono text-ink-3 truncate max-w-[140px]" title={meta.velocity.transactionTrace}>
-                                        TX: {meta.velocity.transactionTrace.slice(0, 16)}
-                                      </span>
-                                    )}
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[12px] text-ink-3 italic">Not selected</span>
-                              {o.status === "pending" && o.createdAt && (
-                                <span className="text-[10px] text-amber-600 font-medium">
-                                  {(Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 < 60
-                                    ? `${Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60)}m ago`
-                                    : `${Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago`}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <div className="flex flex-col gap-1">
-                            <span
-                              className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
-                            >
-                              {STATUS_LABEL[o.status ?? ""] ?? o.status}
-                            </span>
-                            {o.status === "awaiting_verification" && o.verificationSentAt && (
-                              <span className="text-[10px] text-blue-600 font-medium">
-                                Verification sent {formatDateShort(o.verificationSentAt)}
-                              </span>
-                            )}
-                            {o.status === "awaiting_verification" && !o.verificationSentAt && (
-                              <span className="text-[10px] text-amber-600 font-medium">Not yet verified</span>
-                            )}
-                            {o.status === "completed" ? completedByText(o.metadata) : null}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3.5">
+                        <td className="px-3 py-2">
                           <PaymentBadge status={o.status} />
                         </td>
-                        <td className="px-3 py-3.5">
-                          <FulfilmentBadge metadata={o.metadata} />
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <PdfVersionBadge metadata={o.metadata} />
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <DeliveryBadge metadata={o.metadata} />
-                        </td>
-                        <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
-                            {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
-                              <span className="text-[10px] text-ink-3">
-                                {Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
-                              </span>
-                            )}
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col gap-0.5">
+                            <FulfilmentBadge metadata={o.metadata} />
+                            <PdfVersionBadge metadata={o.metadata} />
                           </div>
                         </td>
-                        <td className="px-3 py-3.5 text-right">
+                        <td className="px-3 py-2">
+                          <DeliveryBadge metadata={o.metadata} />
+                        </td>
+                        <td className="px-3 py-2 text-[13px] text-ink-2 whitespace-nowrap">
+                          {o.createdAt ? formatDateShort(o.createdAt) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right">
                           <span className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
                             {formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}
                           </span>
