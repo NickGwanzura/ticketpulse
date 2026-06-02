@@ -14,7 +14,7 @@
  *   5. Set the three env vars above
  */
 import { NextResponse } from "next/server"
-import { eq } from "drizzle-orm"
+import { and, eq, notInArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, tickets, ticketTiers, events } from "@/db/schema"
 import { log } from "@/lib/logger"
@@ -62,7 +62,7 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
     .select({ id: tickets.id, qrCode: tickets.qrCode, tierName: ticketTiers.name, holderName: tickets.holderName })
     .from(tickets)
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
-    .where(eq(tickets.orderId, id))
+    .where(and(eq(tickets.orderId, id), notInArray(tickets.status, ["cancelled", "refunded"])))
 
   if (orderTickets.length === 0) {
     return NextResponse.json({ error: "No tickets found" }, { status: 404 })

@@ -32,7 +32,8 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const [resendTicketNote, setResendTicketNote] = useState<string | null>(null)
   const [pollingForCard, setPollingForCard] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, order?.status === "paid")
+  const ticketsEnabled = order?.status === "paid" || order?.status === "completed"
+  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, ticketsEnabled)
   const [transferStates, setTransferStates] = useState<Record<string, {
     open: boolean; name: string; email: string; submitting: boolean; note: string | null; done: boolean
   }>>({})
@@ -257,7 +258,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       {holderName && (
                         <p className="mt-1 text-[12px] text-emerald-700 font-medium">Holder: {holderName}</p>
                       )}
-                      {order.status === "paid" && (
+                      {ticketsEnabled && (
                         <p className="mt-3 text-[13px] text-ink-3 inline-flex items-center gap-1.5">
                           <Calendar size={12} /> Issued {formatDate(order.createdAt)}
                         </p>
@@ -267,7 +268,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       </Link>
 
                       {/* Transfer section */}
-                      {order.status === "paid" && ticketId && !isTransferred && (
+                      {ticketsEnabled && ticketId && !isTransferred && (
                         <div className="mt-4 pt-4 border-t border-line">
                           {isPending && !ts?.done ? (
                             <div className="space-y-1.5">
@@ -356,7 +357,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       {isTransferred && (
                         <p className="text-[11px] text-ink-3 text-center font-medium">Transferred</p>
                       )}
-                      {!hasRealQr && order.status === "paid" && ticketsLoading && (
+                      {!hasRealQr && ticketsEnabled && ticketsLoading && (
                         <p className="text-[10px] text-ink-3 inline-flex items-center gap-1">
                           <Loader2 size={10} className="animate-spin" /> Generating ticket…
                         </p>

@@ -3,7 +3,12 @@ import { eq, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, events, paymentLedger } from "@/db/schema"
 import { deliverTicketForPaidOrder, readDeliveryStatus } from "@/lib/delivery"
-import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
+import {
+  deterministicTicketId,
+  generateCombinedTicketPdf,
+  generateTicketQrImageDataUrl,
+  generateTicketVerifyUrl,
+} from "@/lib/tickets"
 import { sendOrderConfirmationEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
@@ -47,7 +52,7 @@ export type AuditLogEntry = {
 
 /**
  * Mark an order as manually completed.
- * Sets order status to "completed", records payment as paid,
+ * Sets order status to "completed", records payment as paid when needed,
  * creates audit trail entry.
  */
 export async function markOrderCompleteAction(
@@ -74,6 +79,7 @@ export async function markOrderCompleteAction(
   }
 
   const now = new Date()
+  const wasPaid = order.status === "paid"
 
   try {
     await db
@@ -94,39 +100,44 @@ export async function markOrderCompleteAction(
     }
   }
 
-  // Record in payment ledger
-  try {
-    await db.insert(paymentLedger).values({
-      orderId,
-      eventId: order.eventId,
-      transactionTrace: `manual-${orderId.slice(0, 8)}-${Date.now()}`,
-      salesOrderTrace: `manual-${orderId.slice(0, 8)}`,
-      invoiceId: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
-      amount: order.totalAmount,
-      currency: order.currency ?? "USD",
-      processor: "manual",
-      velocityPollStatus: "MANUAL_COMPLETE",
-      localStatus: "completed",
-      source: "manual_complete",
-      rawPayload: { completedBy: userEmail, completedAt: now.toISOString() },
-    })
-  } catch (err) {
-    log.warn("markOrderComplete - failed to record paymentLedger", { orderId, error: String(err) })
+  // Only create a manual payment ledger entry when this action is the first
+  // payment confirmation. Completing an already-paid order should not double-count revenue.
+  if (!wasPaid) {
+    try {
+      await db.insert(paymentLedger).values({
+        orderId,
+        eventId: order.eventId,
+        transactionTrace: `manual-${orderId.slice(0, 8)}-${Date.now()}`,
+        salesOrderTrace: `manual-${orderId.slice(0, 8)}`,
+        invoiceId: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
+        amount: order.totalAmount,
+        currency: order.currency ?? "USD",
+        processor: "manual",
+        velocityPollStatus: "MANUAL_COMPLETE",
+        localStatus: "completed",
+        source: "manual_complete",
+        rawPayload: { completedBy: userEmail, completedAt: now.toISOString() },
+      })
+    } catch (err) {
+      log.warn("markOrderComplete - failed to record paymentLedger", { orderId, error: String(err) })
+    }
   }
 
   // Record analytics event
-  try {
-    await trackEvent({
-      event: "PAYMENT_CONFIRMED",
-      eventId: order.eventId,
-      orderId,
-      buyerEmail: order.guestEmail ?? undefined,
-      paymentMethod: order.paymentMethod ?? "manual",
-      amount: Number(order.totalAmount ?? 0),
-      metadata: { source: "manual_complete", completedBy: userEmail },
-    })
-  } catch (err) {
-    log.warn("markOrderComplete - failed to track event", { orderId, error: String(err) })
+  if (!wasPaid) {
+    try {
+      await trackEvent({
+        event: "PAYMENT_CONFIRMED",
+        eventId: order.eventId,
+        orderId,
+        buyerEmail: order.guestEmail ?? undefined,
+        paymentMethod: order.paymentMethod ?? "manual",
+        amount: Number(order.totalAmount ?? 0),
+        metadata: { source: "manual_complete", completedBy: userEmail },
+      })
+    } catch (err) {
+      log.warn("markOrderComplete - failed to track event", { orderId, error: String(err) })
+    }
   }
 
   log.info("order manually completed", { orderId, completedBy: userEmail })
@@ -187,6 +198,7 @@ export async function sendTicketsAction(
       .where(eq(orderItems.orderId, orderId))
 
     const ticketValues: {
+      id: string
       tierId: string
       eventId: string
       orderId: string
@@ -198,23 +210,25 @@ export async function sendTicketsAction(
     for (const item of itemsWithIds) {
       if (!item.tierId) continue
       for (let i = 0; i < item.quantity; i++) {
+        const ticketId = deterministicTicketId(orderId, item.id, i)
         ticketValues.push({
+          id: ticketId,
           tierId: item.tierId,
           eventId: order.eventId,
           orderId,
           userId: order.userId,
           status: "sold",
-          qrCode: `${orderId}-${item.id}-${i}`,
+          qrCode: generateTicketVerifyUrl(ticketId, orderId, baseUrl),
         })
       }
     }
 
     if (ticketValues.length > 0) {
-      const inserted = await db.insert(tickets).values(ticketValues).returning({ id: tickets.id, qrCode: tickets.qrCode })
-      ticketRecords = inserted.map((t) => {
-        const found = ticketValues.find((v) => v.qrCode === t.qrCode)
-        return { id: t.id, qrCode: t.qrCode, tierId: found?.tierId ?? null }
-      })
+      await db.insert(tickets).values(ticketValues).onConflictDoNothing({ target: tickets.id })
+      ticketRecords = await db
+        .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId })
+        .from(tickets)
+        .where(inArray(tickets.id, ticketValues.map((t) => t.id)))
       result.regenerated.tickets = true
       result.regenerated.attendeeRecords = true
 
@@ -235,16 +249,12 @@ export async function sendTicketsAction(
 
   // 3. Verify and regenerate QR codes — parallel generation + batch updates
   result.regenerated.qrCodes = false
-  const staleTickets = ticketRecords.filter(t => !t.qrCode || t.qrCode.startsWith(orderId))
+  const staleTickets = ticketRecords.filter(t => !t.qrCode)
   if (staleTickets.length > 0) {
-    const qrResults = await Promise.all(
-      staleTickets.map(t =>
-        generateQrDataUrl(t.id, orderId, baseUrl).catch(() => null)
-      )
-    )
-    const qrUpdates = staleTickets
-      .map((t, i) => ({ id: t.id, qrCode: qrResults[i] }))
-      .filter((u): u is { id: string; qrCode: string } => u.qrCode !== null)
+    const qrUpdates = staleTickets.map((t) => ({
+      id: t.id,
+      qrCode: generateTicketVerifyUrl(t.id, orderId, baseUrl),
+    }))
 
     if (qrUpdates.length > 0) {
       await Promise.all(
@@ -297,14 +307,16 @@ export async function sendTicketsAction(
 
   let pdfBuffer: Buffer | null = null
   try {
-    const pdfTickets = latestTickets.map((t) => ({
-      eventTitle: ev?.title ?? "Your Ticket",
-      tierName: tierNameMap.get(t.tierId) ?? "General Admission",
-      buyerName: order.guestName ?? "Valued Guest",
-      orderId,
-      ticketId: t.id,
-      qrCodeData: t.qrCode ?? `${orderId}-${t.id}`,
-    }))
+    const pdfTickets = await Promise.all(
+      latestTickets.map(async (t) => ({
+        eventTitle: ev?.title ?? "Your Ticket",
+        tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+        buyerName: order.guestName ?? "Valued Guest",
+        orderId,
+        ticketId: t.id,
+        qrCodeData: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl),
+      })),
+    )
     pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
   } catch (err) {
     log.warn("sendTickets - PDF generation failed", { orderId, error: String(err) })
@@ -419,6 +431,7 @@ export async function completeAndSendAction(
 
   // 1. Verify / mark payment
   // 2. Mark order completed (only if not already)
+  const wasPaid = order.status === "paid" || order.status === "completed"
   let completed = order.status === "completed"
   if (!completed) {
     try {
@@ -435,20 +448,22 @@ export async function completeAndSendAction(
         .where(eq(orders.id, orderId))
       completed = true
 
-      await db.insert(paymentLedger).values({
-        orderId,
-        eventId: order.eventId,
-        transactionTrace: `manual-${orderId.slice(0, 8)}-${Date.now()}`,
-        salesOrderTrace: `manual-${orderId.slice(0, 8)}`,
-        invoiceId: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
-        amount: order.totalAmount,
-        currency: order.currency ?? "USD",
-        processor: "manual",
-        velocityPollStatus: "MANUAL_COMPLETE",
-        localStatus: "completed",
-        source: "manual_complete_and_send",
-        rawPayload: { completedBy: userEmail, completedAt: now.toISOString() },
-      })
+      if (!wasPaid) {
+        await db.insert(paymentLedger).values({
+          orderId,
+          eventId: order.eventId,
+          transactionTrace: `manual-${orderId.slice(0, 8)}-${Date.now()}`,
+          salesOrderTrace: `manual-${orderId.slice(0, 8)}`,
+          invoiceId: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
+          amount: order.totalAmount,
+          currency: order.currency ?? "USD",
+          processor: "manual",
+          velocityPollStatus: "MANUAL_COMPLETE",
+          localStatus: "completed",
+          source: "manual_complete_and_send",
+          rawPayload: { completedBy: userEmail, completedAt: now.toISOString() },
+        })
+      }
     } catch (err) {
       return {
         success: false,

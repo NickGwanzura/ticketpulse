@@ -91,7 +91,7 @@ describe("revenue utility", () => {
     })
 
     it("can be composed with and() alongside confirmedOrderStatus", () => {
-      const combined = and(confirmedOrderStatus, cond)
+      const combined = and(confirmedOrderStatus, cond)!
       const { sql: rawSql, params } = sqlFor(combined)
       expect(rawSql).toMatch(/status/i)
       expect(rawSql).toMatch(/paid_at/i)

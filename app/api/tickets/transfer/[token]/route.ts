@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
-import { tickets, ticketTiers, events, orders } from "@/db/schema"
+import { tickets, ticketTiers, events } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
-import { generateQrDataUrl } from "@/lib/tickets"
-import { getBaseUrl } from "@/lib/url-config"
+import { generateQrDataUrlFromValue } from "@/lib/tickets"
 import { log } from "@/lib/logger"
 import { randomBytes } from "crypto"
 
@@ -83,19 +82,21 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   }
 
   // Regenerate QR code so the original buyer's QR is invalidated
-  const baseUrl = getBaseUrl()
   let newQrCode: string
+  let newScanCode: string
   try {
-    newQrCode = await generateQrDataUrl(ticket.id, ticket.orderId ?? "", baseUrl)
+    newScanCode = `transfer-${ticket.id}-${randomBytes(16).toString("hex")}`
+    newQrCode = await generateQrDataUrlFromValue(newScanCode)
   } catch {
     // Fallback: unique string the scanner won't match the old value
-    newQrCode = `transfer-${ticket.id}-${randomBytes(8).toString("hex")}`
+    newScanCode = `transfer-${ticket.id}-${randomBytes(8).toString("hex")}`
+    newQrCode = newScanCode
   }
 
   await db.update(tickets).set({
     holderName: ticket.transferToName,
     holderEmail: ticket.transferToEmail,
-    qrCode: newQrCode,
+    qrCode: newScanCode,
     transferredAt: new Date(),
     transferToken: null,
     transferToEmail: null,
@@ -104,7 +105,6 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   }).where(eq(tickets.id, ticket.id))
 
   // Email the new holder their ticket details
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
   const eventDate = ticket.eventStartsAt
     ? new Date(ticket.eventStartsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : "TBA"

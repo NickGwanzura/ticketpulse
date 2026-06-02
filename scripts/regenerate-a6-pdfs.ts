@@ -18,9 +18,9 @@
 import "dotenv/config"
 import { eq, and, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, events, tickets, ticketTiers, orderItems } from "@/db/schema"
+import { orders, events, tickets, ticketTiers } from "@/db/schema"
 import { getBaseUrl } from "@/lib/url-config"
-import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
+import { generateCombinedTicketPdf, generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { readDeliveryStatus } from "@/lib/delivery"
 import { log } from "@/lib/logger"
 
@@ -130,29 +130,13 @@ async function main(): Promise<MigrationResult> {
         continue
       }
 
-      // 5. Regenerate QR codes if they don't exist as data URLs
+      // 5. Generate QR image data for the PDF without overwriting stored scan values
       const qrMap = new Map<string, string>()
-      let qrsRegenerated = false
       for (const t of ticketRecords) {
-        let qrCode = t.qrCode
-        if (!qrCode || !qrCode.startsWith("data:image")) {
-          try {
-            qrCode = await generateQrDataUrl(t.id, order.id, baseUrl)
-            qrsRegenerated = true
-          } catch {
-            qrCode = `${order.id}-${t.id}`
-          }
-        }
-        qrMap.set(t.id, qrCode)
-      }
-
-      // Save regenerated QR codes to DB
-      if (qrsRegenerated) {
-        for (const t of ticketRecords) {
-          const qr = qrMap.get(t.id)
-          if (qr && qr !== t.qrCode && qr.startsWith("data:image")) {
-            await db.update(tickets).set({ qrCode: qr }).where(eq(tickets.id, t.id))
-          }
+        try {
+          qrMap.set(t.id, await generateTicketQrImageDataUrl(t.qrCode, t.id, order.id, baseUrl))
+        } catch {
+          qrMap.set(t.id, t.qrCode ?? `${order.id}-${t.id}`)
         }
       }
 

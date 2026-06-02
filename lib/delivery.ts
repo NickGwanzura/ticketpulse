@@ -8,7 +8,12 @@ import { sendText, formatChatId } from "@/lib/whatsapp"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
-import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
+import {
+  deterministicTicketId,
+  generateCombinedTicketPdf,
+  generateTicketQrImageDataUrl,
+  generateTicketVerifyUrl,
+} from "@/lib/tickets"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 
 export type DeliveryStatus =
@@ -173,6 +178,7 @@ async function _deliver(orderId: string): Promise<{
       }))
 
       const ticketValues: {
+        id: string
         tierId: string
         tierName: string
         eventId: string
@@ -185,46 +191,55 @@ async function _deliver(orderId: string): Promise<{
       for (const item of itemsWithTiers) {
         if (!item.tierId) continue
         for (let i = 0; i < item.quantity; i++) {
+          const ticketId = deterministicTicketId(orderId, item.id, i)
           ticketValues.push({
+            id: ticketId,
             tierId: item.tierId,
             tierName: item.tierName ?? "General Admission",
             eventId: order.eventId,
             orderId,
             userId: order.userId,
             status: "sold",
-            qrCode: `${orderId}-${item.id}-${i}`,
+            qrCode: generateTicketVerifyUrl(ticketId, orderId, baseUrl),
           })
         }
       }
 
       if (ticketValues.length > 0) {
-        const inserted = await db
+        await db
           .insert(tickets)
-          .values(ticketValues.map(({ tierName: _, ...v }) => v))
-          .returning({ id: tickets.id, qrCode: tickets.qrCode })
+          .values(ticketValues.map((t) => ({
+            id: t.id,
+            tierId: t.tierId,
+            eventId: t.eventId,
+            orderId: t.orderId,
+            userId: t.userId,
+            status: t.status,
+            qrCode: t.qrCode,
+          })))
+          .onConflictDoNothing({ target: tickets.id })
 
-        // Generate all QR codes in parallel — no more sequential await per ticket
+        const expectedTicketIds = ticketValues.map((t) => t.id)
+        const orderTickets = await db
+          .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId, tierName: ticketTiers.name })
+          .from(tickets)
+          .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+          .where(inArray(tickets.id, expectedTicketIds))
+
         const qrResults = await Promise.all(
-          inserted.map((t) =>
-            generateQrDataUrl(t.id, orderId, baseUrl).catch(
+          orderTickets.map((t) =>
+            generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl).catch(
               () => t.qrCode ?? `${orderId}-${t.id}`,
             ),
           ),
         )
 
-        // Batch-update QR codes concurrently
-        await Promise.all(
-          inserted.map((t, i) =>
-            db.update(tickets).set({ qrCode: qrResults[i] }).where(eq(tickets.id, t.id)),
-          ),
-        )
-
         // Build PDF ticket data directly — no re-query of the tickets table
-        pdfTicketData = inserted.map((t, i) => ({
+        pdfTicketData = orderTickets.map((t, i) => ({
           id: t.id,
-          tierId: ticketValues[i].tierId,
+          tierId: t.tierId,
           qrCode: qrResults[i],
-          tierName: ticketValues[i].tierName,
+          tierName: t.tierName ?? "General Admission",
         }))
 
         // Only increment soldQuantity for orders that did NOT reserve inventory
@@ -246,7 +261,7 @@ async function _deliver(orderId: string): Promise<{
           )
         }
 
-        ticketCount = ticketValues.length
+        ticketCount = orderTickets.length
 
         await trackEvent({
           event: "TICKET_ISSUED",
@@ -300,6 +315,12 @@ async function _deliver(orderId: string): Promise<{
             qrCode: t.qrCode ?? `${orderId}-${t.id}`,
             tierName: t.tierName ?? "General Admission",
           }))
+          pdfTicketData = await Promise.all(
+            pdfTicketData.map(async (t) => ({
+              ...t,
+              qrCode: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl),
+            })),
+          )
           // Also build saleLines from a joined items query when we didn't create tickets above
           const sl = await db
             .select({ qty: orderItems.quantity, total: orderItems.total, tierName: ticketTiers.name })
@@ -312,8 +333,6 @@ async function _deliver(orderId: string): Promise<{
         const eventDate = ev?.startsAt
           ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
           : "TBA"
-
-        const tierNameMap = new Map(pdfTicketData.map((t) => [t.tierId, t.tierName]))
 
         // Generate combined PDF of all tickets
         let pdfBuffer: Buffer | null = null

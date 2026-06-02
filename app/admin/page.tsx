@@ -9,7 +9,7 @@ import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, users, ticketTiers } from "@/db/schema"
+import { events, orders, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { publishEventAction } from "@/app/admin/actions/events"
 import { verifyUserEmailAction } from "@/app/admin/actions/users"
@@ -59,7 +59,6 @@ export default async function AdminOverviewPage() {
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
-  const hasVelocityPollSuccess = sql`${orders.metadata}->'velocity'->>'pollStatus' = 'SUCCESS'`
 
   // Parallel data fetching
   const [
@@ -79,7 +78,7 @@ export default async function AdminOverviewPage() {
     [velocityRevenueRow],
   ] = await Promise.all([
     db.select({ gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, hasVelocityPollSuccess)),
+      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity)),
 
     db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(eq(events.status, "published")),
 
@@ -88,11 +87,11 @@ export default async function AdminOverviewPage() {
     db.select({ count: sql<number>`COUNT(*)::int` }).from(users).where(eq(users.role, "organizer")),
 
     db.select({ day: sql<string>`DATE(${orders.createdAt})`, total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-      .from(orders).where(and(eq(orders.status, "paid"), gte(orders.createdAt, sevenDaysAgo)))
+      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, gte(orders.createdAt, sevenDaysAgo)))
       .groupBy(sql`DATE(${orders.createdAt})`).orderBy(sql`DATE(${orders.createdAt})`),
 
     db.select({ day: sql<string>`DATE(${orders.createdAt})`, total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-      .from(orders).where(and(eq(orders.status, "paid"), gte(orders.createdAt, fourteenDaysAgo), sql`${orders.createdAt} < ${sevenDaysAgo}`))
+      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, gte(orders.createdAt, fourteenDaysAgo), sql`${orders.createdAt} < ${sevenDaysAgo}`))
       .groupBy(sql`DATE(${orders.createdAt})`),
 
     db.select({ category: events.category, count: sql<number>`COUNT(*)::int` })
@@ -122,10 +121,11 @@ export default async function AdminOverviewPage() {
       total: sql<number>`COUNT(*)::int`,
       pending: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'pending')::int`,
       paid: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} = 'paid')::int`,
+      failed: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} IN ('expired', 'cancelled'))::int`,
     }).from(orders).where(hasVelocity),
 
     db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-      .from(orders).where(and(hasVelocity, hasVelocityPollSuccess, eq(orders.status, "paid"))),
+      .from(orders).where(and(hasVelocity, eq(orders.status, "paid"))),
   ])
 
   const grossVolume = Number(revenueRow?.gross ?? 0)
@@ -137,6 +137,7 @@ export default async function AdminOverviewPage() {
   const velocityRevenue = Number(velocityRevenueRow?.total ?? 0)
   const velocityPending = velocityCountRow?.pending ?? 0
   const velocityPaid = velocityCountRow?.paid ?? 0
+  const velocityFailed = velocityCountRow?.failed ?? 0
 
   const spark7 = dailyRevenue7d.map(d => Number(d.total))
   const spark14 = dailyRevenue14d.map(d => Number(d.total))
@@ -148,7 +149,7 @@ export default async function AdminOverviewPage() {
   const eventIds = topEventRows.map(e => e.id)
   const eventRevenue = eventIds.length > 0
     ? await db.select({ eventId: orders.eventId, revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`, currency: orders.currency })
-        .from(orders).where(and(eq(orders.status, "paid"), inArray(orders.eventId, eventIds)))
+        .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, inArray(orders.eventId, eventIds)))
         .groupBy(orders.eventId, orders.currency)
     : []
   const revMap = new Map<string, { revenue: number; currency: string }>()
@@ -207,7 +208,7 @@ export default async function AdminOverviewPage() {
         <div className="tp-fade-up-1">
           <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line border border-line rounded-2xl bg-paper overflow-hidden">
             {[
-              { label: "Revenue (7d)", value: formatCurrency(sum7, "USD"), sub: <DeltaBadge delta={revDelta} />, spark: spark7 },
+              { label: "Velocity revenue (7d)", value: formatCurrency(sum7, "USD"), sub: <DeltaBadge delta={revDelta} />, spark: spark7 },
               { label: "Active events", value: activeEvents.toLocaleString(), sub: <span className="text-[11px] text-ink-3">published</span>, spark: [] },
               { label: "New users (month)", value: newUsers.toLocaleString(), sub: <span className="text-[11px] text-ink-3">this month</span>, spark: [] },
               { label: "Velocity paid", value: velocityPaid.toLocaleString(), sub: <span className="text-[11px] text-ink-3">orders confirmed</span>, spark: [] },
@@ -254,6 +255,7 @@ export default async function AdminOverviewPage() {
                 { label: "Collected revenue", value: formatCurrency(velocityRevenue, "USD"), accent: "text-emerald-700" },
                 { label: "Pending confirmation", value: velocityPending.toLocaleString(), accent: velocityPending > 0 ? "text-amber-700" : "text-ink" },
                 { label: "Completed orders", value: velocityPaid.toLocaleString(), accent: "text-ink" },
+                { label: "Failed / cancelled", value: velocityFailed.toLocaleString(), accent: velocityFailed > 0 ? "text-rose-700" : "text-ink" },
               ].map(({ label, value, accent }) => (
                 <div key={label} className="px-5 py-3.5 flex items-center justify-between">
                   <span className="text-[13px] text-ink-2">{label}</span>

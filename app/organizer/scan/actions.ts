@@ -1,6 +1,6 @@
 "use server"
 
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { tickets, ticketTiers, events, orders } from "@/db/schema"
 import { auth } from "@/auth"
@@ -26,25 +26,41 @@ export async function markTicketScannedAction(rawCode: string): Promise<ScanResu
     }
   }
 
-  // Look up ticket by QR code — includes staff ticket fields
-  const [ticket] = await db
-    .select({
-      id: tickets.id,
-      eventId: tickets.eventId,
-      scannedAt: tickets.scannedAt,
-      orderId: tickets.orderId,
-      status: tickets.status,
-      tierName: ticketTiers.name,
-      eventTitle: events.title,
-      isStaffTicket: tickets.isStaffTicket,
-      staffName: tickets.staffName,
-      staffRole: tickets.staffRole,
-    })
-    .from(tickets)
-    .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
-    .leftJoin(events, eq(events.id, tickets.eventId))
-    .where(eq(tickets.qrCode, code))
-    .limit(1)
+  const lookupTicket = async (where: ReturnType<typeof eq> | ReturnType<typeof and>) => {
+    const [ticket] = await db
+      .select({
+        id: tickets.id,
+        qrCode: tickets.qrCode,
+        eventId: tickets.eventId,
+        scannedAt: tickets.scannedAt,
+        orderId: tickets.orderId,
+        status: tickets.status,
+        tierName: ticketTiers.name,
+        eventTitle: events.title,
+        isStaffTicket: tickets.isStaffTicket,
+        staffName: tickets.staffName,
+        staffRole: tickets.staffRole,
+      })
+      .from(tickets)
+      .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+      .leftJoin(events, eq(events.id, tickets.eventId))
+      .where(where)
+      .limit(1)
+    return ticket
+  }
+
+  // Look up ticket by stored QR code first, then by verification URL ticket id.
+  let ticket = await lookupTicket(eq(tickets.qrCode, code))
+
+  if (!ticket) {
+    const parsed = parseVerificationUrl(code)
+    if (parsed) {
+      const legacyTicket = await lookupTicket(and(eq(tickets.id, parsed.ticketId), eq(tickets.orderId, parsed.orderId)))
+      if (legacyTicket?.qrCode?.startsWith("data:image")) {
+        ticket = legacyTicket
+      }
+    }
+  }
 
   if (!ticket) {
     return { ok: false, error: "Ticket not found" }
@@ -105,15 +121,27 @@ export async function markTicketScannedAction(rawCode: string): Promise<ScanResu
     : (ticket.tierName ?? "Ticket")
 
   return {
-      ok: true,
-      status: "new",
-      ticket: {
-        eventTitle: ticket.eventTitle ?? "Unknown event",
-        tierName: tierLabel,
-        holder,
-        isStaffTicket: ticket.isStaffTicket ?? false,
-        staffRole: ticket.isStaffTicket ? (ticket.staffRole ?? undefined) : undefined,
-        staffName: ticket.isStaffTicket ? (ticket.staffName ?? undefined) : undefined,
-      },
-    }
+    ok: true,
+    status: "new",
+    ticket: {
+      eventTitle: ticket.eventTitle ?? "Unknown event",
+      tierName: tierLabel,
+      holder,
+      isStaffTicket: ticket.isStaffTicket ?? false,
+      staffRole: ticket.isStaffTicket ? (ticket.staffRole ?? undefined) : undefined,
+      staffName: ticket.isStaffTicket ? (ticket.staffName ?? undefined) : undefined,
+    },
+  }
+}
+
+function parseVerificationUrl(rawCode: string): { ticketId: string; orderId: string } | null {
+  try {
+    const url = new URL(rawCode)
+    const match = url.pathname.match(/^\/tickets\/([0-9a-fA-F-]{36})\/verify$/)
+    const orderId = url.searchParams.get("order")
+    if (!match || !orderId) return null
+    return { ticketId: match[1], orderId }
+  } catch {
+    return null
+  }
 }

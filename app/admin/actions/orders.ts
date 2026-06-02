@@ -13,7 +13,7 @@ import {
 } from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
-import { generateQrDataUrl, generateCombinedTicketPdf } from "@/lib/tickets"
+import { generateCombinedTicketPdf, generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { getBaseUrl } from "@/lib/url-config"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
@@ -106,18 +106,14 @@ export async function resendOrderEmailAction(orderId: string) {
         const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
         const baseUrl = getBaseUrl()
 
-        // Regenerate QR data URLs
+        // Generate QR image data URLs for the PDF without overwriting the stored scan value.
         const qrMap = new Map<string, string>()
         for (const t of ticketRecords) {
-          let qrCode = t.qrCode
-          if (!qrCode || !qrCode.startsWith("data:image")) {
-            try {
-              qrCode = await generateQrDataUrl(t.id, orderId, baseUrl)
-            } catch {
-              qrCode = `${orderId}-${t.id}`
-            }
+          try {
+            qrMap.set(t.id, await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl))
+          } catch {
+            qrMap.set(t.id, t.qrCode ?? `${orderId}-${t.id}`)
           }
-          qrMap.set(t.id, qrCode)
         }
 
         const pdfTickets = ticketRecords.map((t) => ({
@@ -489,29 +485,13 @@ export async function regeneratePdfAction(orderId: string) {
       })
     : "TBA"
 
-  // 3. Regenerate QR codes for all tickets (fresh A6 layout)
+  // 3. Generate QR image data for all tickets (fresh A6 layout)
   const qrMap = new Map<string, string>()
-  let qrCodesRegenerated = false
   for (const t of ticketRecords) {
-    let qrCode = t.qrCode
-    if (!qrCode || !qrCode.startsWith("data:image")) {
-      try {
-        qrCode = await generateQrDataUrl(t.id, orderId, baseUrl)
-        qrCodesRegenerated = true
-      } catch {
-        qrCode = `${orderId}-${t.id}`
-      }
-    }
-    qrMap.set(t.id, qrCode)
-  }
-
-  // Save regenerated QR codes
-  if (qrCodesRegenerated) {
-    for (const t of ticketRecords) {
-      const qr = qrMap.get(t.id)
-      if (qr && qr !== t.qrCode && qr.startsWith("data:image")) {
-        await db.update(tickets).set({ qrCode: qr }).where(eq(tickets.id, t.id))
-      }
+    try {
+      qrMap.set(t.id, await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl))
+    } catch {
+      qrMap.set(t.id, t.qrCode ?? `${orderId}-${t.id}`)
     }
   }
 

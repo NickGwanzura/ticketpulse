@@ -1,25 +1,25 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
-import { eq } from "drizzle-orm"
-import { ArrowLeft, CreditCard, Mail, Ticket, Calendar,
+import { desc, eq } from "drizzle-orm"
+import { ArrowLeft, CreditCard, Ticket, Calendar,
   Clock, User, MapPin, Smartphone, ExternalLink,
-  RotateCcw, Send, CheckCircle2, RefreshCw, FileDown,
+  Send, CheckCircle2, RefreshCw, FileDown,
+  AlertTriangle,
 } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events, tickets, ticketTiers, users } from "@/db/schema"
+import { orders, events, paymentLedger, tickets, ticketTiers, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
+import { auditOrderPaymentLedger } from "@/lib/payment-ledger-audit"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
-import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import {
   recheckPaymentAction,
 } from "@/app/admin/actions/velocity"
 import {
-  markOrderCompleteAction,
   sendTicketsAction,
   completeAndSendAction,
   resendOrderEmailAction,
@@ -92,18 +92,32 @@ export default async function AdminOrderDetailPage({
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
     .where(eq(tickets.orderId, id))
 
+  const ledgerEntries = await db
+    .select({
+      id: paymentLedger.id,
+      transactionTrace: paymentLedger.transactionTrace,
+      salesOrderTrace: paymentLedger.salesOrderTrace,
+      invoiceId: paymentLedger.invoiceId,
+      amount: paymentLedger.amount,
+      currency: paymentLedger.currency,
+      processor: paymentLedger.processor,
+      velocityPollStatus: paymentLedger.velocityPollStatus,
+      localStatus: paymentLedger.localStatus,
+      source: paymentLedger.source,
+      createdAt: paymentLedger.createdAt,
+    })
+    .from(paymentLedger)
+    .where(eq(paymentLedger.orderId, id))
+    .orderBy(desc(paymentLedger.createdAt))
+
   const customerName = order.guestName ?? buyer?.name ?? "Guest"
   const customerEmail = order.guestEmail ?? buyer?.email ?? "—"
+  const paymentAuditIssues = auditOrderPaymentLedger(order, ledgerEntries)
 
   // ── Bound server actions for the client component ───────────────────────
   const recheckPayment = async () => {
     "use server"
     await recheckPaymentAction(id)
-  }
-
-  const markComplete = async () => {
-    "use server"
-    await markOrderCompleteAction(id)
   }
 
   const sendTickets = async () => {
@@ -164,6 +178,37 @@ export default async function AdminOrderDetailPage({
             sendTickets,
           }}
         />
+
+        {paymentAuditIssues.length > 0 && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 ring-1 ring-rose-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-rose-700" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold text-rose-900">Payment ledger warning</p>
+                <p className="mt-1 text-[13px] text-rose-800">
+                  This order needs review before revenue is trusted or manual ticket actions are repeated.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {paymentAuditIssues.map((issue) => (
+                    <li key={issue.code} className="rounded-xl border border-rose-200 bg-white/60 px-3.5 py-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-semibold text-rose-950">{issue.title}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          issue.severity === "critical"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {issue.severity}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[12px] text-rose-800">{issue.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Order summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -317,6 +362,52 @@ export default async function AdminOrderDetailPage({
             </div>
           )
         })()}
+
+        {/* Payment Ledger */}
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+          <div className="px-5 md:px-6 py-4 border-b border-line flex items-center justify-between">
+            <h3 className="text-[15px] font-semibold tracking-tight text-ink flex items-center gap-2">
+              <CreditCard size={15} className="text-ink-3" /> Payment ledger
+            </h3>
+            <span className="text-[12px] text-ink-3">{ledgerEntries.length} row{ledgerEntries.length === 1 ? "" : "s"}</span>
+          </div>
+          {ledgerEntries.length === 0 ? (
+            <p className="px-5 md:px-6 py-5 text-[13px] text-ink-3">No ledger rows recorded for this order.</p>
+          ) : (
+            <div className="divide-y divide-line">
+              {ledgerEntries.map((entry) => (
+                <div key={entry.id} className="px-5 md:px-6 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                        entry.localStatus === "paid"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : entry.localStatus === "failed"
+                          ? "bg-rose-50 text-rose-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {entry.localStatus}
+                      </span>
+                      <span className="text-[12px] text-ink-3">{entry.source}</span>
+                      {entry.velocityPollStatus && (
+                        <span className="text-[12px] text-ink-3">Velocity {entry.velocityPollStatus}</span>
+                      )}
+                    </div>
+                    <span className="text-[13px] font-bold text-ink tabular-nums">
+                      {formatCurrency(Number(entry.amount ?? 0), entry.currency ?? "USD")}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid gap-1 text-[11px] text-ink-3 md:grid-cols-2">
+                    <p className="truncate font-mono">tx: {entry.transactionTrace || "—"}</p>
+                    <p className="truncate font-mono">sales: {entry.salesOrderTrace || "—"}</p>
+                    <p className="truncate font-mono">invoice: {entry.invoiceId || "—"}</p>
+                    <p>{entry.createdAt ? formatDateShort(entry.createdAt) : "—"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Tickets */}
         {orderTickets.length > 0 && (

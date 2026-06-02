@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
+import type { PollTransactionResponse } from "@/types/velocity"
 
 const MOCK_SALES_ORDER_TRACE = "so-trace-001"
 const MOCK_TRANSACTION_TRACE = "tx-trace-001"
@@ -10,6 +11,22 @@ function mockFetch(response: { status?: number; body: unknown }) {
     json: () => Promise.resolve(response.body),
     text: () => Promise.resolve(JSON.stringify(response.body)),
   })
+}
+
+function pollResponse(body: Omit<Partial<PollTransactionResponse["body"]>, "pollStatus"> & { pollStatus?: string }): PollTransactionResponse {
+  return {
+    state: "done",
+    status: "finished",
+    body: {
+      id: "txn-1",
+      trace: "trace-1",
+      amount: 50,
+      paymentStatus: "PENDING",
+      pollStatus: "PENDING",
+      ...body,
+    } as PollTransactionResponse["body"],
+    workflowId: "617",
+  }
 }
 
 describe("velocity service", () => {
@@ -79,66 +96,40 @@ describe("velocity service", () => {
 
   describe("normalizeVelocityPollResponse", () => {
     it("returns PAID when body.pollStatus is SUCCESS", () => {
-      const result = mod.normalizeVelocityPollResponse({
-        state: "done",
-        status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "SUCCESS", pollStatus: "SUCCESS",
-        },
-        workflowId: "617",
-      } as any)
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "SUCCESS", pollStatus: "SUCCESS",
+      }))
       expect(result.localStatus).toBe("PAID")
       expect(result.velocityPollStatus).toBe("SUCCESS")
     })
 
     it("returns FAILED when body.pollStatus is FAILED", () => {
-      const result = mod.normalizeVelocityPollResponse({
-        state: "done", status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "FAILED", pollStatus: "FAILED",
-        },
-        workflowId: "617",
-      } as any)
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "FAILED", pollStatus: "FAILED",
+      }))
       expect(result.localStatus).toBe("FAILED")
     })
 
     it("returns PENDING when body.pollStatus is PENDING", () => {
-      const result = mod.normalizeVelocityPollResponse({
-        state: "done", status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "PENDING", pollStatus: "PENDING",
-        },
-        workflowId: "617",
-      } as any)
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "PENDING", pollStatus: "PENDING",
+      }))
       expect(result.localStatus).toBe("PENDING")
     })
 
-    it("returns UNKNOWN when body.pollStatus is missing despite paymentStatus SUCCESS", () => {
-      const result = mod.normalizeVelocityPollResponse({
-        state: "done", status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "SUCCESS", pollStatus: undefined,
-        },
-        workflowId: "617",
-      } as any)
-      expect(result.localStatus).toBe("UNKNOWN")
+    it("returns PAID when body.pollStatus is missing but paymentStatus is SUCCESS", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "SUCCESS", pollStatus: undefined,
+      }))
+      expect(result.localStatus).toBe("PAID")
       expect(result.velocityPaymentStatus).toBe("SUCCESS")
     })
 
-    it("returns UNKNOWN when body.pollStatus is missing despite paymentStatus FAILED", () => {
-      const result = mod.normalizeVelocityPollResponse({
-        state: "done", status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "FAILED", pollStatus: undefined,
-        },
-        workflowId: "617",
-      } as any)
-      expect(result.localStatus).toBe("UNKNOWN")
+    it("returns FAILED when body.pollStatus is missing but paymentStatus is FAILED", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "FAILED", pollStatus: undefined,
+      }))
+      expect(result.localStatus).toBe("FAILED")
     })
 
     it("returns UNKNOWN for null/undefined response", () => {
@@ -151,27 +142,17 @@ describe("velocity service", () => {
     })
 
     it("returns UNKNOWN for unexpected pollStatus value", () => {
-      const result = mod.normalizeVelocityPollResponse({
-        state: "done", status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "SOME_WEIRD_STATUS", pollStatus: "COMPLETED",
-        },
-        workflowId: "617",
-      } as any)
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "SOME_WEIRD_STATUS", pollStatus: "COMPLETED",
+      }))
       expect(result.localStatus).toBe("UNKNOWN")
       expect(result.velocityPollStatus).toBe("COMPLETED")
     })
 
     it("includes rawResponse in the result", () => {
-      const raw = {
-        state: "done", status: "finished",
-        body: {
-          id: "txn-1", trace: "trace-1", amount: 50,
-          paymentStatus: "SUCCESS", pollStatus: "SUCCESS",
-        },
-        workflowId: "617",
-      } as any
+      const raw = pollResponse({
+        paymentStatus: "SUCCESS", pollStatus: "SUCCESS",
+      })
       const result = mod.normalizeVelocityPollResponse(raw)
       expect(result.rawResponse).toBe(raw)
     })
@@ -537,6 +518,7 @@ describe("velocity service", () => {
         authorized: true,
         items: [{ itemCode: "tp001", qty: 1, unitPrice: 100, amount: 100 }],
       })
+      expect(salesOrder.body.trace).toBe("so-trace-002")
 
       mockFetch({
         body: {

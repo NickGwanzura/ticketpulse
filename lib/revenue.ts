@@ -1,4 +1,4 @@
-import { eq, or, gte } from "drizzle-orm"
+import { eq, or, gte, type SQL } from "drizzle-orm"
 import { orders } from "@/db/schema"
 
 /**
@@ -13,10 +13,10 @@ import { orders } from "@/db/schema"
  * Use this in every dashboard / report query so all pages report
  * the same revenue figures.
  */
-export const confirmedOrderStatus = or(
+export const confirmedOrderStatus: SQL<unknown> = or(
   eq(orders.status, "paid"),
   eq(orders.status, "completed"),
-)
+)!
 
 /**
  * Time condition that works for both "paid" and "completed" orders.
@@ -25,6 +25,6 @@ export const confirmedOrderStatus = or(
  * orders store theirs in `completedAt`.  This condition matches
  * whichever field is populated for each row.
  */
-export function paymentTimeSince(since: Date) {
-  return or(gte(orders.paidAt, since), gte(orders.completedAt, since))
+export function paymentTimeSince(since: Date): SQL<unknown> {
+  return or(gte(orders.paidAt, since), gte(orders.completedAt, since))!
 }

@@ -5,6 +5,7 @@ import Link from "next/link"
 import {
   ScanLine, Camera, CameraOff, CheckCircle2, AlertTriangle, Ticket,
   RotateCcw, ArrowLeft, ShieldCheck, Wifi, WifiOff, Trash2, User,
+  Volume2, VolumeX,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import { markTicketScannedAction, type ScanResult } from "./actions"
@@ -48,16 +49,6 @@ function saveCheckins(list: CheckinRecord[]) {
   try { localStorage.setItem(CHECKINS_KEY, JSON.stringify(list)) } catch {}
 }
 
-function parseTicketCode(raw: string): { orderId: string; lineKey: string; idx: number } | null {
-  // Print page emits codes like `${order.id}-${line.key}-${i + 1}`,
-  // where order.id starts with "TP-". Split on that prefix to be safe.
-  const match = raw.match(/^(TP-[A-Z0-9]+)-(.+)-(\d+)$/i)
-  if (!match) return null
-  const idx = parseInt(match[3], 10)
-  if (Number.isNaN(idx) || idx < 1) return null
-  return { orderId: match[1], lineKey: match[2], idx: idx - 1 }
-}
-
 export default function OrganizerScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -65,12 +56,15 @@ export default function OrganizerScanPage() {
   const rafRef = useRef<number | null>(null)
   const lastSeenRef = useRef<{ code: string; at: number } | null>(null)
   const recentRef = useRef<CheckinRecord[]>([])
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const autoStartedRef = useRef(false)
 
   const [cameraState, setCameraState] = useState<"idle" | "starting" | "running" | "denied" | "unsupported">("idle")
   const [recent, setRecent] = useState<CheckinRecord[]>([])
   const [manual, setManual] = useState("")
   const [latest, setLatest] = useState<CheckinRecord | null>(null)
   const [online, setOnline] = useState(true)
+  const [soundEnabled, setSoundEnabled] = useState(true)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -95,6 +89,50 @@ export default function OrganizerScanPage() {
     const unknown = recent.filter((r) => r.status === "unknown").length
     return { valid, dupes, unknown, total: recent.length }
   }, [recent])
+
+  const ensureAudio = useCallback(async () => {
+    if (typeof window === "undefined") return null
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextCtor) return null
+    const ctx = audioCtxRef.current ?? new AudioContextCtor()
+    audioCtxRef.current = ctx
+    if (ctx.state === "suspended") await ctx.resume().catch(() => {})
+    return ctx
+  }, [])
+
+  const playScanSound = useCallback(async (status: CheckinStatus) => {
+    if (!soundEnabled) return
+    const ctx = await ensureAudio()
+    if (!ctx) return
+
+    const now = ctx.currentTime
+    const pattern =
+      status === "valid"
+        ? [{ f: 880, t: 0, d: 0.08 }, { f: 1175, t: 0.1, d: 0.09 }]
+        : status === "duplicate"
+          ? [{ f: 520, t: 0, d: 0.1 }, { f: 390, t: 0.13, d: 0.12 }]
+          : [{ f: 180, t: 0, d: 0.16 }, { f: 140, t: 0.18, d: 0.16 }]
+
+    for (const note of pattern) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = status === "unknown" ? "sawtooth" : "sine"
+      osc.frequency.setValueAtTime(note.f, now + note.t)
+      gain.gain.setValueAtTime(0.0001, now + note.t)
+      gain.gain.exponentialRampToValueAtTime(status === "valid" ? 0.16 : 0.11, now + note.t + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + note.t + note.d)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now + note.t)
+      osc.stop(now + note.t + note.d + 0.02)
+    }
+  }, [ensureAudio, soundEnabled])
+
+  const vibrateForStatus = useCallback((status: CheckinStatus) => {
+    if (typeof navigator === "undefined" || !("vibrate" in navigator)) return
+    const pattern = status === "valid" ? [35] : status === "duplicate" ? [45, 35, 45] : [80, 40, 80]
+    navigator.vibrate(pattern)
+  }, [])
 
   const recordCheckin = useCallback(async (rawCode: string) => {
     const code = rawCode.trim()
@@ -152,7 +190,9 @@ export default function OrganizerScanPage() {
       saveCheckins(next)
       return next
     })
-  }, [])
+    playScanSound(rec.status)
+    vibrateForStatus(rec.status)
+  }, [playScanSound, vibrateForStatus])
 
   const stopCamera = useCallback(() => {
     if (rafRef.current !== null) {
@@ -170,6 +210,7 @@ export default function OrganizerScanPage() {
 
   const startCamera = useCallback(async () => {
     if (typeof window === "undefined") return
+    await ensureAudio()
     const hasDetector = !!window.BarcodeDetector
     if (!hasDetector) {
       setCameraState("starting")
@@ -227,13 +268,33 @@ export default function OrganizerScanPage() {
       console.warn("camera denied or unavailable", err)
       setCameraState("denied")
     }
-  }, [recordCheckin])
+  }, [ensureAudio, recordCheckin])
+
+  useEffect(() => {
+    if (autoStartedRef.current || cameraState !== "idle") return
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) return
+
+    let cancelled = false
+    navigator.permissions
+      .query({ name: "camera" as PermissionName })
+      .then((permission) => {
+        if (cancelled || autoStartedRef.current || permission.state !== "granted") return
+        autoStartedRef.current = true
+        startCamera()
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [cameraState, startCamera])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
   const onManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!manual.trim()) return
+    ensureAudio()
     recordCheckin(manual)
     setManual("")
   }
@@ -247,25 +308,41 @@ export default function OrganizerScanPage() {
   const cameraSupported = typeof window !== "undefined" && (!!window.BarcodeDetector || typeof jsQR !== "undefined")
 
   return (
-    <div className="tp-fade-up">
-      <PageHeader
-        eyebrow="Gate scanner"
-        title="Scan tickets at the gate"
-        subtitle="Native QR reader, no third-party app, no extra hardware."
-        width="xl"
-        actions={
-          <Link
-            href="/organizer"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
-          >
-            <ArrowLeft size={14} /> Back to dashboard
-          </Link>
-        }
-      />
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-paper tp-fade-up md:static md:z-auto">
+      <div className="hidden md:block">
+        <PageHeader
+          eyebrow="Gate scanner"
+          title="Scan tickets at the gate"
+          subtitle="Native QR reader, no third-party app, no extra hardware."
+          width="xl"
+          actions={
+            <Link
+              href="/organizer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
+            >
+              <ArrowLeft size={14} /> Back to dashboard
+            </Link>
+          }
+        />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-6">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-paper/95 px-4 py-3 backdrop-blur md:hidden">
+        <Link href="/organizer" className="inline-flex items-center gap-2 text-[13px] font-semibold text-ink">
+          <ArrowLeft size={15} /> Scanner
+        </Link>
+        <button
+          type="button"
+          onClick={() => setSoundEnabled((v) => !v)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-paper text-ink"
+          aria-label={soundEnabled ? "Mute scan sounds" : "Enable scan sounds"}
+        >
+          {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
+      </div>
+
+      <div className="mx-auto max-w-7xl space-y-4 px-3 pb-6 pt-3 md:space-y-6 md:px-8 md:py-10">
         {/* Trust strip */}
-        <div className="rounded-2xl border border-line bg-paper p-4 md:p-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-ink-2">
+        <div className="hidden rounded-2xl border border-line bg-paper p-4 text-[13px] text-ink-2 md:flex md:flex-wrap md:items-center md:gap-x-6 md:gap-y-3 md:p-5">
           <span className="inline-flex items-center gap-2"><ShieldCheck size={14} className="text-brand-600" /> End-to-end on TicketPulse. We issue, you scan.</span>
           <span className="inline-flex items-center gap-2"><Ticket size={14} className="text-ink-3" /> Reads PDF, mobile QR, and Apple/Google Wallet.</span>
           <span className={`inline-flex items-center gap-2 ${online ? "text-green-700" : "text-amber-700"}`}>
@@ -275,28 +352,36 @@ export default function OrganizerScanPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-4 gap-2 md:gap-4">
           {[
             { l: "Checked in", v: stats.valid, color: "text-green-700" },
             { l: "Duplicates", v: stats.dupes, color: "text-amber-700" },
             { l: "Rejected",   v: stats.unknown, color: "text-rose-700" },
             { l: "Total scans", v: stats.total, color: "text-ink" },
           ].map((k) => (
-            <div key={k.l} className="rounded-2xl border border-line bg-paper p-5">
-              <p className="text-[12px] text-ink-3">{k.l}</p>
-              <p className={`mt-1 text-[28px] font-bold tracking-tight tabular-nums ${k.color}`}>{k.v}</p>
+            <div key={k.l} className="rounded-xl border border-line bg-paper p-3 md:rounded-2xl md:p-5">
+              <p className="text-[10px] text-ink-3 md:text-[12px]">{k.l}</p>
+              <p className={`mt-1 text-[22px] font-bold tracking-tight tabular-nums md:text-[28px] ${k.color}`}>{k.v}</p>
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-12 gap-4 md:gap-6">
           {/* Scanner */}
-          <div className="col-span-12 lg:col-span-7 rounded-2xl border border-line bg-paper overflow-hidden">
+          <div className="col-span-12 overflow-hidden rounded-2xl border border-line bg-paper lg:col-span-7">
             <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink inline-flex items-center gap-2">
                 <ScanLine size={16} className="text-brand-600" /> Scanner
               </h2>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled((v) => !v)}
+                  className="hidden items-center gap-2 rounded-xl border border-line bg-paper px-3.5 py-2 text-[13px] font-medium text-ink transition-colors hover:border-line-2 md:inline-flex"
+                >
+                  {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                  {soundEnabled ? "Sound on" : "Muted"}
+                </button>
                 {cameraState === "running" ? (
                   <button
                     onClick={stopCamera}
@@ -316,7 +401,7 @@ export default function OrganizerScanPage() {
               </div>
             </div>
 
-            <div className="relative aspect-video bg-ink/95">
+            <div className="relative h-[58vh] min-h-[320px] bg-ink/95 md:aspect-video md:h-auto md:min-h-0">
               <video
                 ref={videoRef}
                 playsInline
@@ -381,7 +466,7 @@ export default function OrganizerScanPage() {
           {/* Latest + log */}
           <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
             {/* Latest result */}
-            <div className={`tp-slide-up rounded-2xl border p-5 ${
+            <div className={`tp-slide-up rounded-2xl border p-5 md:p-6 ${
               !latest ? "border-line bg-paper" :
               latest.status === "valid" ? "border-brand-200 bg-green-50/60 ring-1 ring-green-200/40" :
               latest.status === "duplicate" ? "border-amber-200 bg-amber-50/60 ring-1 ring-amber-200/40" :
@@ -395,14 +480,14 @@ export default function OrganizerScanPage() {
               ) : (
                 <>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ring-1 ${
+                    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-bold tracking-wide uppercase ring-1 ${
                       latest.status === "valid"
                         ? "bg-green-100 text-green-700 ring-green-300/50"
                         : latest.status === "duplicate"
                         ? "bg-amber-100 text-amber-700 ring-amber-300/50"
                         : "bg-rose-100 text-rose-700 ring-rose-300/50"
                     }`}>
-                      {latest.status === "valid" ? <CheckCircle2 size={11} /> : latest.status === "duplicate" ? <RotateCcw size={11} /> : <AlertTriangle size={11} />}
+                      {latest.status === "valid" ? <CheckCircle2 size={15} /> : latest.status === "duplicate" ? <RotateCcw size={15} /> : <AlertTriangle size={15} />}
                       {latest.status === "valid" ? "Admit one" : latest.status === "duplicate" ? "Already scanned" : "Not recognized"}
                     </span>
                     {latest.isStaffTicket && (
@@ -414,7 +499,7 @@ export default function OrganizerScanPage() {
 
                   {latest.isStaffTicket ? (
                     <>
-                      <p className="text-[16px] font-semibold tracking-tight text-ink line-clamp-2">
+                      <p className="text-[22px] font-bold tracking-tight text-ink line-clamp-2 md:text-[18px]">
                         {latest.eventTitle ?? "Unknown event"}
                       </p>
                       <div className="mt-2 flex items-center gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-3.5 py-2.5 transition-all">
@@ -429,7 +514,7 @@ export default function OrganizerScanPage() {
                     </>
                   ) : (
                     <>
-                      <p className="text-[16px] font-semibold tracking-tight text-ink line-clamp-2">
+                      <p className="text-[22px] font-bold tracking-tight text-ink line-clamp-2 md:text-[18px]">
                         {latest.eventTitle ?? "Unknown ticket"}
                       </p>
                       {latest.tierName && <p className="text-[13px] text-ink-2 mt-0.5">{latest.tierName}</p>}

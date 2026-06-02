@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
-import { eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, notInArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, events, tickets, ticketTiers } from "@/db/schema"
 import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
+import { generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { formatDateShort } from "@/lib/utils"
 
 export async function GET(
@@ -36,7 +37,7 @@ export async function GET(
       tierId: tickets.tierId,
     })
     .from(tickets)
-    .where(eq(tickets.orderId, orderId))
+    .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded"])))
 
   if (orderTickets.length === 0) {
     return NextResponse.json({ error: "No tickets found for this order" }, { status: 404 })
@@ -55,19 +56,19 @@ export async function GET(
   const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
 
   // Build ticket page data
-  const ticketPages = orderTickets.map((t, idx) => ({
-    eventTitle: event?.title ?? "Your Ticket",
-    tierName: tierNameMap.get(t.tierId) ?? "General Admission",
-    buyerName: order.guestName ?? "Valued Guest",
-    orderId,
-    ticketId: t.id,
-    qrCodeDataUrl: t.qrCode ?? "",
-    humanCode: `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`,
-    venue: event?.venue,
-    eventDate: event?.startsAt ? formatDateShort(event.startsAt) : null,
-  }))
-
   try {
+    const ticketPages = await Promise.all(orderTickets.map(async (t, idx) => ({
+      eventTitle: event?.title ?? "Your Ticket",
+      tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+      buyerName: order.guestName ?? "Valued Guest",
+      orderId,
+      ticketId: t.id,
+      qrCodeDataUrl: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId),
+      humanCode: `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`,
+      venue: event?.venue,
+      eventDate: event?.startsAt ? formatDateShort(event.startsAt) : null,
+    })))
+
     const pdfBuffer = await generateTicketPdfBuffer(ticketPages)
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
