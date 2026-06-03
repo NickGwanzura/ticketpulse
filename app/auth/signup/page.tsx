@@ -2,6 +2,7 @@ import { signIn } from "@/auth"
 import Link from "next/link"
 import { Check, User, CalendarCog, Store, Mail, ArrowRight } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
+import { redirect } from "next/navigation"
 
 const ROLES = [
   { value: "attendee",  label: "Attendee",  body: "Buy tickets, book shuttles, grab merch and photo packs.",   icon: User },
@@ -13,10 +14,16 @@ function localCallback(value: string | undefined): string | null {
   return value?.startsWith("/") && !value.startsWith("//") ? value : null
 }
 
+const SIGNUP_ERRORS: Record<string, string> = {
+  invalid: "Please enter your name, email address, and a password with at least 8 characters.",
+  account_exists: "An account already exists for this email. Sign in with the same password, or use Forgot password.",
+  password_required: "This account was created with Google. Use Continue with Google, or set a password with Forgot password.",
+}
+
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; callbackUrl?: string }>
+  searchParams: Promise<{ role?: string; callbackUrl?: string; error?: string; email?: string; name?: string }>
 }) {
   const sp = await searchParams
   const roleValues = ROLES.map((role) => role.value)
@@ -24,6 +31,17 @@ export default async function SignUpPage({
     ? (sp.role as typeof roleValues[number])
     : "attendee"
   const callbackUrl = localCallback(sp.callbackUrl)
+  const errorMessage = sp.error ? SIGNUP_ERRORS[sp.error] : null
+  const defaultEmail = sp.email?.toLowerCase().trim() ?? ""
+  const defaultName = sp.name?.trim() ?? ""
+
+  function signupUrl(error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string) {
+    const params = new URLSearchParams({ role: initialRole, error })
+    if (callbackUrl) params.set("callbackUrl", callbackUrl)
+    if (email) params.set("email", email)
+    if (name) params.set("name", name)
+    return `/auth/signup?${params.toString()}`
+  }
 
   return (
     <div
@@ -50,7 +68,7 @@ export default async function SignUpPage({
             const { db } = await import("@/db")
             const { users } = await import("@/db/schema")
             const { eq } = await import("drizzle-orm")
-            const { hashPassword } = await import("@/lib/password")
+            const { hashPassword, verifyPassword } = await import("@/lib/password")
 
             const ALLOWED_SIGNUP_ROLES = ["attendee", "organizer", "vendor"] as const
             type AllowedRole = typeof ALLOWED_SIGNUP_ROLES[number]
@@ -61,7 +79,9 @@ export default async function SignUpPage({
             const email = ((formData.get("email") as string) ?? "").toLowerCase().trim()
             const password = (formData.get("password") as string) ?? ""
             const name  = ((formData.get("name") as string) ?? "").trim() || null
-            if (!email || password.length < 8) return
+            if (!email || password.length < 8 || !name) {
+              redirect(signupUrl("invalid", email, name ?? undefined))
+            }
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
             let finalRole: AllowedRole | "admin" = role
@@ -98,7 +118,9 @@ export default async function SignUpPage({
               const updates: Partial<typeof users.$inferInsert> = {}
 
               if (!existing.passwordHash) {
-                updates.passwordHash = hashPassword(password)
+                redirect(signupUrl("password_required", email, name ?? undefined))
+              } else if (!verifyPassword(password, existing.passwordHash)) {
+                redirect(signupUrl("account_exists", email, name ?? undefined))
               }
               if (!existing.name && name) {
                 updates.name = name
@@ -121,6 +143,18 @@ export default async function SignUpPage({
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
         >
+          {errorMessage && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
+              {errorMessage}{" "}
+              <Link
+                href={`/auth/signin?email=${encodeURIComponent(defaultEmail)}${callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
+                className="font-semibold underline underline-offset-2"
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
+
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I&apos;m signing up as</p>
             <div className="grid grid-cols-3 gap-2">
@@ -154,6 +188,7 @@ export default async function SignUpPage({
                 required
                 autoComplete="name"
                 placeholder="Tendai Moyo"
+                defaultValue={defaultName}
                 className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
@@ -170,6 +205,7 @@ export default async function SignUpPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
+                defaultValue={defaultEmail}
                 className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
