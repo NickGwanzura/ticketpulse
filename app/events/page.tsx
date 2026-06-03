@@ -19,8 +19,8 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 import { db } from "@/db"
-import { events, ticketTiers, orders, users } from "@/db/schema"
-import { and, asc, eq, ilike, inArray, or, sql } from "drizzle-orm"
+import { events, ticketTiers, tickets, orders, users } from "@/db/schema"
+import { and, asc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
 
 const CATEGORIES = ["All", "Concerts", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
@@ -86,7 +86,7 @@ export default async function EventsPage({
 
   // Fetch lowest tier price per event in one query
   const eventIds = rows.map((r) => r.id)
-  const [priceRows, tierAggRows] = eventIds.length
+  const [priceRows, tierAggRows, attendingRows] = eventIds.length
     ? await Promise.all([
         db
           .select({
@@ -99,14 +99,25 @@ export default async function EventsPage({
         db
           .select({
             eventId: ticketTiers.eventId,
-            totalSold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
             totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
           })
           .from(ticketTiers)
           .where(inArray(ticketTiers.eventId, eventIds))
           .groupBy(ticketTiers.eventId),
+        db
+          .select({
+            eventId: tickets.eventId,
+            attending: sql<number>`COUNT(*)::int`,
+          })
+          .from(tickets)
+          .where(and(
+            inArray(tickets.eventId, eventIds),
+            eq(tickets.isStaffTicket, false),
+            notInArray(tickets.status, ["cancelled", "refunded"]),
+          ))
+          .groupBy(tickets.eventId),
       ])
-    : [[], []]
+    : [[], [], []]
 
   const lowestByEvent = new Map<string, { price: number; currency: string }>()
   for (const t of priceRows) {
@@ -116,9 +127,14 @@ export default async function EventsPage({
     if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
   }
 
-  const aggByEvent = new Map<string, { sold: number; total: number }>()
+  const attendingByEvent = new Map<string, number>()
+  for (const a of attendingRows) {
+    attendingByEvent.set(a.eventId, Number(a.attending))
+  }
+
+  const aggByEvent = new Map<string, { total: number }>()
   for (const a of tierAggRows) {
-    aggByEvent.set(a.eventId, { sold: Number(a.totalSold), total: Number(a.totalCapacity) })
+    aggByEvent.set(a.eventId, { total: Number(a.totalCapacity) })
   }
 
   const eventCards = rows.map((r) => {
@@ -137,7 +153,7 @@ export default async function EventsPage({
       lowestPrice: low?.price ?? null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",
-      soldQuantity: agg?.sold ?? 0,
+      soldQuantity: attendingByEvent.get(r.id) ?? 0,
       totalQuantity: agg?.total ?? 0,
     }
   })
@@ -150,7 +166,7 @@ export default async function EventsPage({
   if (isHeroView) {
     const [paidOrdersResult, ticketsSoldResult, organizerCountResult] = await Promise.all([
       db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(orders).where(eq(orders.status, "paid")),
-      db.select({ count: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)::int` }).from(ticketTiers),
+      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(tickets).where(and(eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))),
       db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(users).where(eq(users.role, "organizer")),
     ])
     heroStats.paidOrders = Number(paidOrdersResult[0]?.count ?? 0)

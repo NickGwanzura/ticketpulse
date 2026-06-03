@@ -1,6 +1,6 @@
 import { db } from "@/db"
-import { events, ticketTiers } from "@/db/schema"
-import { and, asc, eq, inArray, sql } from "drizzle-orm"
+import { events, ticketTiers, tickets } from "@/db/schema"
+import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm"
 
 export interface FeaturedEvent {
   id: string
@@ -50,7 +50,7 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
   if (rows.length === 0) return []
 
   const eventIds = rows.map((r) => r.id)
-  const [priceRows, tierAggRows] = await Promise.all([
+  const [priceRows, tierAggRows, attendingRows] = await Promise.all([
     db
       .select({
         eventId: ticketTiers.eventId,
@@ -62,12 +62,23 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
     db
       .select({
         eventId: ticketTiers.eventId,
-        totalSold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
         totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
       })
       .from(ticketTiers)
       .where(inArray(ticketTiers.eventId, eventIds))
       .groupBy(ticketTiers.eventId),
+    db
+      .select({
+        eventId: tickets.eventId,
+        attending: sql<number>`COUNT(*)::int`,
+      })
+      .from(tickets)
+      .where(and(
+        inArray(tickets.eventId, eventIds),
+        eq(tickets.isStaffTicket, false),
+        notInArray(tickets.status, ["cancelled", "refunded"]),
+      ))
+      .groupBy(tickets.eventId),
   ])
 
   const lowestByEvent = new Map<string, { price: number; currency: string }>()
@@ -78,9 +89,14 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
     if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
   }
 
-  const aggByEvent = new Map<string, { sold: number; total: number }>()
+  const attendingByEvent = new Map<string, number>()
+  for (const a of attendingRows) {
+    attendingByEvent.set(a.eventId, Number(a.attending))
+  }
+
+  const aggByEvent = new Map<string, { total: number }>()
   for (const a of tierAggRows) {
-    aggByEvent.set(a.eventId, { sold: Number(a.totalSold), total: Number(a.totalCapacity) })
+    aggByEvent.set(a.eventId, { total: Number(a.totalCapacity) })
   }
 
   return rows.map((r) => {
@@ -99,7 +115,7 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       lowestPrice: low?.price ?? null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",
-      soldQuantity: agg?.sold ?? 0,
+      soldQuantity: attendingByEvent.get(r.id) ?? 0,
       totalQuantity: agg?.total ?? 0,
     }
   })
