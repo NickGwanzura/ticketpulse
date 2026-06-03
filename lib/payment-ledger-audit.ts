@@ -13,6 +13,11 @@ export type PaymentAuditIssue = {
     | "INVOICE_MISMATCH"
     | "AMOUNT_MISMATCH"
     | "CURRENCY_MISMATCH"
+    | "PAID_ORDER_MISSING_TICKETS"
+    | "TICKET_COUNT_MISMATCH"
+    | "TICKETS_WITHOUT_SETTLED_PAYMENT"
+    | "DELIVERY_NOT_STARTED"
+    | "DELIVERY_FAILED"
   severity: PaymentAuditSeverity
   title: string
   detail: string
