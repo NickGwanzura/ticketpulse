@@ -1,10 +1,9 @@
-import { redirect } from "next/navigation"
 import { notFound } from "next/navigation"
-import { eq, and } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { organiserInvites, eventOrganisers, events } from "@/db/schema"
+import { organiserInvites, events } from "@/db/schema"
 import AcceptInviteForm from "./AcceptInviteForm"
 
 export const metadata = { title: "Accept invitation" }
@@ -90,8 +89,6 @@ export default async function InvitePage({
     <div className="min-h-screen grid place-items-center p-6 bg-paper-2">
       <AcceptInviteForm
         token={token}
-        inviteId={invite.id}
-        eventId={invite.eventId}
         eventTitle={invite.eventTitle ?? "Untitled event"}
         email={invite.email}
         isSignedIn={!!session}

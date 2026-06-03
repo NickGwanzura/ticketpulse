@@ -1,15 +1,21 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
-import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react"
+import { Mail, ArrowRight, CheckCircle2 } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
+
+function localCallback(value: string | undefined): string | null {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : null
+}
 
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string }>
+  searchParams: Promise<{ reset?: string; callbackUrl?: string; email?: string }>
 }) {
   const sp = await searchParams
   const resetOk = sp.reset === "ok"
+  const callbackUrl = localCallback(sp.callbackUrl) ?? "/dashboard"
+  const email = sp.email?.toLowerCase().trim() ?? ""
 
   return (
     <div
@@ -46,7 +52,7 @@ export default async function SignInPage({
             await signIn("credentials", {
               email: formData.get("email") as string,
               password: formData.get("password") as string,
-              redirectTo: "/dashboard",
+              redirectTo: callbackUrl,
             })
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
@@ -62,6 +68,7 @@ export default async function SignInPage({
                 autoComplete="email"
                 inputMode="email"
                 placeholder="you@example.com"
+                defaultValue={email}
                 className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-base text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
@@ -92,7 +99,7 @@ export default async function SignInPage({
         <form
           action={async () => {
             "use server"
-            await signIn("google", { redirectTo: "/dashboard" })
+            await signIn("google", { redirectTo: callbackUrl })
           }}
         >
           <button
@@ -110,7 +117,7 @@ export default async function SignInPage({
         </form>
 
         <p className="text-center text-[13px] text-ink-2 mt-5">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/auth/signup" className="font-semibold text-navy hover:underline">
             Sign up free
           </Link>

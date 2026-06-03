@@ -36,16 +36,12 @@ async function declineInviteAction(
 
 export default function AcceptInviteForm({
   token,
-  inviteId,
-  eventId,
   eventTitle,
   email,
   isSignedIn,
   emailMatches,
 }: {
   token: string
-  inviteId: string
-  eventId: string
   eventTitle: string
   email: string
   isSignedIn: boolean

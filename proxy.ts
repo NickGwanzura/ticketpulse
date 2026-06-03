@@ -14,6 +14,10 @@ const protectedRoutes = ["/dashboard", "/organizer", "/account", "/payouts"]
 const authRoutes = ["/auth/signin", "/auth/signup"]
 const ACCESS_COOKIE = "tp_access"
 
+function isLocalPath(value: string | null): value is string {
+  return !!value && value.startsWith("/") && !value.startsWith("//")
+}
+
 export default auth((req) => {
   const { nextUrl } = req
   const path = nextUrl.pathname
@@ -43,10 +47,26 @@ export default auth((req) => {
   const isAuthRoute = authRoutes.some((r) => path.startsWith(r))
 
   if (isProtected && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/auth/signin", nextUrl))
+    const signInUrl = new URL("/auth/signin", nextUrl)
+    signInUrl.searchParams.set("callbackUrl", `${nextUrl.pathname}${nextUrl.search}`)
+    return NextResponse.redirect(signInUrl)
   }
 
   if (isAuthRoute && isLoggedIn) {
+    const callbackUrl = nextUrl.searchParams.get("callbackUrl")
+    if (isLocalPath(callbackUrl)) {
+      return NextResponse.redirect(new URL(callbackUrl, nextUrl))
+    }
+
+    if (path.startsWith("/auth/signup")) {
+      const role = nextUrl.searchParams.get("role")
+      if (role === "organizer" || role === "vendor") {
+        const completeUrl = new URL("/auth/complete-signup", nextUrl)
+        completeUrl.searchParams.set("role", role)
+        return NextResponse.redirect(completeUrl)
+      }
+    }
+
     return NextResponse.redirect(new URL("/dashboard", nextUrl))
   }
 

@@ -9,16 +9,21 @@ const ROLES = [
   { value: "vendor",    label: "Vendor",    body: "List your service, take bookings from event organizers.",    icon: Store },
 ] as const
 
+function localCallback(value: string | undefined): string | null {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : null
+}
+
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string }>
+  searchParams: Promise<{ role?: string; callbackUrl?: string }>
 }) {
   const sp = await searchParams
   const roleValues = ROLES.map((role) => role.value)
   const initialRole = roleValues.includes(sp.role as typeof roleValues[number])
     ? (sp.role as typeof roleValues[number])
     : "attendee"
+  const callbackUrl = localCallback(sp.callbackUrl)
 
   return (
     <div
@@ -111,7 +116,7 @@ export default async function SignUpPage({
             await signIn("credentials", {
               email,
               password,
-              redirectTo: finalRole === "organizer" ? "/organizer" : finalRole === "vendor" ? "/vendors/apply" : "/dashboard",
+              redirectTo: callbackUrl ?? (finalRole === "organizer" ? "/organizer" : finalRole === "vendor" ? "/vendors/apply" : "/dashboard"),
             })
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
@@ -202,7 +207,9 @@ export default async function SignUpPage({
         <form
           action={async () => {
             "use server"
-            const redirectTo = `/auth/complete-signup?role=${encodeURIComponent(initialRole)}`
+            const params = new URLSearchParams({ role: initialRole })
+            if (callbackUrl) params.set("callbackUrl", callbackUrl)
+            const redirectTo = `/auth/complete-signup?${params.toString()}`
             await signIn("google", { redirectTo })
           }}
         >
