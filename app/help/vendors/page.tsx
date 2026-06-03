@@ -1,22 +1,54 @@
 import Link from "next/link"
-import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck, Wallet, Calendar, Star } from "lucide-react"
+import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck, Wallet, Calendar, Star, FileCheck2, MessageSquare, BadgeCheck } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
 const STEPS = [
-  { n: "01", title: "Apply",        body: "Fill the short form. We approve in 48 hours." },
-  { n: "02", title: "Build profile", body: "Add packages, photos, and serving areas." },
-  { n: "03", title: "Take bookings", body: "Organizers find you. Quote and confirm in-app." },
-  { n: "04", title: "Get paid",      body: "We hold the payment. Released on event completion." },
+  { n: "01", title: "Apply", body: "Send your business details, category, city, contact information, and basic verification documents." },
+  { n: "02", title: "Build profile", body: "Add packages, photos, serving areas, minimum notice, capacity, and starting prices." },
+  { n: "03", title: "Confirm scope", body: "Organizers enquire, you confirm availability, price, timing, and what is included." },
+  { n: "04", title: "Get paid", body: "Confirmed bookings and payout details are tracked so both sides know what is owed and when." },
+]
+
+const REQUIREMENTS = [
+  "Business name or trading name",
+  "Primary service category",
+  "City and areas served",
+  "Phone and email contact",
+  "Clear package descriptions and price-from guidance",
+  "Photos, references, or social proof where available",
+]
+
+const BOOKING_GUIDE = [
+  {
+    icon: MessageSquare,
+    title: "Reply quickly",
+    body: "Fast replies convert more enquiries. Confirm date, venue, guest count, setup time, and exact package scope before quoting.",
+  },
+  {
+    icon: FileCheck2,
+    title: "Write down the scope",
+    body: "List what is included, what costs extra, cancellation terms, arrival time, and who provides power, tables, water, or security.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Build trust",
+    body: "Keep photos current, honour confirmed prices, and ask organizers to review you after successful events.",
+  },
 ]
 
 const FAQ = [
-  { q: "Do I have to be VAT-registered?",   a: "No. Sole traders and informal businesses are welcome. We collect basic ID and a reference for verification." },
-  { q: "How are payments held?",            a: "Organizers pay TicketPulse on confirmation. Funds are held in a TrustCo Zimbabwe escrow account and released to you when the event is marked complete." },
-  { q: "What's the cut?",                   a: "Vendors keep 95% of the booking. We take 5% to cover payment processing, escrow, and organizer support." },
-  { q: "How do I get the verified badge?",  a: "Complete 5 paid events with a 4.5+ average rating. Verification is free and reviewed monthly." },
-  { q: "Can I sync my external calendar?",  a: "Yes, we support iCal feeds. Confirmed bookings auto-block your TicketPulse calendar." },
-  { q: "What happens if an event is cancelled?", a: "If the organizer cancels more than 7 days out, you keep a 25% deposit. Within 7 days, 50%. Day-of cancellations are paid in full per our standard terms." },
+  { q: "Do I have to be VAT-registered?", a: "No. Sole traders, small teams, and registered companies can apply. TicketPulse may ask for ID, business references, photos, or social proof before approval." },
+  { q: "How do organizers contact me?", a: "Organizers browse vendor profiles and send enquiries from TicketPulse. Keep your phone, email, city, package descriptions, and pricing guidance up to date." },
+  { q: "What should I include in a package?", a: "Include what is delivered, setup time, staffing, quantity or guest limits, travel area, overtime rules, and anything the organizer must provide." },
+  { q: "How do I get the verified badge?", a: "Verification is reviewed by TicketPulse. Strong profiles usually include references, clear photos, reliable contact details, and a record of successful events." },
+  { q: "Can I reject a booking?", a: "Yes. You should reject enquiries when you are unavailable, the scope is unclear, or the event is outside your service area." },
+  { q: "What happens if an event is cancelled?", a: "Cancellation handling depends on the agreement between vendor and organizer. Put deposit, refund, and cancellation terms in writing before confirming work." },
 ]
+
+export const metadata = {
+  title: "Help for vendors",
+  description: "How TicketPulse works for vendors, including applications, profiles, enquiries, packages, and booking support.",
+}
 
 export default function HelpVendorsPage() {
   return (
@@ -32,10 +64,10 @@ export default function HelpVendorsPage() {
             <span className="text-[11px] font-semibold tracking-[0.16em] text-ink uppercase">For vendors</span>
           </div>
           <h1 className="text-[36px] md:text-[52px] font-bold tracking-[-0.025em] leading-[1.05] text-ink max-w-2xl">
-            How TicketPulse works for vendors.
+            Get discovered by organizers who need reliable event suppliers.
           </h1>
           <p className="mt-5 text-[16px] text-ink-2 max-w-xl leading-relaxed">
-            Catering, sound, photography, security, decor, here&apos;s the full picture before you apply.
+            Catering, sound, photography, security, decor, logistics, and specialist services can use TicketPulse to present packages and receive event enquiries.
           </p>
         </div>
       </section>
@@ -78,6 +110,38 @@ export default function HelpVendorsPage() {
         </div>
       </section>
 
+      <section className="max-w-7xl mx-auto px-5 md:px-8 pb-14 md:pb-20">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-2xl border border-line bg-paper p-6">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Before applying</p>
+            <h2 className="text-[24px] md:text-[30px] font-bold tracking-tight text-ink">What to prepare</h2>
+            <div className="mt-5 grid gap-2">
+              {REQUIREMENTS.map((item) => (
+                <div key={item} className="flex items-center gap-2 rounded-xl bg-paper-2 px-4 py-3">
+                  <ShieldCheck size={14} className="shrink-0 text-brand-600" />
+                  <span className="text-[13px] text-ink-2">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-line bg-paper p-6">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Bookings</p>
+            <h2 className="text-[24px] md:text-[30px] font-bold tracking-tight text-ink">How to win better event work</h2>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {BOOKING_GUIDE.map(({ icon: Icon, title, body }) => (
+                <div key={title}>
+                  <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                    <Icon size={17} className="text-brand-600" />
+                  </span>
+                  <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="max-w-4xl mx-auto px-5 md:px-8 py-14 md:py-20">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
@@ -88,7 +152,6 @@ export default function HelpVendorsPage() {
       {/* CTA */}
       <section className="px-5 md:px-8 pb-20 md:pb-28">
         <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-12 relative overflow-hidden">
-          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" />
           <div className="relative grid md:grid-cols-2 gap-6 items-center">
             <div>
               <h2 className="text-[26px] md:text-[36px] font-bold tracking-[-0.02em] leading-[1.05]">

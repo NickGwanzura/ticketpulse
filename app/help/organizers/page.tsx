@@ -12,7 +12,8 @@ import {
   Megaphone,
   ShieldCheck,
   Clock3,
-  HelpCircle,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
@@ -24,8 +25,8 @@ const STEPS = [
   },
   {
     icon: Megaphone,
-    title: "Open sales",
-    body: "Launch public on-sale, run early-bird pricing, or gate a members-only pre-sale with a password. You control the timeline.",
+    title: "Publish when ready",
+    body: "Use the publish checklist to confirm details, add ticket tiers, preview the public page, then make the event live.",
   },
   {
     icon: Ticket,
@@ -40,7 +41,7 @@ const STEPS = [
   {
     icon: Wallet,
     title: "Get paid",
-    body: "Request a payout at any time. We deduct our 5% fee and send the rest to your EcoCash or bank account. No upfront costs.",
+    body: "Request a payout from settled sales. We deduct the platform fee and send the available balance to your EcoCash or bank account.",
   },
 ]
 
@@ -64,6 +65,32 @@ const PRICING_PERKS = [
     icon: ShieldCheck,
     title: "Fraud protection built in",
     body: "Every QR is unique and tied to the buyer's account. Duplicates are flagged automatically at the gate.",
+  },
+]
+
+const PUBLISH_CHECKLIST = [
+  "Event title, date, venue, city, and description are correct.",
+  "At least one ticket tier is created with the right price and capacity.",
+  "Refund, parking, age limit, dress code, or entry notes are added under More About This Event.",
+  "Cover image and public preview look right on mobile.",
+  "Payout details and organizer contact details are ready before heavy sales begin.",
+]
+
+const EVENT_DAY = [
+  {
+    icon: ScanLine,
+    title: "Use scanner mode",
+    body: "Open the organizer scanner on a phone, start the camera, and keep sound or vibration on for faster admit/reject feedback.",
+  },
+  {
+    icon: Ticket,
+    title: "Have manual lookup ready",
+    body: "If a QR is cracked, dim, or unavailable, search by ticket code, buyer email, or order reference before turning guests away.",
+  },
+  {
+    icon: AlertTriangle,
+    title: "Escalate payment disputes",
+    body: "If someone says they paid but has no ticket, capture their payment time, phone/email, and order reference for admin reconciliation.",
   },
 ]
 
@@ -97,8 +124,20 @@ const FAQS = [
     a: "Yes. You can create multiple tiers such as General, VIP, Early-bird, and Members-only. Each tier can have its own price, capacity, and sales window.",
   },
   {
+    q: "How do I publish an event?",
+    a: "Create the event, add at least one ticket tier, preview the public page, then press Publish event from the organizer event overview or ticket tiers page.",
+  },
+  {
+    q: "Can I edit an event after publishing?",
+    a: "Yes. You can update details after publishing, but avoid changing core entry rules, venue, or times without notifying buyers through email or WhatsApp broadcast.",
+  },
+  {
     q: "Do I need a separate app to scan tickets?",
     a: "No. Ticket scanning works directly from your phone's browser. Open the Live dashboard for your event, point the camera at a QR code, and the scanner handles the rest.",
+  },
+  {
+    q: "What should I do if someone paid but has no ticket?",
+    a: "Ask for their checkout email, payment phone or card name, payment time, and any order reference. Admin can use reconciliation tools to confirm payment and resend tickets if valid.",
   },
 ]
 
@@ -138,7 +177,7 @@ export default function HelpOrganizersPage() {
             Everything you need to sell tickets.
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-xl leading-relaxed">
-            Launch an event in minutes, sell with EcoCash and cards, and get paid when you want. Here is how it works.
+            Launch an event, publish only when it is ready, sell with supported payments, scan tickets at the gate, and track payout readiness.
           </p>
         </div>
       </section>
@@ -170,6 +209,39 @@ export default function HelpOrganizersPage() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-5 md:px-8 pb-14 md:pb-16">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-line bg-paper p-6">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
+              Before publishing
+            </p>
+            <h2 className="text-[24px] md:text-[30px] font-bold tracking-tight text-ink">
+              Publish checklist
+            </h2>
+            <div className="mt-5 space-y-3">
+              {PUBLISH_CHECKLIST.map((item) => (
+                <div key={item} className="flex gap-3 rounded-xl bg-paper-2 px-4 py-3">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-brand-600" />
+                  <p className="text-[13px] leading-relaxed text-ink-2">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+            <p className="text-[15px] font-semibold text-amber-900">Do this before sharing widely</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-amber-800">
+              Buy one test ticket or issue a staff ticket, open it on a phone, and scan it from another device. This confirms the gate workflow before real guests arrive.
+            </p>
+            <Link
+              href="/auth/signup?role=organizer"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-brand-700 transition"
+            >
+              Open organizer tools <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
       </section>
 
       {/* Pricing / Payouts */}
@@ -225,6 +297,26 @@ export default function HelpOrganizersPage() {
         </div>
       </section>
 
+      <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-16">
+        <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
+          Event day
+        </p>
+        <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">
+          Run the gate with fewer surprises
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          {EVENT_DAY.map(({ icon: Icon, title, body }) => (
+            <div key={title} className="rounded-2xl border border-line bg-paper p-5">
+              <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
+                <Icon size={17} className="text-brand-600" />
+              </span>
+              <p className="text-[15px] font-semibold tracking-tight text-ink">{title}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="max-w-4xl mx-auto px-5 md:px-8 py-14 md:py-16">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
@@ -239,7 +331,6 @@ export default function HelpOrganizersPage() {
       {/* CTA */}
       <section className="px-5 md:px-8 pb-14 md:pb-20">
         <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-navy via-navy-700 to-navy text-white p-8 md:p-12 relative overflow-hidden">
-          <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-green-500/30 blur-3xl pointer-events-none" />
           <div className="relative grid md:grid-cols-2 gap-6 items-center">
             <div>
               <h2 className="text-[26px] md:text-[36px] font-bold tracking-[-0.02em] leading-[1.05]">
