@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation"
 import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
-import { ArrowLeft, Ticket, ShoppingBag, ImageIcon } from "lucide-react"
+import { ArrowLeft, Ticket } from "lucide-react"
 
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
@@ -10,6 +10,8 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import TierCard from "./TierCard"
 import NewTierPanel from "./NewTierPanel"
+import { publishOrganizerEventAction } from "../../actions"
+import PublishEventButton from "../../PublishEventButton"
 
 export const metadata = {
   title: "Ticket tiers",
@@ -48,6 +50,8 @@ export default async function TiersPage({
     .orderBy(asc(ticketTiers.createdAt))
 
   const justCreated = sp.created === "1"
+  const isDraft = event.status === "draft"
+  const publishAction = publishOrganizerEventAction.bind(null, id)
 
   return (
     <div className="tp-fade-up">
@@ -70,6 +74,12 @@ export default async function TiersPage({
         {justCreated && (
           <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] text-green-800">
             Draft created. Add at least one ticket tier below so people can buy.
+          </div>
+        )}
+
+        {sp.error === "missing_tiers" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-800">
+            Add at least one ticket tier before publishing this event.
           </div>
         )}
 
@@ -104,6 +114,18 @@ export default async function TiersPage({
                 }}
               />
             ))}
+          </div>
+        )}
+
+        {isDraft && tiers.length > 0 && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-brand-200 bg-green-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[15px] font-semibold text-green-900">Ready to go live?</p>
+              <p className="mt-1 text-[13px] text-green-800">Publish this event so buyers can find it and purchase tickets.</p>
+            </div>
+            <form action={publishAction} className="shrink-0">
+              <PublishEventButton />
+            </form>
           </div>
         )}
       </div>

@@ -9,19 +9,28 @@ import {
 } from "lucide-react"
 
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, tickets } from "@/db/schema"
+import { events, orders, ticketTiers, tickets } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
 import AiInsightCard from "@/components/ai/AiInsightCard"
+import { publishOrganizerEventAction } from "../actions"
+import PublishEventButton from "../PublishEventButton"
 
 export const metadata = { title: "Event overview" }
 
 type RouteParams = { id: string }
 
-export default async function EventOverviewPage({ params }: { params: Promise<RouteParams> }) {
+export default async function EventOverviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<RouteParams>
+  searchParams: Promise<{ published?: string; publishError?: string }>
+}) {
   const { id } = await params
+  const sp = await searchParams
 
   const session = await auth()
   if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}`)
@@ -143,8 +152,9 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
     activity.push({ text: `${checkedIn} attendee${checkedIn !== 1 ? "s" : ""} checked in`, ago: "Total" })
   }
 
-  const daysRemaining = Math.max(0, Math.ceil((new Date(event.startsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+  const daysRemaining = Math.max(0, Math.ceil((new Date(event.startsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
   const isPublished = event.status === "published"
+  const publishAction = publishOrganizerEventAction.bind(null, id)
 
   return (
     <div className="tp-fade-up">
@@ -155,22 +165,44 @@ export default async function EventOverviewPage({ params }: { params: Promise<Ro
         actions={
           <div className="flex items-center gap-2">
             {!isPublished && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
-                Draft
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
+                  Draft
+                </span>
+                <form action={publishAction}>
+                  <PublishEventButton />
+                </form>
+              </>
             )}
             <Link
               href={`/events/${event.slug ?? id}`}
               target="_blank"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition"
             >
-              <ArrowUpRight size={14} /> View live
+              <ArrowUpRight size={14} /> {isPublished ? "View live" : "Preview"}
             </Link>
           </div>
         }
       />
 
       <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-8">
+        {sp.published === "1" && (
+          <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
+            Event published. It is now visible on TicketPulse.
+          </div>
+        )}
+
+        {sp.published === "already" && (
+          <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
+            This event is already published.
+          </div>
+        )}
+
+        {sp.publishError === "locked" && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
+            This event cannot be published because it is cancelled or completed.
+          </div>
+        )}
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
