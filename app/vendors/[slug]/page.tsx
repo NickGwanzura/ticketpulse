@@ -216,7 +216,7 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                 </div>
                 <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
                   <Globe size={13} className="text-ink-3" />
-                  <span>Public profile · ticketplse.tech/v/{vendor.slug}</span>
+                  <span>Public profile · ticketpulse.tech/v/{vendor.slug}</span>
                 </div>
               </div>
 

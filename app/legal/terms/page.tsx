@@ -11,7 +11,7 @@ export default function TermsPage() {
         {
           id: "agreement", title: "Your agreement with us",
           body: <>
-            <p>TicketPulse Zimbabwe (Pvt) Ltd (&ldquo;<strong>TicketPulse</strong>&rdquo;, &ldquo;<strong>we</strong>&rdquo;) operates the platform at ticketplse.tech. By accessing or using it, you (&ldquo;<strong>you</strong>&rdquo;) accept these Terms and our <a href="/legal/privacy">Privacy Policy</a>.</p>
+            <p>TicketPulse Zimbabwe (Pvt) Ltd (&ldquo;<strong>TicketPulse</strong>&rdquo;, &ldquo;<strong>we</strong>&rdquo;) operates the platform at ticketpulse.tech. By accessing or using it, you (&ldquo;<strong>you</strong>&rdquo;) accept these Terms and our <a href="/legal/privacy">Privacy Policy</a>.</p>
             <p>If you do not agree, please do not use the service.</p>
           </>,
         },

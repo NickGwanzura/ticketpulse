@@ -31,7 +31,7 @@ export function generateTicketVerifyUrl(
   orderId: string,
   baseUrl?: string,
 ): string {
-  const origin = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
+  const origin = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
   return `${origin}/tickets/${ticketId}/verify?order=${orderId}`
 }
 

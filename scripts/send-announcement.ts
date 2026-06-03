@@ -14,7 +14,7 @@ dotenv.config({ path: ".env.local" })
 
 import { Resend } from "resend"
 
-const FROM = "TicketPulse <no-reply@ticketplse.tech>"
+const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
 const BATCH_DELAY_MS = 500 // 500 ms between sends = ~2 emails/sec
 const DRY_RUN = process.argv.includes("--dry")
 

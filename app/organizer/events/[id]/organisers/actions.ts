@@ -14,7 +14,7 @@ import { sendEmail } from "@/lib/email"
 const MAX_INVITED_ORGANISERS = 2
 const INVITE_EXPIRY_HOURS = 72
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
 
 async function requireOwnerAccess(eventId: string) {
   const session = await auth()

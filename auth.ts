@@ -109,7 +109,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // WhatsApp alert to admin (fire-and-forget).
             const { sendAdminAlert } = await import("@/lib/whatsapp")
             sendAdminAlert(
-              `🆕 *New signup — ${role}*\n\nName: ${user.name ?? "—"}\nEmail: ${user.email}\nRole: ${role}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/admin/users`,
+              `🆕 *New signup — ${role}*\n\nName: ${user.name ?? "—"}\nEmail: ${user.email}\nRole: ${role}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/users`,
             ).catch((e) => console.error("[auth] admin signup WhatsApp alert", e))
           }
         } catch (e) {
@@ -127,13 +127,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
     Resend({
       apiKey: process.env.AUTH_RESEND_KEY,
-      from: "TicketPulse <no-reply@ticketplse.tech>",
+      from: "TicketPulse <no-reply@ticketpulse.tech>",
       async sendVerificationRequest({ identifier: email, url }) {
         // ── Fix the magic-link URL ────────────────────────────────────────
         // NextAuth constructs the URL from AUTH_URL (or request headers). If
         // AUTH_URL isn't set or is wrong (e.g. localhost), the email link will
         // point to the wrong host. We override the origin with the public URL.
-        const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech").replace(/\/+$/, "")
+        const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech").replace(/\/+$/, "")
         const parsed = new URL(url)
         if (parsed.origin !== appUrl) {
           url = url.replace(parsed.origin, appUrl)

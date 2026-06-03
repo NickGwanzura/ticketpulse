@@ -10,7 +10,7 @@
  */
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
 
 const BRAND = {
   ink: "#0B1220",
@@ -118,7 +118,7 @@ function layout({ preheader, heading, body, cta }: LayoutOpts): string {
               <hr style="border:none;border-top:1px solid ${BRAND.line};margin:0 0 16px;" />
               <p style="margin:0;font-size:12px;line-height:18px;color:${BRAND.ink3};">
                 TicketPulse &middot; Harare, Zimbabwe &middot;
-                <a href="${escape(APP_URL)}" style="color:${BRAND.ink2};text-decoration:underline;">ticketplse.tech</a>
+                <a href="${escape(APP_URL)}" style="color:${BRAND.ink2};text-decoration:underline;">ticketpulse.tech</a>
               </p>
               <p style="margin:6px 0 0;font-size:12px;line-height:18px;color:${BRAND.ink3};">
                 You are receiving this because of activity on your TicketPulse account.

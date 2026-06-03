@@ -9,7 +9,7 @@ import AdminInviteEmail from "@/emails/admin-invite"
 import ResetPasswordEmail from "@/emails/reset-password"
 import { log } from "@/lib/logger"
 
-const FROM = "TicketPulse <no-reply@ticketplse.tech>"
+const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
 const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.co.zw"
 
 export function validateEmailConfig(): { valid: boolean; warnings: string[] } {

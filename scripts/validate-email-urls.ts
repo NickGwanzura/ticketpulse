@@ -1,6 +1,6 @@
 /**
  * Validates that all email templates produce URLs pointing to the correct
- * production domain (ticketplse.tech), not localhost or a Railway subdomain.
+ * production domain (ticketpulse.tech), not localhost or a Railway subdomain.
  *
  * Usage: NODE_ENV=production npx tsx scripts/validate-email-urls.ts
  *
@@ -33,7 +33,7 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-const PRODUCTION_DOMAIN = "ticketplse.tech"
+const PRODUCTION_DOMAIN = "ticketpulse.tech"
 
 /**
  * Extract all URL-like strings from HTML/text content.

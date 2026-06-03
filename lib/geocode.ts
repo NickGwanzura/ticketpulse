@@ -35,7 +35,7 @@ export async function geocodeFromLocation(
     const res = await fetch(url, {
       headers: {
         // Nominatim requires a descriptive User-Agent
-        "User-Agent": "TicketPulse/1.0 (event management app; https://ticketplse.tech)",
+        "User-Agent": "TicketPulse/1.0 (event management app; https://ticketpulse.tech)",
       },
       signal: AbortSignal.timeout(5_000),
     })

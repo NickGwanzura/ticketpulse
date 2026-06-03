@@ -88,7 +88,7 @@ export async function POST(req: Request) {
       : "TBA"
 
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
     const ticketUrl = `${appUrl}/orders/${orderId}`
 
     const summary = items

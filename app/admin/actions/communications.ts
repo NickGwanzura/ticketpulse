@@ -86,7 +86,7 @@ export async function sendCommunicationAction(
     try {
         const personalised = personaliseBody(u.name)
         const { html, text } = (() => {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
           const paragraphs = personalised
             .split("\n")
             .filter(Boolean)
@@ -113,7 +113,7 @@ export async function sendCommunicationAction(
       </td></tr>
       <tr><td style="padding:20px 4px 0;">
         <hr style="border:none;border-top:1px solid #E6ECF2;margin:0 0 16px;" />
-        <p style="margin:0;font-size:12px;line-height:18px;color:#6B7280;">TicketPulse &middot; Harare, Zimbabwe &middot; <a href="${appUrl}" style="color:#384151;text-decoration:underline;">ticketplse.tech</a></p>
+        <p style="margin:0;font-size:12px;line-height:18px;color:#6B7280;">TicketPulse &middot; Harare, Zimbabwe &middot; <a href="${appUrl}" style="color:#384151;text-decoration:underline;">ticketpulse.tech</a></p>
         <p style="margin:6px 0 0;font-size:12px;line-height:18px;color:#6B7280;">You are receiving this because of activity on your TicketPulse account.</p>
       </td></tr>
     </table>
