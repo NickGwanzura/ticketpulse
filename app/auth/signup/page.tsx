@@ -20,6 +20,14 @@ const SIGNUP_ERRORS: Record<string, string> = {
   password_required: "This account was created with Google. Use Continue with Google, or set a password with Forgot password.",
 }
 
+function signupUrl(role: string, callbackUrl: string | null, error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string) {
+  const params = new URLSearchParams({ role, error })
+  if (callbackUrl) params.set("callbackUrl", callbackUrl)
+  if (email) params.set("email", email)
+  if (name) params.set("name", name)
+  return `/auth/signup?${params.toString()}`
+}
+
 export default async function SignUpPage({
   searchParams,
 }: {
@@ -34,14 +42,6 @@ export default async function SignUpPage({
   const errorMessage = sp.error ? SIGNUP_ERRORS[sp.error] : null
   const defaultEmail = sp.email?.toLowerCase().trim() ?? ""
   const defaultName = sp.name?.trim() ?? ""
-
-  function signupUrl(error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string) {
-    const params = new URLSearchParams({ role: initialRole, error })
-    if (callbackUrl) params.set("callbackUrl", callbackUrl)
-    if (email) params.set("email", email)
-    if (name) params.set("name", name)
-    return `/auth/signup?${params.toString()}`
-  }
 
   return (
     <div
@@ -76,11 +76,12 @@ export default async function SignUpPage({
             const role: AllowedRole = ALLOWED_SIGNUP_ROLES.includes(rawRole as AllowedRole)
               ? (rawRole as AllowedRole)
               : "attendee"
+            const requestedCallbackUrl = localCallback((formData.get("callbackUrl") as string) ?? undefined)
             const email = ((formData.get("email") as string) ?? "").toLowerCase().trim()
             const password = (formData.get("password") as string) ?? ""
             const name  = ((formData.get("name") as string) ?? "").trim() || null
             if (!email || password.length < 8 || !name) {
-              redirect(signupUrl("invalid", email, name ?? undefined))
+              redirect(signupUrl(role, requestedCallbackUrl, "invalid", email, name ?? undefined))
             }
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
@@ -118,9 +119,9 @@ export default async function SignUpPage({
               const updates: Partial<typeof users.$inferInsert> = {}
 
               if (!existing.passwordHash) {
-                redirect(signupUrl("password_required", email, name ?? undefined))
+                redirect(signupUrl(role, requestedCallbackUrl, "password_required", email, name ?? undefined))
               } else if (!verifyPassword(password, existing.passwordHash)) {
-                redirect(signupUrl("account_exists", email, name ?? undefined))
+                redirect(signupUrl(role, requestedCallbackUrl, "account_exists", email, name ?? undefined))
               }
               if (!existing.name && name) {
                 updates.name = name
@@ -138,7 +139,7 @@ export default async function SignUpPage({
             await signIn("credentials", {
               email,
               password,
-              redirectTo: callbackUrl ?? (finalRole === "organizer" ? "/organizer" : finalRole === "vendor" ? "/vendors/apply" : "/dashboard"),
+              redirectTo: requestedCallbackUrl ?? (finalRole === "organizer" ? "/organizer" : finalRole === "vendor" ? "/vendors/apply" : "/dashboard"),
             })
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
@@ -154,6 +155,8 @@ export default async function SignUpPage({
               </Link>
             </div>
           )}
+
+          {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
 
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I&apos;m signing up as</p>
@@ -241,14 +244,18 @@ export default async function SignUpPage({
         </div>
 
         <form
-          action={async () => {
+          action={async (formData: FormData) => {
             "use server"
-            const params = new URLSearchParams({ role: initialRole })
-            if (callbackUrl) params.set("callbackUrl", callbackUrl)
+            const role = (formData.get("role") as string) || "attendee"
+            const requestedCallbackUrl = localCallback((formData.get("callbackUrl") as string) ?? undefined)
+            const params = new URLSearchParams({ role })
+            if (requestedCallbackUrl) params.set("callbackUrl", requestedCallbackUrl)
             const redirectTo = `/auth/complete-signup?${params.toString()}`
             await signIn("google", { redirectTo })
           }}
         >
+          <input type="hidden" name="role" value={initialRole} />
+          {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-3 border border-line-2 bg-paper text-ink font-medium text-[14px] py-3.5 rounded-xl hover:bg-paper-2 hover:border-line-2 transition-colors"
