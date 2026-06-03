@@ -337,20 +337,25 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                 <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase mb-4">Featured</p>
                 <div className="space-y-2">
                   {featured.length > 0 ? (
-                    featured.map((f) => (
-                      <Link
-                        key={f.slug}
-                        href={`/events/${f.slug}`}
-                        className="group flex items-center gap-3 rounded-xl border border-line bg-paper p-3 hover:border-line-2 hover:shadow-sm transition-all"
-                      >
-                        <span className="shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-lg bg-paper-2 ring-1 ring-line text-ink-2">{(CATEGORY_ICON[f.category.toLowerCase()] ?? Ticket)({ size: 18 })}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold tracking-tight text-ink line-clamp-1">{f.title}</p>
-                          <p className="text-[12px] text-ink-3">{f.date}</p>
-                        </div>
-                        <ArrowUpRight size={13} className="text-ink-3 group-hover:text-navy transition-colors shrink-0" />
-                      </Link>
-                    ))
+                    featured.map((f) => {
+                      const FeaturedIcon = CATEGORY_ICON[f.category.toLowerCase()] ?? Ticket
+                      return (
+                        <Link
+                          key={f.slug}
+                          href={`/events/${f.slug}`}
+                          className="group flex items-center gap-3 rounded-xl border border-line bg-paper p-3 hover:border-line-2 hover:shadow-sm transition-all"
+                        >
+                          <span className="shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-lg bg-paper-2 ring-1 ring-line text-ink-2">
+                            <FeaturedIcon size={18} />
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold tracking-tight text-ink line-clamp-1">{f.title}</p>
+                            <p className="text-[12px] text-ink-3">{f.date}</p>
+                          </div>
+                          <ArrowUpRight size={13} className="text-ink-3 group-hover:text-navy transition-colors shrink-0" />
+                        </Link>
+                      )
+                    })
                   ) : (
                     <p className="rounded-xl border border-dashed border-line bg-paper-2 p-3 text-[12px] text-ink-3">
                       No upcoming events yet. Check back soon.
