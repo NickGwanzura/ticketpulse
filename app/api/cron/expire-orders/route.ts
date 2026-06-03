@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { lte, and, eq, inArray, sql } from "drizzle-orm"
+import { lte, and, eq, gt, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, paymentLedger, events } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
@@ -15,13 +15,13 @@ export async function POST(request: Request) {
   const awaitingCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
 
   const pendingStale = await db
-    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName })
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName, createdAt: orders.createdAt })
     .from(orders)
     .where(and(eq(orders.status, "pending"), lte(orders.createdAt, pendingCutoff)))
     .limit(50)
 
   const awaitingStale = await db
-    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName })
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName, createdAt: orders.createdAt })
     .from(orders)
     .where(and(eq(orders.status, "awaiting_verification"), lte(orders.createdAt, awaitingCutoff)))
     .limit(50)
@@ -185,8 +185,42 @@ export async function POST(request: Request) {
       (o) => expireIds.includes(o.id) && o.guestEmail,
     )
     if (expiredOrders.length > 0) {
+      const notifyableExpiredOrders = []
+      for (const order of expiredOrders) {
+        const [replacement] = await db
+          .select({ id: orders.id })
+          .from(orders)
+          .where(and(
+            eq(orders.eventId, order.eventId),
+            eq(orders.guestEmail, order.guestEmail!),
+            inArray(orders.status, ["paid", "completed"]),
+            gt(orders.createdAt, order.createdAt ?? new Date(0)),
+          ))
+          .limit(1)
+
+        if (replacement) {
+          log.info("cron/expire-orders — suppressing expiry email; buyer has a later paid order", {
+            expiredOrderId: order.id,
+            replacementOrderId: replacement.id,
+            guestEmail: order.guestEmail,
+            eventId: order.eventId,
+          })
+          continue
+        }
+
+        notifyableExpiredOrders.push(order)
+      }
+
+      if (notifyableExpiredOrders.length === 0) {
+        return NextResponse.json({
+          expired: expireIds.length,
+          skipped: skippedVelocity.length,
+          expiryEmailsSent: 0,
+        })
+      }
+
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
-      const eventIds = [...new Set(expiredOrders.map((o) => o.eventId))]
+      const eventIds = [...new Set(notifyableExpiredOrders.map((o) => o.eventId))]
       const eventRows = await db
         .select({ id: events.id, title: events.title, slug: events.slug })
         .from(events)
@@ -194,7 +228,7 @@ export async function POST(request: Request) {
       const eventMap = new Map(eventRows.map((e) => [e.id, e]))
 
       await Promise.allSettled(
-        expiredOrders.map((order) => {
+        notifyableExpiredOrders.map((order) => {
           const ev = eventMap.get(order.eventId)
           const eventTitle = ev?.title ?? "your event"
           const eventUrl = ev?.slug ? `${appUrl}/events/${ev.slug}` : null
