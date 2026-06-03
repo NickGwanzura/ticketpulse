@@ -1,0 +1,49 @@
+import { redirect } from "next/navigation"
+import { eq } from "drizzle-orm"
+
+import { auth } from "@/auth"
+import { db } from "@/db"
+import { users } from "@/db/schema"
+
+const ROLE_DESTINATIONS = {
+  attendee: "/dashboard",
+  organizer: "/organizer",
+  vendor: "/vendors/apply",
+} as const
+
+type SignupRole = keyof typeof ROLE_DESTINATIONS
+
+function normalizeRole(value: string | undefined): SignupRole {
+  return value === "organizer" || value === "vendor" ? value : "attendee"
+}
+
+export default async function CompleteSignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>
+}) {
+  const session = await auth()
+  const sp = await searchParams
+  const requestedRole = normalizeRole(sp.role)
+
+  if (!session?.user?.id) {
+    redirect(`/auth/signin?callbackUrl=/auth/complete-signup?role=${requestedRole}`)
+  }
+
+  if (requestedRole !== "attendee") {
+    const [row] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+
+    if (row?.role === "attendee") {
+      await db
+        .update(users)
+        .set({ role: requestedRole, updatedAt: new Date() })
+        .where(eq(users.id, session.user.id))
+    }
+  }
+
+  redirect(ROLE_DESTINATIONS[requestedRole])
+}

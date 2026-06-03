@@ -36,8 +36,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   adapter,
   callbacks: {
-    // Preserve callbacks from auth.config.ts (jwt, session) and add signIn.
-    ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = user.role
+        token.id = user.id
+        return token
+      }
+
+      if (token.id && process.env.DATABASE_URL) {
+        try {
+          const [row] = await db
+            .select({ role: users.role })
+            .from(users)
+            .where(eq(users.id, token.id as string))
+            .limit(1)
+          if (row?.role) token.role = row.role
+        } catch (err) {
+          console.error("[auth] refresh token role", err)
+        }
+      }
+
+      return token
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.role = token.role as string
+        session.user.id = token.id as string
+      }
+      return session
+    },
     async signIn({ user, account }) {
       // Send a welcome email when a user signs up via an OAuth or email
       // provider (Google, magic link).  Credentials signups are handled

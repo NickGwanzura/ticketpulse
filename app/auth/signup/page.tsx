@@ -1,6 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
-import { Check, User, CalendarCog, Store, Mail, Lock, ArrowRight } from "lucide-react"
+import { Check, User, CalendarCog, Store, Mail, ArrowRight } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
 
 const ROLES = [
@@ -15,7 +15,10 @@ export default async function SignUpPage({
   searchParams: Promise<{ role?: string }>
 }) {
   const sp = await searchParams
-  const initialRole = (sp.role as "attendee" | "organizer" | "vendor") ?? "attendee"
+  const roleValues = ROLES.map((role) => role.value)
+  const initialRole = roleValues.includes(sp.role as typeof roleValues[number])
+    ? (sp.role as typeof roleValues[number])
+    : "attendee"
 
   return (
     <div
@@ -56,6 +59,7 @@ export default async function SignUpPage({
             if (!email || password.length < 8) return
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+            let finalRole: AllowedRole | "admin" = role
             if (!existing) {
               await db.insert(users).values({
                 email,
@@ -84,18 +88,36 @@ export default async function SignUpPage({
               sendAdminAlert(
                 `🆕 *New signup — ${role}*\n\nName: ${name ?? "—"}\nEmail: ${email}\nRole: ${role}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/users`,
               ).catch((e) => console.error("admin signup WhatsApp alert", e))
+            } else {
+              finalRole = existing.role ?? "attendee"
+              const updates: Partial<typeof users.$inferInsert> = {}
+
+              if (!existing.passwordHash) {
+                updates.passwordHash = hashPassword(password)
+              }
+              if (!existing.name && name) {
+                updates.name = name
+              }
+              if (existing.role === "attendee" && role !== "attendee") {
+                updates.role = role
+                finalRole = role
+              }
+
+              if (Object.keys(updates).length > 0) {
+                await db.update(users).set({ ...updates, updatedAt: new Date() }).where(eq(users.id, existing.id))
+              }
             }
 
             await signIn("credentials", {
               email,
               password,
-              redirectTo: role === "organizer" ? "/organizer" : role === "vendor" ? "/vendors/apply" : "/dashboard",
+              redirectTo: finalRole === "organizer" ? "/organizer" : finalRole === "vendor" ? "/vendors/apply" : "/dashboard",
             })
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
         >
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I'm signing up as</p>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I&apos;m signing up as</p>
             <div className="grid grid-cols-3 gap-2">
               {ROLES.map(({ value, label, body, icon: Icon }) => (
                 <label
@@ -180,7 +202,8 @@ export default async function SignUpPage({
         <form
           action={async () => {
             "use server"
-            await signIn("google", { redirectTo: "/dashboard" })
+            const redirectTo = `/auth/complete-signup?role=${encodeURIComponent(initialRole)}`
+            await signIn("google", { redirectTo })
           }}
         >
           <button
