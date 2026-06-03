@@ -83,7 +83,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
   }).where(eq(tickets.id, id))
 
   // Send claim email to recipient
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
   const claimUrl = `${appUrl}/tickets/transfer/${token}`
   const senderName = order?.guestName ?? "Someone"
   const eventTitle = event?.title ?? "an event"

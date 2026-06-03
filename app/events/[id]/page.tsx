@@ -37,7 +37,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
 
   const where = UUID_RE.test(id)
     ? or(eq(events.slug, id), eq(events.id, id))
@@ -190,7 +190,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const lowestPrice = tiers.length ? Math.min(...tiers.map((t) => t.price)) : null
 
   // ── JSON-LD structured data (Schema.org Event) ────────────────────────────
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",

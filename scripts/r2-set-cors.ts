@@ -4,7 +4,7 @@ dotenv.config({ path: ".env.local" })
 import { S3Client, PutBucketCorsCommand, GetBucketCorsCommand } from "@aws-sdk/client-s3"
 
 const ALLOWED_ORIGINS = [
-  "https://ticketpulse.tech",
+  "https://ticketplse.tech",
 ]
 
 async function main() {

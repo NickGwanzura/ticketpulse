@@ -210,10 +210,10 @@ export default async function ComingSoonPage({
         <p className="mt-9 text-[12px] text-ink-3">
           Built in Harare ·{" "}
           <a
-            href="mailto:hello@ticketpulse.tech"
+            href="mailto:nick@ticketpulse.co.zw"
             className="text-navy font-semibold hover:underline"
           >
-            hello@ticketpulse.tech
+            nick@ticketpulse.co.zw
           </a>
         </p>
       </div>

@@ -13,7 +13,7 @@ type Props = {
   host?: string
 }
 
-export default function MagicLinkEmail({ url, host = "ticketpulse.tech" }: Props) {
+export default function MagicLinkEmail({ url, host = "ticketplse.tech" }: Props) {
   return (
     <EmailShell preview="Your sign-in link to TicketPulse">
       <EmailEyebrow>Sign in</EmailEyebrow>

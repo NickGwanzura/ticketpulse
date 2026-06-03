@@ -13,7 +13,7 @@ import {
 } from "@react-email/components"
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
 
 export const BRAND = {
   ink: "#0B1220",
@@ -116,7 +116,7 @@ export function EmailShell({ preview, children }: ShellProps) {
               >
                 TicketPulse · Harare, Zimbabwe ·{" "}
                 <Link href={BRAND.url} style={{ color: BRAND.ink2, textDecoration: "underline" }}>
-                  ticketpulse.tech
+                  ticketplse.tech
                 </Link>
               </Text>
               <Text

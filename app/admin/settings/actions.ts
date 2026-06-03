@@ -20,7 +20,7 @@ type SettingsMap = {
 
 const DEFAULTS: SettingsMap = {
   platformName: "TicketPulse",
-  supportEmail: "support@ticketpulse.co.zw",
+  supportEmail: "nick@ticketpulse.co.zw",
   defaultCurrency: "USD",
   platformFeePercent: "8.00",
   maintenanceMode: false,
@@ -55,11 +55,17 @@ export async function getPlatformSettings(): Promise<SettingsMap> {
     const mappedKey = KEY_MAP[row.key]
     if (mappedKey) {
       if (mappedKey === "maintenanceMode") {
-        (settings as any)[mappedKey] = row.value === true || row.value === "true"
+        settings.maintenanceMode = row.value === true || row.value === "true"
       } else if (mappedKey === "platformFeePercent") {
-        (settings as any)[mappedKey] = String(row.value)
+        settings.platformFeePercent = String(row.value)
+      } else if (mappedKey === "platformName") {
+        settings.platformName = String(row.value)
+      } else if (mappedKey === "supportEmail") {
+        settings.supportEmail = String(row.value)
+      } else if (mappedKey === "defaultCurrency") {
+        settings.defaultCurrency = String(row.value)
       } else {
-        (settings as any)[mappedKey] = String(row.value)
+        settings.updatedAt = row.value instanceof Date ? row.value : settings.updatedAt
       }
     }
     if (row.updatedAt && (!latestUpdatedAt || row.updatedAt > latestUpdatedAt)) {

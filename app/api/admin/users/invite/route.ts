@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
   const inviteUrl = `${appUrl}/auth/signin?email=${encodeURIComponent(email)}`
 
   await sendAdminInviteEmail({

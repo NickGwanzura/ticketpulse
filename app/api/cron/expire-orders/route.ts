@@ -219,7 +219,7 @@ export async function POST(request: Request) {
         })
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
       const eventIds = [...new Set(notifyableExpiredOrders.map((o) => o.eventId))]
       const eventRows = await db
         .select({ id: events.id, title: events.title, slug: events.slug })

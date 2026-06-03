@@ -15,7 +15,7 @@ import { formatDateShort } from "@/lib/utils"
 import { clashDisplay, generalSans, polysans, polysansWide } from "@/lib/fonts"
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"),
   title: {
     default: "TicketPulse. Every event. One ticket.",
     template: "%s | TicketPulse",
@@ -92,8 +92,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "TicketPulse",
-              url: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech",
-              logo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/ticketpulse-logo.svg`,
+              url: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech",
+              logo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/ticketpulse-logo.svg`,
               sameAs: ["https://www.instagram.com/ticketpulsezw"],
               address: {
                 "@type": "PostalAddress",
@@ -111,12 +111,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "TicketPulse",
-              url: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech",
+              url: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech",
               potentialAction: {
                 "@type": "SearchAction",
                 target: {
                   "@type": "EntryPoint",
-                  urlTemplate: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/events?q={search_term_string}`,
+                  urlTemplate: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/events?q={search_term_string}`,
                 },
                 "query-input": "required name=search_term_string",
               },

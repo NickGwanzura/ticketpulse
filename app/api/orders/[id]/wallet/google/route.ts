@@ -80,7 +80,7 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
       genericType: "GENERIC_TYPE_UNSPECIFIED",
       hexBackgroundColor: "#1a1a1a",
       logo: {
-        sourceUri: { uri: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/logo.png` },
+        sourceUri: { uri: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/logo.png` },
         contentDescription: { defaultValue: { language: "en-US", value: "TicketPulse" } },
       },
       cardTitle: { defaultValue: { language: "en-US", value: "TicketPulse" } },

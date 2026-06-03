@@ -9,7 +9,7 @@
  * Railway cron setup:
  *   Create a cron job in the Railway dashboard:
  *     Schedule:  * * * * *   (every minute)
- *     Command:   curl -X POST https://ticketpulse.tech/api/cron/tick \
+ *     Command:   curl -X POST https://ticketplse.tech/api/cron/tick \
  *                     -H "x-cron-secret: $CRON_SECRET"
  */
 import { NextResponse } from "next/server"
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
   if (authError) return authError
 
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
   const secret = process.env.CRON_SECRET ?? ""
   const headers = { "Content-Type": "application/json", "x-cron-secret": secret }
 

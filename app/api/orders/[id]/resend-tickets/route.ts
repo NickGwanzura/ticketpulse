@@ -86,7 +86,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     : "TBA"
 
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
 
   try {
     await sendOrderConfirmationEmail({

@@ -4,7 +4,7 @@ import { events } from "@/db/schema"
 import { eq } from "drizzle-orm"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
 
   // Static routes
   const staticRoutes = [

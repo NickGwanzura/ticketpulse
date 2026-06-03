@@ -35,7 +35,7 @@ export async function resendOrderEmailAction(orderId: string) {
   if (!recipient) throw new Error("Order has no guest email")
 
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
 
   if (order.status === "pending") {
     throw new Error("Cannot resend email for order with status \"pending\". Only paid or awaiting-verification orders are supported.")

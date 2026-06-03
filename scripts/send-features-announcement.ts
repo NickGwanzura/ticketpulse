@@ -12,7 +12,7 @@ dotenv.config({ path: ".env.local" })
 
 import { Resend } from "resend"
 
-const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
+const FROM = "TicketPulse <no-reply@ticketplse.tech>"
 const BATCH_DELAY_MS = 500
 const DRY_RUN = process.argv.includes("--dry")
 
@@ -142,7 +142,7 @@ async function main() {
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">
                 <tr>
                   <td>
-                    <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/organizer" style="display:inline-block;padding:12px 22px;border-radius:12px;background:#0B1F4A;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;">Go to organizer dashboard</a>
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/organizer" style="display:inline-block;padding:12px 22px;border-radius:12px;background:#0B1F4A;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;">Go to organizer dashboard</a>
                   </td>
                 </tr>
               </table>
@@ -151,7 +151,7 @@ async function main() {
           <tr>
             <td style="padding:20px 4px 0;">
               <hr style="border:none;border-top:1px solid #E6ECF2;margin:0 0 16px;" />
-              <p style="margin:0;font-size:12px;line-height:18px;color:#6B7280;">TicketPulse &middot; Harare, Zimbabwe &middot; <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}" style="color:#384151;text-decoration:underline;">ticketpulse.tech</a></p>
+              <p style="margin:0;font-size:12px;line-height:18px;color:#6B7280;">TicketPulse &middot; Harare, Zimbabwe &middot; <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}" style="color:#384151;text-decoration:underline;">ticketplse.tech</a></p>
             </td>
           </tr>
         </table>
@@ -176,7 +176,7 @@ async function main() {
       "",
       "Both options are available now when you create or edit an event.",
       "",
-      `Go to your dashboard: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/organizer`,
+      `Go to your dashboard: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/organizer`,
       "",
       "TicketPulse",
     ].join("\n")

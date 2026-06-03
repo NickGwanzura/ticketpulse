@@ -45,7 +45,7 @@ export async function publishEventAction(eventId: string) {
 
   // ── Notify organiser when their event is published ──────────────────────
   if (newStatus === "published") {
-    const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/events/${ev.slug}`
+    const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/events/${ev.slug}`
     const eventDate = ev.startsAt
       ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
           weekday: "long",
@@ -103,7 +103,7 @@ export async function publishEventAction(eventId: string) {
     try {
       const { sendAdminAlert } = await import("@/lib/whatsapp")
       await sendAdminAlert(
-        `🎉 *Event published*\n\nTitle: ${ev.title}\nDate: ${eventDate}\nURL: ${eventUrl}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/events`,
+        `🎉 *Event published*\n\nTitle: ${ev.title}\nDate: ${eventDate}\nURL: ${eventUrl}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"}/admin/events`,
       )
     } catch (err) {
       console.error("[publishEvent] failed to send admin WhatsApp alert:", err)

@@ -20,7 +20,7 @@
  *   VELOCITY_BASE_URL="https://api.velocityafrica.net" \
  *   VELOCITY_ITEM_CODE="tp002" \
  *   VELOCITY_MERCHANT_PHONE="..." \
- *   NEXT_PUBLIC_APP_URL="https://ticketpulse.tech" \
+ *   NEXT_PUBLIC_APP_URL="https://ticketplse.tech" \
  *   npx tsx scripts/fix-awaiting-verification.ts [flags]
  *
  * Flags:
@@ -48,7 +48,7 @@ if (DRY_RUN) console.log("⚠️  DRY-RUN mode — no database writes will occur
 const REQUIRED_ENV: Record<string, string> = {
   DATABASE_URL: "Neon / Postgres connection string",
   VELOCITY_API_KEY: "Velocity Africa API key",
-  NEXT_PUBLIC_APP_URL: "App base URL (e.g. https://ticketpulse.tech)",
+  NEXT_PUBLIC_APP_URL: "App base URL (e.g. https://ticketplse.tech)",
 }
 
 const missing = Object.entries(REQUIRED_ENV).filter(([k]) => !process.env[k])

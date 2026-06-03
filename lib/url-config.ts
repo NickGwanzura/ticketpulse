@@ -1,7 +1,7 @@
 import "server-only"
 import { log } from "@/lib/logger"
 
-const PRODUCTION_BASE_URL = "https://ticketpulse.tech"
+const PRODUCTION_BASE_URL = "https://ticketplse.tech"
 const DEV_BASE_URL = "http://localhost:8080"
 
 /**
@@ -11,7 +11,7 @@ const DEV_BASE_URL = "http://localhost:8080"
  *   1. NEXT_PUBLIC_APP_URL env var (set on Railway/Vercel)
  *   2. APP_URL env var (server-side fallback)
  *   3. Railway-provided RAILWAY_PUBLIC_DOMAIN (auto-set by Railway)
- *   4. Hardcoded production domain (ticketpulse.tech)
+ *   4. Hardcoded production domain (ticketplse.tech)
  */
 export function getBaseUrl(): string {
   const envUrl =

@@ -18,7 +18,7 @@ const TOKEN_TTL_MS = 60 * 60 * 1000
 const RESPONSE_FLOOR_MS = 600
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketplse.tech"
 
 export async function POST(req: Request) {
   // Rate limit: 5 requests per minute per IP
