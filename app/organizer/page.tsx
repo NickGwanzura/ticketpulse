@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { eq, desc, or, inArray, sql, and, gte } from "drizzle-orm"
+import { eq, desc, or, inArray, notInArray, sql, and } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
   Ticket, DollarSign, TrendingUp, Users,
@@ -11,7 +11,7 @@ import {
 
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, orderItems, ticketTiers, users, platformSettings, payouts } from "@/db/schema"
+import { events, eventOrganisers, orders, ticketTiers, tickets, users, platformSettings, payouts } from "@/db/schema"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
@@ -64,7 +64,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const sp = await searchParams
   const filter = sp.filter || "all"
-  const revDays = Math.min(365, Math.max(7, Number(sp.rev) || 30))
 
   const ownedIds = invitedEventIds.map(r => r.eventId)
   const whereClause = isAdmin ? undefined
@@ -77,11 +76,11 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, allOrders, soldByEvent, recentOrdersRaw, settingsRow, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
+  const [allTiers, allOrders, attendingByEvent, recentOrdersRaw, settingsRow, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, status: orders.status }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"]))) : Promise.resolve([]),
-    // Count from confirmed order items — not soldQuantity which includes pending reservations
-    eventIds.length > 0 ? db.select({ eventId: orders.eventId, totalSold: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int` }).from(orders).innerJoin(orderItems, eq(orderItems.orderId, orders.id)).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"]), eq(orderItems.type, "ticket"))).groupBy(orders.eventId) : Promise.resolve([]),
+    // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
+    eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
     db.select({ value: platformSettings.value }).from(platformSettings).where(and(eq(platformSettings.key, "platform_fee_percent"), eq(platformSettings.env, "prod"))).limit(1),
     db.select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` }).from(payouts).where(and(eq(payouts.userId, session.user.id), sql`${payouts.status} in ('pending', 'approved', 'processing')`)),
@@ -99,8 +98,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const tiers = allTiers.filter(t => t.eventId === r.id)
     const evOrders = allOrders.filter(o => o.eventId === r.id)
     const capacity = tiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
-    // Use confirmed order quantities — accurate regardless of soldQuantity drift
-    const sold = soldByEvent.find(s => s.eventId === r.id)?.totalSold ?? 0
+    // Use delivered buyer tickets so the dashboard matches the attendee list.
+    const sold = attendingByEvent.find(s => s.eventId === r.id)?.attending ?? 0
     const revenue = evOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
     const currency = tiers[0]?.currency ?? evOrders[0]?.currency ?? "USD"
     return { ...r, capacity, sold, revenue, currency, status: r.status ?? "draft" }
@@ -123,6 +122,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const insightEvent = EVENTS.find(e => e.status === "published" && e.sold > 0) || EVENTS.find(e => e.status === "published") || EVENTS[0]
   const SALES_TOP = [...EVENTS].filter(e => e.revenue > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
   const maxRevenue = Math.max(...SALES_TOP.map(e => e.revenue), 1)
+  // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
+  const now = Date.now()
 
   const firstName = session.user.name?.split(" ")[0] ?? "organizer"
 
@@ -185,7 +186,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
         <div className="grid grid-cols-2 md:grid-cols-4 border border-line rounded-2xl bg-paper overflow-hidden divide-y md:divide-y-0 md:divide-x divide-line tp-fade-up-1">
           {[
             { label: "Live events",    value: liveCount.toLocaleString(),            icon: Activity },
-            { label: "Tickets sold",   value: totalSold.toLocaleString(),            icon: Ticket },
+            { label: "Attending",      value: totalSold.toLocaleString(),            icon: Ticket },
             { label: "Gross revenue",  value: formatCurrency(gross, "USD"),          icon: DollarSign },
             { label: "Net earnings",   value: formatCurrency(net, "USD"),            icon: TrendingUp },
           ].map(({ label, value, icon: Icon }) => (
@@ -240,7 +241,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                         </div>
                         <div className="flex items-center justify-between">
                           <p className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(e.revenue, e.currency)}</p>
-                          <p className="text-[12px] text-ink-3">{e.sold} / {e.capacity} tickets</p>
+                          <p className="text-[12px] text-ink-3">{e.sold} / {e.capacity} attending</p>
                         </div>
                         <CapacityBar sold={e.sold} capacity={e.capacity} />
                         <div className="mt-3 flex items-center gap-3 pt-3 border-t border-line">
@@ -266,7 +267,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                     <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-5 py-3">Event</th>
                       <th className="text-left px-3 py-3">Date</th>
-                      <th className="text-right px-3 py-3">Capacity</th>
+                      <th className="text-right px-3 py-3">Attending</th>
                       <th className="text-right px-3 py-3">Revenue</th>
                       <th className="px-3 py-3" />
                     </tr>
@@ -353,7 +354,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 eventTitle={insightEvent.title}
                 sold={insightEvent.sold}
                 capacity={insightEvent.capacity}
-                daysRemaining={Math.max(0, Math.ceil((new Date(insightEvent.startsAt).getTime() - Date.now()) / 86400000))}
+                daysRemaining={Math.max(0, Math.ceil((new Date(insightEvent.startsAt).getTime() - now) / 86400000))}
                 category={insightEvent.category}
                 city={insightEvent.city}
               />
