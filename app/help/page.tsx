@@ -32,7 +32,7 @@ const QUICK_HELP = [
     icon: AlertTriangle,
     title: "Payment deducted, no ticket",
     body: "Send your order reference, payment time, and checkout email. We can trace the payment and reissue tickets if confirmed.",
-    href: "mailto:support@ticketpulse.tech?subject=Payment%20deducted%20but%20no%20ticket",
+    href: "mailto:nick@ticketpulse.co.zw?subject=Payment%20deducted%20but%20no%20ticket",
     cta: "Email support",
   },
   {
@@ -46,7 +46,7 @@ const QUICK_HELP = [
     icon: Wallet,
     title: "Refund question",
     body: "Refund timing depends on payment provider. Include your order reference so support can check status quickly.",
-    href: "mailto:support@ticketpulse.tech?subject=Refund%20question",
+    href: "mailto:nick@ticketpulse.co.zw?subject=Refund%20question",
     cta: "Ask about refund",
   },
 ]
@@ -279,7 +279,7 @@ export default function HelpPage() {
             </p>
           </div>
         </Link>
-        <Link href="mailto:support@ticketpulse.tech" className="rounded-2xl border border-line bg-paper p-6 flex items-start gap-4 hover:border-line-2 hover:shadow-sm transition-all">
+        <Link href="mailto:nick@ticketpulse.co.zw" className="rounded-2xl border border-line bg-paper p-6 flex items-start gap-4 hover:border-line-2 hover:shadow-sm transition-all">
           <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-paper-2 ring-1 ring-line shrink-0">
             <Mail size={17} className="text-ink-2" />
           </span>
@@ -287,7 +287,7 @@ export default function HelpPage() {
             <p className="text-[15px] font-semibold tracking-tight text-ink">Email support</p>
             <p className="text-[13px] text-ink-2 mt-0.5">Replies within 4 business hours.</p>
             <p className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-navy">
-              support@ticketpulse.tech <ArrowRight size={11} />
+              nick@ticketpulse.co.zw <ArrowRight size={11} />
             </p>
           </div>
         </Link>

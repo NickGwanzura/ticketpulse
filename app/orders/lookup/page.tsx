@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation"
 import Link from "next/link"
 import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@/db"
@@ -106,7 +105,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
           </p>
           <p className="mt-4 text-[13px] text-ink-3">
             Still can&apos;t find it?{" "}
-            <a href="mailto:support@ticketpulse.tech" className="underline hover:text-ink transition">
+            <a href="mailto:nick@ticketpulse.co.zw" className="underline hover:text-ink transition">
               Contact support
             </a>
           </p>

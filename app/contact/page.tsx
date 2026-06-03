@@ -6,7 +6,7 @@ import { inputBaseClass } from "@/lib/utils"
 
 const CHANNELS = [
   { icon: MessageSquare, title: "Live chat",     body: "Mon to Fri, 8:00 to 18:00 CAT", value: "Open chat",         href: "#chat" },
-  { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "hello@ticketpulse.co.zw", href: "mailto:hello@ticketpulse.co.zw" },
+  { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "nick@ticketpulse.co.zw", href: "mailto:nick@ticketpulse.co.zw" },
   { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 788 689 923",  href: "https://wa.me/263788689923" },
 ]
 
@@ -104,7 +104,7 @@ export default function ContactPage() {
             {status === "sent" && (
               <div className="flex items-center gap-2 text-[13px] text-green-700 bg-green-50 border border-green-100 rounded-lg px-4 py-3">
                 <CheckCircle2 size={15} />
-                Message sent. We'll get back to you within 4 hours.
+                Message sent. We&apos;ll get back to you within 4 hours.
               </div>
             )}
             {status === "error" && (

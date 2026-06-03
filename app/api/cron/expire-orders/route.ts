@@ -243,7 +243,7 @@ export async function POST(request: Request) {
 <p>Your order for <strong>${eventTitle}</strong> expired because we didn't receive payment confirmation in time.</p>
 <p>If money was deducted from your account, please contact us with your order reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${ref}</code> and we'll sort it out.</p>
 ${eventUrl ? `<p style="margin-top:16px"><a href="${eventUrl}" style="display:inline-block;background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">Try again →</a></p>` : ""}
-<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse &middot; <a href="mailto:support@ticketpulse.tech" style="color:#6b7280">support@ticketpulse.tech</a></p>
+<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse &middot; <a href="mailto:nick@ticketpulse.co.zw" style="color:#6b7280">nick@ticketpulse.co.zw</a></p>
 </div>`,
             text: `Hi ${name},\n\nYour order for ${eventTitle} has expired. If money was deducted, contact us with reference ${ref}.\n\n${eventUrl ? `Try again: ${eventUrl}\n\n` : ""}TicketPulse`,
           }).catch((err) =>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { eq, and } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { tickets, orders, events } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
@@ -102,7 +102,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
   </a>
 </p>
 <p style="color:#6b7280;font-size:13px;margin-top:16px">This link expires in 48 hours. If you weren't expecting this, you can ignore this email.</p>
-<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · <a href="mailto:support@ticketpulse.tech" style="color:#6b7280">support@ticketpulse.tech</a></p>
+<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · <a href="mailto:nick@ticketpulse.co.zw" style="color:#6b7280">nick@ticketpulse.co.zw</a></p>
 </div>`,
       text: `Hi ${name},\n\n${senderName} has sent you a ticket for ${eventTitle}.\n\nClaim it here: ${claimUrl}\n\nThis link expires in 48 hours.\n\nTicketPulse`,
     })
