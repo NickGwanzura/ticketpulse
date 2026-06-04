@@ -104,13 +104,13 @@ export default function ReviewForm({
           />
         </label>
         <label className="block">
-          <span className="text-[13px] font-semibold text-ink">Email</span>
+          <span className="text-[13px] font-semibold text-ink">Email <span className="font-normal text-ink-3">(optional)</span></span>
           <input
             name="email"
             type="email"
             defaultValue={initialEmail}
-            required
             maxLength={160}
+            placeholder="Not shown publicly"
             className="mt-1.5 w-full rounded-xl border border-line bg-paper-2 px-3.5 py-3 text-[14px] outline-none focus:border-blue"
           />
         </label>

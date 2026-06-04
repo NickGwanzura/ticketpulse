@@ -10,7 +10,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const Body = z.object({
   eventId: z.string().uuid().nullable().optional(),
   name: z.string().trim().min(1).max(120),
-  email: z.string().trim().email().toLowerCase().max(160),
+  email: z.string().trim().email().toLowerCase().max(160).optional().or(z.literal("")),
   orderRef: z.string().trim().max(80).optional(),
   rating: z.number().int().min(1).max(5),
   title: z.string().trim().max(120).optional(),
@@ -43,17 +43,19 @@ export async function POST(req: Request) {
       ? or(eq(orders.id, orderRef), eq(orders.paymentRef, orderRef))!
       : eq(orders.paymentRef, orderRef)
 
+    const email = parsed.email || ""
+    const whereClause = email
+      ? and(orderWhere, eq(orders.guestEmail, email))!
+      : orderWhere
+
     const [order] = await db
       .select({ id: orders.id, eventId: orders.eventId, guestEmail: orders.guestEmail, paymentRef: orders.paymentRef })
       .from(orders)
-      .where(and(
-        orderWhere,
-        eq(orders.guestEmail, parsed.email),
-      ))
+      .where(whereClause)
       .limit(1)
 
     if (!order) {
-      return NextResponse.json({ error: "Order reference does not match this email" }, { status: 400 })
+      return NextResponse.json({ error: "Order reference not found" }, { status: 400 })
     }
 
     if (eventId && order.eventId !== eventId) {
@@ -68,7 +70,7 @@ export async function POST(req: Request) {
     eventId,
     orderId,
     reviewerName: parsed.name,
-    reviewerEmail: parsed.email,
+    reviewerEmail: parsed.email || "",
     rating: parsed.rating,
     title: parsed.title || null,
     body: parsed.body,
