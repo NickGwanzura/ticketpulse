@@ -10,6 +10,7 @@ import { withLock } from "@/lib/velocity/idempotency"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
+import { getBaseUrl } from "@/lib/url-config"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
 
 // Flexible redirect URL extraction: recursively checks the entire Velocity response
@@ -551,15 +552,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Merchant phone not configured" }, { status: 500 })
     }
 
-    const origin = new URL(req.url).origin
     const isCard = processor === "VMC"
 
     const returnUrlFields: Record<string, string | undefined> = {}
     if (isCard) {
-      const base = `${origin}/api/checkout/velocity`
+      const base = `${getBaseUrl()}/api/checkout/velocity`
       returnUrlFields.returnUrl = `${base}/return/${orderId}`
       returnUrlFields.successUrl = `${base}/return/${orderId}`
-      returnUrlFields.cancelUrl = `${origin}/orders/${orderId}?error=cancelled`
+      returnUrlFields.cancelUrl = `${getBaseUrl()}/orders/${orderId}?error=cancelled`
     }
 
     const transactionPayload = {
