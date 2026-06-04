@@ -577,3 +577,27 @@ html { scroll-padding-top: 5.5rem; }
   transform-origin: left center;
   animation: toast-shrink 6s linear forwards;
 }
+
+/* Payment card selection ring pulse */
+@keyframes tp-ring-ping {
+  0%   { transform: scale(1);    opacity: 0.6; }
+  70%  { transform: scale(1.06); opacity: 0; }
+  100% { transform: scale(1.06); opacity: 0; }
+}
+.tp-ring-ping {
+  animation: tp-ring-ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Success hero stagger */
+@keyframes tp-pop-in {
+  0%   { opacity: 0; transform: scale(0.85) translateY(6px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.tp-pop-in {
+  animation: tp-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.tp-pop-in-1 { animation-delay: 0.1s; }
+.tp-pop-in-2 { animation-delay: 0.22s; }
+.tp-pop-in-3 { animation-delay: 0.34s; }
+.tp-pop-in-4 { animation-delay: 0.46s; }

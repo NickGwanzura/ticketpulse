@@ -9,7 +9,19 @@ export default function AnimatedCheck({ size = 56, className }: AnimatedCheckPro
       className={`relative inline-flex items-center justify-center rounded-2xl bg-green-50 ring-1 ring-green-200/60 ${className ?? ""}`}
       style={{ width: size, height: size }}
     >
+      {/* Blur glow behind */}
       <span className="absolute inset-0 rounded-2xl bg-green-500/15 blur-xl -z-10" />
+
+      {/* Ripple rings — appear after the check draws (0.9s delay) */}
+      <span
+        className="absolute inset-0 rounded-2xl ring-2 ring-green-400/40"
+        style={{ animation: "tp-check-ripple 1.2s 0.9s cubic-bezier(0, 0, 0.2, 1) infinite" }}
+      />
+      <span
+        className="absolute inset-0 rounded-2xl ring-2 ring-green-400/20"
+        style={{ animation: "tp-check-ripple 1.2s 1.2s cubic-bezier(0, 0, 0.2, 1) infinite" }}
+      />
+
       <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" aria-hidden>
         <circle
           cx="12" cy="12" r="11"
@@ -33,8 +45,12 @@ export default function AnimatedCheck({ size = 56, className }: AnimatedCheckPro
         />
       </svg>
       <style>{`
-        @keyframes tp-check-circle { to { stroke-dashoffset: 0; } }
-        @keyframes tp-check-mark   { to { stroke-dashoffset: 0; } }
+        @keyframes tp-check-circle  { to { stroke-dashoffset: 0; } }
+        @keyframes tp-check-mark    { to { stroke-dashoffset: 0; } }
+        @keyframes tp-check-ripple  {
+          0%   { transform: scale(1);    opacity: 1; }
+          100% { transform: scale(1.55); opacity: 0; }
+        }
       `}</style>
     </span>
   )

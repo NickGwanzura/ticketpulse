@@ -506,9 +506,12 @@ export default function CheckoutPage() {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start gap-3">
-                              <span className={`shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-xl ring-1 ${
+                              <span className={`relative shrink-0 inline-flex w-10 h-10 items-center justify-center rounded-xl ring-1 ${
                                 checked ? "bg-navy text-white ring-navy/15" : "bg-paper-2 text-ink-2 ring-line"
                               }`}>
+                                {checked && (
+                                  <span className="tp-ring-ping absolute inset-0 rounded-xl bg-navy/20" />
+                                )}
                                 <Icon size={16} />
                               </span>
                               <div className="flex-1 min-w-0">

@@ -111,20 +111,20 @@ function CheckoutSuccessInner() {
           background: "radial-gradient(800px 320px at 50% -20%, #DBE8FB 0%, transparent 60%), radial-gradient(600px 240px at 50% 100%, rgba(19,17,50,0.08) 0%, transparent 60%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
         }} />
         <div className="max-w-3xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-12 md:pb-16 text-center">
-          <div className="mb-6">
-            <AnimatedCheck size={64} />
+          <div className="mb-6 tp-pop-in">
+            <AnimatedCheck size={72} />
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-4 shadow-sm shadow-ink/5">
+          <div className="tp-pop-in tp-pop-in-1 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1.5 mb-4 shadow-sm shadow-ink/5">
             <Sparkles size={12} className="text-brand-600" />
             <span className="text-[11px] font-semibold tracking-[0.18em] text-ink uppercase">Order confirmed</span>
           </div>
-          <h1 className="text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
+          <h1 className="tp-pop-in tp-pop-in-2 text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">
             You&apos;re going!
           </h1>
-          <p className="mt-3 text-[15px] md:text-[16px] text-ink-2 max-w-lg mx-auto leading-relaxed">
+          <p className="tp-pop-in tp-pop-in-3 mt-3 text-[15px] md:text-[16px] text-ink-2 max-w-lg mx-auto leading-relaxed">
             We sent a confirmation to <span className="font-semibold text-ink">{order.contact.email}</span>. Your tickets are also waiting in your account.
           </p>
-          <p className="mt-5 inline-flex items-center gap-2 text-[12px] text-ink-3 font-mono">
+          <p className="tp-pop-in tp-pop-in-4 mt-5 inline-flex items-center gap-2 text-[12px] text-ink-3 font-mono">
             <span>Order</span>
             <span className="bg-paper border border-line px-2 py-1 rounded text-ink">{order.id}</span>
           </p>
