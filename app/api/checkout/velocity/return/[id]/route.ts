@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
+import { getBaseUrl } from "@/lib/url-config"
 
 type Params = { id: string }
 
@@ -13,7 +14,7 @@ type Params = { id: string }
 // handles polling, finalization, and ticket issuance.
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
-  const origin = new URL(req.url).origin
+  const origin = getBaseUrl()
 
   if (!isValidUUID(id)) {
     return NextResponse.redirect(`${origin}/checkout?error=not_found`)

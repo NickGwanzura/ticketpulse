@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
 import { rateLimit } from "@/lib/rate-limit"
+import { getBaseUrl } from "@/lib/url-config"
 
 type Params = { id: string }
 
@@ -104,8 +105,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
 
     // ── WhatsApp ticket resend (non-blocking) ──────────────────────────
     if (order.guestPhone) {
-      const origin = new URL(req.url).origin
-      fetch(`${origin}/api/whatsapp/send-ticket`, {
+      fetch(`${getBaseUrl()}/api/whatsapp/send-ticket`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId: id }),
