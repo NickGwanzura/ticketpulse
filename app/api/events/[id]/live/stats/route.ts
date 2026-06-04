@@ -28,13 +28,23 @@ export async function GET(_req: Request, ctx: RouteParams) {
   }
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  const [tierAgg] = await db
+  const [capacityAgg] = await db
     .select({
-      totalSold: sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)`,
       totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
     })
     .from(ticketTiers)
     .where(eq(ticketTiers.eventId, id))
+
+  const [soldAgg] = await db
+    .select({
+      totalSold: sql<number>`COUNT(*)::int`,
+    })
+    .from(tickets)
+    .where(and(
+      eq(tickets.eventId, id),
+      eq(tickets.isStaffTicket, false),
+      sql`${tickets.status} IN ('sold', 'used')`,
+    ))
 
   const [checkinAgg] = await db
     .select({
@@ -43,8 +53,8 @@ export async function GET(_req: Request, ctx: RouteParams) {
     .from(tickets)
     .where(and(eq(tickets.eventId, id), isNotNull(tickets.scannedAt)))
 
-  const totalSold = Number(tierAgg?.totalSold ?? 0)
-  const totalCapacity = Number(tierAgg?.totalCapacity ?? 0)
+  const totalSold = Number(soldAgg?.totalSold ?? 0)
+  const totalCapacity = Number(capacityAgg?.totalCapacity ?? 0)
   const checkedIn = Number(checkinAgg?.checkedIn ?? 0)
   const capacityPct = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0
   const checkinPct = totalSold > 0 ? Math.round((checkedIn / totalSold) * 100) : 0

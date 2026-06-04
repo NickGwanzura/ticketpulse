@@ -4,11 +4,11 @@ import {
   CalendarCheck, FileText, XCircle, PackageCheck,
   Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle, TrendingUp,
 } from "lucide-react"
-import { desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, ticketTiers, orders, users } from "@/db/schema"
+import { events, ticketTiers, orders, users, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
@@ -71,7 +71,6 @@ export default async function AdminEventsPage({
       organizerName:  users.name,
       organizerEmail: users.email,
       capacity:  sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)::int`,
-      sold:      sql<number>`COALESCE(SUM(${ticketTiers.soldQuantity}), 0)::int`,
     })
     .from(events)
     .leftJoin(users, eq(events.organizerId, users.id))
@@ -81,6 +80,25 @@ export default async function AdminEventsPage({
     .limit(LIMIT)
     .offset(offset)
 
+  const pageEventIds = eventRows.map((e) => e.id)
+
+  const ticketCountRows = pageEventIds.length > 0
+    ? await db
+      .select({
+        eventId: tickets.eventId,
+        sold: sql<number>`COUNT(*)::int`,
+      })
+      .from(tickets)
+      .where(and(
+        inArray(tickets.eventId, pageEventIds),
+        eq(tickets.isStaffTicket, false),
+        inArray(tickets.status, ["sold", "used"]),
+      ))
+      .groupBy(tickets.eventId)
+    : []
+
+  const soldByEvent = new Map(ticketCountRows.map((r) => [r.eventId, Number(r.sold ?? 0)]))
+
   const revenueRows = await db
     .select({
       eventId:  orders.eventId,
@@ -88,7 +106,7 @@ export default async function AdminEventsPage({
       revenue:  sql<string>`SUM(${orders.totalAmount})`,
     })
     .from(orders)
-    .where(eq(orders.status, "paid"))
+    .where(inArray(orders.status, ["paid", "completed"]))
     .groupBy(orders.eventId, orders.currency)
 
   const revenueByEvent = new Map<string, { revenue: number; currency: string }>()
@@ -202,7 +220,7 @@ export default async function AdminEventsPage({
                     {filtered.map((e) => {
                       const status = (e.status ?? "draft") as EventStatus
                       const capacity = e.capacity ?? 0
-                      const sold = e.sold ?? 0
+                      const sold = soldByEvent.get(e.id) ?? 0
                       const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
                       const rev = revenueByEvent.get(e.id)
                       const organizer = e.organizerName ?? e.organizerEmail ?? "—"
@@ -329,7 +347,7 @@ export default async function AdminEventsPage({
                 {filtered.map((e) => {
                   const status = (e.status ?? "draft") as EventStatus
                   const capacity = e.capacity ?? 0
-                  const sold = e.sold ?? 0
+                  const sold = soldByEvent.get(e.id) ?? 0
                   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
                   const rev = revenueByEvent.get(e.id)
                   const organizer = e.organizerName ?? e.organizerEmail ?? "—"

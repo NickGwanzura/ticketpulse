@@ -69,7 +69,22 @@ export default async function EventOverviewPage({
     .where(eq(ticketTiers.eventId, id))
 
   const totalCapacity = tiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
-  const totalSold = tiers.reduce((s, t) => s + (t.soldQuantity ?? 0), 0)
+
+  const tierSoldRows = await db
+    .select({
+      tierId: tickets.tierId,
+      sold: sql<number>`COUNT(*)::int`,
+    })
+    .from(tickets)
+    .where(and(
+      eq(tickets.eventId, id),
+      eq(tickets.isStaffTicket, false),
+      inArray(tickets.status, ["sold", "used"]),
+    ))
+    .groupBy(tickets.tierId)
+
+  const soldByTier = new Map(tierSoldRows.map((r) => [r.tierId, Number(r.sold ?? 0)]))
+  const totalSold = tierSoldRows.reduce((s, t) => s + Number(t.sold ?? 0), 0)
 
   // ── Revenue from paid orders ───────────────────────────────────────────────
   const [revenueRow] = await db
@@ -92,8 +107,7 @@ export default async function EventOverviewPage({
     .from(orders)
     .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"])))
 
-  const uniqueBuyers = new Set(attendeeRows.map((r) => r.guestEmail).filter(Boolean))
-  const totalAttendees = uniqueBuyers.size
+  const totalAttendees = totalSold
 
   // Top buyers by total spend
   const spendByBuyer = new Map<string, { name: string; spent: number; tickets: number }>()
@@ -252,7 +266,7 @@ export default async function EventOverviewPage({
               ) : (
                 <div className="divide-y divide-line">
                   {tiers.map((t) => {
-                    const sold = t.soldQuantity ?? 0
+                    const sold = soldByTier.get(t.id) ?? 0
                     const cap = t.totalQuantity ?? 0
                     const pct = cap > 0 ? Math.round((sold / cap) * 100) : 0
                     const price = Number.parseFloat(t.price as unknown as string) || 0
