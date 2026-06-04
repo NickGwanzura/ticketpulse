@@ -76,6 +76,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     // Try localStorage first
     const local = getOrder(id)
     if (local) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the order detail view from persisted checkout state.
       setOrder(local)
       return
     }
@@ -100,6 +101,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     if (order.status === "paid") return   // already confirmed, nothing to do
 
     const startedAt = Date.now()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Starts the visible recovery state for a returned card payment.
     setPollingForCard(true)
 
     pollRef.current = setInterval(async () => {
@@ -263,9 +265,19 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                           <Calendar size={12} /> Issued {formatDate(order.createdAt)}
                         </p>
                       )}
-                      <Link href={`/events/${line.eventSlug}`} className="mt-4 inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all">
-                        View event <ArrowUpRight size={12} />
-                      </Link>
+                      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <Link href={`/events/${line.eventSlug}`} className="inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all">
+                          View event <ArrowUpRight size={12} />
+                        </Link>
+                        {ticketsEnabled && (
+                          <Link
+                            href={`/reviews/new?event=${encodeURIComponent(line.eventSlug)}&order=${encodeURIComponent(order.id)}&name=${encodeURIComponent(order.contact.name)}&email=${encodeURIComponent(order.contact.email)}`}
+                            className="inline-flex items-center gap-1 text-[13px] font-semibold text-green-700 hover:gap-1.5 transition-all"
+                          >
+                            Send review <ArrowUpRight size={12} />
+                          </Link>
+                        )}
+                      </div>
 
                       {/* Transfer section */}
                       {ticketsEnabled && ticketId && !isTransferred && (

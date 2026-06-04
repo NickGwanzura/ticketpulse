@@ -23,12 +23,13 @@ import {
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
+import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
 import { db } from "@/db"
-import { events as eventsTable, ticketTiers } from "@/db/schema"
-import { and, asc, eq, inArray, sql } from "drizzle-orm"
+import { events as eventsTable, reviews, ticketTiers } from "@/db/schema"
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 
 const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
   concert:    { emoji: "🎵", gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  accent: "text-violet-700" },
@@ -208,7 +209,7 @@ export default async function Home() {
     .orderBy(asc(eventsTable.startsAt))
     .limit(30)
 
-  let priceByEvent = new Map<string, { price: number; currency: string }>()
+  const priceByEvent = new Map<string, { price: number; currency: string }>()
   if (allPublished.length > 0) {
     const priceRows = await db
       .select({
@@ -225,6 +226,25 @@ export default async function Home() {
       if (!cur || p < cur.price) priceByEvent.set(t.eventId, { price: p, currency: c })
     }
   }
+
+  const reviewRows = await db
+    .select({
+      id: reviews.id,
+      reviewerName: reviews.reviewerName,
+      rating: reviews.rating,
+      title: reviews.title,
+      body: reviews.body,
+      createdAt: reviews.createdAt,
+      eventTitle: eventsTable.title,
+    })
+    .from(reviews)
+    .leftJoin(eventsTable, eq(eventsTable.id, reviews.eventId))
+    .where(and(
+      eq(reviews.status, "approved"),
+      eq(reviews.publicConsent, true),
+    ))
+    .orderBy(desc(reviews.featured), desc(reviews.createdAt))
+    .limit(3)
 
   const eventsByCategory = new Map<string, typeof allPublished>()
   for (const ev of allPublished) {
@@ -528,6 +548,8 @@ export default async function Home() {
         </section>
       )}
 
+      <ReviewHighlights reviews={reviewRows} />
+
       {/* CATEGORIES */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
@@ -540,7 +562,6 @@ export default async function Home() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
             {CATEGORIES.map(({ label, value, icon: Icon, gradient, ring, accent }, i) => {
               const catEvents = eventsByCategory.get(value) ?? []
-              const priceInfo = catEvents.length > 0 ? priceByEvent.get(catEvents[0].id) : null
               return (
               <Link
                 key={value}

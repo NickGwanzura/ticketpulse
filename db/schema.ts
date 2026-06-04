@@ -94,6 +94,12 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "expired",
 ])
 
+export const reviewStatusEnum = pgEnum("review_status", [
+  "pending",
+  "approved",
+  "rejected",
+])
+
 export const staffRoleEnum = pgEnum("staff_role", [
   "security",
   "usher",
@@ -241,6 +247,30 @@ export const tickets = pgTable("tickets", {
   index("tickets_order_id_idx").on(table.orderId),
   index("tickets_staff_event_idx").on(table.eventId, table.isStaffTicket),
   index("tickets_scanned_at_idx").on(table.scannedAt),
+])
+
+export const reviews = pgTable("reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  reviewerName: text("reviewer_name").notNull(),
+  reviewerEmail: text("reviewer_email").notNull(),
+  rating: integer("rating").notNull(),
+  title: text("title"),
+  body: text("body").notNull(),
+  source: text("source").default("public_link"),
+  status: reviewStatusEnum("status").default("pending").notNull(),
+  publicConsent: boolean("public_consent").default(true).notNull(),
+  featured: boolean("featured").default(false).notNull(),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("reviews_event_id_idx").on(table.eventId),
+  index("reviews_order_id_idx").on(table.orderId),
+  index("reviews_status_idx").on(table.status),
+  index("reviews_created_at_idx").on(table.createdAt),
 ])
 
 // ─── Promo codes ──────────────────────────────────────────────────────────────
@@ -557,6 +587,11 @@ export const ticketsRelations = relations(tickets, ({ one }) => ({
   event: one(events, { fields: [tickets.eventId], references: [events.id] }),
   tier: one(ticketTiers, { fields: [tickets.tierId], references: [ticketTiers.id] }),
   order: one(orders, { fields: [tickets.orderId], references: [orders.id] }),
+}))
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  event: one(events, { fields: [reviews.eventId], references: [events.id] }),
+  order: one(orders, { fields: [reviews.orderId], references: [orders.id] }),
 }))
 
 export const shuttleRoutesRelations = relations(shuttleRoutes, ({ one, many }) => ({

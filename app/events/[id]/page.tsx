@@ -16,10 +16,11 @@ import TicketSelector from "@/components/events/TicketSelector"
 import VenueMap from "@/components/events/VenueMap"
 import ShareEventButton from "@/components/events/ShareEventButton"
 import SaveFavoriteButton from "@/components/events/SaveFavoriteButton"
+import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import { db } from "@/db"
-import { events, ticketTiers, users, vendorListings, vendors } from "@/db/schema"
-import { eq, or, and } from "drizzle-orm"
+import { events, reviews, ticketTiers, users, vendorListings, vendors } from "@/db/schema"
+import { desc, eq, or, and } from "drizzle-orm"
 import { auth } from "@/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import type { VendorListing } from "@/types"
@@ -130,7 +131,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   const isEventOwner = session?.user?.id === row.organizerId || session?.user?.role === "admin"
 
-  const [tierRows, vendorListingRows] = await Promise.all([
+  const [tierRows, vendorListingRows, reviewRows] = await Promise.all([
     db.select().from(ticketTiers).where(eq(ticketTiers.eventId, row.id)),
     db
       .select({
@@ -151,6 +152,23 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       .from(vendorListings)
       .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
       .where(and(eq(vendorListings.eventId, row.id), eq(vendorListings.available, true))),
+    db
+      .select({
+        id: reviews.id,
+        reviewerName: reviews.reviewerName,
+        rating: reviews.rating,
+        title: reviews.title,
+        body: reviews.body,
+        createdAt: reviews.createdAt,
+      })
+      .from(reviews)
+      .where(and(
+        eq(reviews.eventId, row.id),
+        eq(reviews.status, "approved"),
+        eq(reviews.publicConsent, true),
+      ))
+      .orderBy(desc(reviews.featured), desc(reviews.createdAt))
+      .limit(3),
   ])
 
   const tiers = tierRows.map((t) => ({
@@ -332,6 +350,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
             )}
+
+            <ReviewHighlights reviews={reviewRows} title={`Reviews for ${row.title}`} compact />
 
             <MerchSection items={[]} eventTitle={row.title} />
             <TransportSection routes={[]} />
