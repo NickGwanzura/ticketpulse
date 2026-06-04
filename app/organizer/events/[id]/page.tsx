@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Ticket, Users, DollarSign, Activity, Mail, MessageCircle,
   Tag, QrCode, ShoppingBag, ImageIcon, Store, ArrowUpRight,
-  TrendingUp, Calendar, ScanLine, HelpCircle, Star,
+  TrendingUp, Calendar, ScanLine, HelpCircle,
 } from "lucide-react"
 
 import { db } from "@/db"
@@ -363,7 +363,6 @@ export default async function EventOverviewPage({
                   { label: "Questions", href: `/organizer/events/${id}/questions`, icon: HelpCircle },
                   { label: "Merch", href: `/organizer/events/${id}/merch`, icon: ShoppingBag },
                   { label: "Vendors", href: `/organizer/events/${id}/vendors`, icon: Store },
-                  { label: "Reviews", href: `/organizer/events/${id}/reviews`, icon: Star },
                 ].map(({ label, href, icon: Icon }) => (
                   <Link
                     key={href}

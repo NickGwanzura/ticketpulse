@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { desc, eq } from "drizzle-orm"
-import { CheckCircle2, Star, XCircle } from "lucide-react"
+import { CheckCircle2, Link2, Star, XCircle } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -8,6 +8,7 @@ import { events, reviews } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { approveReviewAction, rejectReviewAction, toggleFeaturedReviewAction } from "./actions"
+import CopyReviewLink from "./CopyReviewLink"
 
 export const metadata = { title: "Review moderation" }
 
@@ -55,6 +56,19 @@ export default async function AdminReviewsPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-5">
+
+        {/* Share link */}
+        <div className="rounded-2xl border border-line bg-paper p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Link2 size={15} className="text-navy shrink-0" />
+            <p className="text-[14px] font-semibold text-ink">Share review link</p>
+          </div>
+          <p className="text-[13px] text-ink-3 mb-3">
+            Send this link to customers to collect TicketPulse platform reviews.
+          </p>
+          <CopyReviewLink url={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/reviews/new`} />
+        </div>
+
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
           {(["pending", "approved", "rejected"] as const).map((tab) => (
             <a
