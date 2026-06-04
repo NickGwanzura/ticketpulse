@@ -12,7 +12,7 @@ export default function RecheckButton({
   variant = "desktop",
 }: {
   orderId: string
-  variant?: "desktop" | "mobile"
+  variant?: "desktop" | "mobile" | "menu"
 }) {
   const [dismissed, setDismissed] = useState(false)
 
@@ -50,6 +50,7 @@ export default function RecheckButton({
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px] text-amber-700 hover:bg-amber-50 border border-amber-200"
             : "px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-50 border border-amber-200",
+          variant === "menu" && "w-full justify-start",
         )}
         title="Re-check Velocity payment"
       >

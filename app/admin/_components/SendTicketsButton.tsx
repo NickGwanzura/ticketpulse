@@ -12,7 +12,7 @@ export default function SendTicketsButton({
   variant = "desktop",
 }: {
   orderId: string
-  variant?: "desktop" | "mobile"
+  variant?: "desktop" | "mobile" | "menu"
 }) {
   const [dismissed, setDismissed] = useState(false)
 
@@ -55,6 +55,7 @@ export default function SendTicketsButton({
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px] text-blue-700 hover:bg-blue-50 border border-blue-200"
             : "px-3 py-2 text-[12px] text-blue-700 hover:bg-blue-50 border border-blue-200",
+          variant === "menu" && "w-full justify-start",
         )}
         title="Send tickets to buyer"
       >

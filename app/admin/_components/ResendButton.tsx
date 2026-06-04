@@ -14,7 +14,7 @@ export default function ResendButton({
 }: {
   orderId: string
   status: string
-  variant?: "desktop" | "mobile"
+  variant?: "desktop" | "mobile" | "menu"
 }) {
   const [dismissed, setDismissed] = useState(false)
 
@@ -57,10 +57,11 @@ export default function ResendButton({
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px]"
             : "px-3 py-2 text-[12px]",
+          variant === "menu" && "w-full justify-start",
         )}
         title={label}
       >
-        <Mail size={variant === "desktop" ? 11 : 12} />
+        <Mail size={variant === "desktop" ? 11 : 12} className="shrink-0" />
         {pending ? "Sending…" : "Resend"}
       </button>
 

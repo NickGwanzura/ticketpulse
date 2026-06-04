@@ -12,7 +12,7 @@ export default function ResendTicketsButton({
   variant = "desktop",
 }: {
   orderId: string
-  variant?: "desktop" | "mobile"
+  variant?: "desktop" | "mobile" | "menu"
 }) {
   const [dismissed, setDismissed] = useState(false)
 
@@ -53,6 +53,7 @@ export default function ResendTicketsButton({
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px]"
             : "px-3 py-2 text-[12px]",
+          variant === "menu" && "w-full justify-start",
         )}
         title="Resend ticket email"
       >

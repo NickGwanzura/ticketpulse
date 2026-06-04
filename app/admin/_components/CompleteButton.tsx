@@ -12,7 +12,7 @@ export default function CompleteButton({
   variant = "desktop",
 }: {
   orderId: string
-  variant?: "desktop" | "mobile"
+  variant?: "desktop" | "mobile" | "menu"
 }) {
   const [dismissed, setDismissed] = useState(false)
 
@@ -50,6 +50,7 @@ export default function CompleteButton({
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px] text-green-700 hover:bg-brand-50 border border-brand-200"
             : "px-3 py-2 text-[12px] text-green-700 hover:bg-brand-50 border border-brand-200",
+          variant === "menu" && "w-full justify-start",
         )}
         title="Mark order as complete"
       >

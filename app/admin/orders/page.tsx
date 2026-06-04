@@ -16,6 +16,7 @@ import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton
 import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import OrderActionsDropdown from "@/app/admin/_components/OrderActionsDropdown"
 import { desc, eq, or, like, and, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
@@ -94,14 +95,6 @@ function DeliveryBadge({ metadata }: { metadata: unknown }) {
     return <span className="text-[10px] font-medium text-rose-600">Failed</span>
   }
   return <span className="text-[10px] font-medium text-amber-600">Pending</span>
-}
-
-function completedByText(metadata: unknown): React.ReactNode {
-  const m = metadata as Record<string, unknown>
-  if (m.completedBy) {
-    return <span className="text-[10px] text-violet-600 font-medium">by {String(m.completedBy)}</span>
-  }
-  return null
 }
 
 const FILTER_PILLS = [
@@ -419,60 +412,56 @@ export default async function AdminOrdersPage({
                             {formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1 max-w-[320px] flex-wrap">
+                        <td className="px-5 py-3 text-right">
+                          <OrderActionsDropdown>
                             {(o.status === "paid" || o.status === "awaiting_verification") && (
-                              <ResendButton
-                                orderId={o.id}
-                                status={o.status ?? ""}
-                                variant="desktop"
-                              />
+                              <ResendButton orderId={o.id} status={o.status ?? ""} variant="menu" />
                             )}
                             {o.status === "pending" && (
-                              <RecheckButton orderId={o.id} variant="desktop" />
+                              <RecheckButton orderId={o.id} variant="menu" />
                             )}
                             {(o.status === "pending" || o.status === "awaiting_verification") && (
-                              <CompleteAndSendButton orderId={o.id} variant="desktop" />
+                              <CompleteAndSendButton orderId={o.id} variant="menu" />
                             )}
                             {o.status === "paid" && (
                               <>
-                                <RefundButton orderId={o.id} variant="desktop" />
-                                <CompleteButton orderId={o.id} variant="desktop" />
-                                <SendTicketsButton orderId={o.id} variant="desktop" />
+                                <SendTicketsButton orderId={o.id} variant="menu" />
+                                <CompleteButton orderId={o.id} variant="menu" />
+                                <RefundButton orderId={o.id} variant="menu" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                  className="inline-flex w-full items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
-                                  <Download size={12} />
-                                  Tickets
+                                  <Download size={12} className="shrink-0" />
+                                  Download tickets
                                 </Link>
                               </>
                             )}
                             {o.status === "completed" && (
                               <>
-                                <ResendTicketsButton orderId={o.id} variant="desktop" />
-                                <RegeneratePdfButton orderId={o.id} variant="desktop" />
+                                <ResendTicketsButton orderId={o.id} variant="menu" />
+                                <RegeneratePdfButton orderId={o.id} variant="menu" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                  className="inline-flex w-full items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
-                                  <Download size={12} />
-                                  Tickets
+                                  <Download size={12} className="shrink-0" />
+                                  Download tickets
                                 </Link>
                               </>
                             )}
                             <Link
                               href={`/admin/orders/${o.id}`}
                               target="_blank"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
-                              title="View order"
+                              className="inline-flex w-full items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
                             >
-                              <ExternalLink size={14} />
+                              <ExternalLink size={12} className="shrink-0" />
+                              View order
                             </Link>
-                            <DeleteOrderButton orderId={o.id} variant="desktop" />
-                          </div>
+                            <DeleteOrderButton orderId={o.id} variant="menu" />
+                          </OrderActionsDropdown>
                         </td>
                       </tr>
                     ))}

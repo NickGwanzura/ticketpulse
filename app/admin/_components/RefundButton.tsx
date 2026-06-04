@@ -13,7 +13,7 @@ export default function RefundButton({
   variant = "desktop",
 }: {
   orderId: string
-  variant?: "desktop" | "mobile"
+  variant?: "desktop" | "mobile" | "menu"
 }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
@@ -98,6 +98,7 @@ export default function RefundButton({
             variant === "desktop"
               ? "px-2.5 py-1.5 text-[11px] text-rose-700 hover:bg-rose-50 border border-rose-200"
               : "px-3 py-2 text-[12px] text-rose-700 hover:bg-rose-50 border border-rose-200",
+            variant === "menu" && "w-full justify-start",
           )}
           title="Refund order"
         >
