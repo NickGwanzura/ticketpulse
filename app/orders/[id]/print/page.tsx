@@ -74,16 +74,11 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
         ? Array.from({ length: line.qty }).map((_, i) => ({ line, i }))
         : []
     )
-    const generate = async () => {
-      const map: Record<string, string> = {}
-      for (let idx = 0; idx < flat.length; idx++) {
-        const { line, i } = flat[idx]
-        const code = ticketCode(order.id, line.key, i)
-        map[`${idx}`] = await qrDataUrl(code)
-      }
-      setQrUrls(map)
-    }
-    generate()
+    Promise.all(
+      flat.map(({ line, i }, idx) =>
+        qrDataUrl(ticketCode(order.id, line.key, i)).then((url) => [String(idx), url] as const),
+      ),
+    ).then((entries) => setQrUrls(Object.fromEntries(entries)))
   }, [order])
 
   // ── Download all tickets as PDF (server-side) ──────────────────────────────

@@ -291,43 +291,40 @@ async function _deliver(orderId: string): Promise<{
     // ── 5. Send confirmation email with PDF tickets attached ──────────────
     if (order.guestEmail) {
       try {
-        const [[evRow], existingPdfData] = await Promise.all([
+        const isResume = pdfTicketData.length === 0
+        const [[evRow], existingPdfData, resumeSaleLines] = await Promise.all([
           db
             .select({ title: events.title, startsAt: events.startsAt, venue: events.venue, organizerId: events.organizerId })
             .from(events)
             .where(eq(events.id, order.eventId))
             .limit(1),
-          // Only re-query tickets when resuming an already-delivered order (pdfTicketData is empty)
-          pdfTicketData.length === 0
+          isResume
             ? db
                 .select({ id: tickets.id, qrCode: tickets.qrCode, tierId: tickets.tierId, tierName: ticketTiers.name })
                 .from(tickets)
                 .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
                 .where(eq(tickets.orderId, orderId))
             : Promise.resolve([] as { id: string; qrCode: string | null; tierId: string | null; tierName: string | null }[]),
+          isResume
+            ? db
+                .select({ qty: orderItems.quantity, total: orderItems.total, tierName: ticketTiers.name })
+                .from(orderItems)
+                .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+                .where(eq(orderItems.orderId, orderId))
+            : Promise.resolve([] as { qty: number; total: unknown; tierName: string | null }[]),
         ])
 
         ev = evRow
         if (existingPdfData.length > 0) {
-          pdfTicketData = existingPdfData.map((t) => ({
-            id: t.id,
-            tierId: t.tierId,
-            qrCode: t.qrCode ?? `${orderId}-${t.id}`,
-            tierName: t.tierName ?? "General Admission",
-          }))
           pdfTicketData = await Promise.all(
-            pdfTicketData.map(async (t) => ({
-              ...t,
-              qrCode: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl),
+            existingPdfData.map(async (t) => ({
+              id: t.id,
+              tierId: t.tierId,
+              qrCode: await generateTicketQrImageDataUrl(t.qrCode ?? `${orderId}-${t.id}`, t.id, orderId, baseUrl),
+              tierName: t.tierName ?? "General Admission",
             })),
           )
-          // Also build saleLines from a joined items query when we didn't create tickets above
-          const sl = await db
-            .select({ qty: orderItems.quantity, total: orderItems.total, tierName: ticketTiers.name })
-            .from(orderItems)
-            .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
-            .where(eq(orderItems.orderId, orderId))
-          saleLines = sl.map((i) => ({ label: i.tierName ?? "Ticket", qty: i.qty, amount: `${i.total} ${order.currency ?? "USD"}` }))
+          saleLines = resumeSaleLines.map((i) => ({ label: i.tierName ?? "Ticket", qty: i.qty, amount: `${i.total} ${order.currency ?? "USD"}` }))
         }
 
         const eventDate = ev?.startsAt
@@ -528,6 +525,6 @@ export function readDeliveryStatus(metadata: unknown): DeliveryMetadata {
   return (meta.delivery ?? DEFAULT_DELIVERY) as DeliveryMetadata
 }
 
-export function hasActiveTickets(orderId: string, status: string): boolean {
+export function hasActiveTickets(_orderId: string, status: string): boolean {
   return status === "paid" || status === "completed"
 }

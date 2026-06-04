@@ -111,10 +111,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "At least one ticket is required" }, { status: 400 })
   }
 
-  const tiers = await db
-    .select()
-    .from(ticketTiers)
-    .where(eq(ticketTiers.eventId, event.id))
+  // Fetch tiers and vendor addon prices in parallel — independent queries
+  const [tiers, listingRows] = await Promise.all([
+    db.select().from(ticketTiers).where(eq(ticketTiers.eventId, event.id)),
+    vendorAddonItems.length > 0
+      ? db
+          .select({
+            id: vendorListings.id,
+            price: vendorListings.price,
+            currency: vendorListings.currency,
+            packageName: vendorListings.packageName,
+            businessName: vendors.businessName,
+          })
+          .from(vendorListings)
+          .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
+          .where(inArray(vendorListings.id, vendorAddonItems.map((i) => i.listingId)))
+      : Promise.resolve([] as { id: string; price: unknown; currency: string | null; packageName: string; businessName: string | null }[]),
+  ])
+
   const tierById = new Map(tiers.map((t) => [t.id, t]))
 
   const now = new Date()
@@ -142,31 +156,17 @@ export async function POST(req: Request) {
   }
 
   const vendorAddonPrices: Map<string, { price: number; currency: string; packageName: string; vendorName: string }> = new Map()
-  if (vendorAddonItems.length > 0) {
-    const listingRows = await db
-      .select({
-        id: vendorListings.id,
-        price: vendorListings.price,
-        currency: vendorListings.currency,
-        packageName: vendorListings.packageName,
-        businessName: vendors.businessName,
-      })
-      .from(vendorListings)
-      .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
-      .where(inArray(vendorListings.id, vendorAddonItems.map((i) => i.listingId)))
-
-    for (const r of listingRows) {
-      vendorAddonPrices.set(r.id, {
-        price: Number(r.price),
-        currency: r.currency ?? "USD",
-        packageName: r.packageName,
-        vendorName: r.businessName ?? "Vendor",
-      })
-    }
-    for (const item of vendorAddonItems) {
-      if (!vendorAddonPrices.has(item.listingId)) {
-        return NextResponse.json({ error: `Vendor addon ${item.listingId} not found` }, { status: 400 })
-      }
+  for (const r of listingRows) {
+    vendorAddonPrices.set(r.id, {
+      price: Number(r.price),
+      currency: r.currency ?? "USD",
+      packageName: r.packageName,
+      vendorName: r.businessName ?? "Vendor",
+    })
+  }
+  for (const item of vendorAddonItems) {
+    if (!vendorAddonPrices.has(item.listingId)) {
+      return NextResponse.json({ error: `Vendor addon ${item.listingId} not found` }, { status: 400 })
     }
   }
 
@@ -470,15 +470,11 @@ export async function POST(req: Request) {
       .set({ status: "paid", paidAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, orderId))
 
-    // Await delivery so failures are written to delivery metadata and picked
-    // up by the recheck-velocity cron. Free checkouts have no payment step so
-    // the extra seconds are acceptable.
-    try {
-      await deliverTicketForPaidOrder(orderId)
-    } catch (err) {
-      log.error("velocity checkout - free order delivery failed", { orderId, error: String(err) })
-      // Order is marked paid — cron will retry delivery via EMAIL_FAILED/FAILED check
-    }
+      // Fire-and-forget — order is already marked paid so the cron will retry
+    // via EMAIL_FAILED/FAILED if delivery fails. No need to block the response.
+    deliverTicketForPaidOrder(orderId).catch((err) =>
+      log.error("velocity checkout - free order delivery failed", { orderId, error: String(err) }),
+    )
 
     trackEvent({ event: "PAYMENT_CONFIRMED", eventId: event.id, orderId, paymentMethod: parsed.paymentMethod, amount: 0 })
 
