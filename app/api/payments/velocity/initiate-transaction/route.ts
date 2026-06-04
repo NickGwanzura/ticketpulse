@@ -71,13 +71,24 @@ export async function POST(req: Request) {
       })
 
       const result = await initiateTransaction(payload)
+      const transactionTrace = result.body?.trace ?? result.externalId ?? null
+
+      if (!transactionTrace) {
+        log.error("velocity initiate transaction missing trace", {
+          salesOrderTrace,
+          responseBody: JSON.stringify(result).slice(0, 2000),
+        })
+        return NextResponse.json({
+          error: "Velocity did not return a transaction reference. Please try again.",
+        }, { status: 502 })
+      }
 
       return NextResponse.json({
         success: true,
-        transactionTrace: result.body.trace,
-        pollStatus: result.body.pollStatus,
-        status: result.body.paymentStatus,
-        amount: result.body.amount,
+        transactionTrace,
+        pollStatus: result.body?.pollStatus ?? "PENDING",
+        status: result.body?.paymentStatus ?? null,
+        amount: result.body?.amount ?? amount,
       })
     } finally {
       await releaseLock(lockKey)

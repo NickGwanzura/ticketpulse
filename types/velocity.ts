@@ -87,8 +87,10 @@ export interface VelocityTransactionBody {
 export interface InitiateTransactionResponse {
   state: string
   status: string
-  body: VelocityTransactionBody
+  body: VelocityTransactionBody | null
   workflowId: string
+  externalId?: string | null
+  message?: string | null
 }
 
 export interface PollTransactionResponse {

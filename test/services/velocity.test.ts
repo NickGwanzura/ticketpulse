@@ -246,6 +246,8 @@ describe("velocity service", () => {
         salesOrderId: MOCK_SALES_ORDER_TRACE,
       })
 
+      expect(result.body).not.toBeNull()
+      if (!result.body) throw new Error("Expected transaction body")
       expect(result.body.trace).toBe(MOCK_TRANSACTION_TRACE)
       expect(result.body.pollStatus).toBe("PENDING")
       expect(result.body.amount).toBe(50)
@@ -443,6 +445,8 @@ describe("velocity service", () => {
         salesOrderId: salesOrder.body.trace,
       })
 
+      expect(transaction.body).not.toBeNull()
+      if (!transaction.body) throw new Error("Expected transaction body")
       expect(transaction.body.trace).toBe(MOCK_TRANSACTION_TRACE)
 
       mockFetch({

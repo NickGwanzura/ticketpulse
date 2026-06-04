@@ -43,6 +43,13 @@ function extractRedirectUrl(body: Record<string, unknown>): string | undefined {
   return undefined
 }
 
+function getVelocityTransactionTrace(transaction: {
+  body?: { trace?: string | null } | null
+  externalId?: string | null
+}): string | null {
+  return transaction.body?.trace ?? transaction.externalId ?? null
+}
+
 const TicketItem = z.object({
   kind: z.literal("ticket"),
   tierId: z.string().uuid(),
@@ -575,27 +582,63 @@ export async function POST(req: Request) {
     const transaction = await initiateTransaction(transactionPayload)
 
     const redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
+    const transactionBody = transaction.body ?? null
+    const transactionTrace = getVelocityTransactionTrace(transaction)
+    const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus
 
     log.info("velocity checkout - transaction response", {
       orderId,
       processor,
       authType,
-      trace: transaction.body.trace,
-      pollStatus: transaction.body.pollStatus,
-      paymentStatus: transaction.body.paymentStatus,
+      trace: transactionTrace,
+      pollStatus,
+      paymentStatus: transactionBody?.paymentStatus ?? null,
+      externalId: transaction.externalId ?? null,
       redirectUrlFound: !!redirectUrl,
-      allBodyKeys: Object.keys(transaction.body).join(", "),
+      allBodyKeys: transactionBody ? Object.keys(transactionBody).join(", ") : "",
       allResponseKeys: Object.keys(transaction).join(", "),
     })
 
-    const pollStatus = (transaction.body.pollStatus ?? "PENDING") as VelocityPollStatus
+    if (!transactionTrace) {
+      await db
+        .update(orders)
+        .set({
+          metadata: {
+            ...baseMeta,
+            velocity: {
+              salesOrderTrace,
+              transactionTrace: null,
+              outstandingAmount: total,
+              paymentProcessor: processor,
+              pollStatus: "UNKNOWN" as VelocityPollStatus,
+              paymentStatus: transactionBody?.paymentStatus ?? null,
+              paymentRef: null,
+              invoiceRef: null,
+              initiatedAt: new Date().toISOString(),
+              finalizedAt: null,
+              failureReason: "Velocity did not return a transaction trace",
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+
+      log.error("velocity checkout - transaction missing trace", {
+        orderId,
+        responseBody: JSON.stringify(transaction).slice(0, 2000),
+      })
+      return NextResponse.json({
+        error: "Velocity did not return a transaction reference. Please try again.",
+      }, { status: 502 })
+    }
 
     const velocityMeta: VelocityOrderMetadata = {
       salesOrderTrace,
-      transactionTrace: transaction.body.trace,
+      transactionTrace,
       outstandingAmount: total,
       paymentProcessor: processor,
       pollStatus,
+      paymentStatus: transactionBody?.paymentStatus ?? null,
       paymentRef: null,
       invoiceRef: null,
       initiatedAt: new Date().toISOString(),
@@ -635,7 +678,7 @@ export async function POST(req: Request) {
       paymentMethod: isCard ? "CARD" : "ECOCASH",
       orderId,
       salesOrderTrace,
-      transactionTrace: transaction.body.trace,
+      transactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
       pollRequired: isCard ? undefined : true,
       redirectUrl: redirectUrl ?? null,
