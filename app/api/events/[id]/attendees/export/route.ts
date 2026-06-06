@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { eq, and, inArray, desc, asc, sql } from "drizzle-orm"
+import { eq, and, inArray, desc, asc } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, tickets, ticketQuestions, ticketQuestionResponses } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
@@ -30,43 +30,54 @@ export async function GET(_req: Request, ctx: RouteParams) {
     .where(eq(ticketQuestions.eventId, id))
     .orderBy(asc(ticketQuestions.sortOrder))
 
-  // Fetch attendees — confirmed orders with ticket items
-  const rows = await db
+  // Fetch one CSV row per issued buyer ticket. Keep order item totals separate
+  // so a multi-ticket order does not repeat the full line total on each ticket.
+  const ticketRows = await db
     .select({
       orderId: orders.id,
       guestName: orders.guestName,
       guestEmail: orders.guestEmail,
       guestPhone: orders.guestPhone,
-      orderStatus: orders.status,
       tierName: ticketTiers.name,
-      quantity: orderItems.quantity,
-      unitPrice: orderItems.unitPrice,
-      total: orderItems.total,
-      ticketStatus: tickets.status,
+      tierId: tickets.tierId,
       scannedAt: tickets.scannedAt,
-      qrCode: tickets.qrCode,
       holderName: tickets.holderName,
-      transferredAt: tickets.transferredAt,
     })
-    .from(orders)
-    .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
-    .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
-    .leftJoin(
-      tickets,
-      and(eq(tickets.orderId, orders.id), eq(tickets.tierId, orderItems.tierId)),
-    )
+    .from(tickets)
+    .innerJoin(orders, eq(orders.id, tickets.orderId))
+    .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
     .where(
       and(
-        eq(orders.eventId, id),
-        // Only export orders with tickets delivered — same filter as the attendees page
-        inArray(orders.status, ["paid", "awaiting_verification", "completed"]),
-        eq(orderItems.type, "ticket"),
-        sql`EXISTS (SELECT 1 FROM tickets t WHERE t.order_id = ${orders.id} AND t.event_id = ${orders.eventId})`,
+        eq(tickets.eventId, id),
+        eq(tickets.isStaffTicket, false),
+        inArray(tickets.status, ["sold", "used"]),
+        inArray(orders.status, ["paid", "completed"]),
       ),
     )
-    .orderBy(desc(orders.createdAt))
+    .orderBy(desc(orders.createdAt), asc(tickets.createdAt))
 
-  const orderIds = [...new Set(rows.map((r) => r.orderId))]
+  const orderIds = [...new Set(ticketRows.map((r) => r.orderId))]
+  const itemRows = orderIds.length > 0
+    ? await db
+        .select({
+          orderId: orderItems.orderId,
+          tierId: orderItems.tierId,
+          quantity: orderItems.quantity,
+          total: orderItems.total,
+        })
+        .from(orderItems)
+        .where(and(inArray(orderItems.orderId, orderIds), eq(orderItems.type, "ticket")))
+    : []
+
+  const itemTotals = new Map<string, { quantity: number; total: number }>()
+  for (const item of itemRows) {
+    const key = `${item.orderId}:${item.tierId ?? ""}`
+    const existing = itemTotals.get(key) ?? { quantity: 0, total: 0 }
+    existing.quantity += Number(item.quantity ?? 0)
+    existing.total += Number(item.total ?? 0)
+    itemTotals.set(key, existing)
+  }
+
   const responses = orderIds.length > 0
     ? await db
         .select({
@@ -89,7 +100,7 @@ export async function GET(_req: Request, ctx: RouteParams) {
   // Build CSV
   const questionHeaders = questions.map((q) => escapeCsv(q.question)).join(",")
   const header = `Name,Email,Phone,Ticket Type,Qty,Unit Price,Total,Checked In,Holder (if transferred)${questionHeaders ? "," + questionHeaders : ""}`
-  const csvRows = rows.map((r) => {
+  const csvRows = ticketRows.map((r) => {
     const name = escapeCsv(r.guestName ?? "")
     const email = escapeCsv(r.guestEmail ?? "")
     const phone = escapeCsv(r.guestPhone ?? "")
@@ -97,7 +108,9 @@ export async function GET(_req: Request, ctx: RouteParams) {
     const checkedIn = r.scannedAt ? "Yes" : "No"
     const holder = escapeCsv(r.holderName ?? "")
     const qCols = questions.map((q) => escapeCsv(responseMap.get(r.orderId)?.get(q.id) ?? "")).join(",")
-    return `${name},${email},${phone},${tier},${r.quantity},${r.unitPrice},${r.total},${checkedIn},${holder}${qCols ? "," + qCols : ""}`
+    const itemTotal = itemTotals.get(`${r.orderId}:${r.tierId ?? ""}`) ?? { quantity: 0, total: 0 }
+    const perTicketTotal = itemTotal.quantity > 0 ? itemTotal.total / itemTotal.quantity : 0
+    return `${name},${email},${phone},${tier},1,${formatAmount(perTicketTotal)},${formatAmount(perTicketTotal)},${checkedIn},${holder}${qCols ? "," + qCols : ""}`
   })
 
   const csv = [header, ...csvRows].join("\n")
@@ -117,4 +130,9 @@ function escapeCsv(val: string): string {
     return `"${val.replace(/"/g, '""')}"`
   }
   return val
+}
+
+function formatAmount(value: number): string {
+  if (!Number.isFinite(value)) return "0.00"
+  return value.toFixed(2)
 }
