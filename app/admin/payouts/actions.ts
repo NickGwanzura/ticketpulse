@@ -302,7 +302,7 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
       userId: payout.userId,
       type: "payout_paid",
       title: "Payout sent",
-      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been sent to your ${payout.method === "ecocash" ? "EcoCash" : "bank account"}.`,
+      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been sent to your bank account.`,
     }, tx)
   })
 
@@ -321,7 +321,7 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
         payoutId,
         amount: String(payout.amount),
         currency: payout.currency ?? "USD",
-        method: payout.method === "ecocash" ? "EcoCash" : payout.method === "bank_usd" ? "USD Bank" : "ZAR Bank",
+        method: "Bank transfer",
         destination: payout.accountName ?? payout.accountNumber ?? "nominated account",
         eventTitle: payout.eventTitle ?? "Event",
       })

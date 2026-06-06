@@ -41,7 +41,7 @@ const STEPS = [
   {
     icon: Wallet,
     title: "Get paid",
-    body: "Request a payout from settled sales. We deduct the platform fee and send the available balance to your EcoCash or bank account.",
+    body: "Request a payout from settled sales. We deduct the platform fee and send the available balance to your bank account.",
   },
 ]
 
@@ -54,12 +54,12 @@ const PRICING_PERKS = [
   {
     icon: Banknote,
     title: "Payouts on your schedule",
-    body: "Withdraw earnings at any point along the way. Funds hit your EcoCash or bank account within 24 hours of request.",
+    body: "Withdraw earnings at any point along the way. Funds are sent to your bank account after review.",
   },
   {
     icon: Smartphone,
-    title: "EcoCash & bank transfers",
-    body: "Choose EcoCash for instant mobile money, or a direct bank transfer in USD or ZAR. You pick what works for you.",
+    title: "Bank transfers",
+    body: "Add your bank details and request a direct USD bank transfer.",
   },
   {
     icon: ShieldCheck,
@@ -101,7 +101,7 @@ const FAQS = [
   },
   {
     q: "When and how do I get paid?",
-    a: "You can request a payout at any time from your organizer dashboard. Once requested, funds are sent to your EcoCash or bank account within 24 hours. The 5% fee is deducted automatically from the payout amount.",
+    a: "You can request a payout at any time from your organizer dashboard. Once requested, funds are sent to your bank account after TicketPulse review. The 5% fee is deducted automatically.",
   },
   {
     q: "Can I get paid before the event happens?",
@@ -144,7 +144,7 @@ const FAQS = [
 export const metadata = {
   title: "Help for organizers",
   description:
-    "How TicketPulse works for event organizers. 5% per ticket, payouts via EcoCash or bank, and built-in scanning.",
+    "How TicketPulse works for event organizers. 5% per ticket, bank payouts, and built-in scanning.",
 }
 
 export default function HelpOrganizersPage() {
@@ -283,7 +283,7 @@ export default function HelpOrganizersPage() {
                   Payouts within 24 hours
                 </p>
                 <p className="mt-1 text-[13px] text-ink-2 leading-relaxed max-w-xl">
-                  Request a payout at any time from your dashboard. We deduct the 5% fee and transfer the balance to your EcoCash or bank account. No minimum balance, no waiting for the event to end.
+                  Request a payout at any time from your dashboard. We deduct the 5% fee and transfer the balance to your bank account. No minimum balance, no waiting for the event to end.
                 </p>
               </div>
             </div>

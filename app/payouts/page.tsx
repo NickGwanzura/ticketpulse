@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Wallet, CheckCircle2,
-  Send, Smartphone, Building2, Inbox, Banknote, ReceiptText,
+  Send, Building2, Inbox, Banknote, ReceiptText,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -145,7 +145,7 @@ export default async function PayoutsDashboardPage() {
               </span>
               <div>
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(availableBalance, "USD")} available</p>
-                <p className="text-[13px] text-ink-2">Request a payout to your EcoCash or bank account.</p>
+                <p className="text-[13px] text-ink-2">Request a payout to your bank account.</p>
               </div>
             </div>
             <Link
@@ -185,8 +185,8 @@ export default async function PayoutsDashboardPage() {
                         </td>
                         <td className="px-3 py-4">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                            {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                            {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}
+                            <Building2 size={12} className="text-sky-700" />
+                            Bank transfer
                           </span>
                         </td>
                         <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">
@@ -221,8 +221,8 @@ export default async function PayoutsDashboardPage() {
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
-                        {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                        {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}
+                        <Building2 size={12} className="text-sky-700" />
+                        Bank transfer
                       </span>
                       <span className="text-[14px] font-bold tracking-tight text-ink">
                         {formatCurrency(Number(p.amount), p.currency)}
