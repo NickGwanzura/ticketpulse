@@ -20,6 +20,7 @@ export default function OrdersPage() {
 
     try {
       const result = getOrders()
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the local order list from the persisted cart store.
       setOrders(result)
     } catch (e) {
       console.error("[orders] getOrders failed", e)
@@ -79,6 +80,12 @@ export default function OrdersPage() {
               className="mt-7 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition shadow-sm shadow-brand-600/20"
             >
               Browse events <ArrowRight size={14} />
+            </Link>
+            <Link
+              href="/orders/lookup"
+              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-sm font-semibold text-ink hover:border-line-2 transition"
+            >
+              Find tickets by email <Ticket size={14} />
             </Link>
           </div>
         ) : (

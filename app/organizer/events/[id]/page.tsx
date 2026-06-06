@@ -5,11 +5,12 @@ import Link from "next/link"
 import {
   Ticket, Users, DollarSign, Activity, Mail, MessageCircle,
   Tag, QrCode, ShoppingBag, ImageIcon, Store, ArrowUpRight,
-  TrendingUp, Calendar, ScanLine, HelpCircle,
+  TrendingUp, Calendar, ScanLine, HelpCircle, Wallet, CheckCircle2,
+  AlertTriangle, ClipboardCheck, Star,
 } from "lucide-react"
 
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, tickets } from "@/db/schema"
+import { events, orders, orderItems, payouts, ticketTiers, tickets } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -124,6 +125,33 @@ export default async function EventOverviewPage({
   const netRevenue = grossRevenue * NET_REVENUE_MULTIPLIER
   const currency = tiers[0]?.currency ?? "USD"
 
+  // ── Event payout ledger ───────────────────────────────────────────────────
+  const payoutRows = await db
+    .select({
+      id: payouts.id,
+      amount: payouts.amount,
+      currency: payouts.currency,
+      method: payouts.method,
+      status: payouts.status,
+      bankName: payouts.bankName,
+      proofReference: payouts.proofReference,
+      notes: payouts.notes,
+      createdAt: payouts.createdAt,
+      processedAt: payouts.processedAt,
+    })
+    .from(payouts)
+    .where(eq(payouts.eventId, id))
+    .orderBy(desc(payouts.createdAt))
+    .limit(6)
+
+  const paidOut = payoutRows
+    .filter((p) => p.status === "paid")
+    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
+  const pendingPayouts = payoutRows
+    .filter((p) => p.status === "pending" || p.status === "approved" || p.status === "processing")
+    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
+  const availablePayoutBalance = Math.max(0, Number((netRevenue - paidOut - pendingPayouts).toFixed(2)))
+
   // ── Attendees ──────────────────────────────────────────────────────────────
   const attendeeRows = await db
     .select({
@@ -196,6 +224,21 @@ export default async function EventOverviewPage({
   const daysRemaining = Math.max(0, Math.ceil((new Date(event.startsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
   const isPublished = event.status === "published"
   const publishAction = publishOrganizerEventAction.bind(null, id)
+  const healthItems = [
+    { label: "Event is published", ok: isPublished, href: `/organizer/events/${id}`, action: "Publish" },
+    { label: "Ticket tiers are configured", ok: tiers.length > 0, href: `/organizer/events/${id}/tiers`, action: "Add tiers" },
+    { label: "Capacity is set", ok: totalCapacity > 0, href: `/organizer/events/${id}/tiers`, action: "Set capacity" },
+    { label: "Public page has venue and date", ok: Boolean(event.venue && event.startsAt), href: `/organizer/events/${id}/edit`, action: "Edit details" },
+    { label: "Attendee messaging is ready", ok: totalSold > 0, href: `/organizer/events/${id}/email`, action: "Open email" },
+    { label: "Scanner can be opened", ok: true, href: "/organizer/scan", action: "Open scanner" },
+    { label: "Payout ledger is balanced", ok: availablePayoutBalance >= 0, href: "/payouts", action: "Review payouts" },
+  ]
+  const healthScore = Math.round((healthItems.filter((item) => item.ok).length / healthItems.length) * 100)
+  const healthTone = healthScore >= 85
+    ? "text-emerald-700 bg-emerald-50 ring-emerald-200"
+    : healthScore >= 60
+      ? "text-amber-700 bg-amber-50 ring-amber-200"
+      : "text-rose-700 bg-rose-50 ring-rose-200"
 
   return (
     <div className="tp-fade-up">
@@ -286,6 +329,92 @@ export default async function EventOverviewPage({
               <dd className="font-bold text-ink tabular-nums">{formatCurrency(netRevenue, currency)}</dd>
             </div>
           </dl>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="lg:col-span-3 rounded-2xl border border-line bg-paper p-5">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div>
+                <p className="text-[16px] font-semibold tracking-tight text-ink">Event payout ledger</p>
+                <p className="text-[12px] text-ink-2 mt-0.5">Gross, TicketPulse fee, paid payouts, and available balance for this event only.</p>
+              </div>
+              <Link
+                href="/payouts"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2 transition-colors"
+              >
+                <Wallet size={13} /> Payouts
+              </Link>
+            </div>
+
+            <dl className="grid grid-cols-2 md:grid-cols-5 gap-3 text-[12px]">
+              <div className="rounded-xl bg-paper-2 p-3 ring-1 ring-line">
+                <dt className="text-ink-3">Gross</dt>
+                <dd className="mt-1 text-[15px] font-bold text-ink tabular-nums">{formatCurrency(grossRevenue, currency)}</dd>
+              </div>
+              <div className="rounded-xl bg-paper-2 p-3 ring-1 ring-line">
+                <dt className="text-ink-3">Fee</dt>
+                <dd className="mt-1 text-[15px] font-bold text-ink tabular-nums">-{formatCurrency(grossRevenue - netRevenue, currency)}</dd>
+              </div>
+              <div className="rounded-xl bg-paper-2 p-3 ring-1 ring-line">
+                <dt className="text-ink-3">Net</dt>
+                <dd className="mt-1 text-[15px] font-bold text-ink tabular-nums">{formatCurrency(netRevenue, currency)}</dd>
+              </div>
+              <div className="rounded-xl bg-paper-2 p-3 ring-1 ring-line">
+                <dt className="text-ink-3">Paid out</dt>
+                <dd className="mt-1 text-[15px] font-bold text-ink tabular-nums">-{formatCurrency(paidOut, currency)}</dd>
+              </div>
+              <div className="rounded-xl bg-brand-50/70 p-3 ring-1 ring-brand-200">
+                <dt className="text-brand-700">Available</dt>
+                <dd className="mt-1 text-[15px] font-bold text-ink tabular-nums">{formatCurrency(availablePayoutBalance, currency)}</dd>
+              </div>
+            </dl>
+
+            {payoutRows.length > 0 && (
+              <div className="mt-4 divide-y divide-line rounded-xl border border-line overflow-hidden">
+                {payoutRows.map((p) => {
+                  const manualCash = p.bankName?.toLowerCase() === "manual cash payment" || p.notes?.toLowerCase().includes("manual cash")
+                  const label = manualCash ? "Manual cash" : p.method === "ecocash" ? "EcoCash" : "USD Bank"
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-ink">{label} · {p.status}</p>
+                        <p className="text-[11px] text-ink-3 truncate">{p.proofReference ?? p.id.slice(0, 8)}</p>
+                      </div>
+                      <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(Number(p.amount ?? 0), p.currency ?? currency)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-2 rounded-2xl border border-line bg-paper p-5">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="text-[16px] font-semibold tracking-tight text-ink">Event health</p>
+                <p className="text-[12px] text-ink-2 mt-0.5">Readiness checks for sales, delivery, scanning, and payouts.</p>
+              </div>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${healthTone}`}>
+                {healthScore >= 85 ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                {healthScore}%
+              </span>
+            </div>
+            <div className="space-y-2">
+              {healthItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-paper-2 transition-colors"
+                >
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    {item.ok ? <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> : <ClipboardCheck size={14} className="text-amber-700 shrink-0" />}
+                    <span className="text-[13px] text-ink-2 truncate">{item.label}</span>
+                  </span>
+                  {!item.ok && <span className="text-[11px] font-semibold text-navy shrink-0">{item.action}</span>}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Main content grid */}
@@ -411,6 +540,7 @@ export default async function EventOverviewPage({
                   { label: "Staff tickets", href: `/organizer/events/${id}/staff`, icon: QrCode },
                   { label: "Photo gallery", href: `/organizer/events/${id}/gallery`, icon: ImageIcon },
                   { label: "Questions", href: `/organizer/events/${id}/questions`, icon: HelpCircle },
+                  { label: "Collect reviews", href: `/reviews/new?event=${encodeURIComponent(event.slug ?? id)}`, icon: Star },
                   { label: "Merch", href: `/organizer/events/${id}/merch`, icon: ShoppingBag },
                   { label: "Vendors", href: `/organizer/events/${id}/vendors`, icon: Store },
                 ].map(({ label, href, icon: Icon }) => (
