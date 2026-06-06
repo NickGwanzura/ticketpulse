@@ -1,7 +1,7 @@
 import Link from "next/link"
 import {
   Wallet, Clock, CheckCircle2, Send,
-  Building2, Inbox, XCircle,
+  Smartphone, Building2, Inbox, XCircle,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -65,7 +65,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
       <PageHeader
         eyebrow="Payouts"
         title="Organizer payouts"
-        subtitle="Review, approve, and process organizer bank payout requests."
+        subtitle="Review, approve, and process organizer EcoCash and bank settlement requests."
         width="full"
       />
 
@@ -165,11 +165,13 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         <td className="px-3 py-4">
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                              <Building2 size={12} className="text-sky-700" />
-                              Bank transfer
+                              {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                              {p.method === "ecocash" ? "EcoCash" : "USD Bank"}
                             </span>
                             <p className="text-[11px] text-ink-3 leading-4">
-                              {[p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
+                              {p.method === "ecocash"
+                                ? p.accountNumber
+                                : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
                             </p>
                           </div>
                         </td>
@@ -268,15 +270,17 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
-                        <Building2 size={12} className="text-sky-700" />
-                        Bank transfer · {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
+                        {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                        {p.method === "ecocash" ? "EcoCash" : "USD Bank"} · {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
                       </span>
                       <span className="text-[14px] font-bold tracking-tight text-ink">
                         {formatCurrency(Number(p.amount), p.currency)}
                       </span>
                     </div>
                     <p className="mt-2 text-[11px] text-ink-3 leading-4">
-                      {[p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
+                      {p.method === "ecocash"
+                        ? p.accountNumber
+                        : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
                     </p>
 
                     {/* Mobile action buttons */}

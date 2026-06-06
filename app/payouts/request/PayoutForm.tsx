@@ -4,18 +4,20 @@ import { useRouter } from "next/navigation"
 import { useActionState, useState } from "react"
 import Link from "next/link"
 import {
-  ArrowLeft, Send, Building2, AlertCircle, CheckCircle2,
+  ArrowLeft, Send, Smartphone, Building2, AlertCircle, CheckCircle2,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { requestPayoutAction } from "../actions"
 
-type PayoutMethod = "bank_usd"
+type PayoutMethod = "ecocash" | "bank_usd"
 
 const METHOD_LABELS: Record<PayoutMethod, string> = {
+  ecocash: "EcoCash",
   bank_usd: "USD Bank Transfer",
 }
 
-const METHOD_ICONS: Record<PayoutMethod, typeof Building2> = {
+const METHOD_ICONS: Record<PayoutMethod, typeof Smartphone> = {
+  ecocash: Smartphone,
   bank_usd: Building2,
 }
 
@@ -35,6 +37,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
   const router = useRouter()
   const [method, setMethod] = useState<PayoutMethod>("bank_usd")
   const [amount, setAmount] = useState("")
+  const [ecocashNumber, setEcocashNumber] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [accountName, setAccountName] = useState("")
   const [bankName, setBankName] = useState("")
@@ -137,7 +140,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
             {/* Payout method */}
             <div>
               <label className="text-[13px] font-semibold text-ink mb-1.5 block">Payout method</label>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {(Object.entries(METHOD_LABELS) as [PayoutMethod, string][]).map(([key, label]) => {
                   const Icon = METHOD_ICONS[key]
                   const isActive = method === key
@@ -160,6 +163,23 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
               </div>
               <input type="hidden" name="method" value={method} />
             </div>
+
+            {/* EcoCash details */}
+            {method === "ecocash" && (
+              <div>
+                <label className="text-[13px] font-semibold text-ink mb-1.5 block">EcoCash number</label>
+                <input
+                  name="ecocashNumber"
+                  type="tel"
+                  placeholder="0771 234 567"
+                  value={ecocashNumber}
+                  onChange={(e) => setEcocashNumber(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600 transition"
+                />
+                <p className="text-[12px] text-ink-3 mt-1">Funds are settled to this EcoCash number</p>
+              </div>
+            )}
 
             {/* Bank details */}
             {method === "bank_usd" && (

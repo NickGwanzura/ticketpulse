@@ -11,7 +11,7 @@ import { getBaseUrl } from "@/lib/url-config"
 
 const PLATFORM_FEE_PERCENT = 5
 const ACTIVE_PAYOUT_STATUSES = ["pending", "approved", "processing"] as const
-const VALID_METHODS = ["bank_usd"] as const
+const VALID_METHODS = ["ecocash", "bank_usd"] as const
 type PayoutMethod = (typeof VALID_METHODS)[number]
 
 function isPayoutMethod(value: string): value is PayoutMethod {
@@ -27,15 +27,19 @@ function money(value: number) {
   })
 }
 
-function methodLabel() {
+function methodLabel(method: string) {
+  if (method === "ecocash") return "EcoCash"
   return "USD bank transfer"
 }
 
 function destinationLabel(opts: {
+  method: string
+  ecocashNumber?: string
   bankName?: string
   accountName?: string
   accountNumber?: string
 }) {
+  if (opts.method === "ecocash") return opts.ecocashNumber ?? "EcoCash"
   return [opts.bankName, opts.accountName, opts.accountNumber].filter(Boolean).join(" · ")
 }
 
@@ -284,6 +288,7 @@ export async function requestPayoutAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string)
   const currency = (formData.get("currency") as string) ?? "USD"
   const method = (formData.get("method") as string) ?? "bank_usd"
+  const ecocashNumber = ((formData.get("ecocashNumber") as string) ?? "").trim()
   const accountNumber = ((formData.get("accountNumber") as string) ?? "").trim()
   const accountName = ((formData.get("accountName") as string) ?? "").trim()
   const bankName = ((formData.get("bankName") as string) ?? "").trim()
@@ -305,14 +310,20 @@ export async function requestPayoutAction(formData: FormData) {
     throw new Error("Maximum payout amount is $100,000")
   }
 
-  if (!accountNumber || accountNumber.length < 5) {
-    throw new Error("Please enter a valid account number")
-  }
-  if (!accountName || accountName.trim().length < 2) {
-    throw new Error("Please enter the full account holder name")
-  }
-  if (!bankName || bankName.trim().length < 2) {
-    throw new Error("Please enter the bank name")
+  if (method === "ecocash") {
+    if (!ecocashNumber || !/^(\+?263|0)?7[1789]\d{7}$/.test(ecocashNumber.replace(/\s/g, ""))) {
+      throw new Error("Please enter a valid EcoCash number (e.g. 0771 234 567)")
+    }
+  } else {
+    if (!accountNumber || accountNumber.length < 5) {
+      throw new Error("Please enter a valid account number")
+    }
+    if (!accountName || accountName.trim().length < 2) {
+      throw new Error("Please enter the full account holder name")
+    }
+    if (!bankName || bankName.trim().length < 2) {
+      throw new Error("Please enter the bank name")
+    }
   }
 
   // Check available balance
@@ -349,8 +360,10 @@ export async function requestPayoutAction(formData: FormData) {
     .limit(1)
 
   const cleanAmount = Number(amount.toFixed(2))
-  const methodName = methodLabel()
+  const methodName = methodLabel(method)
   const destination = destinationLabel({
+    method,
+    ecocashNumber,
     bankName,
     accountName,
     accountNumber,
@@ -366,9 +379,9 @@ export async function requestPayoutAction(formData: FormData) {
         currency,
         method,
         status: "pending",
-        accountNumber,
-        accountName,
-        bankName,
+        accountNumber: method === "ecocash" ? ecocashNumber : accountNumber,
+        accountName: method === "ecocash" ? organizer?.name ?? undefined : accountName,
+        bankName: method === "ecocash" ? "EcoCash" : bankName,
         notes: JSON.stringify({
           grossRevenue: Number(balance.grossRevenue.toFixed(2)),
           platformFeePercent: PLATFORM_FEE_PERCENT,
