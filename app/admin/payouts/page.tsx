@@ -1,7 +1,7 @@
 import Link from "next/link"
 import {
   Wallet, Clock, CheckCircle2, Send,
-  Smartphone, Building2, Inbox, XCircle,
+  Smartphone, Building2, Inbox, XCircle, Banknote,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -43,6 +43,23 @@ const TABS: { key: PayoutStatus | "all"; label: string }[] = [
   { key: "held",      label: "Held" },
   { key: "rejected",  label: "Rejected" },
 ]
+
+type PayoutDisplay = {
+  method: string
+  bankName?: string | null
+  notes?: string | null
+}
+
+function isManualCashPayout(payout: PayoutDisplay) {
+  return payout.bankName?.toLowerCase() === "manual cash payment"
+    || payout.notes?.toLowerCase().includes("manual cash")
+}
+
+function payoutMethodLabel(payout: PayoutDisplay) {
+  if (isManualCashPayout(payout)) return "Manual cash"
+  if (payout.method === "ecocash") return "EcoCash"
+  return "USD Bank"
+}
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const params = await searchParams
@@ -165,11 +182,13 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         <td className="px-3 py-4">
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                              {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                              {p.method === "ecocash" ? "EcoCash" : "USD Bank"}
+                              {isManualCashPayout(p) ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                              {payoutMethodLabel(p)}
                             </span>
                             <p className="text-[11px] text-ink-3 leading-4">
-                              {p.method === "ecocash"
+                              {isManualCashPayout(p)
+                                ? p.proofReference
+                                : p.method === "ecocash"
                                 ? p.accountNumber
                                 : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
                             </p>
@@ -270,15 +289,17 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
-                        {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                        {p.method === "ecocash" ? "EcoCash" : "USD Bank"} · {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
+                        {isManualCashPayout(p) ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                        {payoutMethodLabel(p)} · {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
                       </span>
                       <span className="text-[14px] font-bold tracking-tight text-ink">
                         {formatCurrency(Number(p.amount), p.currency)}
                       </span>
                     </div>
                     <p className="mt-2 text-[11px] text-ink-3 leading-4">
-                      {p.method === "ecocash"
+                      {isManualCashPayout(p)
+                        ? p.proofReference
+                        : p.method === "ecocash"
                         ? p.accountNumber
                         : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
                     </p>
