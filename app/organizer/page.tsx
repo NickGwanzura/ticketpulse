@@ -35,6 +35,7 @@ const STATUS: Record<string, { dot: string; label: string }> = {
 }
 
 const PLATFORM_FEE_PERCENT = 5
+const NET_REVENUE_MULTIPLIER = 1 - PLATFORM_FEE_PERCENT / 100
 
 function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
@@ -97,8 +98,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     // Use delivered buyer tickets so the dashboard matches the attendee list.
     const sold = attendingByEvent.find(s => s.eventId === r.id)?.attending ?? 0
     const revenue = evOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+    const netRevenue = revenue * NET_REVENUE_MULTIPLIER
     const currency = tiers[0]?.currency ?? evOrders[0]?.currency ?? "USD"
-    return { ...r, capacity, sold, revenue, currency, status: r.status ?? "draft" }
+    return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft" }
   })
 
   const filtered = EVENTS.filter(e => filter === "live" ? e.status === "published" : filter === "drafts" ? e.status === "draft" : true)
@@ -117,8 +119,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const hasSales = totalSold > 0
 
   const insightEvent = EVENTS.find(e => e.status === "published" && e.sold > 0) || EVENTS.find(e => e.status === "published") || EVENTS[0]
-  const SALES_TOP = [...EVENTS].filter(e => e.revenue > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
-  const maxRevenue = Math.max(...SALES_TOP.map(e => e.revenue), 1)
+  const SALES_TOP = [...EVENTS].filter(e => e.netRevenue > 0).sort((a, b) => b.netRevenue - a.netRevenue).slice(0, 5)
+  const maxRevenue = Math.max(...SALES_TOP.map(e => e.netRevenue), 1)
   // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
   const now = Date.now()
 
@@ -178,7 +180,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           {[
             { label: "Live events",    value: liveCount.toLocaleString(),            icon: Activity },
             { label: "Attending",      value: totalSold.toLocaleString(),            icon: Ticket },
-            { label: "Gross revenue",  value: formatCurrency(gross, "USD"),          icon: DollarSign },
+            { label: "Gross ticket sales", value: formatCurrency(gross, "USD"),       icon: DollarSign },
             { label: "Net earnings",   value: formatCurrency(net, "USD"),            icon: TrendingUp },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="px-5 py-5">
@@ -231,7 +233,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
-                          <p className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(e.revenue, e.currency)}</p>
+                          <p className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(e.netRevenue, e.currency)}</p>
                           <p className="text-[12px] text-ink-3">{e.sold} / {e.capacity} attending</p>
                         </div>
                         <CapacityBar sold={e.sold} capacity={e.capacity} />
@@ -259,7 +261,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                       <th className="text-left px-5 py-3">Event</th>
                       <th className="text-left px-3 py-3">Date</th>
                       <th className="text-right px-3 py-3">Attending</th>
-                      <th className="text-right px-3 py-3">Revenue</th>
+                      <th className="text-right px-3 py-3">Net revenue</th>
                       <th className="px-3 py-3" />
                     </tr>
                   </thead>
@@ -283,7 +285,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                             <CapacityBar sold={e.sold} capacity={e.capacity} />
                           </td>
                           <td className="px-3 py-4 text-right text-[14px] font-bold text-ink tabular-nums whitespace-nowrap">
-                            {formatCurrency(e.revenue, e.currency)}
+                            {formatCurrency(e.netRevenue, e.currency)}
                           </td>
                           <td className="px-3 py-4 text-right">
                             <div className="flex items-center gap-0.5 justify-end">
@@ -367,13 +369,13 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           {/* Sales bars */}
           <div className="rounded-2xl border border-line bg-paper p-5">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[15px] font-semibold text-ink">Sales by event</h2>
+              <h2 className="text-[15px] font-semibold text-ink">Net sales by event</h2>
               <Link href="/organizer/orders" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
                 All orders <ArrowUpRight size={11} />
               </Link>
             </div>
             {SALES_TOP.length === 0 ? (
-              <EmptyState icon={DollarSign} title="No sales yet" body="Revenue by event will appear here." variant="inline" />
+              <EmptyState icon={DollarSign} title="No sales yet" body="Net revenue by event will appear here." variant="inline" />
             ) : (
               <div className="space-y-4">
                 {SALES_TOP.map(e => (
@@ -382,10 +384,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                       <Link href={`/organizer/events/${e.id}`} className="text-[13px] font-medium text-ink hover:text-navy transition-colors truncate max-w-[180px]">
                         {e.title}
                       </Link>
-                      <span className="text-[13px] font-bold text-ink tabular-nums ml-2 shrink-0">{formatCurrency(e.revenue, e.currency)}</span>
+                      <span className="text-[13px] font-bold text-ink tabular-nums ml-2 shrink-0">{formatCurrency(e.netRevenue, e.currency)}</span>
                     </div>
                     <div className="h-1.5 bg-paper-3 rounded-full overflow-hidden">
-                      <div className="h-full bg-ink rounded-full" style={{ width: `${Math.round((e.revenue / maxRevenue) * 100)}%` }} />
+                      <div className="h-full bg-ink rounded-full" style={{ width: `${Math.round((e.netRevenue / maxRevenue) * 100)}%` }} />
                     </div>
                   </div>
                 ))}

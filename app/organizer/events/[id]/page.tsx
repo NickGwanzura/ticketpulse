@@ -22,6 +22,9 @@ export const metadata = { title: "Event overview" }
 
 type RouteParams = { id: string }
 
+const PLATFORM_FEE_PERCENT = 5
+const NET_REVENUE_MULTIPLIER = 1 - PLATFORM_FEE_PERCENT / 100
+
 export default async function EventOverviewPage({
   params,
   searchParams,
@@ -89,12 +92,13 @@ export default async function EventOverviewPage({
   // ── Revenue from paid orders ───────────────────────────────────────────────
   const [revenueRow] = await db
     .select({
-      total: sql<number>`COALESCE(SUM(${orders.totalAmount})::numeric, 0)::int`,
+      total: sql<number>`COALESCE(SUM(${orders.totalAmount})::numeric, 0)`,
     })
     .from(orders)
     .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"])))
 
-  const revenue = Number(revenueRow?.total ?? 0)
+  const grossRevenue = Number(revenueRow?.total ?? 0)
+  const netRevenue = grossRevenue * NET_REVENUE_MULTIPLIER
   const currency = tiers[0]?.currency ?? "USD"
 
   // ── Attendees ──────────────────────────────────────────────────────────────
@@ -222,7 +226,7 @@ export default async function EventOverviewPage({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
             { label: "Tickets sold", value: `${totalSold.toLocaleString()} / ${totalCapacity.toLocaleString()}`, icon: Ticket, color: "text-navy" },
-            { label: "Revenue", value: formatCurrency(revenue, currency), icon: DollarSign, color: "text-green-700" },
+            { label: "Net revenue", value: formatCurrency(netRevenue, currency), icon: DollarSign, color: "text-green-700" },
             { label: "Attendees", value: totalAttendees.toLocaleString(), icon: Users, color: "text-blue" },
             { label: "Checked in", value: `${checkedIn.toLocaleString()} / ${totalSold.toLocaleString()}`, icon: Activity, color: "text-violet-700" },
           ].map(({ label, value, icon: Icon, color }) => (
@@ -236,6 +240,29 @@ export default async function EventOverviewPage({
               <p className={`text-[22px] md:text-[24px] font-bold tracking-tight leading-none tabular-nums ${color}`}>{value}</p>
             </div>
           ))}
+        </div>
+
+        <div className="rounded-2xl border border-line bg-paper px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-semibold text-ink">Payout revenue</p>
+            <p className="text-[12px] text-ink-2 mt-0.5">
+              Net revenue is gross confirmed ticket sales after the {PLATFORM_FEE_PERCENT}% TicketPulse fee.
+            </p>
+          </div>
+          <dl className="grid grid-cols-3 gap-4 text-[12px]">
+            <div>
+              <dt className="text-ink-3">Gross</dt>
+              <dd className="font-bold text-ink tabular-nums">{formatCurrency(grossRevenue, currency)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-3">Fee</dt>
+              <dd className="font-bold text-ink tabular-nums">-{formatCurrency(grossRevenue - netRevenue, currency)}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-3">Net</dt>
+              <dd className="font-bold text-ink tabular-nums">{formatCurrency(netRevenue, currency)}</dd>
+            </div>
+          </dl>
         </div>
 
         {/* Main content grid */}

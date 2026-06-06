@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  LayoutDashboard, Calendar, ClipboardList, ScanLine, MoreHorizontal,
+  LayoutDashboard, Calendar, ClipboardList, ScanLine, Wallet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -12,13 +12,14 @@ const ORGANIZER_TABS = [
   { label: "Events", href: "/organizer/events", icon: Calendar },
   { label: "Orders", href: "/organizer/orders", icon: ClipboardList },
   { label: "Scanner", href: "/organizer/scan", icon: ScanLine },
+  { label: "Payouts", href: "/payouts", icon: Wallet },
 ]
 
 export default function MobileNav() {
   const pathname = usePathname()
 
-  // Only show on organizer routes
-  if (!pathname?.startsWith("/organizer")) return null
+  // Only show on organizer money/workflow routes
+  if (!pathname?.startsWith("/organizer") && !pathname?.startsWith("/payouts")) return null
 
   const isActive = (href: string) => {
     if (href === "/organizer") return pathname === "/organizer"

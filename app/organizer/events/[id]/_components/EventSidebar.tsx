@@ -18,6 +18,7 @@ import {
   Settings,
   ArrowLeft,
   HelpCircle,
+  Wallet,
 } from "lucide-react"
 
 const NAV = (eventId: string) =>
@@ -36,6 +37,7 @@ const NAV = (eventId: string) =>
     { label: "Organisers", href: `/organizer/events/${eventId}/organisers`, icon: UserPlus },
     { label: "Staff", href: `/organizer/events/${eventId}/staff`, icon: QrCode },
     { label: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
+    { label: "Payouts", href: "/payouts", icon: Wallet },
   ] as const
 
 type Props = {
