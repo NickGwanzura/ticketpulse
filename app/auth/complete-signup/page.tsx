@@ -4,14 +4,9 @@ import { eq } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { users } from "@/db/schema"
+import { getDashboardPathForRole } from "@/lib/role-routes"
 
-const ROLE_DESTINATIONS = {
-  attendee: "/dashboard",
-  organizer: "/organizer",
-  vendor: "/vendors/apply",
-} as const
-
-type SignupRole = keyof typeof ROLE_DESTINATIONS
+type SignupRole = "attendee" | "organizer" | "vendor"
 
 function localCallback(value: string | undefined): string | null {
   return value?.startsWith("/") && !value.startsWith("//") ? value : null
@@ -53,5 +48,5 @@ export default async function CompleteSignupPage({
     }
   }
 
-  redirect(callbackUrl ?? ROLE_DESTINATIONS[requestedRole])
+  redirect(callbackUrl ?? (requestedRole === "vendor" ? "/vendors/apply" : getDashboardPathForRole(requestedRole)))
 }

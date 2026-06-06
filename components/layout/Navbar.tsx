@@ -5,10 +5,11 @@ import { signOut, useSession } from "next-auth/react"
 import {
   Menu, X, LogOut, LayoutDashboard, ChevronDown, ShoppingBag, Search,
   Music, Trophy, Footprints, Film, Building2, Mountain, Ticket, ArrowRight, ArrowUpRight,
-  CalendarCog, Store, Shield,
+  CalendarCog, Store, Shield, Bus, ClipboardList, ScanLine,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useCart } from "@/lib/cart-context"
+import { getDashboardPathForRole } from "@/lib/role-routes"
 
 interface NavCategory {
   label: string
@@ -90,7 +91,14 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
   }, [eventsOpen])
 
   const eventsActive = pathname === "/events" || pathname.startsWith("/events/")
-  const isDashboardRoute = pathname.startsWith("/organizer") || pathname.startsWith("/admin") || pathname.startsWith("/dashboard")
+  const isDashboardRoute =
+    pathname.startsWith("/organizer") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/transport") ||
+    pathname.startsWith("/dispatch") ||
+    pathname.startsWith("/crew")
+  const dashboardHref = getDashboardPathForRole(session?.user?.role)
 
   return (
     <header
@@ -229,9 +237,24 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                         <Shield size={15} className="text-ink-3" /> Admin
                       </Link>
                     )}
-                    <Link href="/dashboard" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
+                    <Link href={dashboardHref} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
                       <LayoutDashboard size={15} className="text-ink-3" /> Dashboard
                     </Link>
+                    {session.user.role === "transport_operator" && (
+                      <Link href="/transport" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
+                        <Bus size={15} className="text-ink-3" /> Transport
+                      </Link>
+                    )}
+                    {session.user.role === "dispatcher" && (
+                      <Link href="/dispatch" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
+                        <ClipboardList size={15} className="text-ink-3" /> Dispatch
+                      </Link>
+                    )}
+                    {(session.user.role === "driver" || session.user.role === "conductor") && (
+                      <Link href="/crew" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
+                        <ScanLine size={15} className="text-ink-3" /> Crew
+                      </Link>
+                    )}
                     <Link href="/orders" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
                       <ShoppingBag size={15} className="text-ink-3" /> Orders
                     </Link>
@@ -443,7 +466,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                     <Shield size={15} /> Admin
                   </Link>
                 )}
-                <Link href="/dashboard" className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
+                <Link href={dashboardHref} className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-paper px-4 py-3 text-sm font-medium text-ink">
                   <LayoutDashboard size={15} /> Dashboard
                 </Link>
                 <button onClick={() => signOut()} className="flex items-center justify-center gap-2 w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white">

@@ -85,6 +85,10 @@ export const userRoleEnum = pgEnum("user_role", [
   "organizer",
   "vendor",
   "admin",
+  "transport_operator",
+  "dispatcher",
+  "driver",
+  "conductor",
 ])
 
 export const inviteStatusEnum = pgEnum("invite_status", [

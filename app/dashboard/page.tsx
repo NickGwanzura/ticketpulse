@@ -9,13 +9,13 @@ import {
 
 import { db } from "@/db"
 import { orders, tickets, events } from "@/db/schema"
+import { getDashboardPathForRole } from "@/lib/role-routes"
 
 export default async function DashboardPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin")
-  if (session.user.role === "admin")     redirect("/admin")
-  if (session.user.role === "organizer") redirect("/organizer")
-  if (session.user.role === "vendor")    redirect("/vendors/dashboard")
+  const roleDashboardPath = getDashboardPathForRole(session.user.role)
+  if (roleDashboardPath !== "/dashboard") redirect(roleDashboardPath)
 
   const userId = session.user.id
   const attendeeName = session.user.name ?? "there"
@@ -63,10 +63,8 @@ export default async function DashboardPage() {
   const pastCount = pastResult[0]?.count ?? 0
   const totalTickets = totalTicketsResult[0]?.count ?? 0
 
-  const formatEventDate = (d: Date) =>
-    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
-
-  const daysUntil = (d: Date) => Math.ceil((d.getTime() - Date.now()) / 86400000)
+  const nowTime = now.getTime()
+  const daysUntil = (d: Date) => Math.ceil((d.getTime() - nowTime) / 86400000)
 
   // Deduplicate upcoming events by eventSlug
   const seen = new Set<string>()

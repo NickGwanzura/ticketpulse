@@ -3,12 +3,16 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { UserPlus, X } from "lucide-react"
 
-type Role = "attendee" | "organizer" | "vendor" | "admin"
+type Role = "attendee" | "organizer" | "vendor" | "admin" | "transport_operator" | "dispatcher" | "driver" | "conductor"
 
 const ROLES: { value: Role; label: string; hint: string }[] = [
   { value: "attendee", label: "Attendee", hint: "Buys tickets and books transport." },
   { value: "organizer", label: "Organizer", hint: "Creates and manages events." },
   { value: "vendor", label: "Vendor", hint: "Sells services to organizers." },
+  { value: "transport_operator", label: "Transport", hint: "Manages routes, departures, bookings, and payouts." },
+  { value: "dispatcher", label: "Dispatcher", hint: "Assigns fleet, crew, departures, and manifests." },
+  { value: "driver", label: "Driver", hint: "Sees assigned trips and passenger manifests." },
+  { value: "conductor", label: "Conductor", hint: "Scans boarding passes and marks no-shows." },
   { value: "admin", label: "Admin", hint: "Full platform access." },
 ]
 

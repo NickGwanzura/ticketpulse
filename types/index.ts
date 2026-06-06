@@ -1,4 +1,12 @@
-export type UserRole = "attendee" | "organizer" | "vendor" | "admin"
+export type UserRole =
+  | "attendee"
+  | "organizer"
+  | "vendor"
+  | "admin"
+  | "transport_operator"
+  | "dispatcher"
+  | "driver"
+  | "conductor"
 export type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
 export type OrderStatus = "pending" | "paid" | "cancelled" | "refunded"
 export type VehicleType = "kombi" | "bus" | "sedan" | "suv"

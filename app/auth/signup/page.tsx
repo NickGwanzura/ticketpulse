@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Check, User, CalendarCog, Store, Mail, ArrowRight } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
 import { redirect } from "next/navigation"
+import { getDashboardPathForRole } from "@/lib/role-routes"
 
 const ROLES = [
   { value: "attendee",  label: "Attendee",  body: "Buy tickets, book shuttles, grab merch and photo packs.",   icon: User },
@@ -85,7 +86,7 @@ export default async function SignUpPage({
             }
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
-            let finalRole: AllowedRole | "admin" = role
+            let finalRole: string = role
             if (!existing) {
               await db.insert(users).values({
                 email,
@@ -139,7 +140,7 @@ export default async function SignUpPage({
             await signIn("credentials", {
               email,
               password,
-              redirectTo: requestedCallbackUrl ?? (finalRole === "organizer" ? "/organizer" : finalRole === "vendor" ? "/vendors/apply" : "/dashboard"),
+              redirectTo: requestedCallbackUrl ?? (finalRole === "vendor" ? "/vendors/apply" : getDashboardPathForRole(finalRole)),
             })
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"
