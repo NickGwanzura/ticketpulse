@@ -6,12 +6,11 @@ import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
   Ticket, DollarSign, TrendingUp, Users,
   Activity, Tag, Mail, HelpCircle, Zap,
-  CheckCircle2,
 } from "lucide-react"
 
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, ticketTiers, tickets, users, platformSettings, payouts } from "@/db/schema"
+import { events, eventOrganisers, orders, ticketTiers, tickets, payouts } from "@/db/schema"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
@@ -35,6 +34,8 @@ const STATUS: Record<string, { dot: string; label: string }> = {
   completed: { dot: "bg-ink-3",       label: "Ended" },
 }
 
+const PLATFORM_FEE_PERCENT = 5
+
 function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
   const color = pct >= 90 ? "bg-rose-500" : pct >= 60 ? "bg-amber-500" : "bg-ink"
@@ -52,9 +53,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer")
   const isAdmin = session.user.role === "admin"
-
-  const [userRow] = await db.select({ commissionRate: users.commissionRate }).from(users).where(eq(users.id, session.user.id)).limit(1)
-  const commissionRate = Number(userRow?.commissionRate ?? 8)
 
   const invitedEventIds = isAdmin ? [] : await db
     .select({ eventId: eventOrganisers.eventId })
@@ -76,19 +74,17 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, allOrders, attendingByEvent, recentOrdersRaw, settingsRow, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
+  const [allTiers, allOrders, attendingByEvent, recentOrdersRaw, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, status: orders.status }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"]))) : Promise.resolve([]),
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
-    db.select({ value: platformSettings.value }).from(platformSettings).where(and(eq(platformSettings.key, "platform_fee_percent"), eq(platformSettings.env, "prod"))).limit(1),
     db.select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` }).from(payouts).where(and(eq(payouts.userId, session.user.id), sql`${payouts.status} in ('pending', 'approved', 'processing')`)),
     db.select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` }).from(payouts).where(and(eq(payouts.userId, session.user.id), eq(payouts.status, "paid"))),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(payouts).where(and(eq(payouts.userId, session.user.id), eq(payouts.status, "pending"))),
   ])
 
-  const platformFeePercent = Number(settingsRow?.[0]?.value ?? 8)
   const pendingPayout = Number(pendingPayoutRow?.[0]?.total ?? 0)
   const totalPaidOut = Number(paidOutRow?.[0]?.total ?? 0)
   const pendingCount = pendingCountRow?.[0]?.count ?? 0
@@ -111,7 +107,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const liveCount = EVENTS.filter(e => e.status === "published").length
   const draftCount = EVENTS.filter(e => e.status === "draft").length
   const gross = totalRevenue
-  const net = gross * (1 - platformFeePercent / 100)
+  const platformFee = gross * (PLATFORM_FEE_PERCENT / 100)
+  const net = gross - platformFee
   const availableBalance = Math.max(0, net - totalPaidOut - pendingPayout)
 
   const hasEvents = EVENTS.length > 0
@@ -137,15 +134,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
               {firstName}&apos;s events
             </h1>
-            {commissionRate === 0 ? (
-              <span className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-emerald-700">
-                <CheckCircle2 size={12} /> Free listing — no platform fee
-              </span>
-            ) : (
-              <span className="mt-2 inline-flex text-[12px] text-ink-3">
-                {commissionRate}% platform fee per sale
-              </span>
-            )}
+            <span className="mt-2 inline-flex text-[12px] text-ink-3">
+              {PLATFORM_FEE_PERCENT}% TicketPulse fee on confirmed paid tickets
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/organizer/scan" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
@@ -327,6 +318,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <p className="text-[28px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(availableBalance, "USD")}</p>
               <p className="text-[12px] text-ink-3 mt-0.5 mb-5">available balance</p>
               <div className="space-y-2.5 text-[13px] pb-5 border-b border-line mb-4">
+                <div className="flex justify-between">
+                  <span className="text-ink-2">Gross ticket sales</span>
+                  <span className="font-semibold text-ink tabular-nums">{formatCurrency(gross, "USD")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-2">TicketPulse fee</span>
+                  <span className="font-semibold text-ink tabular-nums">-{formatCurrency(platformFee, "USD")}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-ink-2">Net revenue</span>
                   <span className="font-semibold text-ink tabular-nums">{formatCurrency(net, "USD")}</span>

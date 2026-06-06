@@ -1,6 +1,6 @@
 import Link from "next/link"
 import {
-  Wallet, Clock, CheckCircle2, Send, ArrowUpRight,
+  Wallet, Clock, CheckCircle2, Send,
   Smartphone, Building2, Inbox, XCircle,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
@@ -163,10 +163,17 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                           </p>
                         </td>
                         <td className="px-3 py-4">
-                          <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                            {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                            {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}
-                          </span>
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+                              {p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                              {p.method === "ecocash" ? "EcoCash" : p.method === "bank_usd" ? "USD Bank" : "ZAR Bank"}
+                            </span>
+                            <p className="text-[11px] text-ink-3 leading-4">
+                              {p.method === "ecocash"
+                                ? p.accountNumber
+                                : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
+                            </p>
+                          </div>
                         </td>
                         <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}</td>
                         <td className="px-3 py-4">
@@ -270,6 +277,11 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         {formatCurrency(Number(p.amount), p.currency)}
                       </span>
                     </div>
+                    <p className="mt-2 text-[11px] text-ink-3 leading-4">
+                      {p.method === "ecocash"
+                        ? p.accountNumber
+                        : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
+                    </p>
 
                     {/* Mobile action buttons */}
                     {p.status === "pending" && (

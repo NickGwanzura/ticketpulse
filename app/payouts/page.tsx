@@ -2,8 +2,8 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
-  Wallet, Clock, CheckCircle2, ArrowUpRight,
-  Send, Smartphone, Building2, Inbox, Banknote,
+  Wallet, CheckCircle2,
+  Send, Smartphone, Building2, Inbox, Banknote, ReceiptText,
 } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -39,10 +39,18 @@ export default async function PayoutsDashboardPage() {
   if (!session) redirect("/auth/signin")
 
   const userId = session.user.id
-  const isOrganizer = session.user.role === "organizer" || session.user.role === "admin"
 
-  const { payouts, stats } = await getOrganizerPayouts(userId)
-  const { availableBalance, totalEarned, totalPaidOut, commissionRate, grossRevenue } = await getOrganizerBalance(userId)
+  const { payouts } = await getOrganizerPayouts(userId)
+  const {
+    availableBalance,
+    totalEarned,
+    totalPaidOut,
+    pendingTotal,
+    commissionRate,
+    grossRevenue,
+    platformFee,
+    confirmedTicketCount,
+  } = await getOrganizerBalance(userId)
 
   return (
     <div className="tp-fade-up">
@@ -55,7 +63,7 @@ export default async function PayoutsDashboardPage() {
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-8">
         {/* Balance cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 tp-fade-up-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
             <div className="flex items-center gap-2 mb-2.5">
               <Wallet size={15} className="text-ink-3" />
@@ -70,12 +78,12 @@ export default async function PayoutsDashboardPage() {
           <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
             <div className="flex items-center gap-2 mb-2.5">
               <Banknote size={15} className="text-ink-3" />
-              <span className="text-[13px] text-ink-3">Total earned</span>
+              <span className="text-[13px] text-ink-3">Net earned</span>
             </div>
             <p className="text-[28px] md:text-[32px] font-bold tracking-tight text-ink leading-none tabular-nums">
               {formatCurrency(totalEarned, "USD")}
             </p>
-            <p className="text-[13px] text-ink-3 mt-2">All time revenue</p>
+            <p className="text-[13px] text-ink-3 mt-2">After {commissionRate}% fee</p>
           </div>
 
           <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
@@ -87,6 +95,44 @@ export default async function PayoutsDashboardPage() {
               {formatCurrency(totalPaidOut, "USD")}
             </p>
             <p className="text-[13px] text-ink-3 mt-2">Already transferred</p>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
+            <div className="flex items-center gap-2 mb-2.5">
+              <ReceiptText size={15} className="text-ink-3" />
+              <span className="text-[13px] text-ink-3">Confirmed tickets</span>
+            </div>
+            <p className="text-[28px] md:text-[32px] font-bold tracking-tight text-ink leading-none tabular-nums">
+              {confirmedTicketCount}
+            </p>
+            <p className="text-[13px] text-ink-3 mt-2">{formatCurrency(grossRevenue, "USD")} gross</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-line bg-paper p-5 tp-fade-up-2">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-[16px] font-semibold tracking-tight text-ink">Payout calculation</h2>
+              <p className="text-[13px] text-ink-2 mt-1">Only confirmed paid/completed ticket orders are included.</p>
+            </div>
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[13px]">
+              <div>
+                <dt className="text-ink-3">Gross</dt>
+                <dd className="font-bold text-ink tabular-nums">{formatCurrency(grossRevenue, "USD")}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-3">TicketPulse fee</dt>
+                <dd className="font-bold text-ink tabular-nums">-{formatCurrency(platformFee, "USD")}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-3">Pending payouts</dt>
+                <dd className="font-bold text-ink tabular-nums">-{formatCurrency(pendingTotal, "USD")}</dd>
+              </div>
+              <div>
+                <dt className="text-ink-3">Available</dt>
+                <dd className="font-bold text-ink tabular-nums">{formatCurrency(availableBalance, "USD")}</dd>
+              </div>
+            </dl>
           </div>
         </div>
 

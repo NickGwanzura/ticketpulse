@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useActionState, useState } from "react"
 import Link from "next/link"
 import {
-  ArrowLeft, Send, Smartphone, Building2, AlertCircle,
+  ArrowLeft, Send, Smartphone, Building2, AlertCircle, CheckCircle2,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { requestPayoutAction } from "../actions"
@@ -30,6 +30,9 @@ type BalanceData = {
   pendingTotal: number
   commissionRate: number
   grossRevenue: number
+  platformFee: number
+  confirmedOrderCount: number
+  confirmedTicketCount: number
 }
 
 export default function PayoutForm({ balance }: { balance: BalanceData }) {
@@ -57,6 +60,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
 
   const parsedAmount = parseFloat(amount) || 0
   const exceedsBalance = parsedAmount > balance.availableBalance
+  const remainingAfterRequest = Math.max(0, balance.availableBalance - parsedAmount)
 
   return (
     <div className="tp-fade-up">
@@ -76,6 +80,20 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
             <p className="text-[14px] text-ink-2 mt-1">
               Available balance: <span className="font-semibold text-ink tabular-nums">{formatCurrency(balance.availableBalance, "USD")}</span>
             </p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-lg bg-paper-2 px-3 py-2">
+                <p className="text-[11px] text-ink-3">Confirmed tickets</p>
+                <p className="text-[15px] font-bold text-ink tabular-nums">{balance.confirmedTicketCount}</p>
+              </div>
+              <div className="rounded-lg bg-paper-2 px-3 py-2">
+                <p className="text-[11px] text-ink-3">Gross sales</p>
+                <p className="text-[15px] font-bold text-ink tabular-nums">{formatCurrency(balance.grossRevenue, "USD")}</p>
+              </div>
+              <div className="rounded-lg bg-paper-2 px-3 py-2">
+                <p className="text-[11px] text-ink-3">You receive</p>
+                <p className="text-[15px] font-bold text-ink tabular-nums">{formatCurrency(balance.totalEarned, "USD")}</p>
+              </div>
+            </div>
           </div>
 
           <form action={formAction} className="p-6 space-y-5">
@@ -209,6 +227,34 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
 
             <input type="hidden" name="currency" value="USD" />
 
+            <div className="rounded-xl border border-line bg-paper-2 p-4 space-y-2">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 size={15} className="text-emerald-700 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[13px] font-semibold text-ink">Payout calculation</p>
+                  <p className="text-[12px] text-ink-2 mt-0.5">
+                    TicketPulse deducts {balance.commissionRate}% from confirmed paid ticket sales before funds become available.
+                  </p>
+                </div>
+              </div>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
+                <dt className="text-ink-3">Gross confirmed tickets</dt>
+                <dd className="text-right font-semibold text-ink tabular-nums">{formatCurrency(balance.grossRevenue, "USD")}</dd>
+                <dt className="text-ink-3">TicketPulse fee</dt>
+                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(balance.platformFee, "USD")}</dd>
+                <dt className="text-ink-3">Already paid</dt>
+                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(balance.totalPaidOut, "USD")}</dd>
+                <dt className="text-ink-3">Pending requests</dt>
+                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(balance.pendingTotal, "USD")}</dd>
+                <dt className="text-ink">Remaining after this request</dt>
+                <dd className="text-right font-bold text-ink tabular-nums">{formatCurrency(remainingAfterRequest, "USD")}</dd>
+              </dl>
+            </div>
+
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-[12px] leading-5 text-amber-800">
+              After you submit, you will receive a confirmation email. Payouts usually take about 24 hours, plus or minus depending on bank processing times and TicketPulse review.
+            </p>
+
             {/* Submit */}
             <button
               type="submit"
@@ -228,11 +274,11 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
         {/* Summary card */}
         <div className="mt-4 rounded-xl border border-line bg-paper p-5 grid grid-cols-3 gap-4 text-center text-[13px]">
           <div>
-            <p className="text-ink-3 mb-0.5">Commission</p>
+            <p className="text-ink-3 mb-0.5">TicketPulse fee</p>
             <p className="font-semibold text-ink">{balance.commissionRate}%</p>
           </div>
           <div>
-            <p className="text-ink-3 mb-0.5">Earned</p>
+            <p className="text-ink-3 mb-0.5">Gross</p>
             <p className="font-semibold text-ink tabular-nums">{formatCurrency(balance.grossRevenue, "USD")}</p>
           </div>
           <div>
