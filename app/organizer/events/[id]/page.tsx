@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 
 import { db } from "@/db"
-import { events, orders, ticketTiers, tickets } from "@/db/schema"
+import { events, orders, orderItems, ticketTiers, tickets } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -89,15 +89,38 @@ export default async function EventOverviewPage({
   const soldByTier = new Map(tierSoldRows.map((r) => [r.tierId, Number(r.sold ?? 0)]))
   const totalSold = tierSoldRows.reduce((s, t) => s + Number(t.sold ?? 0), 0)
 
-  // ── Revenue from paid orders ───────────────────────────────────────────────
-  const [revenueRow] = await db
+  // ── Revenue from issued buyer tickets on paid orders ───────────────────────
+  const ticketItemRows = await db
     .select({
-      total: sql<number>`COALESCE(SUM(${orders.totalAmount})::numeric, 0)`,
+      orderId: orderItems.orderId,
+      tierId: orderItems.tierId,
+      quantity: orderItems.quantity,
+      total: orderItems.total,
     })
-    .from(orders)
-    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"])))
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"]), eq(orderItems.type, "ticket")))
 
-  const grossRevenue = Number(revenueRow?.total ?? 0)
+  const issuedTicketRows = await db
+    .select({
+      orderId: tickets.orderId,
+      tierId: tickets.tierId,
+      issued: sql<number>`COUNT(*)::int`,
+    })
+    .from(tickets)
+    .where(and(eq(tickets.eventId, id), eq(tickets.isStaffTicket, false), inArray(tickets.status, ["sold", "used"])))
+    .groupBy(tickets.orderId, tickets.tierId)
+
+  const issuedByOrderTier = new Map(
+    issuedTicketRows.map((row) => [`${row.orderId ?? ""}:${row.tierId ?? ""}`, Number(row.issued ?? 0)]),
+  )
+  const grossRevenue = ticketItemRows.reduce((sum, item) => {
+    const quantity = Number(item.quantity ?? 0)
+    if (quantity <= 0) return sum
+    const issued = issuedByOrderTier.get(`${item.orderId ?? ""}:${item.tierId ?? ""}`) ?? 0
+    const confirmedQuantity = Math.min(issued, quantity)
+    return sum + confirmedQuantity * (Number(item.total ?? 0) / quantity)
+  }, 0)
   const netRevenue = grossRevenue * NET_REVENUE_MULTIPLIER
   const currency = tiers[0]?.currency ?? "USD"
 

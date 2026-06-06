@@ -1,10 +1,10 @@
 "use server"
 
-import { eq, desc, sql, and, or, inArray } from "drizzle-orm"
+import { eq, desc, sql, and, inArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { payouts, orders, orderItems, events, users, payoutAuditLog } from "@/db/schema"
+import { payouts, events, users, payoutAuditLog } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { adminEmail, sendEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
@@ -114,6 +114,44 @@ function payoutRequestEmailText(opts: {
   ].join("\n")
 }
 
+async function getIssuedTicketRevenueSummary(userId: string) {
+  const result = await db.execute(sql`
+    WITH ticket_items AS (
+      SELECT
+        oi.id,
+        oi.order_id,
+        oi.quantity,
+        oi.total,
+        COUNT(t.id)::int AS issued_count
+      FROM order_items oi
+      INNER JOIN orders o ON o.id = oi.order_id
+      INNER JOIN events e ON e.id = o.event_id
+      LEFT JOIN tickets t
+        ON t.order_id = o.id
+       AND t.tier_id = oi.tier_id
+       AND t.is_staff_ticket = false
+       AND t.status IN ('sold', 'used')
+      WHERE e.organizer_id = ${userId}
+        AND o.status IN ('paid', 'completed')
+        AND oi.type = 'ticket'
+        AND oi.quantity > 0
+      GROUP BY oi.id, oi.order_id, oi.quantity, oi.total
+    )
+    SELECT
+      COALESCE(SUM(LEAST(issued_count, quantity) * (total::numeric / NULLIF(quantity, 0))), 0)::numeric AS gross_revenue,
+      COALESCE(SUM(LEAST(issued_count, quantity)), 0)::int AS confirmed_ticket_count,
+      COUNT(DISTINCT CASE WHEN LEAST(issued_count, quantity) > 0 THEN order_id END)::int AS confirmed_order_count
+    FROM ticket_items
+  `)
+
+  const row = result.rows?.[0] as Record<string, unknown> | undefined
+  return {
+    grossRevenue: Number(row?.gross_revenue ?? 0),
+    confirmedOrderCount: Number(row?.confirmed_order_count ?? 0),
+    confirmedTicketCount: Number(row?.confirmed_ticket_count ?? 0),
+  }
+}
+
 export async function getOrganizerPayouts(userId: string) {
   const session = await auth()
   if (!session?.user) {
@@ -188,26 +226,11 @@ export async function getOrganizerBalance(userId: string) {
     }
   }
 
-  // Calculate gross ticket revenue from confirmed paid/completed orders for this user's events.
-  const revenueResult = await db
-    .select({
-      total: sql<number>`coalesce(sum(${orderItems.total}), 0)`,
-      orderCount: sql<number>`count(distinct ${orders.id})::int`,
-      ticketCount: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::int`,
-    })
-    .from(orderItems)
-    .innerJoin(orders, eq(orders.id, orderItems.orderId))
-    .innerJoin(events, eq(events.id, orders.eventId))
-    .where(
-      and(
-        eq(events.organizerId, userId),
-        or(eq(orders.status, "paid"), eq(orders.status, "completed"))
-      )
-    )
-
-  const grossRevenue = Number(revenueResult[0]?.total ?? 0)
-  const confirmedOrderCount = Number(revenueResult[0]?.orderCount ?? 0)
-  const confirmedTicketCount = Number(revenueResult[0]?.ticketCount ?? 0)
+  const {
+    grossRevenue,
+    confirmedOrderCount,
+    confirmedTicketCount,
+  } = await getIssuedTicketRevenueSummary(userId)
 
   const platformFee = grossRevenue * (PLATFORM_FEE_PERCENT / 100)
   const totalEarned = grossRevenue - platformFee
