@@ -4,17 +4,20 @@ import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
 const TIERS = [
   {
-    name: "Attendee",
-    tagline: "For ticket buyers",
+    name: "Client",
+    tagline: "For ticket buyers and guests",
     price: "Free",
     sub: "forever",
     features: [
       "Browse all events",
       "Printable PDF ticket + mobile QR",
       "WhatsApp ticket delivery",
+      "Order lookup and ticket resend",
+      "Ticket transfer and review links",
       "EcoCash and Visa cards",
       "Refund up to 24h before",
       "Photo packs & merch in-app",
+      "Support if payment clears but tickets do not arrive",
     ],
     cta: { label: "Start browsing", href: "/events" },
     highlight: false,
@@ -27,10 +30,13 @@ const TIERS = [
     features: [
       "Unlimited events & tiers",
       "PDF + mobile tickets, WhatsApp delivery, our gate scanner",
-      "WhatsApp broadcast to all attendees",
+      "Email and WhatsApp broadcast to attendees",
+      "Event health checklist and payout ledger",
+      "Payment reconciliation and duplicate-payment warnings",
       "Built-in shuttle, merch, photo packs",
       "Verified EcoCash or bank payouts",
       "Real-time scan analytics & duplicate guard",
+      "Verified review collection after events",
       "Vendor marketplace access",
       "Email & live chat support",
     ],
@@ -55,6 +61,7 @@ const TIERS = [
 ]
 
 const FAQ = [
+  { q: "What service do clients get after buying?", a: "Clients get instant PDF and mobile QR delivery, WhatsApp ticket delivery, order lookup, ticket resend, ticket transfer, review links, and support if payment clears but the ticket does not arrive." },
   { q: "Do attendees need an account to buy?", a: "No, and that's by design. Buyers check out with just name, email, and phone. The moment payment clears, tickets arrive instantly by email PDF and WhatsApp. The account is auto-created passwordless. Cuts cart abandonment dramatically." },
   { q: "How does the 5% organizer fee work?", a: "We deduct 5% from each confirmed ticket sold and pay out the rest directly to your selected EcoCash or USD bank settlement method. There are no monthly fees, no setup fees, and no charges if you don't sell." },
   { q: "Is the gate scanner included in the 5%?", a: "Yes. The 5% covers the full pipeline: sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
@@ -77,7 +84,7 @@ export default function PricingPage() {
             Simple. <span className="text-brand-600">Pay-as-you-sell.</span>
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-2xl leading-relaxed">
-            Free for attendees. Free to list as a vendor. Organizers pay a flat 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts. Same pricing since launch in May 2026.
+            Free for clients and ticket buyers. Free to list as a vendor. Organizers pay a flat 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts. Same pricing since launch in May 2026.
           </p>
 
           <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl">

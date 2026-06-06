@@ -59,12 +59,13 @@ interface HeroTicket {
 
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox and WhatsApp the moment payment clears. Your account is auto-created — no password required." },
-  { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once." },
+  { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once. You can also find and resend tickets from order lookup." },
+  { q: "What client service is included?",          a: "TicketPulse helps clients before, during, and after the event: secure checkout, instant ticket delivery, order lookup, ticket resend, transfer links, event reviews, and support if payment clears but tickets do not arrive." },
   { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet. It reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
   { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24 to 72h for cards)." },
   { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
   { q: "Is TicketPulse only for Harare?",           a: "We started here, but events are live in Bulawayo, Vic Falls, Mutare, Pretoria, Durban, and London. New cities open every month." },
-  { q: "How do I sell tickets to my own event?",    a: "Sign up as an organizer, build your event in the dashboard, and share your link. We pay out within 24h of the event ending." },
+  { q: "How do I sell tickets to my own event?",    a: "Sign up as an organizer, build your event in the dashboard, and share your link. You get sales tracking, attendee exports, broadcasts, scanner stats, payout ledgers, and verified reviews in one place." },
   { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event, no extra integrations." },
 ]
 
@@ -123,7 +124,7 @@ function buildStats(eventsOnSale: number) {
 
 const STEPS = [
   { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
-  { icon: FileText,          title: "Instant delivery",     body: "The moment payment clears, your PDF ticket and WhatsApp message land simultaneously. No link to click, no waiting." },
+  { icon: FileText,          title: "Client service built in", body: "Tickets, receipts, order lookup, resends, transfers, and support all live on TicketPulse, so clients are not left chasing an organizer after checkout." },
   { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Your ticket QR and event details land directly on your phone via WhatsApp after purchase. No app to download, no email to search for — it's right in your chat." },
   { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, wallet pass, or your WhatsApp chat. End to end on TicketPulse. No third-party scanners." },
 ]
@@ -613,7 +614,7 @@ export default async function Home() {
         <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We sell the ticket, deliver it as a printable PDF and a mobile QR, and scan it at the gate with our own reader app. One platform, one log, one payout. No third-party scanner contracts.</p>
+          <p className="mt-3 text-[15px] text-ink-2">We serve the client and the organiser: checkout, ticket delivery, order recovery, reviews, attendee messaging, gate scanning, and payout tracking all live in one place. One platform, one log, one payout.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -650,7 +651,7 @@ export default async function Home() {
           {[
             { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-brand-500/15",   accent: "text-brand-600" },
             { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-green-50 to-paper-2", ring: "ring-green-200/60", accent: "text-green-700" },
-            { icon: DoorOpen,   k: "Gate scanner by us",  v: "Organizers run the TicketPulse reader on any phone or tablet. We sell, we deliver, we scan.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
+            { icon: DoorOpen,   k: "Organizer benefits",  v: "Health checks, payout ledgers, reconciliation warnings, broadcasts, attendee exports, reviews, and scanner reports are included.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
           ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (
             <div
               key={k}
@@ -722,7 +723,7 @@ export default async function Home() {
                   Sell out your next event.
                 </h2>
                 <p className="tp-fade-up-2 mt-4 text-[15px] md:text-[16px] leading-relaxed text-white/80 max-w-lg">
-                  Launch in minutes. Verified payouts, mobile QR entry, and built-in shuttle, merch, and photo bundles. Keep more of every ticket.
+                  Launch in minutes. Get verified payouts, mobile QR entry, attendee messaging, ticket recovery, review collection, payout ledgers, and scanner analytics. Keep more of every ticket.
                 </p>
                 <div className="tp-fade-up-3 mt-7 flex flex-wrap gap-3">
                   <Link

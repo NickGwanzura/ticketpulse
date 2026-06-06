@@ -26,12 +26,12 @@ const STEPS = [
   {
     icon: Megaphone,
     title: "Publish when ready",
-    body: "Use the publish checklist to confirm details, add ticket tiers, preview the public page, then make the event live.",
+    body: "Use the publish checklist and event health score to confirm details, tiers, recovery links, scanning, and payout readiness before going live.",
   },
   {
     icon: Ticket,
     title: "Sell everywhere",
-    body: "Buyers pay with EcoCash or Visa in USD or ZAR. They get a printable PDF, mobile QR, and WhatsApp ticket instantly.",
+    body: "Buyers pay with EcoCash or Visa. They get a printable PDF, mobile QR, WhatsApp ticket, order lookup, resend, transfer, and review links.",
   },
   {
     icon: ScanLine,
@@ -41,7 +41,7 @@ const STEPS = [
   {
     icon: Wallet,
     title: "Get paid",
-    body: "Request a payout from settled sales. We deduct the platform fee and send the available balance to your EcoCash wallet or bank account.",
+    body: "Track gross revenue, TicketPulse fee, paid out, pending, and available balance per event, then request EcoCash or bank settlement.",
   },
 ]
 
@@ -53,8 +53,8 @@ const PRICING_PERKS = [
   },
   {
     icon: Banknote,
-    title: "Payouts on your schedule",
-    body: "Withdraw earnings at any point along the way. Funds are sent to your selected settlement method after review.",
+    title: "Payout ledger per event",
+    body: "See gross sales, platform fee, paid out, pending payouts, and available balance before requesting a withdrawal.",
   },
   {
     icon: Smartphone,
@@ -64,7 +64,7 @@ const PRICING_PERKS = [
   {
     icon: ShieldCheck,
     title: "Fraud protection built in",
-    body: "Every QR is unique and tied to the buyer's account. Duplicates are flagged automatically at the gate.",
+    body: "Every QR is unique and tied to the buyer's account. Duplicates, manual payment traces, and ledger mismatches are easier to spot.",
   },
 ]
 
@@ -117,7 +117,7 @@ const FAQS = [
   },
   {
     q: "How many organizers can manage one event?",
-    a: "The event owner can invite up to 2 additional organizers to help manage the event. Each organizer gets access to ticket sales, check-in, and staff tickets.",
+    a: "The event owner can invite up to 2 additional organizers to help manage the event. Each organizer gets access to ticket sales, check-in, staff tickets, attendees, and messaging tools.",
   },
   {
     q: "Can I offer different ticket tiers?",
@@ -177,7 +177,7 @@ export default function HelpOrganizersPage() {
             Everything you need to sell tickets.
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-xl leading-relaxed">
-            Launch an event, publish only when it is ready, sell with supported payments, scan tickets at the gate, and track payout readiness.
+            Launch an event, publish only when it is ready, sell with supported payments, support clients after checkout, scan tickets at the gate, collect reviews, and track payout readiness.
           </p>
         </div>
       </section>
@@ -283,7 +283,7 @@ export default function HelpOrganizersPage() {
                   Payouts within 24 hours
                 </p>
                 <p className="mt-1 text-[13px] text-ink-2 leading-relaxed max-w-xl">
-                  Request a payout at any time from your dashboard. We deduct the 5% fee and transfer the balance to your selected settlement method. No minimum balance, no waiting for the event to end.
+                  Request a payout at any time from your dashboard. We deduct the 5% fee and transfer the balance to your selected settlement method. Your event ledger shows gross, fee, paid out, pending, and available balance before you request.
                 </p>
               </div>
             </div>

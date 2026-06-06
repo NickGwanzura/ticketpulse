@@ -36,8 +36,8 @@ const ATTENDEE_STEPS = [
   },
   {
     icon: Ticket,
-    title: "Instant delivery",
-    body: "The moment payment clears, your printable PDF ticket arrives by email and WhatsApp simultaneously. Account auto-created — sign in any time to view or reprint.",
+    title: "Client service after checkout",
+    body: "The moment payment clears, your printable PDF ticket arrives by email and WhatsApp. If you lose it, use order lookup to resend it, transfer tickets, or open support.",
   },
   {
     icon: ScanLine,
@@ -50,7 +50,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Settings2,
     title: "Build your event",
-    body: "Set tiers, capacity, and dates. Add merch, photo packs, or shuttles in the same flow.",
+    body: "Set tiers, capacity, and dates. Add merch, photo packs, or shuttles in the same flow, then use the event health checklist before going live.",
   },
   {
     icon: Megaphone,
@@ -60,7 +60,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Ticket,
     title: "Sell tickets",
-    body: "Public on-sale with EcoCash, Visa, USD, ZAR. Buyers get printable PDF, mobile QR, and WhatsApp ticket instantly.",
+    body: "Public on-sale with EcoCash and Visa. Buyers get printable PDF, mobile QR, WhatsApp delivery, ticket recovery, and review links instantly.",
   },
   {
     icon: ScanLine,
@@ -70,7 +70,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Wallet,
     title: "Get paid",
-    body: "Request a payout at any time. We deduct 5% per ticket and send the balance to EcoCash or your bank account within 24 hours. Nothing up front.",
+    body: "Request a payout at any time. See gross, TicketPulse fee, paid out, pending, and available balance per event before you withdraw.",
   },
 ]
 
@@ -189,7 +189,7 @@ export default function HowItWorksPage() {
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">For organizers</p>
             <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">Launch, sell, scan, get paid.</h2>
             <p className="mt-3 text-[15px] text-ink-2 max-w-xl leading-relaxed">
-              One platform, no third-party stack. Run pre-sales, public on-sale, and gate scanning from the same dashboard.
+              One platform, no third-party stack. Run pre-sales, public on-sale, attendee messaging, ticket recovery, review collection, payouts, and gate scanning from the same dashboard.
             </p>
           </div>
           <ol className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
