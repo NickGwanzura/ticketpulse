@@ -423,7 +423,7 @@ No transport links.
 
 ### Transport Operator
 
-New `/transport` dashboard:
+New `/transport/dashboard` dashboard:
 
 - Overview
 - Routes
@@ -652,7 +652,7 @@ Create shared report primitives:
 
 ### Phase 3: Transport Operator Dashboard
 
-1. `/transport` overview.
+1. `/transport/dashboard` overview.
 2. Routes CRUD.
 3. Fleet CRUD.
 4. Departures CRUD.
@@ -696,7 +696,7 @@ The first production-safe implementation slice should be:
 1. Add new role enum values.
 2. Add access-control helpers.
 3. Add role-aware dashboard redirect.
-4. Add empty but guarded `/transport`, `/dispatch`, and `/crew` dashboards.
+4. Add empty but guarded `/transport/dashboard`, `/dispatch`, and `/crew` dashboards.
 5. Add admin transport navigation placeholders.
 
 This unlocks the product structure without touching checkout, ticket generation, payouts, or existing event flows.

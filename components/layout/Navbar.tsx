@@ -47,6 +47,7 @@ export interface NavbarFeaturedItem {
 
 const TOP_LINKS: { label: string; href: string }[] = [
   { label: "How it works", href: "/how-it-works" },
+  { label: "Transport",    href: "/transport" },
   { label: "Vendors",      href: "/vendors" },
   { label: "Pricing",      href: "/pricing" },
   { label: "About",        href: "/about" },
@@ -95,7 +96,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
     pathname.startsWith("/organizer") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/transport") ||
+    pathname.startsWith("/transport/dashboard") ||
     pathname.startsWith("/dispatch") ||
     pathname.startsWith("/crew")
   const dashboardHref = getDashboardPathForRole(session?.user?.role)
@@ -241,7 +242,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
                       <LayoutDashboard size={15} className="text-ink-3" /> Dashboard
                     </Link>
                     {session.user.role === "transport_operator" && (
-                      <Link href="/transport" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
+                      <Link href="/transport/dashboard" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink-2 hover:bg-paper-2 hover:text-ink">
                         <Bus size={15} className="text-ink-3" /> Transport
                       </Link>
                     )}

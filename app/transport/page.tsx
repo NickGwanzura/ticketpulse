@@ -1,83 +1,174 @@
+import type { Metadata } from "next"
 import Link from "next/link"
-import { redirect } from "next/navigation"
-import { ArrowUpRight, Bus, CalendarClock, ClipboardList, QrCode, Route, Users, Wallet } from "lucide-react"
+import {
+  ArrowRight,
+  Bus,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  CreditCard,
+  MapPin,
+  QrCode,
+  Route,
+  ShieldCheck,
+  Smartphone,
+  Users,
+  Wallet,
+} from "lucide-react"
 
-import { auth } from "@/auth"
-import { isAdminRole, isTransportOperatorRole } from "@/lib/role-routes"
+export const metadata: Metadata = {
+  title: "Transport ticketing",
+  description: "Passenger transport ticketing, QR boarding, manifests, fleet operations, and payouts on TicketPulse.",
+  alternates: { canonical: "/transport" },
+}
 
-const stats = [
-  { label: "Revenue today", value: "$0", body: "Confirmed transport bookings", icon: Wallet },
-  { label: "Passengers today", value: "0", body: "Paid seats across departures", icon: Users },
-  { label: "Occupancy", value: "0%", body: "Booked seats vs available seats", icon: Bus },
-  { label: "Active departures", value: "0", body: "Trips open for boarding", icon: CalendarClock },
+const PASSENGER_BENEFITS = [
+  { title: "Book seats online", body: "Buy intercity or event shuttle seats with the same fast TicketPulse checkout.", icon: Smartphone },
+  { title: "Instant boarding pass", body: "Passengers receive a QR ticket by email, ready for phone-screen or printed validation.", icon: QrCode },
+  { title: "Clear trip details", body: "Departure point, time, route notes, and support contact stay attached to the order.", icon: MapPin },
 ]
 
-const modules = [
-  { title: "Routes", body: "Create city-to-city and event shuttle routes.", icon: Route },
-  { title: "Departures", body: "Schedule trips, prices, capacity, and cutoff times.", icon: CalendarClock },
-  { title: "Bookings", body: "Track paid seats, pending orders, and customer contacts.", icon: ClipboardList },
-  { title: "QR validation", body: "Use the shared TicketPulse scanner for boarding.", icon: QrCode },
-  { title: "Manifests", body: "Export passenger lists for drivers and conductors.", icon: Users },
-  { title: "Payouts", body: "View revenue less platform fees and request settlement.", icon: Wallet },
+const OPERATOR_BENEFITS = [
+  { title: "Routes and departures", body: "Create routes, schedule departures, set prices, and control capacity.", icon: Route },
+  { title: "Passenger manifests", body: "Dispatchers and crew get paid passenger lists, check-in status, and no-show tools.", icon: ClipboardList },
+  { title: "QR boarding", body: "Drivers or conductors scan boarding passes and block duplicate use.", icon: ShieldCheck },
+  { title: "Revenue and payouts", body: "Track confirmed sales, platform fees, paid settlements, and available balance.", icon: Wallet },
 ]
 
-export default async function TransportDashboardPage() {
-  const session = await auth()
-  if (!session) redirect("/auth/signin?callbackUrl=/transport")
-  if (!isTransportOperatorRole(session.user.role) && !isAdminRole(session.user.role)) redirect("/dashboard")
+const FLOW = [
+  { label: "Operator creates route", icon: Route },
+  { label: "Passenger pays", icon: CreditCard },
+  { label: "QR pass delivered", icon: QrCode },
+  { label: "Crew scans at boarding", icon: Bus },
+  { label: "Payout reconciled", icon: Wallet },
+]
 
+export default function TransportPage() {
   return (
-    <main className="min-h-screen bg-paper">
-      <section className="border-b border-line bg-paper-2">
-        <div className="mx-auto max-w-7xl px-5 py-8 md:px-8 md:py-10">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">Transport operator</p>
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="text-[28px] font-bold tracking-tight text-ink md:text-[36px]">Transport dashboard</h1>
-              <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-2">
-                Manage passenger ticketing, QR boarding, manifests, revenue, and payouts inside the same TicketPulse platform.
-              </p>
+    <div className="tp-fade-up">
+      <section className="relative overflow-hidden border-b border-line bg-paper">
+        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:grid-cols-[1.05fr_0.95fr] md:px-8 md:py-20">
+          <div className="flex flex-col justify-center">
+            <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-line bg-paper-2 px-3 py-1.5">
+              <Bus size={13} className="text-brand-600" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink">Passenger transport</span>
             </div>
-            <Link href="/admin/transport" className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2">
-              Admin control <ArrowUpRight size={14} />
-            </Link>
+            <h1 className="max-w-3xl text-[40px] font-bold leading-[1.04] tracking-[-0.025em] text-ink md:text-[64px]">
+              Transport ticketing, built into TicketPulse.
+            </h1>
+            <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-ink-2 md:text-[18px]">
+              Sell bus, kombi, shuttle, and event transport tickets from the same platform that handles checkout, QR validation, manifests, revenue, and payouts.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/events"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
+              >
+                Find trips <ArrowRight size={14} />
+              </Link>
+              <Link
+                href="/auth/signup?role=organizer"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition"
+              >
+                Partner with us
+              </Link>
+            </div>
+          </div>
+
+          <div className="relative min-h-[360px] overflow-hidden rounded-3xl border border-line bg-ink text-white shadow-lg shadow-ink/10">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(17,49,82,0.92),rgba(7,20,36,0.98))]" />
+            <div className="relative flex h-full flex-col justify-between p-6 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Boarding pass</p>
+                  <h2 className="mt-2 text-[28px] font-bold tracking-tight">Harare to Bulawayo</h2>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-ink">Paid</span>
+              </div>
+
+              <div className="grid gap-3 rounded-2xl border border-white/15 bg-white/8 p-4 backdrop-blur">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="inline-flex items-center gap-2 text-[13px] text-white/70"><CalendarClock size={14} /> Today, 14:30</span>
+                  <span className="text-[13px] font-semibold text-white">Seat 12A</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="inline-flex items-center gap-2 text-[13px] text-white/70"><Users size={14} /> Manifest ready</span>
+                  <span className="text-[13px] font-semibold text-white">QR valid</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[1fr_auto] items-end gap-5">
+                <div>
+                  <p className="text-[12px] text-white/60">Operator settlement</p>
+                  <p className="mt-1 text-[24px] font-bold">$0.95 net per $1 ticket</p>
+                </div>
+                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-white text-ink">
+                  <QrCode size={54} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl space-y-8 px-5 py-8 md:px-8">
-        <div className="grid gap-4 md:grid-cols-4">
-          {stats.map(({ label, value, body, icon: Icon }) => (
-            <article key={label} className="rounded-2xl border border-line bg-paper p-5">
-              <div className="mb-4 flex items-center gap-2 text-[13px] text-ink-3">
-                <Icon size={15} />
-                {label}
-              </div>
-              <p className="text-[30px] font-bold tracking-tight text-ink">{value}</p>
-              <p className="mt-1 text-[12px] text-ink-3">{body}</p>
+      <section className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-18">
+        <div className="mb-8 max-w-2xl">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">For passengers</p>
+          <h2 className="text-[28px] font-bold tracking-tight text-ink md:text-[40px]">Simple trip buying with proper proof of travel.</h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {PASSENGER_BENEFITS.map(({ title, body, icon: Icon }) => (
+            <article key={title} className="rounded-2xl border border-line bg-paper p-6">
+              <Icon size={20} className="mb-4 text-brand-600" />
+              <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
+              <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{body}</p>
             </article>
           ))}
         </div>
+      </section>
 
-        <div className="rounded-2xl border border-line bg-paper p-5 md:p-6">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-[20px] font-semibold tracking-tight text-ink">Operations</h2>
-              <p className="mt-1 text-[13px] text-ink-3">The next build-out turns these modules into route, departure, seat, and manifest tools.</p>
-            </div>
-            <span className="rounded-full bg-green-50 px-3 py-1 text-[12px] font-semibold text-green-700">Unified platform</span>
+      <section className="border-y border-line bg-paper-2">
+        <div className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-18">
+          <div className="mb-8 max-w-2xl">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">For transport operators</p>
+            <h2 className="text-[28px] font-bold tracking-tight text-ink md:text-[40px]">Run ticketing, boarding, manifests, and settlement in one place.</h2>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {modules.map(({ title, body, icon: Icon }) => (
-              <div key={title} className="rounded-xl border border-line bg-paper-2 p-4">
-                <Icon size={18} className="mb-3 text-navy" />
-                <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-ink-3">{body}</p>
+          <div className="grid gap-4 md:grid-cols-4">
+            {OPERATOR_BENEFITS.map(({ title, body, icon: Icon }) => (
+              <article key={title} className="rounded-2xl border border-line bg-paper p-6">
+                <Icon size={20} className="mb-4 text-navy" />
+                <h3 className="text-[16px] font-semibold text-ink">{title}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-ink-2">{body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-18">
+        <div className="rounded-3xl border border-line bg-paper p-6 md:p-8">
+          <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">How it flows</p>
+              <h2 className="text-[24px] font-bold tracking-tight text-ink md:text-[32px]">One shared engine for events and transport.</h2>
+            </div>
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-green-50 px-3 py-1.5 text-[12px] font-semibold text-green-700">
+              <CheckCircle2 size={14} /> No separate app
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            {FLOW.map(({ label, icon: Icon }, index) => (
+              <div key={label} className="rounded-2xl border border-line bg-paper-2 p-4">
+                <span className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-paper text-navy ring-1 ring-line">
+                  <Icon size={17} />
+                </span>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">Step {index + 1}</p>
+                <p className="mt-1 text-[14px] font-semibold text-ink">{label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
-    </main>
+    </div>
   )
 }

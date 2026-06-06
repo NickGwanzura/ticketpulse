@@ -13,7 +13,7 @@ export const DASHBOARD_PATH_BY_ROLE: Record<PlatformRole, string> = {
   organizer: "/organizer",
   vendor: "/vendors/dashboard",
   admin: "/admin",
-  transport_operator: "/transport",
+  transport_operator: "/transport/dashboard",
   dispatcher: "/dispatch",
   driver: "/crew",
   conductor: "/crew",
