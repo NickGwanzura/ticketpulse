@@ -72,6 +72,12 @@ export default function TransportPage() {
               >
                 Partner with us
               </Link>
+              <Link
+                href="#demo-ticket"
+                className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition"
+              >
+                View demo ticket
+              </Link>
             </div>
           </div>
 
@@ -104,6 +110,88 @@ export default function TransportPage() {
                 </div>
                 <div className="grid h-24 w-24 place-items-center rounded-2xl bg-white text-ink">
                   <QrCode size={54} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="demo-ticket" className="border-b border-line bg-paper">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 md:grid-cols-[0.9fr_1.1fr] md:px-8 md:py-18">
+          <div className="flex flex-col justify-center">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">Demo ticket</p>
+            <h2 className="text-[28px] font-bold tracking-tight text-ink md:text-[40px]">Test the passenger flow with a sample boarding pass.</h2>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-2">
+              This demo shows what a paid transport ticket will look like after checkout: route details, seat, manifest status, and a QR-style boarding block. It is not a real ticket and will not admit a passenger.
+            </p>
+            <div className="mt-6 grid gap-3 text-[14px] text-ink-2">
+              {[
+                "Passenger buys a seat and receives this pass.",
+                "Crew scans the QR at boarding.",
+                "Manifest updates to checked in or duplicate scan.",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-brand-600" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-line bg-paper-2 p-4 md:p-5">
+            <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-sm shadow-ink/[0.04]">
+              <div className="flex items-start justify-between gap-4 border-b border-line bg-ink p-5 text-white">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">TicketPulse demo</p>
+                  <h3 className="mt-2 text-[24px] font-bold tracking-tight">Transport boarding pass</h3>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-ink">Demo</span>
+              </div>
+
+              <div className="grid gap-5 p-5 md:grid-cols-[1fr_auto] md:p-6">
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">Route</p>
+                    <p className="mt-1 text-[24px] font-bold tracking-tight text-ink">Harare to Bulawayo</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-[13px] text-ink-3">
+                      <MapPin size={14} /> Roadport, Harare to City Hall, Bulawayo
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Departure", value: "Today, 14:30", icon: CalendarClock },
+                      { label: "Seat", value: "12A", icon: Users },
+                      { label: "Reference", value: "TP-TR-DMO1", icon: ClipboardList },
+                      { label: "Status", value: "Paid demo", icon: ShieldCheck },
+                    ].map(({ label, value, icon: Icon }) => (
+                      <div key={label} className="rounded-2xl border border-line bg-paper-2 p-4">
+                        <Icon size={16} className="mb-2 text-ink-3" />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{label}</p>
+                        <p className="mt-1 text-[14px] font-bold text-ink">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl border border-green-500/20 bg-green-50 p-4">
+                    <p className="text-[13px] font-semibold text-green-800">Scan preview</p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-green-700">
+                      First scan: valid demo boarding pass. Second scan: duplicate warning. Invalid or expired passes are rejected.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-line bg-white p-4 text-center">
+                  <div className="grid h-36 w-36 place-items-center rounded-2xl border border-line bg-paper text-ink">
+                    <QrCode size={88} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">Demo QR</p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-ink-3">
+                      Visual sample only. Real QR codes are generated after confirmed payment.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
