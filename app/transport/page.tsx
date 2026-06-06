@@ -121,7 +121,7 @@ export default function TransportPage() {
         <div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 md:grid-cols-[0.9fr_1.1fr] md:px-8 md:py-18">
           <div className="flex flex-col justify-center">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">Demo ticket</p>
-            <h2 className="text-[28px] font-bold tracking-tight text-ink md:text-[40px]">Test the passenger flow with a sample boarding pass.</h2>
+            <h2 className="max-w-lg text-[28px] font-bold tracking-tight text-ink md:text-[36px] md:leading-tight">Test the passenger flow with a sample boarding pass.</h2>
             <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-2">
               This demo shows what a paid transport ticket will look like after checkout: route details, seat, manifest status, and a QR-style boarding block. It is not a real ticket and will not admit a passenger.
             </p>
@@ -139,37 +139,41 @@ export default function TransportPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-line bg-paper-2 p-4 md:p-5">
+          <div className="min-w-0 rounded-3xl border border-line bg-paper-2 p-4 md:p-5">
             <div className="overflow-hidden rounded-2xl border border-line bg-paper shadow-sm shadow-ink/[0.04]">
               <div className="flex items-start justify-between gap-4 border-b border-line bg-ink p-5 text-white">
-                <div>
+                <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">TicketPulse demo</p>
-                  <h3 className="mt-2 text-[24px] font-bold tracking-tight">Transport boarding pass</h3>
+                  <h3 className="mt-2 text-[22px] font-bold tracking-tight md:text-[24px]">Transport boarding pass</h3>
                 </div>
-                <span className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-ink">Demo</span>
+                <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-ink">Demo</span>
               </div>
 
-              <div className="grid gap-5 p-5 md:grid-cols-[1fr_auto] md:p-6">
-                <div className="space-y-5">
+              <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_220px] md:p-6">
+                <div className="min-w-0 space-y-5">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">Route</p>
-                    <p className="mt-1 text-[24px] font-bold tracking-tight text-ink">Harare to Bulawayo</p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 text-[13px] text-ink-3">
+                    <p className="mt-1 text-[22px] font-bold tracking-tight text-ink md:text-[24px]">Harare to Bulawayo</p>
+                    <p className="mt-1 flex items-start gap-1.5 text-[13px] leading-relaxed text-ink-3">
                       <MapPin size={14} /> Roadport, Harare to City Hall, Bulawayo
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {[
                       { label: "Departure", value: "Today, 14:30", icon: CalendarClock },
                       { label: "Seat", value: "12A", icon: Users },
                       { label: "Reference", value: "TP-TR-DMO1", icon: ClipboardList },
                       { label: "Status", value: "Paid demo", icon: ShieldCheck },
                     ].map(({ label, value, icon: Icon }) => (
-                      <div key={label} className="rounded-2xl border border-line bg-paper-2 p-4">
-                        <Icon size={16} className="mb-2 text-ink-3" />
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{label}</p>
-                        <p className="mt-1 text-[14px] font-bold text-ink">{value}</p>
+                      <div key={label} className="flex min-w-0 items-center gap-3 rounded-2xl border border-line bg-paper-2 p-3.5">
+                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-paper text-ink-3 ring-1 ring-line">
+                          <Icon size={16} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3">{label}</p>
+                          <p className="mt-0.5 whitespace-nowrap text-[13px] font-bold leading-snug text-ink sm:text-[14px]">{value}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -182,9 +186,9 @@ export default function TransportPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-line bg-white p-4 text-center">
-                  <div className="grid h-36 w-36 place-items-center rounded-2xl border border-line bg-paper text-ink">
-                    <QrCode size={88} />
+                <div className="flex min-h-full flex-col justify-between gap-4 rounded-2xl border border-line bg-white p-4 text-center">
+                  <div className="mx-auto grid h-36 w-36 place-items-center rounded-2xl border border-line bg-paper text-ink">
+                    <QrCode size={82} />
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">Demo QR</p>
