@@ -382,11 +382,12 @@ export default async function Home() {
               <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[40px] leading-[1.05] sm:text-[60px] sm:leading-[1.0] md:text-[76px] md:leading-[0.96] text-ink">
                 Sell tickets.<br />
                 <span className="relative inline-block">
-                  <span className="text-navy">Scan guests. Get paid.</span>
+                  <span className="text-navy">Scan guests.</span>
                   <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 200 10" preserveAspectRatio="none" aria-hidden>
                     <path className="tp-stroke-draw" d="M0 5 Q 50 0, 100 5 T 200 5" stroke="#0570DE" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                   </svg>
-                </span>
+                </span><br />
+                Get paid.
               </h1>
 
               <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
