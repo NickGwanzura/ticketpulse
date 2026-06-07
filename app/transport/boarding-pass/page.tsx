@@ -3,7 +3,14 @@ import { ArrowRight, CalendarClock, MapPin, QrCode, ShieldCheck, Users } from "l
 
 import { TRANSPORT_DEMO_ROUTE } from "@/lib/transport-demo"
 
-export default function TransportBoardingPassPage() {
+export default async function TransportBoardingPassPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ seat?: string }>
+}) {
+  const { seat: requestedSeat } = await searchParams
+  const seat = requestedSeat?.trim() || "12A"
+
   return (
     <main className="min-h-screen bg-paper px-5 py-10 md:px-8">
       <div className="mx-auto max-w-4xl">
@@ -21,7 +28,7 @@ export default function TransportBoardingPassPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {[
                 { label: "Passenger", value: "Demo Passenger", icon: Users },
-                { label: "Seat", value: "12A", icon: Users },
+                { label: "Seat", value: seat, icon: Users },
                 { label: "Departure", value: TRANSPORT_DEMO_ROUTE.departureTime, icon: CalendarClock },
                 { label: "Pickup", value: TRANSPORT_DEMO_ROUTE.pickupPoint, icon: MapPin },
                 { label: "Operator", value: TRANSPORT_DEMO_ROUTE.operator, icon: ShieldCheck },
@@ -39,7 +46,7 @@ export default function TransportBoardingPassPage() {
                 <QrCode size={94} />
               </div>
               <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">QR payload</p>
-              <p className="mt-1 text-[12px] text-ink-3">ticketpulse:transport:demo:12A</p>
+              <p className="mt-1 text-[12px] text-ink-3">ticketpulse:transport:demo:{seat}</p>
             </div>
           </div>
         </div>
