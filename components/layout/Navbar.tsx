@@ -47,7 +47,6 @@ export interface NavbarFeaturedItem {
 
 const TOP_LINKS: { label: string; href: string }[] = [
   { label: "How it works", href: "/how-it-works" },
-  { label: "Transport",    href: "/transport" },
   { label: "Vendors",      href: "/vendors" },
   { label: "Pricing",      href: "/pricing" },
   { label: "About",        href: "/about" },

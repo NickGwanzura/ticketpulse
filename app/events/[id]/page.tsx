@@ -9,7 +9,6 @@ export const revalidate = 30
 export const dynamicParams = true
 
 import MerchSection from "@/components/merch/MerchSection"
-import TransportSection from "@/components/transport/TransportSection"
 import VendorSection from "@/components/vendors/VendorSection"
 import MediaSection from "@/components/media/MediaSection"
 import TicketSelector from "@/components/events/TicketSelector"
@@ -354,7 +353,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <ReviewHighlights reviews={reviewRows} title={`Reviews for ${row.title}`} compact />
 
             <MerchSection items={[]} eventTitle={row.title} />
-            <TransportSection routes={[]} />
             <VendorSection listings={vendorListingsData} eventId={row.id} eventSlug={row.slug} eventTitle={row.title} isOrganizer={isEventOwner} />
             <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
