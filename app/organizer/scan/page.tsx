@@ -306,6 +306,33 @@ export default function OrganizerScanPage() {
   }
 
   const cameraSupported = typeof window !== "undefined" && (!!window.BarcodeDetector || typeof jsQR !== "undefined")
+  const latestTone = !latest
+    ? {
+        shell: "border-line bg-paper",
+        badge: "bg-paper-2 text-ink ring-line",
+        title: "Awaiting scan",
+        body: "Hold a QR code in front of the camera, or enter a code manually.",
+      }
+    : latest.status === "valid"
+      ? {
+          shell: "border-emerald-200 bg-emerald-50/80 ring-1 ring-emerald-200/60",
+          badge: "bg-emerald-600 text-white ring-emerald-700/20",
+          title: "Admit guest",
+          body: "Ticket is valid and has been checked in.",
+        }
+      : latest.status === "duplicate"
+        ? {
+            shell: "border-amber-200 bg-amber-50/80 ring-1 ring-amber-200/60",
+            badge: "bg-amber-500 text-white ring-amber-700/20",
+            title: "Already scanned",
+            body: "This ticket was previously checked in. Do not admit without manual review.",
+          }
+        : {
+            shell: "border-rose-200 bg-rose-50/80 ring-1 ring-rose-200/60",
+            badge: "bg-rose-600 text-white ring-rose-700/20",
+            title: "Reject ticket",
+            body: "TicketPulse could not verify this code for entry.",
+          }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-paper tp-fade-up md:static md:z-auto">
@@ -326,14 +353,14 @@ export default function OrganizerScanPage() {
         />
       </div>
 
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-paper/95 px-4 py-3 backdrop-blur md:hidden">
-        <Link href="/organizer" className="inline-flex items-center gap-2 text-[13px] font-semibold text-ink">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-ink px-4 py-3 text-white shadow-sm md:hidden">
+        <Link href="/organizer" className="inline-flex items-center gap-2 text-[13px] font-semibold text-white">
           <ArrowLeft size={15} /> Scanner
         </Link>
         <button
           type="button"
           onClick={() => setSoundEnabled((v) => !v)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-paper text-ink"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white"
           aria-label={soundEnabled ? "Mute scan sounds" : "Enable scan sounds"}
         >
           {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -352,24 +379,24 @@ export default function OrganizerScanPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-4 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
           {[
             { l: "Checked in", v: stats.valid, color: "text-green-700" },
             { l: "Duplicates", v: stats.dupes, color: "text-amber-700" },
             { l: "Rejected",   v: stats.unknown, color: "text-rose-700" },
             { l: "Total scans", v: stats.total, color: "text-ink" },
           ].map((k) => (
-            <div key={k.l} className="rounded-xl border border-line bg-paper p-3 md:rounded-2xl md:p-5">
-              <p className="text-[10px] text-ink-3 md:text-[12px]">{k.l}</p>
-              <p className={`mt-1 text-[22px] font-bold tracking-tight tabular-nums md:text-[28px] ${k.color}`}>{k.v}</p>
+            <div key={k.l} className="rounded-xl border border-line bg-paper p-3 shadow-sm shadow-ink/[0.02] md:rounded-2xl md:p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3 md:text-[11px]">{k.l}</p>
+              <p className={`mt-1 text-[28px] font-bold tracking-tight tabular-nums md:text-[32px] ${k.color}`}>{k.v}</p>
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-12 gap-4 md:gap-6">
           {/* Scanner */}
-          <div className="col-span-12 overflow-hidden rounded-2xl border border-line bg-paper lg:col-span-7">
-            <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
+          <div className="col-span-12 overflow-hidden rounded-2xl border border-line bg-paper shadow-sm shadow-ink/[0.03] lg:col-span-7">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3 md:px-6 md:py-4">
               <h2 className="text-[16px] font-semibold tracking-tight text-ink inline-flex items-center gap-2">
                 <ScanLine size={16} className="text-brand-600" /> Scanner
               </h2>
@@ -401,7 +428,7 @@ export default function OrganizerScanPage() {
               </div>
             </div>
 
-            <div className="relative h-[58vh] min-h-[320px] bg-ink/95 md:aspect-video md:h-auto md:min-h-0">
+            <div className="relative h-[62vh] min-h-[360px] bg-ink/95 md:aspect-video md:h-auto md:min-h-0">
               <video
                 ref={videoRef}
                 playsInline
@@ -418,6 +445,15 @@ export default function OrganizerScanPage() {
                     <span className="absolute -bottom-px -left-px w-10 h-10 border-l-2 border-b-2 border-white/90 rounded-bl-md" />
                     <span className="absolute -bottom-px -right-px w-10 h-10 border-r-2 border-b-2 border-white/90 rounded-br-md" />
                     <span className="absolute left-2 right-2 top-1/2 h-px bg-green-500/80 shadow-[0_0_12px_2px_rgba(5,112,222,0.6)] animate-pulse" />
+                  </div>
+                </div>
+              )}
+
+              {latest && (
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 md:hidden">
+                  <div className={`rounded-2xl border px-4 py-3 shadow-xl backdrop-blur ${latestTone.shell}`}>
+                    <p className="text-[20px] font-bold tracking-tight text-ink">{latestTone.title}</p>
+                    <p className="mt-0.5 text-[12px] font-medium text-ink-2">{latest.holder ?? latest.eventTitle ?? latestTone.body}</p>
                   </div>
                 </div>
               )}
@@ -446,17 +482,17 @@ export default function OrganizerScanPage() {
             </div>
 
             {/* Manual entry */}
-            <form onSubmit={onManualSubmit} className="px-5 md:px-6 py-4 border-t border-line flex gap-2">
+            <form onSubmit={onManualSubmit} className="flex gap-2 border-t border-line px-4 py-3 md:px-6 md:py-4">
               <input
                 type="text"
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
                 placeholder="Manual entry: paste or type ticket code (e.g. TP-XXXXX-...)"
-                className="flex-1 h-11 rounded-xl border border-line bg-paper px-4 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                className="h-12 flex-1 rounded-xl border border-line bg-paper px-4 text-[14px] text-ink placeholder:text-ink-3 transition focus:border-green-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10"
               />
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white transition hover:bg-brand-700"
               >
                 Verify
               </button>
@@ -466,29 +502,18 @@ export default function OrganizerScanPage() {
           {/* Latest + log */}
           <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
             {/* Latest result */}
-            <div className={`tp-slide-up rounded-2xl border p-5 md:p-6 ${
-              !latest ? "border-line bg-paper" :
-              latest.status === "valid" ? "border-brand-200 bg-green-50/60 ring-1 ring-green-200/40" :
-              latest.status === "duplicate" ? "border-amber-200 bg-amber-50/60 ring-1 ring-amber-200/40" :
-              "border-rose-200 bg-rose-50/60 ring-1 ring-rose-200/40"
-            }`}>
+            <div className={`tp-slide-up rounded-2xl border p-5 shadow-sm shadow-ink/[0.03] md:p-6 ${latestTone.shell}`}>
               {!latest ? (
                 <div className="tp-fade-up">
-                  <p className="text-[13px] font-semibold text-ink mb-1">Awaiting first scan</p>
-                  <p className="text-[13px] text-ink-2">Hold a QR code in front of the camera, or enter a code manually.</p>
+                  <p className="text-[20px] font-bold tracking-tight text-ink md:text-[24px]">{latestTone.title}</p>
+                  <p className="mt-1 text-[13px] text-ink-2">{latestTone.body}</p>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-bold tracking-wide uppercase ring-1 ${
-                      latest.status === "valid"
-                        ? "bg-green-100 text-green-700 ring-green-300/50"
-                        : latest.status === "duplicate"
-                        ? "bg-amber-100 text-amber-700 ring-amber-300/50"
-                        : "bg-rose-100 text-rose-700 ring-rose-300/50"
-                    }`}>
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-bold uppercase tracking-wide ring-1 ${latestTone.badge}`}>
                       {latest.status === "valid" ? <CheckCircle2 size={15} /> : latest.status === "duplicate" ? <RotateCcw size={15} /> : <AlertTriangle size={15} />}
-                      {latest.status === "valid" ? "Admit one" : latest.status === "duplicate" ? "Already scanned" : "Not recognized"}
+                      {latestTone.title}
                     </span>
                     {latest.isStaffTicket && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[11px] font-semibold text-purple-700">
@@ -499,7 +524,7 @@ export default function OrganizerScanPage() {
 
                   {latest.isStaffTicket ? (
                     <>
-                      <p className="text-[22px] font-bold tracking-tight text-ink line-clamp-2 md:text-[18px]">
+                      <p className="text-[24px] font-bold tracking-tight text-ink line-clamp-2 md:text-[28px]">
                         {latest.eventTitle ?? "Unknown event"}
                       </p>
                       <div className="mt-2 flex items-center gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-3.5 py-2.5 transition-all">
@@ -514,7 +539,7 @@ export default function OrganizerScanPage() {
                     </>
                   ) : (
                     <>
-                      <p className="text-[22px] font-bold tracking-tight text-ink line-clamp-2 md:text-[18px]">
+                      <p className="text-[24px] font-bold tracking-tight text-ink line-clamp-2 md:text-[28px]">
                         {latest.eventTitle ?? "Unknown ticket"}
                       </p>
                       {latest.tierName && <p className="text-[13px] text-ink-2 mt-0.5">{latest.tierName}</p>}
@@ -523,6 +548,10 @@ export default function OrganizerScanPage() {
                   )}
 
                   {/* Subtle progress bar — visual indicator of freshness */}
+                  <p className="mt-3 rounded-xl bg-white/55 px-3 py-2 text-[13px] font-medium text-ink-2 ring-1 ring-line/60">
+                    {latestTone.body}
+                  </p>
+
                   <span className="mt-3 block h-px w-full bg-line overflow-hidden rounded-full" aria-hidden>
                     <span className="block h-px bg-green-500/40 rounded-full" style={{ animation: "tp-progress 2.4s cubic-bezier(0.22, 0.61, 0.36, 1) both" }} />
                   </span>
@@ -533,7 +562,7 @@ export default function OrganizerScanPage() {
             </div>
 
             {/* Log */}
-            <div className="rounded-2xl border border-line bg-paper overflow-hidden flex-1 flex flex-col min-h-[280px]">
+            <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-sm shadow-ink/[0.03]">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
                 <h3 className="text-[14px] font-semibold tracking-tight text-ink">Recent scans</h3>
                 {recent.length > 0 && (
@@ -544,7 +573,7 @@ export default function OrganizerScanPage() {
               </div>
               <div className="flex-1 overflow-auto">
                 {recent.length === 0 ? (
-                  <p className="px-5 py-6 text-[13px] text-ink-3 text-center">No scans yet.</p>
+                  <p className="px-5 py-8 text-center text-[13px] text-ink-3">No scans yet. Start the camera or use manual entry.</p>
                 ) : (
                   <ul className="divide-y divide-line">
                     {recent.map((r, i) => (
