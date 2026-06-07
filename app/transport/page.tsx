@@ -15,6 +15,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react"
+import { TRANSPORT_POPULAR_ROUTES, TRANSPORT_UPCOMING_DEPARTURES } from "@/lib/transport-demo"
 
 export const metadata: Metadata = {
   title: "Transport ticketing",
@@ -61,7 +62,7 @@ export default function TransportPage() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                href="/events"
+                href="#upcoming-departures"
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
               >
                 Find trips <ArrowRight size={14} />
@@ -121,6 +122,67 @@ export default function TransportPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="upcoming-departures" className="border-b border-line bg-paper-2">
+        <div className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-16">
+          <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">Find transport</p>
+              <h2 className="text-[28px] font-bold tracking-tight text-ink md:text-[38px]">Search routes and upcoming departures.</h2>
+            </div>
+            <Link href="/transport/dashboard?preview=1" className="inline-flex w-fit items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2">
+              Operator demo <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          <form className="mb-5 grid gap-3 rounded-2xl border border-line bg-paper p-3 md:grid-cols-[1fr_1fr_auto]">
+            <div className="relative">
+              <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
+              <input
+                name="from"
+                placeholder="From: Harare"
+                className="h-12 w-full rounded-xl border border-line bg-paper-2 pl-10 pr-3 text-[14px] text-ink outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10"
+              />
+            </div>
+            <div className="relative">
+              <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
+              <input
+                name="to"
+                placeholder="To: Bulawayo"
+                className="h-12 w-full rounded-xl border border-line bg-paper-2 pl-10 pr-3 text-[14px] text-ink outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10"
+              />
+            </div>
+            <button className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-[14px] font-semibold text-white">
+              Search routes <ArrowRight size={14} />
+            </button>
+          </form>
+
+          <div className="mb-6 flex flex-wrap gap-2">
+            {TRANSPORT_POPULAR_ROUTES.map((route) => (
+              <span key={route} className="rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] font-semibold text-ink-2">
+                {route}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {TRANSPORT_UPCOMING_DEPARTURES.map((departure) => (
+              <article key={`${departure.origin}-${departure.destination}-${departure.departureTime}`} className="rounded-2xl border border-line bg-paper p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{departure.vehicle}</p>
+                <h3 className="mt-2 text-[18px] font-bold text-ink">{departure.origin} to {departure.destination}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{departure.pickupPoint} to {departure.dropoffPoint}</p>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4 text-[13px]">
+                  <span className="font-semibold text-ink">{departure.departureTime}</span>
+                  <span className="font-bold text-ink">${departure.price}</span>
+                </div>
+                <Link href="/transport/checkout" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white">
+                  Select trip <ArrowRight size={13} />
+                </Link>
+              </article>
+            ))}
           </div>
         </div>
       </section>

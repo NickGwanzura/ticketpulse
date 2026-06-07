@@ -2,15 +2,15 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 export const metadata: Metadata = {
-  title: "TicketPulse — Zimbabwe's event ticketing platform",
-  description: "Discover concerts, marathons, film premieres, exhibitions and more. Buy tickets, merch, shuttle passes, and photo packs — all in one place. TicketPulse.",
+  title: "TicketPulse — Events, transport tickets, vendors and payouts",
+  description: "Sell event tickets, passenger transport tickets, QR validation, manifests, vendors, reviews, and payouts on one TicketPulse platform.",
   openGraph: {
-    title: "TicketPulse — Zimbabwe's event ticketing platform",
-    description: "Discover concerts, marathons, film premieres, exhibitions and more. Buy tickets, merch, shuttle passes, and photo packs — all in one place.",
+    title: "TicketPulse — Events, transport tickets, vendors and payouts",
+    description: "Sell event tickets, passenger transport tickets, QR validation, manifests, vendors, reviews, and payouts on one TicketPulse platform.",
   },
   twitter: {
-    title: "TicketPulse — Zimbabwe's event ticketing platform",
-    description: "Discover concerts, marathons, film premieres, exhibitions and more. Buy tickets, merch, shuttle passes, and photo packs — all in one place.",
+    title: "TicketPulse — Events, transport tickets, vendors and payouts",
+    description: "Sell event tickets, passenger transport tickets, QR validation, manifests, vendors, reviews, and payouts on one TicketPulse platform.",
   },
   alternates: {
     canonical: "/",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 import {
   ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
   Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,
-  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
+  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck, Bus, ClipboardList,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
@@ -123,10 +123,17 @@ function buildStats(eventsOnSale: number) {
 }
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find concerts, marathons, premieres, and more. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
-  { icon: FileText,          title: "Client service built in", body: "Tickets, receipts, order lookup, resends, transfers, and support all live on TicketPulse, so clients are not left chasing an organizer after checkout." },
-  { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Your ticket QR and event details land directly on your phone via WhatsApp after purchase. No app to download, no email to search for — it's right in your chat." },
-  { icon: ScanLine,          title: "We scan you in",       body: "Our gate-scanner app, run by the organizer, reads your QR off paper, screen, wallet pass, or your WhatsApp chat. End to end on TicketPulse. No third-party scanners." },
+  { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find events or passenger transport. Pay with EcoCash or Visa. No signup, no friction. Just an email and a phone number." },
+  { icon: FileText,          title: "Client service built in", body: "Tickets, receipts, order lookup, resends, transfers, and support all live on TicketPulse, so clients are not left chasing an organizer or operator after checkout." },
+  { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Event tickets and transport boarding passes land directly on your phone after purchase. No app to download, no email to search for." },
+  { icon: ScanLine,          title: "QR validation and manifests", body: "Gate teams and transport crew scan QR codes, prevent duplicates, and keep attendee or passenger manifests current." },
+]
+
+const PLATFORM_SERVICES = [
+  { title: "Event ticketing", body: "Sell tiers, promo codes, merch, reviews, scanner access, and attendee exports.", icon: Ticket, href: "/events" },
+  { title: "Passenger transport", body: "Routes, departures, seat sales, QR boarding passes, manifests, and crew scan flows.", icon: Bus, href: "/transport" },
+  { title: "Vendor marketplace", body: "Organizers can discover vendors for catering, sound, photography, decor, and security.", icon: Building2, href: "/vendors" },
+  { title: "Revenue and payouts", body: "Track gross sales, TicketPulse fees, paid out, pending, and available balance.", icon: Wallet, href: "/payouts" },
 ]
 
 const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
@@ -377,7 +384,7 @@ export default async function Home() {
               </h1>
 
               <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
-                Concerts, marathons, premieres, and more. <span className="text-ink font-semibold">No signup needed</span>. Pay with EcoCash or Visa, and your printable PDF + mobile QR land instantly. Account secured later, on your terms.
+                Event tickets, passenger transport, vendors, QR validation, manifests, and payouts. <span className="text-ink font-semibold">No signup needed</span> for buyers. Pay with EcoCash or Visa, then receive your PDF, mobile QR, or boarding pass instantly.
               </p>
 
               <form action="/events" className="tp-fade-up-3 mt-10 md:mt-9 flex flex-col sm:flex-row gap-3 md:gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">
@@ -401,10 +408,10 @@ export default async function Home() {
               </form>
 
               <div className="tp-fade-up-4 mt-7 md:mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-2 md:py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
-                <span className="inline-flex items-center gap-1.5"><Wallet size={12.5} className="text-brand-600" /> No signup to buy</span>
-                <span className="inline-flex items-center gap-1.5"><FileText size={12.5} className="text-brand-600" /> PDF + mobile QR</span>
-                <span className="inline-flex items-center gap-1.5"><Smartphone size={12.5} className="text-brand-600" /> Delivered on WhatsApp</span>
-                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-brand-600" /> Our gate scanner</span>
+                <span className="inline-flex items-center gap-1.5"><Ticket size={12.5} className="text-brand-600" /> Event tickets</span>
+                <span className="inline-flex items-center gap-1.5"><Bus size={12.5} className="text-brand-600" /> Transport tickets</span>
+                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-brand-600" /> QR validation</span>
+                <span className="inline-flex items-center gap-1.5"><ClipboardList size={12.5} className="text-brand-600" /> Manifests</span>
               </div>
 
               {/* Launch credibility */}
@@ -414,7 +421,7 @@ export default async function Home() {
                 </span>
                 <div className="leading-tight">
                   <p className="text-[13px] font-semibold tracking-tight text-ink">Built end-to-end on TicketPulse</p>
-                  <p className="text-[12px] text-ink-3 mt-0.5">Sell, deliver, scan: one platform, no third-party stack.</p>
+                  <p className="text-[12px] text-ink-3 mt-0.5">Sell, deliver, scan, reconcile, and pay out from one platform.</p>
                 </div>
               </div>
             </div>
@@ -498,6 +505,28 @@ export default async function Home() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-18 border-t border-line">
+        <div className="mb-8 max-w-2xl">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">One platform</p>
+          <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
+            Events, transport, vendors, manifests, and payouts.
+          </h2>
+          <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">
+            TicketPulse is growing beyond event checkout into the operational layer around tickets: passenger transport, crew scanning, verified vendors, and revenue settlement.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {PLATFORM_SERVICES.map(({ title, body, icon: Icon, href }) => (
+            <Link key={title} href={href} className="group rounded-2xl border border-line bg-paper p-5 transition hover:border-line-2 hover:bg-paper-2">
+              <Icon size={20} className="mb-4 text-navy" />
+              <h3 className="text-[16px] font-semibold text-ink group-hover:text-navy">{title}</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{body}</p>
+              <p className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-navy">Open <ArrowUpRight size={12} /></p>
+            </Link>
+          ))}
         </div>
       </section>
 
