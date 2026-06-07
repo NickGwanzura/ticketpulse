@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 import {
   ArrowRight, ArrowUpRight, Search, Ticket, Smartphone, Wallet,
   Music, Trophy, Film, Building2, Mountain, Footprints, MousePointerClick,
-  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck, ClipboardList,
+  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
@@ -124,15 +124,22 @@ function buildStats(eventsOnSale: number) {
 
 const STEPS = [
   { icon: MousePointerClick, title: "Browse & buy in 60s",  body: "Find events, pay with EcoCash or Visa, and check out without friction. Just an email and a phone number." },
-  { icon: FileText,          title: "Client service built in", body: "Tickets, receipts, order lookup, resends, transfers, and support all live on TicketPulse, so clients are not left chasing an organizer or operator after checkout." },
+  { icon: FileText,          title: "Client service built in", body: "Tickets, receipts, order lookup, resends, transfers, and support all live on TicketPulse, so clients are not left chasing an organizer after checkout." },
   { icon: Smartphone,        title: "Tickets on WhatsApp",  body: "Event tickets land directly on your phone after purchase. No app to download, no email to search for." },
   { icon: ScanLine,          title: "QR validation and manifests", body: "Gate teams scan QR codes, prevent duplicates, and keep attendee manifests current." },
 ]
 
+const HERO_TRUST_ITEMS = [
+  { icon: ShieldCheck, label: "Secure checkout" },
+  { icon: Smartphone, label: "Instant QR delivery" },
+  { icon: FileText, label: "Order lookup" },
+  { icon: Wallet, label: "Verified payouts" },
+]
+
 const PLATFORM_SERVICES = [
-  { title: "Event ticketing", body: "Sell tiers, promo codes, merch, reviews, scanner access, and attendee exports.", icon: Ticket, href: "/events" },
-  { title: "Vendor marketplace", body: "Organizers can discover vendors for catering, sound, photography, decor, and security.", icon: Building2, href: "/vendors" },
-  { title: "Revenue and payouts", body: "Track gross sales, TicketPulse fees, paid out, pending, and available balance.", icon: Wallet, href: "/payouts" },
+  { title: "Launch and sell", body: "Create events, ticket tiers, promo codes, merch, reviews, and public event pages.", icon: Ticket, href: "/auth/signup?role=organizer" },
+  { title: "Run the gate", body: "Scan QR tickets, prevent duplicates, export attendees, and keep entry moving.", icon: ScanLine, href: "/how-it-works" },
+  { title: "Reconcile revenue", body: "Track gross sales, TicketPulse fees, paid out, pending, and available balance.", icon: Wallet, href: "/payouts" },
 ]
 
 const FADE_DELAY = ["80ms", "180ms", "280ms"] as const
@@ -373,9 +380,9 @@ export default async function Home() {
               </div>
 
               <h1 className="tp-fade-up-1 font-bold tracking-[-0.035em] text-[40px] leading-[1.05] sm:text-[60px] sm:leading-[1.0] md:text-[76px] md:leading-[0.96] text-ink">
-                Every event.<br />
+                Sell tickets.<br />
                 <span className="relative inline-block">
-                  <span className="text-navy">One ticket.</span>
+                  <span className="text-navy">Scan guests. Get paid.</span>
                   <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 200 10" preserveAspectRatio="none" aria-hidden>
                     <path className="tp-stroke-draw" d="M0 5 Q 50 0, 100 5 T 200 5" stroke="#0570DE" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                   </svg>
@@ -383,33 +390,44 @@ export default async function Home() {
               </h1>
 
               <p className="tp-fade-up-2 mt-8 md:mt-6 text-[16px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
-                Event tickets, vendors, QR validation, attendee tools, and payouts. <span className="text-ink font-semibold">No signup needed</span> for buyers. Pay with EcoCash or Visa, then receive your PDF or mobile QR instantly.
+                TicketPulse helps organizers sell online, deliver QR tickets, manage attendees, scan at the gate, and request payouts. <span className="text-ink font-semibold">Buyers do not need an account</span>: pay with EcoCash or Visa and receive tickets instantly.
               </p>
 
-              <form action="/events" className="tp-fade-up-3 mt-10 md:mt-9 flex flex-col sm:flex-row gap-3 md:gap-2.5 max-w-2xl focus-within:scale-[1.01] focus-within:shadow-lg rounded-2xl transition-all duration-300">
-                <div className="relative flex-1 group">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none transition-colors group-focus-within:text-blue" />
-                  <input
-                    type="text"
-                    name="q"
-                    placeholder="Search events, venues, cities…"
-                    aria-label="Search events"
-                    className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition group"
+              <div className="tp-fade-up-3 mt-10 md:mt-9 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] max-w-3xl">
+                <form action="/events" className="flex flex-col sm:flex-row gap-3 md:gap-2.5 rounded-2xl transition-all duration-300 focus-within:scale-[1.01] focus-within:shadow-lg">
+                  <div className="relative flex-1 group">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none transition-colors group-focus-within:text-blue" />
+                    <input
+                      type="text"
+                      name="q"
+                      placeholder="Search events, venues, cities..."
+                      aria-label="Search events"
+                      className="w-full h-14 rounded-xl border border-line bg-paper pl-11 pr-4 text-[15px] text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.04] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition group"
+                  >
+                    Find tickets
+                    <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                </form>
+                <Link
+                  href="/auth/signup?role=organizer"
+                  className="h-14 inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-6 text-[15px] font-semibold text-ink shadow-sm shadow-ink/[0.04] transition hover:border-line-2 hover:bg-paper-2 active:scale-[0.99]"
                 >
-                  Find tickets
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-                </button>
-              </form>
+                  Start selling <ArrowUpRight size={15} />
+                </Link>
+              </div>
 
-              <div className="tp-fade-up-4 mt-7 md:mt-5 inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-line/80 bg-paper/70 backdrop-blur pl-3.5 pr-4 py-2 md:py-1.5 shadow-sm shadow-ink/[0.03] text-[12px] text-ink-2">
-                <span className="inline-flex items-center gap-1.5"><Ticket size={12.5} className="text-brand-600" /> Event tickets</span>
-                <span className="inline-flex items-center gap-1.5"><ScanLine size={12.5} className="text-brand-600" /> QR validation</span>
-                <span className="inline-flex items-center gap-1.5"><ClipboardList size={12.5} className="text-brand-600" /> Manifests</span>
+              <div className="tp-fade-up-4 mt-7 md:mt-5 grid max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4">
+                {HERO_TRUST_ITEMS.map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex min-h-12 items-center gap-2 rounded-xl border border-line/80 bg-paper/70 px-3 py-2 text-[12px] font-semibold text-ink-2 shadow-sm shadow-ink/[0.03] backdrop-blur">
+                    <Icon size={14} className="shrink-0 text-brand-600" />
+                    <span>{label}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Launch credibility */}
@@ -506,28 +524,6 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-18 border-t border-line">
-        <div className="mb-8 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">One platform</p>
-          <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
-            Events, vendors, manifests, and payouts.
-          </h2>
-          <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">
-            TicketPulse is growing beyond event checkout into the operational layer around tickets: crew scanning, verified vendors, client service, and revenue settlement.
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {PLATFORM_SERVICES.map(({ title, body, icon: Icon, href }) => (
-            <Link key={title} href={href} className="group rounded-2xl border border-line bg-paper p-5 transition hover:border-line-2 hover:bg-paper-2">
-              <Icon size={20} className="mb-4 text-navy" />
-              <h3 className="text-[16px] font-semibold text-ink group-hover:text-navy">{title}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{body}</p>
-              <p className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-navy">Open <ArrowUpRight size={12} /></p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {/* FEATURED */}
       {featuredEvents.length > 0 && (
         <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
@@ -575,6 +571,30 @@ export default async function Home() {
           )}
         </section>
       )}
+
+      <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-18 border-t border-line">
+        <div className="mb-8 grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:items-end">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">For organizers</p>
+            <h2 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
+              Know who paid, who arrived, and what you earned.
+            </h2>
+          </div>
+          <p className="text-[15px] text-ink-2 leading-relaxed">
+            TicketPulse turns event checkout into an operating system: launch sales, deliver tickets, run the gate, support buyers, reconcile revenue, and request payouts from one clean dashboard.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {PLATFORM_SERVICES.map(({ title, body, icon: Icon, href }) => (
+            <Link key={title} href={href} className="group rounded-2xl border border-line bg-paper p-5 transition hover:border-line-2 hover:bg-paper-2">
+              <Icon size={20} className="mb-4 text-navy" />
+              <h3 className="text-[16px] font-semibold text-ink group-hover:text-navy">{title}</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-ink-3">{body}</p>
+              <p className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-navy">Open <ArrowUpRight size={12} /></p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <ReviewHighlights reviews={reviewRows} />
 
@@ -641,10 +661,10 @@ export default async function Home() {
         <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
           <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We serve the client and the organiser: checkout, ticket delivery, order recovery, reviews, attendee messaging, gate scanning, and payout tracking all live in one place. One platform, one log, one payout.</p>
+          <p className="mt-3 text-[15px] text-ink-2">We serve the client and the organizer: checkout, ticket delivery, order recovery, reviews, attendee messaging, gate scanning, and payout tracking all live in one place. One platform, one log, one payout.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {STEPS.map(({ icon: Icon, title, body }, i) => (
             <div
               key={title}
