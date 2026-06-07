@@ -81,35 +81,43 @@ export default function TransportPage() {
             </div>
           </div>
 
-          <div className="relative min-h-[360px] overflow-hidden rounded-3xl border border-line bg-ink text-white shadow-lg shadow-ink/10">
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(17,49,82,0.92),rgba(7,20,36,0.98))]" />
-            <div className="relative flex h-full flex-col justify-between p-6 md:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">Boarding pass</p>
-                  <h2 className="mt-2 text-[28px] font-bold tracking-tight">Harare to Bulawayo</h2>
+          <div className="relative min-h-[420px] overflow-hidden rounded-3xl border border-line bg-ink text-white shadow-lg shadow-ink/10">
+            <img
+              src="/transport/luxury-buses.png"
+              alt="Luxury intercity buses ready for passenger boarding"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-ink/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/35 to-transparent" />
+            <div className="relative flex h-full min-h-[420px] flex-col justify-end p-5 md:p-7">
+              <div className="max-w-md rounded-2xl border border-white/20 bg-ink/78 p-4 shadow-2xl shadow-ink/30 backdrop-blur-md">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Live route preview</p>
+                    <h2 className="mt-1 text-[22px] font-bold tracking-tight">Harare to Bulawayo</h2>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-ink">Paid</span>
                 </div>
-                <span className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-ink">Paid</span>
-              </div>
 
-              <div className="grid gap-3 rounded-2xl border border-white/15 bg-white/8 p-4 backdrop-blur">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="inline-flex items-center gap-2 text-[13px] text-white/70"><CalendarClock size={14} /> Today, 14:30</span>
-                  <span className="text-[13px] font-semibold text-white">Seat 12A</span>
+                <div className="grid gap-2 text-[13px] text-white/80">
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-white/10 px-3 py-2">
+                    <span className="inline-flex items-center gap-2"><CalendarClock size={14} /> Today, 14:30</span>
+                    <span className="font-semibold text-white">Seat 12A</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl bg-white/10 px-3 py-2">
+                    <span className="inline-flex items-center gap-2"><Users size={14} /> Manifest ready</span>
+                    <span className="font-semibold text-white">QR valid</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="inline-flex items-center gap-2 text-[13px] text-white/70"><Users size={14} /> Manifest ready</span>
-                  <span className="text-[13px] font-semibold text-white">QR valid</span>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-[1fr_auto] items-end gap-5">
-                <div>
-                  <p className="text-[12px] text-white/60">Operator settlement</p>
-                  <p className="mt-1 text-[24px] font-bold">$0.95 net per $1 ticket</p>
-                </div>
-                <div className="grid h-24 w-24 place-items-center rounded-2xl bg-white text-ink">
-                  <QrCode size={54} />
+                <div className="mt-4 flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] text-white/60">Operator settlement</p>
+                    <p className="mt-0.5 text-[18px] font-bold">$0.95 net per $1 ticket</p>
+                  </div>
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-white text-ink">
+                    <QrCode size={36} />
+                  </div>
                 </div>
               </div>
             </div>
