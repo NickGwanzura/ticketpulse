@@ -22,6 +22,7 @@ import { events, reviews, ticketTiers, users, vendorListings, vendors } from "@/
 import { desc, eq, or, and } from "drizzle-orm"
 import { auth } from "@/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import { getTierAvailability } from "@/lib/ticket-availability"
 import type { VendorListing } from "@/types"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -170,19 +171,24 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       .limit(3),
   ])
 
-  const tiers = tierRows.map((t) => ({
+  const availabilityByTier = await getTierAvailability(tierRows.map((t) => t.id))
+
+  const tiers = tierRows.map((t) => {
+    const availability = availabilityByTier.get(t.id)
+    return {
     id: t.id,
     name: t.name,
     description: t.description ?? "",
     price: Number(t.price),
     currency: t.currency ?? "USD",
     totalQuantity: t.totalQuantity,
-    soldQuantity: t.soldQuantity ?? 0,
+    soldQuantity: availability?.usedQuantity ?? t.soldQuantity ?? 0,
     maxPerOrder: t.maxPerOrder ?? 10,
     earlyBirdPrice: t.earlyBirdPrice ? Number(t.earlyBirdPrice) : null,
     earlyBirdUntil: t.earlyBirdUntil ?? null,
     earlyBirdQuantity: t.earlyBirdQuantity ?? null,
-  }))
+    }
+  })
 
   const vendorListingsData: VendorListing[] = vendorListingRows.map((r) => ({
     id: r.id,

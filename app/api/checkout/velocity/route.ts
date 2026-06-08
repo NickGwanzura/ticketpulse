@@ -11,6 +11,7 @@ import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
+import { getTierAvailability } from "@/lib/ticket-availability"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
 
 // Flexible redirect URL extraction: recursively checks the entire Velocity response
@@ -129,7 +130,12 @@ export async function POST(req: Request) {
       : Promise.resolve([] as { id: string; price: unknown; currency: string | null; packageName: string; businessName: string | null }[]),
   ])
 
-  const tierById = new Map(tiers.map((t) => [t.id, t]))
+  const availabilityByTier = await getTierAvailability(tiers.map((t) => t.id))
+  const saleTiers = tiers.map((tier) => ({
+    ...tier,
+    soldQuantity: availabilityByTier.get(tier.id)?.usedQuantity ?? tier.soldQuantity ?? 0,
+  }))
+  const tierById = new Map(saleTiers.map((t) => [t.id, t]))
 
   const now = new Date()
 
@@ -306,96 +312,105 @@ export async function POST(req: Request) {
   // ── Phase 1: Create order atomically under lock ────────────────────────────
   // withLock uses pg_try_advisory_xact_lock (transaction-scoped) — the lock
   // auto-releases on commit. DB writes are atomic; HTTP calls happen after.
-  const lockKey = `velocity-checkout:${parsed.email}:${event.id}`
+  const lockKey = `velocity-checkout:event:${event.id}`
 
   let creation: { orderId: string } | null
   try {
     creation = await withLock(lockKey, async (tx) => {
-    const [order] = await tx
-      .insert(orders)
-      .values({
-        userId: null,
-        eventId: event.id,
-        status: "pending",
-        totalAmount: total.toFixed(2),
-        currency,
-        paymentMethod: parsed.paymentMethod,
-        guestEmail: parsed.email,
-        guestName: parsed.name,
-        guestPhone: parsed.phone,
-        metadata: { ...baseMeta, inventoryReserved: true },
-      })
-      .returning({ id: orders.id })
-
-    const orderItemValues: {
-      orderId: string
-      tierId?: string
-      type: string
-      quantity: number
-      unitPrice: string
-      total: string
-    }[] = []
-
-    for (const item of ticketItems) {
-      const t = tierById.get(item.tierId)!
-      const unit = effectivePrice(t)
-      orderItemValues.push({
-        orderId: order.id,
-        tierId: item.tierId,
-        type: "ticket",
-        quantity: item.quantity,
-        unitPrice: unit.toFixed(2),
-        total: (unit * item.quantity).toFixed(2),
-      })
-    }
-
-    for (const item of vendorAddonItems) {
-      const v = vendorAddonPrices.get(item.listingId)!
-      orderItemValues.push({
-        orderId: order.id,
-        type: "vendor_addon",
-        quantity: item.quantity,
-        unitPrice: v.price.toFixed(2),
-        total: (v.price * item.quantity).toFixed(2),
-      })
-    }
-
-    await tx.insert(orderItems).values(orderItemValues)
-
-    // ── Atomic inventory reservation (CAS) ────────────────────────────────
-    // Increment soldQuantity for each tier inside this transaction.
-    // The WHERE guard (totalQuantity - soldQuantity >= requested) ensures we
-    // never exceed capacity even under concurrent requests. If the update
-    // returns no rows the tier was taken — roll back and surface an error.
-    for (const item of ticketItems) {
-      const tier = tierById.get(item.tierId)!
-      const [reserved] = await tx
-        .update(ticketTiers)
-        .set({ soldQuantity: sql`${ticketTiers.soldQuantity} + ${item.quantity}` })
-        .where(
-          and(
-            eq(ticketTiers.id, item.tierId),
-            sql`${ticketTiers.totalQuantity} - COALESCE(${ticketTiers.soldQuantity}, 0) >= ${item.quantity}`,
-          ),
-        )
-        .returning({ id: ticketTiers.id })
-
-      if (!reserved) {
-        throw new Error(`"${tier.name}" just sold out — please choose fewer tickets or a different tier`)
+      const latestAvailability = await getTierAvailability(ticketItems.map((item) => item.tierId))
+      for (const item of ticketItems) {
+        const tier = tierById.get(item.tierId)!
+        const availability = latestAvailability.get(item.tierId)
+        const availableQuantity = availability?.availableQuantity ?? 0
+        if (availableQuantity < item.quantity) {
+          throw new Error(
+            availableQuantity <= 0
+              ? `"${tier.name}" is sold out`
+              : `Only ${availableQuantity} ticket(s) left for "${tier.name}"`,
+          )
+        }
       }
-    }
 
-    if (appliedPromo) {
-      await tx
-        .update(promoCodes)
-        .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
-        .where(eq(promoCodes.id, appliedPromo.id))
-    }
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          userId: null,
+          eventId: event.id,
+          status: "pending",
+          totalAmount: total.toFixed(2),
+          currency,
+          paymentMethod: parsed.paymentMethod,
+          guestEmail: parsed.email,
+          guestName: parsed.name,
+          guestPhone: parsed.phone,
+          metadata: { ...baseMeta, inventoryReserved: true },
+        })
+        .returning({ id: orders.id })
+
+      const orderItemValues: {
+        orderId: string
+        tierId?: string
+        type: string
+        quantity: number
+        unitPrice: string
+        total: string
+      }[] = []
+
+      for (const item of ticketItems) {
+        const t = tierById.get(item.tierId)!
+        const unit = effectivePrice(t)
+        orderItemValues.push({
+          orderId: order.id,
+          tierId: item.tierId,
+          type: "ticket",
+          quantity: item.quantity,
+          unitPrice: unit.toFixed(2),
+          total: (unit * item.quantity).toFixed(2),
+        })
+      }
+
+      for (const item of vendorAddonItems) {
+        const v = vendorAddonPrices.get(item.listingId)!
+        orderItemValues.push({
+          orderId: order.id,
+          type: "vendor_addon",
+          quantity: item.quantity,
+          unitPrice: v.price.toFixed(2),
+          total: (v.price * item.quantity).toFixed(2),
+        })
+      }
+
+      await tx.insert(orderItems).values(orderItemValues)
+
+      // ── Inventory reservation ─────────────────────────────────────────────
+      // The event-level advisory lock above serializes checkout reservations.
+      // We store the fresh computed usage back into soldQuantity so legacy
+      // admin views stay close to the source-of-truth availability calculation.
+      for (const item of ticketItems) {
+        const tier = tierById.get(item.tierId)!
+        const baselineUsed = latestAvailability.get(item.tierId)?.usedQuantity ?? Number(tier.soldQuantity ?? 0)
+        const [reserved] = await tx
+          .update(ticketTiers)
+          .set({ soldQuantity: baselineUsed + item.quantity })
+          .where(eq(ticketTiers.id, item.tierId))
+          .returning({ id: ticketTiers.id })
+
+        if (!reserved) {
+          throw new Error(`"${tier.name}" just sold out — please choose fewer tickets or a different tier`)
+        }
+      }
+
+      if (appliedPromo) {
+        await tx
+          .update(promoCodes)
+          .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+          .where(eq(promoCodes.id, appliedPromo.id))
+      }
 
       return { orderId: order.id }
     })
   } catch (err) {
-    // CAS reservation failed (tier sold out) or DB error — surface as 409
+    // Reservation failed (tier sold out) or DB error — surface as 409
     const msg = err instanceof Error ? err.message : "Checkout failed"
     log.warn("velocity checkout - order creation failed", { error: msg, email: parsed.email, eventId: event.id })
     return NextResponse.json({ error: msg }, { status: 409 })
