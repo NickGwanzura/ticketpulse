@@ -1,13 +1,14 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm"
-import { AlertTriangle, Banknote, CheckCircle2, Download, ExternalLink, Search, ShieldAlert, TicketCheck, Wallet } from "lucide-react"
+import { AlertTriangle, Banknote, CheckCircle2, Download, ExternalLink, ReceiptText, Search, ShieldAlert, TicketCheck, Trash2, Wallet } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orderItems, orders, paymentLedger, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import { deleteVelocitySettlementAction, recordVelocitySettlementAction } from "@/app/admin/reconciliation/actions"
 import { auditOrderPaymentLedger, type AuditableLedgerEntry, type PaymentAuditIssue } from "@/lib/payment-ledger-audit"
 import { getVelocityReconciliationReport } from "@/lib/velocity-reconciliation"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -309,9 +310,11 @@ export default async function AdminReconciliationPage({
             </Link>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
             {[
               { label: "Velocity received", value: formatCurrency(velocityReport.totals.velocityReceived, "USD"), note: `${velocityReport.totals.settledVelocityRows} settled ledger row${velocityReport.totals.settledVelocityRows === 1 ? "" : "s"}`, icon: Banknote, tone: "text-emerald-700", bg: "bg-emerald-50" },
+              { label: "Paid by Velocity", value: formatCurrency(velocityReport.totals.velocityPaidToTicketPulse, "USD"), note: `${velocityReport.settlements.length} bank deposit${velocityReport.settlements.length === 1 ? "" : "s"} recorded`, icon: ReceiptText, tone: "text-sky-700", bg: "bg-sky-50" },
+              { label: "Not yet matched", value: formatCurrency(velocityReport.totals.velocityUnsettled, "USD"), note: "Expected minus deposits entered", icon: AlertTriangle, tone: velocityReport.totals.velocityUnsettled === 0 ? "text-emerald-700" : "text-rose-700", bg: velocityReport.totals.velocityUnsettled === 0 ? "bg-emerald-50" : "bg-rose-50" },
               { label: "Local paid revenue", value: formatCurrency(velocityReport.totals.localPaidRevenue, "USD"), note: `${velocityReport.totals.paidOrders} paid order${velocityReport.totals.paidOrders === 1 ? "" : "s"}`, icon: CheckCircle2, tone: "text-navy", bg: "bg-blue-50" },
               { label: "TicketPulse fee", value: formatCurrency(velocityReport.totals.platformFee, "USD"), note: `${Math.round(velocityReport.feeRate * 100)}% of confirmed Velocity receipts`, icon: ShieldAlert, tone: "text-violet-700", bg: "bg-violet-50" },
               { label: "Available after payouts", value: formatCurrency(velocityReport.totals.availableBalance, "USD"), note: `${formatCurrency(velocityReport.totals.paidOut, "USD")} paid, ${formatCurrency(velocityReport.totals.pendingPayouts, "USD")} pending`, icon: Wallet, tone: "text-amber-700", bg: "bg-amber-50" },
@@ -327,6 +330,102 @@ export default async function AdminReconciliationPage({
                 <p className="mt-1 text-[12px] text-ink-3">{note}</p>
               </div>
             ))}
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-2xl border border-line bg-paper p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50">
+                  <ReceiptText size={15} className="text-sky-700" />
+                </span>
+                <div>
+                  <p className="text-[14px] font-bold tracking-tight text-ink">Record Velocity payout</p>
+                  <p className="text-[12px] text-ink-3">Enter deposits Velocity paid into TicketPulse.</p>
+                </div>
+              </div>
+              <form action={recordVelocitySettlementAction} className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                    Paid date
+                    <input name="settlementDate" type="date" required className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+                  </label>
+                  <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                    Amount
+                    <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+                  </label>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[0.7fr_1.3fr]">
+                  <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                    Currency
+                    <input name="currency" defaultValue="USD" maxLength={8} className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium uppercase text-ink outline-none focus:border-navy" />
+                  </label>
+                  <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                    Velocity / bank reference
+                    <input name="reference" required placeholder="Settlement ref, bank ref, or trace" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+                  </label>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                    Period start
+                    <input name="periodStart" type="date" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+                  </label>
+                  <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                    Period end
+                    <input name="periodEnd" type="date" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+                  </label>
+                </div>
+                <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                  Notes
+                  <textarea name="notes" rows={2} placeholder="Optional note for finance/audit" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+                </label>
+                <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[13px] font-semibold text-white transition hover:bg-ink">
+                  <ReceiptText size={14} /> Save Velocity payout
+                </button>
+              </form>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-line bg-paper">
+              <div className="border-b border-line bg-paper-2 px-5 py-3">
+                <p className="text-[13px] font-bold text-ink">Velocity deposits entered</p>
+                <p className="text-[12px] text-ink-3">These are actual deposits paid by Velocity to TicketPulse.</p>
+              </div>
+              {velocityReport.settlements.length === 0 ? (
+                <div className="p-5">
+                  <EmptyState
+                    icon={ReceiptText}
+                    title="No Velocity payouts entered"
+                    body="Once Velocity pays into your account, enter the amount and reference here."
+                    variant="card"
+                  />
+                </div>
+              ) : (
+                <div className="divide-y divide-line">
+                  {velocityReport.settlements.slice(0, 8).map((settlement) => (
+                    <div key={settlement.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-bold text-ink">{formatCurrency(settlement.amount, settlement.currency)}</p>
+                        <p className="mt-0.5 truncate text-[12px] text-ink-3">
+                          {settlement.reference} · paid {formatDateShort(settlement.settlementDate)}
+                        </p>
+                        {(settlement.periodStart || settlement.periodEnd || settlement.notes) && (
+                          <p className="mt-0.5 truncate text-[11px] text-ink-3">
+                            {[settlement.periodStart ? `from ${formatDateShort(settlement.periodStart)}` : null, settlement.periodEnd ? `to ${formatDateShort(settlement.periodEnd)}` : null, settlement.notes].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                      <form action={async () => {
+                        "use server"
+                        await deleteVelocitySettlementAction(settlement.id)
+                      }}>
+                        <button type="submit" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-3 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700" title="Delete settlement">
+                          <Trash2 size={14} />
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-line bg-paper">

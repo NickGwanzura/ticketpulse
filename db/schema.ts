@@ -689,6 +689,23 @@ export const paymentLedgerRelations = relations(paymentLedger, ({ one }) => ({
   event: one(events, { fields: [paymentLedger.eventId], references: [events.id] }),
 }))
 
+export const velocitySettlements = pgTable("velocity_settlements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  settlementDate: timestamp("settlement_date").notNull(),
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD").notNull(),
+  reference: text("reference").notNull(),
+  notes: text("notes"),
+  recordedBy: text("recorded_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("velocity_settlements_reference_idx").on(table.reference),
+  index("velocity_settlements_date_idx").on(table.settlementDate),
+  index("velocity_settlements_created_idx").on(table.createdAt),
+])
+
 export const galleryRelations = relations(eventGalleries, ({ one, many }) => ({
   event: one(events, { fields: [eventGalleries.eventId], references: [events.id] }),
   photos: many(galleryPhotos),

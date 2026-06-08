@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { events, orders, paymentLedger, payouts, tickets, users } from "@/db/schema"
+import { events, orders, paymentLedger, payouts, tickets, users, velocitySettlements } from "@/db/schema"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const PLATFORM_FEE_RATE = 0.05
@@ -112,6 +112,8 @@ export type VelocityReconciliationReport = {
   feeRate: number
   totals: {
     velocityReceived: number
+    velocityPaidToTicketPulse: number
+    velocityUnsettled: number
     localPaidRevenue: number
     variance: number
     platformFee: number
@@ -127,6 +129,20 @@ export type VelocityReconciliationReport = {
   }
   events: VelocityReconciliationEvent[]
   orders: VelocityReconciliationOrder[]
+  settlements: VelocitySettlementReport[]
+}
+
+export type VelocitySettlementReport = {
+  id: string
+  settlementDate: Date
+  periodStart: Date | null
+  periodEnd: Date | null
+  amount: number
+  currency: string
+  reference: string
+  notes: string | null
+  recordedBy: string | null
+  createdAt: Date
 }
 
 function money(value: unknown): number {
@@ -208,9 +224,9 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
   const orderIds = orderRows.map((row) => row.id)
   const eventIds = [...new Set(orderRows.map((row) => row.eventId))]
 
-  const [ledgerRows, ticketRows, payoutRows] = orderIds.length > 0
-    ? await Promise.all([
-        db
+  const [ledgerRows, ticketRows, payoutRows, settlementRows] = await Promise.all([
+    orderIds.length > 0
+      ? db
           .select({
             id: paymentLedger.id,
             orderId: paymentLedger.orderId,
@@ -227,8 +243,10 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
             createdAt: paymentLedger.createdAt,
           })
           .from(paymentLedger)
-          .where(inArray(paymentLedger.orderId, orderIds)),
-        db
+          .where(inArray(paymentLedger.orderId, orderIds))
+      : Promise.resolve([]),
+    orderIds.length > 0
+      ? db
           .select({
             orderId: tickets.orderId,
             eventId: tickets.eventId,
@@ -236,19 +254,35 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
           })
           .from(tickets)
           .where(and(inArray(tickets.orderId, orderIds), sql`${tickets.status} NOT IN ('cancelled', 'refunded')`))
-          .groupBy(tickets.orderId, tickets.eventId),
-        eventIds.length > 0
-          ? db
-              .select({
-                eventId: payouts.eventId,
-                amount: payouts.amount,
-                status: payouts.status,
-              })
-              .from(payouts)
-              .where(inArray(payouts.eventId, eventIds))
-          : Promise.resolve([]),
-      ])
-    : [[], [], []]
+          .groupBy(tickets.orderId, tickets.eventId)
+      : Promise.resolve([]),
+    eventIds.length > 0
+      ? db
+          .select({
+            eventId: payouts.eventId,
+            amount: payouts.amount,
+            status: payouts.status,
+          })
+          .from(payouts)
+          .where(inArray(payouts.eventId, eventIds))
+      : Promise.resolve([]),
+    db
+      .select({
+        id: velocitySettlements.id,
+        settlementDate: velocitySettlements.settlementDate,
+        periodStart: velocitySettlements.periodStart,
+        periodEnd: velocitySettlements.periodEnd,
+        amount: velocitySettlements.amount,
+        currency: velocitySettlements.currency,
+        reference: velocitySettlements.reference,
+        notes: velocitySettlements.notes,
+        recordedBy: velocitySettlements.recordedBy,
+        createdAt: velocitySettlements.createdAt,
+      })
+      .from(velocitySettlements)
+      .orderBy(desc(velocitySettlements.settlementDate), desc(velocitySettlements.createdAt))
+      .limit(100),
+  ])
 
   const ledgerByOrder = new Map<string, LedgerRow[]>()
   for (const row of ledgerRows) {
@@ -462,7 +496,21 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
   const criticalIssues = orderReports.reduce((sum, order) => sum + order.issues.filter((item) => item.severity === "critical").length, 0)
   const warningIssues = orderReports.reduce((sum, order) => sum + order.issues.filter((item) => item.severity === "warning").length, 0)
 
-  const totals = eventsReport.reduce(
+  const settlements: VelocitySettlementReport[] = settlementRows.map((row) => ({
+    id: row.id,
+    settlementDate: row.settlementDate,
+    periodStart: row.periodStart,
+    periodEnd: row.periodEnd,
+    amount: money(row.amount),
+    currency: row.currency ?? "USD",
+    reference: row.reference,
+    notes: row.notes,
+    recordedBy: row.recordedBy,
+    createdAt: row.createdAt,
+  }))
+  const velocityPaidToTicketPulse = settlements.reduce((sum, row) => addMoney(sum, row.amount), 0)
+
+  const totalsBase = eventsReport.reduce(
     (acc, event) => ({
       velocityReceived: addMoney(acc.velocityReceived, event.velocityReceived),
       localPaidRevenue: addMoney(acc.localPaidRevenue, event.localPaidRevenue),
@@ -494,6 +542,11 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       warningIssues,
     },
   )
+  const totals = {
+    ...totalsBase,
+    velocityPaidToTicketPulse,
+    velocityUnsettled: money(totalsBase.velocityReceived - velocityPaidToTicketPulse),
+  }
 
   return {
     generatedAt: new Date(),
@@ -501,6 +554,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     totals,
     events: eventsReport,
     orders: orderReports,
+    settlements,
   }
 }
 
@@ -514,6 +568,7 @@ export function velocityReconciliationToCsv(report: VelocityReconciliationReport
       "currency",
       "order_total",
       "velocity_received",
+      "velocity_paid_to_ticketpulse",
       "variance",
       "transaction_trace",
       "sales_order_trace",
@@ -531,6 +586,7 @@ export function velocityReconciliationToCsv(report: VelocityReconciliationReport
       order.currency,
       order.orderTotal.toFixed(2),
       order.velocityLedgerTotal.toFixed(2),
+      report.totals.velocityPaidToTicketPulse.toFixed(2),
       order.variance.toFixed(2),
       order.transactionTrace ?? "",
       order.salesOrderTrace ?? "",
