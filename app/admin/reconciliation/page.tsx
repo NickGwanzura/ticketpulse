@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm"
-import { AlertTriangle, CheckCircle2, ExternalLink, Search, ShieldAlert, TicketCheck } from "lucide-react"
+import { AlertTriangle, Banknote, CheckCircle2, Download, ExternalLink, Search, ShieldAlert, TicketCheck, Wallet } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -9,6 +9,7 @@ import { events, orderItems, orders, paymentLedger, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { auditOrderPaymentLedger, type AuditableLedgerEntry, type PaymentAuditIssue } from "@/lib/payment-ledger-audit"
+import { getVelocityReconciliationReport } from "@/lib/velocity-reconciliation"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 type ReconciliationIssue = PaymentAuditIssue & {
@@ -157,6 +158,7 @@ export default async function AdminReconciliationPage({
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const velocityReport = await getVelocityReconciliationReport()
 
   const orderRows = await db
     .select({
@@ -290,6 +292,110 @@ export default async function AdminReconciliationPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-ink-3">Velocity settlement engine</p>
+              <h2 className="mt-1 text-[24px] font-bold tracking-tight text-ink">Money received vs payout liability</h2>
+              <p className="mt-1 text-[14px] text-ink-2">
+                Reconciles settled Velocity ledger rows against local paid orders, issued tickets, TicketPulse fees, and organizer payouts.
+              </p>
+            </div>
+            <Link
+              href="/api/admin/reconciliation/velocity/export"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
+            >
+              <Download size={14} /> Download CSV
+            </Link>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Velocity received", value: formatCurrency(velocityReport.totals.velocityReceived, "USD"), note: `${velocityReport.totals.settledVelocityRows} settled ledger row${velocityReport.totals.settledVelocityRows === 1 ? "" : "s"}`, icon: Banknote, tone: "text-emerald-700", bg: "bg-emerald-50" },
+              { label: "Local paid revenue", value: formatCurrency(velocityReport.totals.localPaidRevenue, "USD"), note: `${velocityReport.totals.paidOrders} paid order${velocityReport.totals.paidOrders === 1 ? "" : "s"}`, icon: CheckCircle2, tone: "text-navy", bg: "bg-blue-50" },
+              { label: "TicketPulse fee", value: formatCurrency(velocityReport.totals.platformFee, "USD"), note: `${Math.round(velocityReport.feeRate * 100)}% of confirmed Velocity receipts`, icon: ShieldAlert, tone: "text-violet-700", bg: "bg-violet-50" },
+              { label: "Available after payouts", value: formatCurrency(velocityReport.totals.availableBalance, "USD"), note: `${formatCurrency(velocityReport.totals.paidOut, "USD")} paid, ${formatCurrency(velocityReport.totals.pendingPayouts, "USD")} pending`, icon: Wallet, tone: "text-amber-700", bg: "bg-amber-50" },
+            ].map(({ label, value, note, icon: Icon, tone, bg }) => (
+              <div key={label} className="rounded-2xl border border-line bg-paper p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
+                    <Icon size={15} className={tone} />
+                  </span>
+                  <span className="text-[12px] font-medium text-ink-3">{label}</span>
+                </div>
+                <p className="text-[28px] font-bold tracking-tight text-ink tabular-nums">{value}</p>
+                <p className="mt-1 text-[12px] text-ink-3">{note}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-line bg-paper">
+            <div className="flex items-center justify-between border-b border-line bg-paper-2 px-5 py-3">
+              <div>
+                <p className="text-[13px] font-bold text-ink">Event settlement report</p>
+                <p className="text-[12px] text-ink-3">Generated {formatDateShort(velocityReport.generatedAt)}</p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase ${
+                velocityReport.totals.variance === 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+              }`}>
+                Variance {formatCurrency(velocityReport.totals.variance, "USD")}
+              </span>
+            </div>
+            {velocityReport.events.length === 0 ? (
+              <div className="p-5">
+                <EmptyState
+                  icon={Banknote}
+                  title="No Velocity receipts yet"
+                  body="Settled Velocity payments will appear here once checkout payments are recorded."
+                  variant="card"
+                />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px]">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                      <th className="px-5 py-3 text-left">Event</th>
+                      <th className="px-3 py-3 text-right">Velocity</th>
+                      <th className="px-3 py-3 text-right">Fee</th>
+                      <th className="px-3 py-3 text-right">Net</th>
+                      <th className="px-3 py-3 text-right">Paid out</th>
+                      <th className="px-3 py-3 text-right">Pending</th>
+                      <th className="px-3 py-3 text-right">Available</th>
+                      <th className="px-5 py-3 text-right">Flags</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {velocityReport.events.slice(0, 12).map((event) => (
+                      <tr key={event.eventId} className="hover:bg-paper-2/60">
+                        <td className="px-5 py-4">
+                          <p className="text-[14px] font-bold tracking-tight text-ink">{event.eventTitle}</p>
+                          <p className="mt-0.5 text-[12px] text-ink-3">
+                            {event.organizerName ?? event.organizerEmail ?? "Organizer"} · {event.paidOrders} order{event.paidOrders === 1 ? "" : "s"} · {event.confirmedTickets} ticket{event.confirmedTickets === 1 ? "" : "s"}
+                          </p>
+                        </td>
+                        <td className="px-3 py-4 text-right text-[13px] font-bold text-ink">{formatCurrency(event.velocityReceived, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.platformFee, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] font-semibold text-ink">{formatCurrency(event.organizerNet, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.paidOut, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.pendingPayouts, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] font-bold text-ink">{formatCurrency(event.availableBalance, event.currency)}</td>
+                        <td className="px-5 py-4 text-right">
+                          <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                            event.issueCount > 0 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                          }`}>
+                            {event.issueCount}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+
         <div className="grid gap-3 md:grid-cols-4">
           {[
             { label: "Orders checked", value: orderRows.length.toLocaleString(), icon: CheckCircle2, tone: "text-navy", bg: "bg-blue-50" },
