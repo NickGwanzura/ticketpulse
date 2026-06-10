@@ -112,6 +112,94 @@ export async function getPayouts(status?: string) {
   }
 }
 
+/**
+ * Record a payout that was already made to an organiser outside the app
+ * (cash, manual EcoCash, direct bank transfer). Inserts a payout row that is
+ * immediately "paid" so balances and reconciliation reflect the money that
+ * has actually left TicketPulse.
+ */
+export async function recordManualPayoutAction(formData: FormData) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const userId = ((formData.get("userId") as string) ?? "").trim()
+  const eventId = ((formData.get("eventId") as string) ?? "").trim()
+  const amount = parseFloat(formData.get("amount") as string)
+  const currency = ((formData.get("currency") as string) || "USD").trim().toUpperCase()
+  const method = ((formData.get("method") as string) ?? "").trim()
+  const paidDateRaw = ((formData.get("paidDate") as string) ?? "").trim()
+  const proofReference = ((formData.get("proofReference") as string) ?? "").trim()
+  const notes = ((formData.get("notes") as string) ?? "").trim()
+
+  if (!userId) throw new Error("Select the organiser who was paid")
+  if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be greater than zero")
+  if (amount > 100000) throw new Error("Maximum payout amount is $100,000")
+  if (!["ecocash", "bank_usd", "cash"].includes(method)) throw new Error("Choose a valid payment method")
+  if (!proofReference || proofReference.length < 3) throw new Error("Enter a reference for the manual payment (receipt, transfer ref, or note)")
+
+  const paidDate = paidDateRaw ? new Date(paidDateRaw) : new Date()
+  if (Number.isNaN(paidDate.getTime())) throw new Error("Invalid payment date")
+
+  const [organizer] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+  if (!organizer) throw new Error("Organiser not found")
+
+  if (eventId) {
+    const [event] = await db
+      .select({ id: events.id, organizerId: events.organizerId })
+      .from(events)
+      .where(eq(events.id, eventId))
+      .limit(1)
+    if (!event) throw new Error("Event not found")
+    if (event.organizerId !== userId) throw new Error("That event does not belong to the selected organiser")
+  }
+
+  const admin = session.user.email ?? session.user.id
+  const cleanAmount = Number(amount.toFixed(2))
+  const isCash = method === "cash"
+
+  const inserted = await db.transaction(async (tx) => {
+    const [result] = await tx
+      .insert(payouts)
+      .values({
+        userId,
+        eventId: eventId || null,
+        amount: cleanAmount.toFixed(2),
+        currency,
+        method: isCash ? "bank_usd" : (method as "ecocash" | "bank_usd"),
+        status: "paid",
+        accountName: organizer.name ?? undefined,
+        bankName: isCash ? "Manual cash payment" : undefined,
+        proofReference,
+        reviewedBy: admin,
+        processedAt: paidDate,
+        processedBy: admin,
+        notes: ["Manual payout recorded by admin", notes].filter(Boolean).join(" — "),
+      })
+      .returning({ id: payouts.id })
+
+    await createAuditLog({
+      payoutId: result.id,
+      action: "recorded_manual",
+      toStatus: "paid",
+      performedBy: admin,
+      notes: `Manual payout of ${cleanAmount.toFixed(2)} ${currency} recorded (paid ${paidDate.toISOString().slice(0, 10)}). Ref: ${proofReference}`,
+    }, tx)
+
+    return result
+  })
+
+  log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
+  revalidatePath("/admin/payouts")
+  revalidatePath("/admin/reconciliation")
+  revalidatePath("/payouts")
+}
+
 export async function approvePayoutAction(payoutId: string) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {

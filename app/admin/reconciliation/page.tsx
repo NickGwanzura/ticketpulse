@@ -1,14 +1,14 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm"
-import { AlertTriangle, Banknote, CheckCircle2, Download, ExternalLink, ReceiptText, Search, ShieldAlert, TicketCheck, Trash2, Wallet } from "lucide-react"
+import { AlertTriangle, Banknote, CheckCircle2, Download, ExternalLink, FileText, ReceiptText, Search, Send, ShieldAlert, TicketCheck, Trash2, Wallet } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orderItems, orders, paymentLedger, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
-import { deleteVelocitySettlementAction, recordVelocitySettlementAction } from "@/app/admin/reconciliation/actions"
+import { deleteVelocitySettlementAction, recordVelocitySettlementAction, sendVelocityReconciliationAction } from "@/app/admin/reconciliation/actions"
 import { auditOrderPaymentLedger, type AuditableLedgerEntry, type PaymentAuditIssue } from "@/lib/payment-ledger-audit"
 import { getVelocityReconciliationReport } from "@/lib/velocity-reconciliation"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -20,6 +20,7 @@ type ReconciliationIssue = PaymentAuditIssue & {
 type RouteSearchParams = {
   q?: string
   severity?: string
+  sent?: string
 }
 
 const SEVERITY_FILTERS = [
@@ -302,12 +303,64 @@ export default async function AdminReconciliationPage({
                 Reconciles settled Velocity ledger rows against local paid orders, issued tickets, TicketPulse fees, and organizer payouts.
               </p>
             </div>
-            <Link
-              href="/api/admin/reconciliation/velocity/export"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
-            >
-              <Download size={14} /> Download CSV
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/api/admin/reconciliation/velocity/export"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
+              >
+                <Download size={14} /> Download CSV
+              </Link>
+              <Link
+                href="/api/admin/reconciliation/velocity/export?format=pdf"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-semibold text-ink transition hover:border-navy"
+              >
+                <FileText size={14} /> Download PDF
+              </Link>
+            </div>
+          </div>
+
+          {sp.sent && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-800">
+              <CheckCircle2 size={15} />
+              Reconciliation report (PDF + CSV) sent to {sp.sent}.
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-line bg-paper p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <Send size={15} className="text-navy" />
+              </span>
+              <div>
+                <p className="text-[14px] font-bold tracking-tight text-ink">Send report to Velocity</p>
+                <p className="text-[12px] text-ink-3">Emails the full reconciliation report as PDF and CSV attachments, with a copy to the admin inbox.</p>
+              </div>
+            </div>
+            <form action={sendVelocityReconciliationAction} className="grid gap-3 md:grid-cols-[1.2fr_1.6fr_auto] md:items-end">
+              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                Velocity recons email
+                <input
+                  name="recipient"
+                  type="email"
+                  required
+                  defaultValue={process.env.VELOCITY_RECON_EMAIL ?? ""}
+                  placeholder="recons@velocity.co.zw"
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy"
+                />
+              </label>
+              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                Note (optional)
+                <input
+                  name="note"
+                  maxLength={500}
+                  placeholder="e.g. Recon for week ending 8 June — please confirm deposits"
+                  className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy"
+                />
+              </label>
+              <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-ink">
+                <Send size={14} /> Send PDF + CSV
+              </button>
+            </form>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -364,6 +417,15 @@ export default async function AdminReconciliationPage({
                     <input name="reference" required placeholder="Settlement ref, bank ref, or trace" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
                   </label>
                 </div>
+                <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+                  Event (optional)
+                  <select name="eventId" defaultValue="" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
+                    <option value="">Platform-wide (not tied to one event)</option>
+                    {velocityReport.events.map((event) => (
+                      <option key={event.eventId} value={event.eventId}>{event.eventTitle}</option>
+                    ))}
+                  </select>
+                </label>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
                     Period start
@@ -406,6 +468,7 @@ export default async function AdminReconciliationPage({
                         <p className="text-[14px] font-bold text-ink">{formatCurrency(settlement.amount, settlement.currency)}</p>
                         <p className="mt-0.5 truncate text-[12px] text-ink-3">
                           {settlement.reference} · paid {formatDateShort(settlement.settlementDate)}
+                          {settlement.eventTitle ? ` · ${settlement.eventTitle}` : " · platform-wide"}
                         </p>
                         {(settlement.periodStart || settlement.periodEnd || settlement.notes) && (
                           <p className="mt-0.5 truncate text-[11px] text-ink-3">
@@ -456,6 +519,7 @@ export default async function AdminReconciliationPage({
                     <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
                       <th className="px-5 py-3 text-left">Event</th>
                       <th className="px-3 py-3 text-right">Velocity</th>
+                      <th className="px-3 py-3 text-right">Deposited</th>
                       <th className="px-3 py-3 text-right">Fee</th>
                       <th className="px-3 py-3 text-right">Net</th>
                       <th className="px-3 py-3 text-right">Paid out</th>
@@ -474,6 +538,7 @@ export default async function AdminReconciliationPage({
                           </p>
                         </td>
                         <td className="px-3 py-4 text-right text-[13px] font-bold text-ink">{formatCurrency(event.velocityReceived, event.currency)}</td>
+                        <td className={`px-3 py-4 text-right text-[13px] font-semibold ${event.velocityPaidToTicketPulse >= event.velocityReceived ? "text-emerald-700" : "text-amber-700"}`}>{formatCurrency(event.velocityPaidToTicketPulse, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.platformFee, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] font-semibold text-ink">{formatCurrency(event.organizerNet, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.paidOut, event.currency)}</td>

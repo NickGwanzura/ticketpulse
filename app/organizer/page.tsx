@@ -10,7 +10,8 @@ import {
 
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, orderItems, ticketTiers, tickets, payouts } from "@/db/schema"
+import { events, eventOrganisers, orders, ticketTiers, tickets, payouts } from "@/db/schema"
+import { getEventRevenueSummaries, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
@@ -34,8 +35,7 @@ const STATUS: Record<string, { dot: string; label: string }> = {
   completed: { dot: "bg-ink-3",       label: "Ended" },
 }
 
-const PLATFORM_FEE_PERCENT = 5
-const NET_REVENUE_MULTIPLIER = 1 - PLATFORM_FEE_PERCENT / 100
+const PLATFORM_FEE_PERCENT = SHARED_FEE_PERCENT
 
 function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
@@ -75,30 +75,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, ticketItemRows, issuedTicketRows, attendingByEvent, recentOrdersRaw, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
+  const [allTiers, revenueSummaries, attendingByEvent, recentOrdersRaw, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
-    eventIds.length > 0 ? db
-      .select({
-        eventId: orders.eventId,
-        orderId: orderItems.orderId,
-        tierId: orderItems.tierId,
-        quantity: orderItems.quantity,
-        total: orderItems.total,
-        currency: orders.currency,
-      })
-      .from(orderItems)
-      .innerJoin(orders, eq(orders.id, orderItems.orderId))
-      .where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed"]), eq(orderItems.type, "ticket"))) : Promise.resolve([]),
-    eventIds.length > 0 ? db
-      .select({
-        eventId: tickets.eventId,
-        orderId: tickets.orderId,
-        tierId: tickets.tierId,
-        issued: sql<number>`COUNT(*)::int`,
-      })
-      .from(tickets)
-      .where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), inArray(tickets.status, ["sold", "used"])))
-      .groupBy(tickets.eventId, tickets.orderId, tickets.tierId) : Promise.resolve([]),
+    // Canonical per-event revenue — same maths as payout balances and admin pages.
+    getEventRevenueSummaries(eventIds),
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
@@ -110,26 +90,17 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const pendingPayout = Number(pendingPayoutRow?.[0]?.total ?? 0)
   const totalPaidOut = Number(paidOutRow?.[0]?.total ?? 0)
   const pendingCount = pendingCountRow?.[0]?.count ?? 0
-  const issuedByOrderTier = new Map(
-    issuedTicketRows.map((row) => [`${row.orderId ?? ""}:${row.tierId ?? ""}`, Number(row.issued ?? 0)]),
-  )
 
   // Enrich events
   const EVENTS = rawEvents.map(r => {
     const tiers = allTiers.filter(t => t.eventId === r.id)
-    const evItems = ticketItemRows.filter(o => o.eventId === r.id)
     const capacity = tiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
     // Use delivered buyer tickets so the dashboard matches the attendee list.
     const sold = attendingByEvent.find(s => s.eventId === r.id)?.attending ?? 0
-    const revenue = evItems.reduce((sum, item) => {
-      const quantity = Number(item.quantity ?? 0)
-      if (quantity <= 0) return sum
-      const issued = issuedByOrderTier.get(`${item.orderId ?? ""}:${item.tierId ?? ""}`) ?? 0
-      const confirmedQuantity = Math.min(issued, quantity)
-      return sum + confirmedQuantity * (Number(item.total ?? 0) / quantity)
-    }, 0)
-    const netRevenue = revenue * NET_REVENUE_MULTIPLIER
-    const currency = tiers[0]?.currency ?? evItems[0]?.currency ?? "USD"
+    const summary = revenueSummaries.get(r.id)
+    const revenue = summary?.grossRevenue ?? 0
+    const netRevenue = summary?.netRevenue ?? 0
+    const currency = tiers[0]?.currency ?? "USD"
     return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft" }
   })
 

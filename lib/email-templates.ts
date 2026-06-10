@@ -1137,3 +1137,82 @@ export function newFeaturesAnnouncementEmail(opts: {
 
   return { html, text }
 }
+
+// ─── Velocity reconciliation report ─────────────────────────────────────────
+
+export function velocityReconciliationEmail(opts: {
+  generatedAt: Date
+  totals: {
+    velocityReceived: number
+    velocityPaidToTicketPulse: number
+    velocityUnsettled: number
+    localPaidRevenue: number
+    variance: number
+    paidOrders: number
+    criticalIssues: number
+    warningIssues: number
+  }
+  note?: string | null
+}): { html: string; text: string } {
+  const stamp = opts.generatedAt.toISOString().slice(0, 10)
+  const heading = `Velocity reconciliation — ${stamp}`
+  const rows: [string, string][] = [
+    ["Velocity received", formatMoney(opts.totals.velocityReceived, "USD")],
+    ["Paid by Velocity to TicketPulse", formatMoney(opts.totals.velocityPaidToTicketPulse, "USD")],
+    ["Not yet matched", formatMoney(opts.totals.velocityUnsettled, "USD")],
+    ["Local paid revenue", formatMoney(opts.totals.localPaidRevenue, "USD")],
+    ["Variance", formatMoney(opts.totals.variance, "USD")],
+    ["Paid orders", String(opts.totals.paidOrders)],
+    ["Critical issues", String(opts.totals.criticalIssues)],
+    ["Warnings", String(opts.totals.warningIssues)],
+  ]
+
+  const tableRows = rows
+    .map(
+      ([label, value]) => `
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid ${BRAND.line};font-size:13px;color:${BRAND.ink2};">${escape(label)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid ${BRAND.line};font-size:13px;font-weight:600;color:${BRAND.ink};text-align:right;">${escape(value)}</td>
+        </tr>`,
+    )
+    .join("")
+
+  const noteBlock = opts.note
+    ? `<p style="margin:14px 0 0;font-size:14px;line-height:22px;">${escape(opts.note)}</p>`
+    : ""
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      Please find attached the TicketPulse &harr; Velocity payment reconciliation
+      report for review, in PDF and CSV format. A summary of the period to date
+      is below.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid ${BRAND.line};border-radius:12px;border-collapse:separate;overflow:hidden;">
+      ${tableRows}
+    </table>
+    ${noteBlock}
+    <p style="margin:14px 0 0;font-size:13px;color:${BRAND.ink3};">
+      Generated ${escape(opts.generatedAt.toISOString().replace("T", " ").slice(0, 16))} UTC.
+      Reply to this email if any figures need clarification.
+    </p>`
+
+  const html = layout({
+    preheader: `Velocity reconciliation report ${stamp} — PDF and CSV attached.`,
+    heading,
+    body,
+  })
+
+  const text = [
+    heading,
+    "",
+    "TicketPulse <-> Velocity payment reconciliation report attached (PDF and CSV).",
+    "",
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    ...(opts.note ? ["", `Note: ${opts.note}`] : []),
+    "",
+    `Generated ${opts.generatedAt.toISOString()}`,
+    "TicketPulse",
+  ].join("\n")
+
+  return { html, text }
+}

@@ -10,8 +10,9 @@ import {
 } from "lucide-react"
 
 import { db } from "@/db"
-import { events, orders, orderItems, payouts, ticketTiers, tickets } from "@/db/schema"
+import { events, orders, payouts, ticketTiers, tickets } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
+import { getEventRevenueSummaries, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
@@ -23,8 +24,7 @@ export const metadata = { title: "Event overview" }
 
 type RouteParams = { id: string }
 
-const PLATFORM_FEE_PERCENT = 5
-const NET_REVENUE_MULTIPLIER = 1 - PLATFORM_FEE_PERCENT / 100
+const PLATFORM_FEE_PERCENT = SHARED_FEE_PERCENT
 
 export default async function EventOverviewPage({
   params,
@@ -90,39 +90,11 @@ export default async function EventOverviewPage({
   const soldByTier = new Map(tierSoldRows.map((r) => [r.tierId, Number(r.sold ?? 0)]))
   const totalSold = tierSoldRows.reduce((s, t) => s + Number(t.sold ?? 0), 0)
 
-  // ── Revenue from issued buyer tickets on paid orders ───────────────────────
-  const ticketItemRows = await db
-    .select({
-      orderId: orderItems.orderId,
-      tierId: orderItems.tierId,
-      quantity: orderItems.quantity,
-      total: orderItems.total,
-    })
-    .from(orderItems)
-    .innerJoin(orders, eq(orders.id, orderItems.orderId))
-    .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"]), eq(orderItems.type, "ticket")))
-
-  const issuedTicketRows = await db
-    .select({
-      orderId: tickets.orderId,
-      tierId: tickets.tierId,
-      issued: sql<number>`COUNT(*)::int`,
-    })
-    .from(tickets)
-    .where(and(eq(tickets.eventId, id), eq(tickets.isStaffTicket, false), inArray(tickets.status, ["sold", "used"])))
-    .groupBy(tickets.orderId, tickets.tierId)
-
-  const issuedByOrderTier = new Map(
-    issuedTicketRows.map((row) => [`${row.orderId ?? ""}:${row.tierId ?? ""}`, Number(row.issued ?? 0)]),
-  )
-  const grossRevenue = ticketItemRows.reduce((sum, item) => {
-    const quantity = Number(item.quantity ?? 0)
-    if (quantity <= 0) return sum
-    const issued = issuedByOrderTier.get(`${item.orderId ?? ""}:${item.tierId ?? ""}`) ?? 0
-    const confirmedQuantity = Math.min(issued, quantity)
-    return sum + confirmedQuantity * (Number(item.total ?? 0) / quantity)
-  }, 0)
-  const netRevenue = grossRevenue * NET_REVENUE_MULTIPLIER
+  // ── Revenue — canonical maths shared with payouts and admin pages ──────────
+  const revenueSummaries = await getEventRevenueSummaries([id])
+  const summary = revenueSummaries.get(id)
+  const grossRevenue = summary?.grossRevenue ?? 0
+  const netRevenue = summary?.netRevenue ?? 0
   const currency = tiers[0]?.currency ?? "USD"
 
   // ── Event payout ledger ───────────────────────────────────────────────────
@@ -144,13 +116,8 @@ export default async function EventOverviewPage({
     .orderBy(desc(payouts.createdAt))
     .limit(6)
 
-  const paidOut = payoutRows
-    .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
-  const pendingPayouts = payoutRows
-    .filter((p) => p.status === "pending" || p.status === "approved" || p.status === "processing")
-    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
-  const availablePayoutBalance = Math.max(0, Number((netRevenue - paidOut - pendingPayouts).toFixed(2)))
+  const paidOut = summary?.paidOut ?? 0
+  const availablePayoutBalance = summary?.availableBalance ?? 0
 
   // ── Attendees ──────────────────────────────────────────────────────────────
   const attendeeRows = await db

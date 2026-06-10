@@ -74,6 +74,7 @@ export type VelocityReconciliationEvent = {
   organizerEmail: string | null
   currency: string
   velocityReceived: number
+  velocityPaidToTicketPulse: number
   localPaidRevenue: number
   variance: number
   platformFee: number
@@ -134,6 +135,8 @@ export type VelocityReconciliationReport = {
 
 export type VelocitySettlementReport = {
   id: string
+  eventId: string | null
+  eventTitle: string | null
   settlementDate: Date
   periodStart: Date | null
   periodEnd: Date | null
@@ -269,6 +272,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     db
       .select({
         id: velocitySettlements.id,
+        eventId: velocitySettlements.eventId,
+        eventTitle: events.title,
         settlementDate: velocitySettlements.settlementDate,
         periodStart: velocitySettlements.periodStart,
         periodEnd: velocitySettlements.periodEnd,
@@ -280,6 +285,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
         createdAt: velocitySettlements.createdAt,
       })
       .from(velocitySettlements)
+      .leftJoin(events, eq(events.id, velocitySettlements.eventId))
       .orderBy(desc(velocitySettlements.settlementDate), desc(velocitySettlements.createdAt))
       .limit(100),
   ])
@@ -421,6 +427,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       organizerEmail: order.organizerEmail,
       currency,
       velocityReceived: 0,
+      velocityPaidToTicketPulse: 0,
       localPaidRevenue: 0,
       variance: 0,
       platformFee: 0,
@@ -463,6 +470,12 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     })
   }
 
+  const settlementsByEvent = new Map<string, number>()
+  for (const row of settlementRows) {
+    if (!row.eventId) continue
+    settlementsByEvent.set(row.eventId, addMoney(settlementsByEvent.get(row.eventId) ?? 0, money(row.amount)))
+  }
+
   const eventsReport = [...eventMap.values()].map((event) => {
     const payoutsForEvent = payoutsByEvent.get(event.eventId) ?? { paid: 0, pending: 0 }
     const platformFee = money(event.velocityReceived * PLATFORM_FEE_RATE)
@@ -483,6 +496,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
 
     return {
       ...event,
+      velocityPaidToTicketPulse: settlementsByEvent.get(event.eventId) ?? 0,
       variance: money(event.velocityReceived - event.localPaidRevenue),
       platformFee,
       organizerNet,
@@ -498,6 +512,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
 
   const settlements: VelocitySettlementReport[] = settlementRows.map((row) => ({
     id: row.id,
+    eventId: row.eventId,
+    eventTitle: row.eventTitle,
     settlementDate: row.settlementDate,
     periodStart: row.periodStart,
     periodEnd: row.periodEnd,

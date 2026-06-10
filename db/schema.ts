@@ -691,6 +691,7 @@ export const paymentLedgerRelations = relations(paymentLedger, ({ one }) => ({
 
 export const velocitySettlements = pgTable("velocity_settlements", {
   id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
   settlementDate: timestamp("settlement_date").notNull(),
   periodStart: timestamp("period_start"),
   periodEnd: timestamp("period_end"),
@@ -704,6 +705,7 @@ export const velocitySettlements = pgTable("velocity_settlements", {
   uniqueIndex("velocity_settlements_reference_idx").on(table.reference),
   index("velocity_settlements_date_idx").on(table.settlementDate),
   index("velocity_settlements_created_idx").on(table.createdAt),
+  index("velocity_settlements_event_idx").on(table.eventId),
 ])
 
 export const galleryRelations = relations(eventGalleries, ({ one, many }) => ({

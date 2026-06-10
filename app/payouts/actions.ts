@@ -8,8 +8,7 @@ import { payouts, events, users, payoutAuditLog } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { adminEmail, sendEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
-
-const PLATFORM_FEE_PERCENT = 5
+import { getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT } from "@/lib/revenue-summary"
 const ACTIVE_PAYOUT_STATUSES = ["pending", "approved", "processing"] as const
 const VALID_METHODS = ["ecocash", "bank_usd"] as const
 type PayoutMethod = (typeof VALID_METHODS)[number]
@@ -113,44 +112,6 @@ function payoutRequestEmailText(opts: {
   ].join("\n")
 }
 
-async function getIssuedTicketRevenueSummary(userId: string) {
-  const result = await db.execute(sql`
-    WITH ticket_items AS (
-      SELECT
-        oi.id,
-        oi.order_id,
-        oi.quantity,
-        oi.total,
-        COUNT(t.id)::int AS issued_count
-      FROM order_items oi
-      INNER JOIN orders o ON o.id = oi.order_id
-      INNER JOIN events e ON e.id = o.event_id
-      LEFT JOIN tickets t
-        ON t.order_id = o.id
-       AND t.tier_id = oi.tier_id
-       AND t.is_staff_ticket = false
-       AND t.status IN ('sold', 'used')
-      WHERE e.organizer_id = ${userId}
-        AND o.status IN ('paid', 'completed')
-        AND oi.type = 'ticket'
-        AND oi.quantity > 0
-      GROUP BY oi.id, oi.order_id, oi.quantity, oi.total
-    )
-    SELECT
-      COALESCE(SUM(LEAST(issued_count, quantity) * (total::numeric / NULLIF(quantity, 0))), 0)::numeric AS gross_revenue,
-      COALESCE(SUM(LEAST(issued_count, quantity)), 0)::int AS confirmed_ticket_count,
-      COUNT(DISTINCT CASE WHEN LEAST(issued_count, quantity) > 0 THEN order_id END)::int AS confirmed_order_count
-    FROM ticket_items
-  `)
-
-  const row = result.rows?.[0] as Record<string, unknown> | undefined
-  return {
-    grossRevenue: Number(row?.gross_revenue ?? 0),
-    confirmedOrderCount: Number(row?.confirmed_order_count ?? 0),
-    confirmedTicketCount: Number(row?.confirmed_ticket_count ?? 0),
-  }
-}
-
 export async function getOrganizerPayouts(userId: string) {
   const session = await auth()
   if (!session?.user) {
@@ -230,56 +191,20 @@ export async function getOrganizerBalance(userId: string) {
     }
   }
 
-  const {
-    grossRevenue,
-    confirmedOrderCount,
-    confirmedTicketCount,
-  } = await getIssuedTicketRevenueSummary(userId)
-
-  const platformFee = grossRevenue * (PLATFORM_FEE_PERCENT / 100)
-  const totalEarned = grossRevenue - platformFee
-
-  // Calculate total paid out (only fully paid payouts)
-  const paidOutResult = await db
-    .select({
-      total: sql<number>`coalesce(sum(${payouts.amount}), 0)`,
-    })
-    .from(payouts)
-    .where(
-      and(
-        eq(payouts.userId, userId),
-        eq(payouts.status, "paid")
-      )
-    )
-
-  const totalPaidOut = Number(paidOutResult[0]?.total ?? 0)
-
-  // Calculate pending holds (pending/approved/processing — not yet paid, not rejected/cancelled)
-  const pendingResult = await db
-    .select({
-      total: sql<number>`coalesce(sum(${payouts.amount}), 0)`,
-    })
-    .from(payouts)
-    .where(
-      and(
-        eq(payouts.userId, userId),
-        inArray(payouts.status, ACTIVE_PAYOUT_STATUSES)
-      )
-    )
-
-  const pendingTotal = Number(pendingResult[0]?.total ?? 0)
-  const availableBalance = Math.max(0, Number((totalEarned - totalPaidOut - pendingTotal).toFixed(2)))
+  // Single source of truth — same maths as the organizer dashboard and
+  // admin reconciliation surfaces.
+  const summary = await getOrganizerRevenueSummary(userId)
 
   return {
-    availableBalance,
-    totalEarned: Number(totalEarned.toFixed(2)),
-    totalPaidOut,
-    pendingTotal,
+    availableBalance: summary.availableBalance,
+    totalEarned: summary.netRevenue,
+    totalPaidOut: summary.paidOut,
+    pendingTotal: summary.pendingPayouts,
     commissionRate: PLATFORM_FEE_PERCENT,
-    grossRevenue,
-    platformFee: Number(platformFee.toFixed(2)),
-    confirmedOrderCount,
-    confirmedTicketCount,
+    grossRevenue: summary.grossRevenue,
+    platformFee: summary.platformFee,
+    confirmedOrderCount: summary.confirmedOrderCount,
+    confirmedTicketCount: summary.confirmedTicketCount,
   }
 }
 
