@@ -490,10 +490,8 @@ export default async function AdminReconciliationPage({
                           </p>
                         )}
                       </div>
-                      <form action={async () => {
-                        "use server"
-                        await deleteVelocitySettlementAction(settlement.id)
-                      }}>
+                      <form action={deleteVelocitySettlementAction}>
+                        <input type="hidden" name="settlementId" value={settlement.id} />
                         <button type="submit" className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-3 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700" title="Delete settlement">
                           <Trash2 size={14} />
                         </button>

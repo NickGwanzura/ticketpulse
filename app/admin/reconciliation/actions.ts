@@ -137,10 +137,15 @@ export async function sendVelocityReconciliationAction(formData: FormData) {
   redirect(`/admin/reconciliation?sent=${encodeURIComponent(parsed.data.recipient)}`)
 }
 
-export async function deleteVelocitySettlementAction(settlementId: string) {
+export async function deleteVelocitySettlementAction(formData: FormData) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     throw new Error("Unauthorized")
+  }
+
+  const settlementId = String(formData.get("settlementId") ?? "")
+  if (!settlementId) {
+    throw new Error("Settlement is required")
   }
 
   await db.delete(velocitySettlements).where(eq(velocitySettlements.id, settlementId))
