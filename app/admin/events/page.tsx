@@ -14,6 +14,7 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { publishEventAction } from "@/app/admin/actions/events"
+import DeleteEventForm from "@/app/organizer/events/DeleteEventForm"
 
 type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
 
@@ -334,6 +335,7 @@ export default async function AdminEventsPage({
                               >
                                 <ShoppingBag size={14} />
                               </Link>
+                              <DeleteEventForm eventId={e.id} eventTitle={e.title} iconOnly />
                             </div>
                           </td>
                         </tr>
@@ -412,6 +414,7 @@ export default async function AdminEventsPage({
                         <Link href={`/organizer/events/${e.id}/merch`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <ShoppingBag size={12} /> Merch
                         </Link>
+                        <DeleteEventForm eventId={e.id} eventTitle={e.title} compact />
                       </div>
                     </li>
                   )

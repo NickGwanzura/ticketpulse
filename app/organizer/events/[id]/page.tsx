@@ -19,6 +19,7 @@ import { formatCurrency } from "@/lib/utils"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import { publishOrganizerEventAction } from "../actions"
 import PublishEventButton from "../PublishEventButton"
+import DeleteEventForm from "../DeleteEventForm"
 
 export const metadata = { title: "Event overview" }
 
@@ -242,6 +243,7 @@ export default async function EventOverviewPage({
             >
               <ArrowUpRight size={14} /> {isPublished ? "View live" : "Preview"}
             </Link>
+            <DeleteEventForm eventId={id} eventTitle={event.title} compact />
           </div>
         }
       />

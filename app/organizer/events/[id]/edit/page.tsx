@@ -20,7 +20,7 @@ export default async function EditEventPage({
   searchParams,
 }: {
   params: Promise<RouteParams>
-  searchParams: Promise<{ created?: string }>
+  searchParams: Promise<{ created?: string; deleteError?: string }>
 }) {
   const { id } = await params
   const sp = await searchParams
@@ -67,6 +67,11 @@ export default async function EditEventPage({
       />
 
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-4">
+        {sp.deleteError === "has_activity" && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
+            This event has orders, tickets, or payment records, so it cannot be deleted. Cancel or unpublish it to hide it while keeping accounting intact.
+          </div>
+        )}
         <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 tp-fade-up-1">
           <EditEventForm
             event={{

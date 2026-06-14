@@ -8,13 +8,14 @@ import { AlertCircle, MapPin, Save, Trash2, Loader2, Sparkles, Ticket } from "lu
 import Button from "@/components/ui/Button"
 import ImageUploader from "@/components/ui/ImageUploader"
 import VenueMap from "@/components/events/VenueMap"
-import { updateEventAction, deleteEventAction, type UpdateEventState } from "./actions"
+import { updateEventAction, type UpdateEventState } from "./actions"
 import { deleteTierAction } from "../tiers/actions"
 import { formatCurrency } from "@/lib/utils"
 import AiModerateButton from "@/components/ai/AiModerateButton"
 import AiTagSuggest from "@/components/ai/AiTagSuggest"
 import AiSocialButton from "@/components/ai/AiSocialButton"
 import AiPricingButton from "@/components/ai/AiPricingButton"
+import DeleteEventForm from "../../DeleteEventForm"
 
 const INITIAL: UpdateEventState = { ok: true }
 
@@ -66,15 +67,6 @@ function SubmitButton() {
   return (
     <Button type="submit" loading={pending} size="md">
       <Save size={14} /> {pending ? "Saving…" : "Save changes"}
-    </Button>
-  )
-}
-
-function DeleteButton() {
-  const { pending } = useFormStatus()
-  return (
-    <Button type="submit" variant="destructive" size="md" loading={pending}>
-      <Trash2 size={14} /> {pending ? "Deleting…" : "Delete event"}
     </Button>
   )
 }
@@ -605,16 +597,10 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
 
       <div className="border-t border-line pt-6">
         <h3 className="text-[13px] font-semibold text-ink mb-1.5">Danger zone</h3>
-        <p className="text-[13px] text-ink-3 mb-3">Deleting this event removes its galleries, photos, and merch links. Sold tickets are kept for accounting.</p>
-        <form
-          action={deleteEventAction}
-          onSubmit={(e) => {
-            if (!confirm("Delete this event? This cannot be undone.")) e.preventDefault()
-          }}
-        >
-          <input type="hidden" name="id" value={event.id} />
-          <DeleteButton />
-        </form>
+        <p className="text-[13px] text-ink-3 mb-3">
+          Delete is only available before an event has orders, tickets, or payment records. Events with buyer activity should be cancelled instead.
+        </p>
+        <DeleteEventForm eventId={event.id} eventTitle={event.title} />
       </div>
     </div>
   )

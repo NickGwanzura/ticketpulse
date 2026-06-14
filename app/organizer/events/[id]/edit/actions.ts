@@ -1,6 +1,5 @@
 "use server"
 
-import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
@@ -181,18 +180,4 @@ export async function updateEventAction(
   revalidatePath(`/events/${slug}`)
 
   return { ok: true, message: "Saved." }
-}
-
-export async function deleteEventAction(formData: FormData): Promise<void> {
-  const id = formData.get("id")?.toString()
-  if (!id) return
-
-  const guard = await requireOwnership(id)
-  if (!guard.ok) {
-    redirect(guard.redirectTo)
-  }
-
-  await db.delete(events).where(eq(events.id, id))
-  revalidatePath("/organizer")
-  redirect("/organizer")
 }
