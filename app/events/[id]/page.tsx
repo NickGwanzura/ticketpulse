@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Calendar, MapPin, Users, HelpCircle } from "lucide-react"
+import { Calendar, CheckCircle2, DollarSign, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
 // Cuts DB load by ~95% for the most-hit public pages while
@@ -18,11 +18,12 @@ import SaveFavoriteButton from "@/components/events/SaveFavoriteButton"
 import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import { db } from "@/db"
-import { events, reviews, ticketTiers, users, vendorListings, vendors } from "@/db/schema"
-import { desc, eq, or, and } from "drizzle-orm"
+import { events, orders, reviews, ticketTiers, tickets, users, vendorListings, vendors } from "@/db/schema"
+import { and, desc, eq, or, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { getTierAvailability } from "@/lib/ticket-availability"
+import { getEventRevenueSummaries } from "@/lib/revenue-summary"
 import type { VendorListing } from "@/types"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -130,6 +131,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   if (!row) notFound()
 
   const isEventOwner = session?.user?.id === row.organizerId || session?.user?.role === "admin"
+  const now = new Date()
+  const eventEndedAt = row.endsAt ?? row.startsAt
+  const isPastEvent = eventEndedAt.getTime() < now.getTime()
 
   const [tierRows, vendorListingRows, reviewRows] = await Promise.all([
     db.select().from(ticketTiers).where(eq(ticketTiers.eventId, row.id)),
@@ -172,6 +176,32 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   ])
 
   const availabilityByTier = await getTierAvailability(tierRows.map((t) => t.id))
+  const [summaryMap, [ticketStats], [orderStats], [reviewStats]] = isPastEvent
+    ? await Promise.all([
+        getEventRevenueSummaries([row.id]),
+        db
+          .select({
+            issued: sql<number>`COUNT(*) FILTER (WHERE ${tickets.isStaffTicket} = false AND ${tickets.status} IN ('sold', 'used'))::int`,
+            checkedIn: sql<number>`COUNT(*) FILTER (WHERE ${tickets.isStaffTicket} = false AND ${tickets.status} IN ('sold', 'used') AND ${tickets.scannedAt} IS NOT NULL)::int`,
+          })
+          .from(tickets)
+          .where(eq(tickets.eventId, row.id)),
+        db
+          .select({
+            confirmed: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} IN ('paid', 'completed'))::int`,
+          })
+          .from(orders)
+          .where(eq(orders.eventId, row.id)),
+        db
+          .select({
+            count: sql<number>`COUNT(*) FILTER (WHERE ${reviews.status} = 'approved' AND ${reviews.publicConsent} = true)::int`,
+            average: sql<string>`COALESCE(AVG(${reviews.rating}), 0)::numeric`,
+          })
+          .from(reviews)
+          .where(eq(reviews.eventId, row.id)),
+      ])
+    : [new Map(), [{ issued: 0, checkedIn: 0 }], [{ confirmed: 0 }], [{ count: 0, average: "0" }]]
+  const revenueSummary = summaryMap.get(row.id)
 
   const tiers = tierRows.map((t) => {
     const availability = availabilityByTier.get(t.id)
@@ -332,6 +362,56 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               )}
             </div>
 
+            {isPastEvent && (
+              <div className="rounded-2xl border border-line bg-paper p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-5">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Past event summary</p>
+                    <h2 className="text-[18px] font-semibold tracking-tight text-ink">How this event finished</h2>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-paper-2 px-3 py-1 text-[12px] font-semibold text-ink-2 ring-1 ring-line">
+                    <CheckCircle2 size={13} /> Event ended
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Tickets issued", value: Number(ticketStats?.issued ?? 0).toLocaleString(), icon: Ticket },
+                    { label: "Checked in", value: Number(ticketStats?.checkedIn ?? 0).toLocaleString(), icon: CheckCircle2 },
+                    { label: "Confirmed orders", value: Number(orderStats?.confirmed ?? 0).toLocaleString(), icon: Users },
+                    { label: "Reviews", value: Number(reviewStats?.count ?? 0) > 0 ? `${Number(reviewStats?.average ?? 0).toFixed(1)} avg` : "None yet", icon: Star },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="rounded-xl bg-paper-2 p-3 ring-1 ring-line">
+                      <div className="flex items-center gap-1.5 text-[11px] text-ink-3 mb-2">
+                        <Icon size={12} />
+                        {label}
+                      </div>
+                      <p className="text-[18px] font-bold tracking-tight text-ink tabular-nums">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {isEventOwner && revenueSummary && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: "Gross sales", value: formatCurrency(revenueSummary.grossRevenue, baseCurrency), icon: DollarSign },
+                      { label: "Net earned", value: formatCurrency(revenueSummary.netRevenue, baseCurrency), icon: Wallet },
+                      { label: "Paid out", value: formatCurrency(revenueSummary.paidOut, baseCurrency), icon: CheckCircle2 },
+                      { label: "Available", value: formatCurrency(revenueSummary.availableBalance, baseCurrency), icon: Wallet },
+                    ].map(({ label, value, icon: Icon }) => (
+                      <div key={label} className="rounded-xl bg-brand-50/60 p-3 ring-1 ring-brand-200">
+                        <div className="flex items-center gap-1.5 text-[11px] text-brand-700 mb-2">
+                          <Icon size={12} />
+                          {label}
+                        </div>
+                        <p className="text-[17px] font-bold tracking-tight text-ink tabular-nums">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Venue map ── */}
             <VenueMap
               lat={row.lat}
@@ -364,17 +444,27 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           </div>
 
           <div className="lg:col-span-1 pt-10 lg:pt-6">
-            <TicketSelector
-              eventSlug={row.slug}
-              eventTitle={row.title}
-              emoji={emoji}
-              tiers={tiers}
-            />
+            {isPastEvent ? (
+              <div className="lg:sticky lg:top-24 rounded-2xl border border-line bg-paper p-7 shadow-sm shadow-ink/[0.04]">
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-2">Past event</p>
+                <h2 className="text-[18px] font-semibold tracking-tight text-ink">Ticket sales have ended</h2>
+                <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
+                  This event has finished. The summary, reviews, media, and vendor information remain available for reference.
+                </p>
+              </div>
+            ) : (
+              <TicketSelector
+                eventSlug={row.slug}
+                eventTitle={row.title}
+                emoji={emoji}
+                tiers={tiers}
+              />
+            )}
           </div>
         </div>
       </div>
 
-      {lowestPrice !== null && (
+      {!isPastEvent && lowestPrice !== null && (
         <MobileBuyBar
           label="Buy tickets"
           primary={formatCurrency(lowestPrice, baseCurrency)}

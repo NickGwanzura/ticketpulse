@@ -20,7 +20,7 @@ export const revalidate = 60
 
 import { db } from "@/db"
 import { events, ticketTiers, tickets, orders, users } from "@/db/schema"
-import { and, asc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
+import { and, asc, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
 
 const CATEGORIES = ["All", "Concerts", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
@@ -42,13 +42,23 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ si
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; q?: string }>
+  searchParams: Promise<{ category?: string; q?: string; view?: string }>
 }) {
   const sp = await searchParams
   const activeCategory = sp.category ?? "all"
   const query = sp.q ?? ""
+  const activeView = sp.view === "past" ? "past" : "upcoming"
+  const now = new Date()
+  const isPastView = activeView === "past"
 
-  const conditions = [eq(events.status, "published")]
+  const conditions = [
+    isPastView
+      ? inArray(events.status, ["published", "completed"])
+      : eq(events.status, "published"),
+    isPastView
+      ? sql`COALESCE(${events.endsAt}, ${events.startsAt}) < ${now}`
+      : sql`COALESCE(${events.endsAt}, ${events.startsAt}) >= ${now}`,
+  ]
 
   if (activeCategory && activeCategory !== "all") {
     const cat = activeCategory.toLowerCase()
@@ -75,13 +85,14 @@ export default async function EventsPage({
       venue: events.venue,
       city: events.city,
       startsAt: events.startsAt,
+      endsAt: events.endsAt,
       coverImage: events.coverImage,
       featured: events.featured,
       status: events.status,
     })
     .from(events)
     .where(and(...conditions))
-    .orderBy(asc(events.startsAt))
+    .orderBy(isPastView ? desc(events.startsAt) : asc(events.startsAt))
     .limit(50)
 
   // Fetch lowest tier price per event in one query
@@ -155,6 +166,7 @@ export default async function EventsPage({
       status: r.status ?? "published",
       soldQuantity: attendingByEvent.get(r.id) ?? 0,
       totalQuantity: agg?.total ?? 0,
+      isPast: (r.endsAt ?? r.startsAt).getTime() < now.getTime(),
     }
   })
 
@@ -182,13 +194,15 @@ export default async function EventsPage({
       <div className="border-b border-line bg-paper-2">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-14">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Discover</p>
-          <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight text-ink">All events</h1>
+          <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight text-ink">
+            {isPastView ? "Past events" : "Upcoming events"}
+          </h1>
           <p className="mt-3 text-[15px] text-ink-2 max-w-xl">
             {eventCards.length === 0
-              ? "No events live yet. Check back soon."
+              ? isPastView ? "No past events yet." : "No upcoming events live yet. Check back soon."
               : eventCards.length === 1
-              ? "1 event live right now"
-              : `${eventCards.length} events live`} {eventCards.length > 0 && "More landing as organizers come online."}
+              ? isPastView ? "1 past event available" : "1 event live right now"
+              : isPastView ? `${eventCards.length} past events available` : `${eventCards.length} events live`} {eventCards.length > 0 && (isPastView ? "Browse recaps, media, vendors, and reviews." : "More landing as organizers come online.")}
           </p>
         </div>
       </div>
@@ -229,6 +243,7 @@ export default async function EventsPage({
           <>
             {/* Search & filters */}
             <form className="flex flex-col md:flex-row gap-3 mb-6">
+              <input type="hidden" name="view" value={activeView} />
               <div className="relative flex-1 max-w-xl">
                 <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                 <input
@@ -241,15 +256,47 @@ export default async function EventsPage({
               </div>
             </form>
 
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {[
+                { label: "Upcoming", value: "upcoming" },
+                { label: "Past events", value: "past" },
+              ].map((view) => {
+                const params = new URLSearchParams()
+                if (view.value === "past") params.set("view", "past")
+                if (activeCategory !== "all") params.set("category", activeCategory)
+                if (query) params.set("q", query)
+                const href = params.toString() ? `/events?${params.toString()}` : "/events"
+                const active = activeView === view.value
+                return (
+                  <Link
+                    key={view.value}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`text-sm px-4 py-2 rounded-full border transition-all ${
+                      active
+                        ? "bg-ink text-white border-ink shadow-sm"
+                        : "border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2"
+                    }`}
+                  >
+                    {view.label}
+                  </Link>
+                )
+              })}
+            </div>
+
             {/* Category chips */}
             <div className="flex gap-2 mb-8 flex-wrap">
               {CATEGORIES.map((cat) => {
                 const val = cat === "All" ? "all" : cat.replace(/s$/, "").toLowerCase()
                 const isActive = activeCategory === val || (cat === "All" && activeCategory === "all")
+                const params = new URLSearchParams()
+                if (activeView === "past") params.set("view", "past")
+                if (val !== "all") params.set("category", val)
+                const href = params.toString() ? `/events?${params.toString()}` : "/events"
                 return (
                   <Link
                     key={cat}
-                    href={`/events${val === "all" ? "" : `?category=${val}`}`}
+                    href={href}
                     aria-current={isActive ? "page" : undefined}
                     className={`text-sm px-4 py-2 rounded-full border transition-all ${
                       isActive
@@ -277,11 +324,11 @@ export default async function EventsPage({
                 <p className="text-sm text-ink-2 mb-6">
                   {query || activeCategory !== "all"
                     ? "Try clearing the search or picking a different category."
-                    : "Check back soon. Organizers are still coming online."}
+                    : isPastView ? "Completed events will appear here after they end." : "Check back soon. Organizers are still coming online."}
                 </p>
                 {(query || activeCategory !== "all") && (
                   <Link
-                    href="/events"
+                    href={isPastView ? "/events?view=past" : "/events"}
                     className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
                   >
                     Browse all events

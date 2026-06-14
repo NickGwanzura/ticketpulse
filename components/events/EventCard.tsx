@@ -17,6 +17,7 @@ interface EventCardProps {
   status?: string
   soldQuantity?: number
   totalQuantity?: number
+  isPast?: boolean
 }
 
 interface CategoryVisual {
@@ -121,7 +122,7 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 export default function EventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, featured, lowestPrice, currency = "USD", status,
-  soldQuantity, totalQuantity,
+  soldQuantity, totalQuantity, isPast,
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
     gradient: "from-slate-100 to-slate-50",
@@ -187,24 +188,28 @@ export default function EventCard({
         )}
 
         {/* Top-left: status */}
-        {featured && !soldOut && (
+        {isPast ? (
+          <span className="absolute top-3 left-3 bg-ink text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+            PAST EVENT
+          </span>
+        ) : featured && !soldOut && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-navy text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full shadow-sm shadow-brand-600/20">
             <span className="w-1 h-1 rounded-full bg-white" /> FEATURED
           </span>
         )}
-        {soldOut && (
+        {!isPast && soldOut && (
           <span className="absolute top-3 left-3 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
             SOLD OUT
           </span>
         )}
-        {!featured && !soldOut && status === "published" && (
+        {!isPast && !featured && !soldOut && status === "published" && (
           <span className="absolute top-3 left-3 bg-brand-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
             ON SALE
           </span>
         )}
 
         {/* Top-right: time-until or trending */}
-        {remaining && (
+        {!isPast && remaining && (
           <span className={`absolute top-3 right-3 inline-flex items-center gap-1 backdrop-blur-md text-[10px] font-semibold px-2 py-1 rounded-full ring-1 ${
             remaining.kind === "soon"
               ? "bg-rose-50/90 text-rose-700 ring-rose-200/60"
@@ -241,7 +246,7 @@ export default function EventCard({
         </div>
 
         {/* Capacity / going strip — hidden when 0 going so it doesn't scare people off */}
-        {!soldOut && status === "published" && capacity > 0 && going > 0 && (
+        {!isPast && !soldOut && status === "published" && capacity > 0 && going > 0 && (
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1.5">
               <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2">
@@ -263,7 +268,9 @@ export default function EventCard({
         {/* Footer */}
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-line">
           <div>
-            {lowestPrice != null ? (
+            {isPast ? (
+              <span className="text-[13px] font-semibold text-ink-2">Event ended</span>
+            ) : lowestPrice != null ? (
               <>
                 <span className="text-[11px] text-ink-3">From</span>
                 <span className="ml-1.5 text-[16px] font-bold tracking-tight text-ink">
@@ -275,7 +282,7 @@ export default function EventCard({
             )}
           </div>
           <span className="inline-flex items-center gap-1 rounded-lg bg-paper-2 ring-1 ring-line px-2.5 py-1.5 text-[12px] font-semibold text-navy group-hover:bg-navy group-hover:text-white group-hover:ring-navy transition-all">
-            View <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            {isPast ? "Summary" : "View"} <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </div>
       </div>

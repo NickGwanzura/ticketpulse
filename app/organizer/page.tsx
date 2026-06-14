@@ -108,7 +108,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     : eq(events.organizerId, session.user.id)
 
   const rawEvents = await db
-    .select({ id: events.id, slug: events.slug, title: events.title, category: events.category, venue: events.venue, city: events.city, startsAt: events.startsAt, status: events.status })
+    .select({ id: events.id, slug: events.slug, title: events.title, category: events.category, venue: events.venue, city: events.city, startsAt: events.startsAt, endsAt: events.endsAt, status: events.status })
     .from(events).where(whereClause).orderBy(desc(events.startsAt)).limit(50)
 
   const eventIds = rawEvents.map(r => r.id)
@@ -168,13 +168,21 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const netRevenue = summary?.netRevenue ?? 0
     const currency = tiers[0]?.currency ?? "USD"
     const hasTiers = tiers.length > 0
+    const eventEndedAt = r.endsAt ?? r.startsAt
+    const isPast = eventEndedAt.getTime() < now
     const salesEnded = hasTiers && tiers.every((t) => t.salesEnd ? new Date(t.salesEnd).getTime() < now : false)
-    return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded }
+    return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded, isPast }
   })
 
-  const filtered = EVENTS.filter(e => filter === "live" ? e.status === "published" : filter === "drafts" ? e.status === "draft" : true)
+  const filtered = EVENTS.filter(e =>
+    filter === "live" ? e.status === "published" && !e.isPast :
+    filter === "drafts" ? e.status === "draft" :
+    filter === "past" ? e.isPast :
+    true
+  )
   const totalSold = EVENTS.reduce((s, e) => s + e.sold, 0)
-  const liveCount = EVENTS.filter(e => e.status === "published").length
+  const liveCount = EVENTS.filter(e => e.status === "published" && !e.isPast).length
+  const pastCount = EVENTS.filter(e => e.isPast).length
   const draftCount = EVENTS.filter(e => e.status === "draft").length
   const visibleSummary = Array.from(revenueSummaries.values()).reduce(
     (acc, summary) => ({
@@ -217,7 +225,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     { label: "Payout available", value: availableBalance > 0 ? 1 : 0, href: "/payouts/request", icon: Wallet, tone: "green", amount: availableBalance },
   ].filter((item) => item.value > 0)
 
-  const insightEvent = EVENTS.find(e => e.status === "published" && e.sold > 0) || EVENTS.find(e => e.status === "published") || EVENTS[0]
+  const insightEvent = EVENTS.find(e => e.status === "published" && !e.isPast && e.sold > 0) || EVENTS.find(e => e.status === "published" && !e.isPast) || EVENTS[0]
   const SALES_TOP = [...EVENTS].filter(e => e.netRevenue > 0).sort((a, b) => b.netRevenue - a.netRevenue).slice(0, 5)
   const maxRevenue = Math.max(...SALES_TOP.map(e => e.netRevenue), 1)
 
@@ -341,7 +349,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <div className="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
               <h2 className="text-[15px] font-semibold text-ink">Your events</h2>
               <div className="flex items-center gap-1">
-                {[{ v: "all", l: "All" }, { v: "live", l: "Live" }, { v: "drafts", l: "Drafts" }].map(f => (
+                {[{ v: "all", l: "All" }, { v: "live", l: "Live" }, { v: "drafts", l: "Drafts" }, { v: "past", l: `Past${pastCount > 0 ? ` ${pastCount}` : ""}` }].map(f => (
                   <Link key={f.v} href={`/organizer?filter=${f.v}`}
                     className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${filter === f.v ? "bg-paper-2 text-ink ring-1 ring-line" : "text-ink-2 hover:text-ink"}`}>
                     {f.l}
@@ -359,7 +367,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 {/* Mobile */}
                 <div className="md:hidden divide-y divide-line">
                   {filtered.map(e => {
-                    const s = STATUS[e.status] ?? STATUS.draft
+                    const s = e.isPast ? { dot: "bg-ink-3", label: "Past" } : (STATUS[e.status] ?? STATUS.draft)
                     return (
                       <div key={e.id} className="p-5">
                         <div className="flex items-start justify-between gap-2 mb-2">
@@ -407,7 +415,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                   </thead>
                   <tbody className="divide-y divide-line">
                     {filtered.map(e => {
-                      const s = STATUS[e.status] ?? STATUS.draft
+                      const s = e.isPast ? { dot: "bg-ink-3", label: "Past" } : (STATUS[e.status] ?? STATUS.draft)
                       return (
                         <tr key={e.id} className="hover:bg-paper-2 transition-colors">
                           <td className="px-5 py-4 max-w-[240px]">
