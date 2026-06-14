@@ -33,8 +33,11 @@ export type OrdersReconReport = {
     orderCount: number
     gross: number
     paidGross: number
+    pendingGross: number
+    voidGross: number
     paidOrders: number
     pendingOrders: number
+    voidOrders: number
     paidNoTickets: number
     duplicateLedgerOrders: number
     deliveryFailures: number
@@ -85,6 +88,11 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 13,
     fontWeight: 700,
+  },
+  summaryValueSmall: {
+    fontSize: 8.5,
+    fontWeight: 700,
+    lineHeight: 1.25,
   },
   issueValue: {
     color: "#b91c1c",
@@ -172,6 +180,7 @@ function OrdersTable({ rows }: { rows: OrdersReconReportRow[] }) {
         const paidWithoutTickets = ["paid", "completed"].includes(row.status) && row.ticketCount === 0
         const duplicateLedger = row.ledgerCount > 1
         const deliveryFailed = row.deliveryStatus === "FAILED" || row.deliveryStatus === "EMAIL_FAILED"
+        const revenueStatus = ["paid", "completed"].includes(row.status)
         return (
           <View key={row.id} style={styles.row} wrap={false}>
             <View style={[styles.cell, { width: "10%" }]}>
@@ -183,7 +192,7 @@ function OrdersTable({ rows }: { rows: OrdersReconReportRow[] }) {
               <Text style={[styles.text, styles.muted]}>{row.customerName || row.customerEmail || "-"}</Text>
             </View>
             <View style={[styles.cell, { width: "10%" }]}><Text style={styles.text}>{row.status}</Text></View>
-            <View style={[styles.cell, { width: "9%" }]}><Text style={[styles.text, styles.bold]}>{money(row.amount, row.currency)}</Text></View>
+            <View style={[styles.cell, { width: "9%" }]}><Text style={[styles.text, revenueStatus ? styles.bold : styles.muted]}>{money(row.amount, row.currency)}</Text></View>
             <View style={[styles.cell, { width: "10%" }]}><Text style={styles.text}>{row.paymentMethod || "-"}</Text></View>
             <View style={[styles.cell, { width: "15%" }]}>
               <Text style={styles.text}>TX {short(row.paymentTrace, 10)}</Text>
@@ -206,6 +215,7 @@ export function OrdersReconDocument({ report }: { report: OrdersReconReport }) {
     report.filters.status && report.filters.status !== "all" ? `Status: ${report.filters.status}` : null,
   ].filter(Boolean).join(" · ") || "No filters"
   const reconWarnings = report.totals.paidNoTickets + report.totals.duplicateLedgerOrders + report.totals.deliveryFailures
+  const orderMix = `${report.totals.paidOrders} paid · ${report.totals.pendingOrders} pending · ${report.totals.voidOrders} void`
 
   return (
     <Document title={report.title} author="TicketPulse">
@@ -222,16 +232,20 @@ export function OrdersReconDocument({ report }: { report: OrdersReconReport }) {
             <Text style={styles.summaryValue}>{report.totals.orderCount}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Gross</Text>
-            <Text style={styles.summaryValue}>{money(report.totals.gross)}</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Paid gross</Text>
+            <Text style={styles.summaryLabel}>Confirmed revenue</Text>
             <Text style={styles.summaryValue}>{money(report.totals.paidGross)}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Paid / pending</Text>
-            <Text style={styles.summaryValue}>{report.totals.paidOrders} / {report.totals.pendingOrders}</Text>
+            <Text style={styles.summaryLabel}>Pending value</Text>
+            <Text style={styles.summaryValue}>{money(report.totals.pendingGross)}</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Void / expired</Text>
+            <Text style={styles.summaryValue}>{money(report.totals.voidGross)}</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>Status mix</Text>
+            <Text style={styles.summaryValueSmall}>{orderMix}</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Recon warnings</Text>
@@ -244,7 +258,7 @@ export function OrdersReconDocument({ report }: { report: OrdersReconReport }) {
         <OrdersTable rows={report.rows} />
 
         <View style={styles.foot} fixed>
-          <Text>Paid/no tickets: {report.totals.paidNoTickets} · Duplicate ledgers: {report.totals.duplicateLedgerOrders} · Delivery failures: {report.totals.deliveryFailures}</Text>
+          <Text>All-order volume: {money(report.totals.gross)} · Paid/no tickets: {report.totals.paidNoTickets} · Duplicate ledgers: {report.totals.duplicateLedgerOrders} · Delivery failures: {report.totals.deliveryFailures}</Text>
           <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
       </Page>

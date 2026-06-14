@@ -79,6 +79,10 @@ function isPendingStatus(status: string) {
   return status === "pending" || status === "awaiting_verification"
 }
 
+function isVoidStatus(status: string) {
+  return !isPaidStatus(status) && !isPendingStatus(status)
+}
+
 export async function getOrdersReconReport(input: OrdersReconReportInput): Promise<OrdersReconReport> {
   const clauses = []
   const search = input.search?.trim()
@@ -161,6 +165,7 @@ export async function getOrdersReconReport(input: OrdersReconReportInput): Promi
   const rows = (result.rows as unknown as RawOrderRow[]).map(normalizeOrder)
   const paidRows = rows.filter((row) => isPaidStatus(row.status))
   const pendingRows = rows.filter((row) => isPendingStatus(row.status))
+  const voidRows = rows.filter((row) => isVoidStatus(row.status))
 
   return {
     title: input.title,
@@ -175,8 +180,11 @@ export async function getOrdersReconReport(input: OrdersReconReportInput): Promi
       orderCount: rows.length,
       gross: rows.reduce((sum, row) => sum + row.amount, 0),
       paidGross: paidRows.reduce((sum, row) => sum + row.amount, 0),
+      pendingGross: pendingRows.reduce((sum, row) => sum + row.amount, 0),
+      voidGross: voidRows.reduce((sum, row) => sum + row.amount, 0),
       paidOrders: paidRows.length,
       pendingOrders: pendingRows.length,
+      voidOrders: voidRows.length,
       paidNoTickets: rows.filter((row) => isPaidStatus(row.status) && row.ticketCount === 0).length,
       duplicateLedgerOrders: rows.filter((row) => row.ledgerCount > 1).length,
       deliveryFailures: rows.filter((row) => row.deliveryStatus === "FAILED" || row.deliveryStatus === "EMAIL_FAILED").length,
