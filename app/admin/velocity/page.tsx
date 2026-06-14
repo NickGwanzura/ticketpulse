@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation"
 import { desc, eq, and, like, or, sql } from "drizzle-orm"
+import Link from "next/link"
+import { ReceiptText } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -146,6 +148,14 @@ export default async function AdminVelocityPage({
         title="Transaction viewer"
         subtitle="Monitor, recheck, and manage all Velocity Africa payment transactions."
         width="full"
+        actions={
+          <Link
+            href="/admin/reconciliation#velocity-deposits"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
+          >
+            <ReceiptText size={14} /> Record Velocity deposit
+          </Link>
+        }
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">

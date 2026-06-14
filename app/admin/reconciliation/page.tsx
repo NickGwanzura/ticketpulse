@@ -21,6 +21,7 @@ type RouteSearchParams = {
   q?: string
   severity?: string
   sent?: string
+  settlement?: string
 }
 
 const SEVERITY_FILTERS = [
@@ -305,6 +306,12 @@ export default async function AdminReconciliationPage({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Link
+                href="#velocity-deposits"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-semibold text-ink transition hover:border-navy"
+              >
+                <ReceiptText size={14} /> Record Velocity deposit
+              </Link>
+              <Link
                 href="/api/admin/reconciliation/velocity/export"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
               >
@@ -323,6 +330,13 @@ export default async function AdminReconciliationPage({
             <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-800">
               <CheckCircle2 size={15} />
               Reconciliation report (PDF + CSV) sent to {sp.sent}.
+            </div>
+          )}
+
+          {sp.settlement === "recorded" && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-800">
+              <CheckCircle2 size={15} />
+              Velocity deposit recorded. The CSV/PDF export and email report now include it.
             </div>
           )}
 
@@ -385,15 +399,15 @@ export default async function AdminReconciliationPage({
             ))}
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <div id="velocity-deposits" className="grid scroll-mt-24 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
             <div className="rounded-2xl border border-line bg-paper p-5">
               <div className="mb-4 flex items-center gap-2">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50">
                   <ReceiptText size={15} className="text-sky-700" />
                 </span>
                 <div>
-                  <p className="text-[14px] font-bold tracking-tight text-ink">Record Velocity payout</p>
-                  <p className="text-[12px] text-ink-3">Enter deposits Velocity paid into TicketPulse.</p>
+                  <p className="text-[14px] font-bold tracking-tight text-ink">Record money paid by Velocity</p>
+                  <p className="text-[12px] text-ink-3">Enter bank deposits or settlement payments Velocity paid into TicketPulse before sending the recon.</p>
                 </div>
               </div>
               <form action={recordVelocitySettlementAction} className="space-y-3">
@@ -441,7 +455,7 @@ export default async function AdminReconciliationPage({
                   <textarea name="notes" rows={2} placeholder="Optional note for finance/audit" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
                 </label>
                 <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[13px] font-semibold text-white transition hover:bg-ink">
-                  <ReceiptText size={14} /> Save Velocity payout
+                  <ReceiptText size={14} /> Save Velocity deposit
                 </button>
               </form>
             </div>
@@ -449,13 +463,13 @@ export default async function AdminReconciliationPage({
             <div className="overflow-hidden rounded-2xl border border-line bg-paper">
               <div className="border-b border-line bg-paper-2 px-5 py-3">
                 <p className="text-[13px] font-bold text-ink">Velocity deposits entered</p>
-                <p className="text-[12px] text-ink-3">These are actual deposits paid by Velocity to TicketPulse.</p>
+                <p className="text-[12px] text-ink-3">These actual deposits reduce the “not yet matched” figure in the report sent to Velocity.</p>
               </div>
               {velocityReport.settlements.length === 0 ? (
                 <div className="p-5">
                   <EmptyState
                     icon={ReceiptText}
-                    title="No Velocity payouts entered"
+                    title="No Velocity deposits entered"
                     body="Once Velocity pays into your account, enter the amount and reference here."
                     variant="card"
                   />

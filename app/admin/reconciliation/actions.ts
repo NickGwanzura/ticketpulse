@@ -79,6 +79,7 @@ export async function recordVelocitySettlementAction(formData: FormData) {
   })
 
   revalidatePath("/admin/reconciliation")
+  redirect("/admin/reconciliation?settlement=recorded#velocity-deposits")
 }
 
 const SendReconSchema = z.object({
