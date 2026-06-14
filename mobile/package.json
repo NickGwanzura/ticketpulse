@@ -17,8 +17,10 @@
     "expo-haptics": "latest",
     "expo-status-bar": "latest",
     "react": "latest",
+    "react-dom": "^19.2.7",
     "react-native": "latest",
-    "react-native-safe-area-context": "latest"
+    "react-native-safe-area-context": "latest",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/react": "latest",
