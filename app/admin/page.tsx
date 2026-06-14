@@ -3,13 +3,13 @@ import { redirect } from "next/navigation"
 import {
   ArrowUpRight, AlertTriangle, CalendarCheck, CreditCard,
   Users, Activity, CheckCircle2, Clock, TrendingUp,
-  Zap, FileWarning,
+  Zap, FileWarning, Ticket,
 } from "lucide-react"
 import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, orders, users } from "@/db/schema"
+import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { publishEventAction } from "@/app/admin/actions/events"
 import { verifyUserEmailAction } from "@/app/admin/actions/users"
@@ -76,6 +76,9 @@ export default async function AdminOverviewPage() {
     unverifiedUsers,
     [velocityCountRow],
     [velocityRevenueRow],
+    [pendingPayoutsRow],
+    [pendingReviewsRow],
+    moneyPathIssueRows,
   ] = await Promise.all([
     db.select({ gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
       .from(orders).where(and(eq(orders.status, "paid"), hasVelocity)),
@@ -126,6 +129,40 @@ export default async function AdminOverviewPage() {
 
     db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
       .from(orders).where(and(hasVelocity, eq(orders.status, "paid"))),
+
+    db.select({ count: sql<number>`COUNT(*)::int`, total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` })
+      .from(payouts).where(eq(payouts.status, "pending")),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(reviews).where(eq(reviews.status, "pending")),
+
+    db.execute(sql`
+      WITH confirmed_orders AS (
+        SELECT id, metadata
+        FROM orders
+        WHERE status IN ('paid', 'completed')
+      ),
+      ticket_counts AS (
+        SELECT order_id, COUNT(*)::int AS ticket_count
+        FROM tickets
+        WHERE order_id IN (SELECT id FROM confirmed_orders)
+          AND is_staff_ticket = false
+          AND status NOT IN ('cancelled', 'refunded')
+        GROUP BY order_id
+      ),
+      duplicate_ledgers AS (
+        SELECT order_id
+        FROM payment_ledger
+        GROUP BY order_id
+        HAVING COUNT(*) > 1
+      )
+      SELECT
+        COUNT(*) FILTER (WHERE COALESCE(tc.ticket_count, 0) = 0)::int AS paid_no_tickets,
+        COUNT(*) FILTER (WHERE COALESCE(confirmed_orders.metadata->'delivery'->>'status', '') IN ('FAILED', 'EMAIL_FAILED'))::int AS delivery_attention,
+        (SELECT COUNT(*)::int FROM duplicate_ledgers)::int AS duplicate_ledgers
+      FROM confirmed_orders
+      LEFT JOIN ticket_counts tc ON tc.order_id = confirmed_orders.id
+    `),
   ])
 
   const grossVolume = Number(revenueRow?.gross ?? 0)
@@ -138,6 +175,13 @@ export default async function AdminOverviewPage() {
   const velocityPending = velocityCountRow?.pending ?? 0
   const velocityPaid = velocityCountRow?.paid ?? 0
   const velocityFailed = velocityCountRow?.failed ?? 0
+  const pendingPayouts = pendingPayoutsRow?.count ?? 0
+  const pendingPayoutTotal = Number(pendingPayoutsRow?.total ?? 0)
+  const pendingReviews = pendingReviewsRow?.count ?? 0
+  const moneyPathIssues = (moneyPathIssueRows.rows?.[0] ?? {}) as { paid_no_tickets?: number; delivery_attention?: number; duplicate_ledgers?: number }
+  const paidNoTickets = Number(moneyPathIssues.paid_no_tickets ?? 0)
+  const deliveryAttention = Number(moneyPathIssues.delivery_attention ?? 0)
+  const duplicateLedgers = Number(moneyPathIssues.duplicate_ledgers ?? 0)
 
   const spark7 = dailyRevenue7d.map(d => Number(d.total))
   const spark14 = dailyRevenue14d.map(d => Number(d.total))
@@ -161,7 +205,17 @@ export default async function AdminOverviewPage() {
   }
 
   const pendingReview = [...draftEvents, ...unverifiedUsers]
-  const hasPendingAction = pendingReview.length > 0 || velocityPending > 0
+  const operationsQueue = [
+    { label: "Paid, no tickets", value: paidNoTickets, href: "/admin/orders", icon: Ticket, tone: "rose", detail: "Confirmed money path without issued tickets" },
+    { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders", icon: FileWarning, tone: "amber", detail: "Email or ticket delivery needs action" },
+    { label: "Duplicate ledgers", value: duplicateLedgers, href: "/admin/reconciliation", icon: AlertTriangle, tone: "rose", detail: "Multiple payment records on one order" },
+    { label: "Velocity pending", value: velocityPending, href: "/admin/velocity?status=pending", icon: Zap, tone: "amber", detail: "Gateway confirmations still unresolved" },
+    { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "green", detail: `${formatCurrency(pendingPayoutTotal, "USD")} waiting for review` },
+    { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue", detail: "Customer reviews awaiting moderation" },
+    { label: "Draft events", value: draftEvents.length, href: "#review", icon: CalendarCheck, tone: "amber", detail: "Organizer events not published yet" },
+    { label: "Unverified users", value: unverifiedUsers.length, href: "#review", icon: Users, tone: "amber", detail: "Accounts awaiting email verification" },
+  ].filter((item) => item.value > 0)
+  const hasPendingAction = operationsQueue.length > 0
 
   return (
     <div className="tp-fade-up">
@@ -193,16 +247,56 @@ export default async function AdminOverviewPage() {
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold text-amber-900">
                 {[
-                  pendingReview.length > 0 && `${pendingReview.length} item${pendingReview.length !== 1 ? "s" : ""} need review`,
+                  operationsQueue.length > 0 && `${operationsQueue.length} queue item${operationsQueue.length !== 1 ? "s" : ""} need attention`,
+                  pendingReview.length > 0 && `${pendingReview.length} review item${pendingReview.length !== 1 ? "s" : ""}`,
                   velocityPending > 0 && `${velocityPending} Velocity payment${velocityPending !== 1 ? "s" : ""} pending`,
                 ].filter(Boolean).join(" · ")}
               </p>
             </div>
-            <Link href="#review" className="shrink-0 text-[12px] font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2">
-              Jump to review
+            <Link href="#operations" className="shrink-0 text-[12px] font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2">
+              Open queue
             </Link>
           </div>
         )}
+
+        <div id="operations" className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
+          <div className="px-5 py-4 border-b border-line flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <p className="text-[15px] font-semibold text-ink">Operations queue</p>
+              <p className="text-[12px] text-ink-2 mt-0.5">Money path, delivery, moderation, publishing, and payout checks that need admin attention.</p>
+            </div>
+            <Link href="/admin/reconciliation" className="inline-flex items-center gap-1 text-[12px] font-semibold text-navy">
+              Open reconciliation <ArrowUpRight size={11} />
+            </Link>
+          </div>
+          {operationsQueue.length === 0 ? (
+            <div className="px-5 py-5 flex items-center gap-3 text-[13px] text-emerald-700">
+              <CheckCircle2 size={16} className="text-emerald-600" />
+              No critical admin work waiting right now.
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-line">
+              {operationsQueue.slice(0, 4).map(({ label, value, href, icon: Icon, tone, detail }) => (
+                <Link key={label} href={href} className="px-5 py-4 hover:bg-paper-2 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ring-1 ${
+                      tone === "rose" ? "bg-rose-50 text-rose-700 ring-rose-200" :
+                      tone === "green" ? "bg-emerald-50 text-emerald-700 ring-emerald-200" :
+                      tone === "blue" ? "bg-blue/10 text-blue ring-blue/20" :
+                      "bg-amber-50 text-amber-700 ring-amber-200"
+                    }`}>
+                      <Icon size={15} />
+                    </span>
+                    <ArrowUpRight size={12} className="text-ink-3" />
+                  </div>
+                  <p className="mt-3 text-[22px] font-bold text-ink tabular-nums">{value.toLocaleString()}</p>
+                  <p className="mt-1 text-[12px] font-semibold text-ink-2">{label}</p>
+                  <p className="mt-1 text-[11px] text-ink-3 leading-snug">{detail}</p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Primary metrics — horizontal rule, not cards */}
         <div className="tp-fade-up-1">

@@ -125,6 +125,12 @@ export default async function AdminOrdersPage({
   const statusFilter = sp.status ?? "all"
   const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
   const offset = (currentPage - 1) * LIMIT
+  const exportParams = new URLSearchParams()
+  if (query) exportParams.set("q", query)
+  if (statusFilter !== "all") exportParams.set("status", statusFilter)
+  const exportHref = exportParams.toString()
+    ? `/api/admin/orders/export?${exportParams.toString()}`
+    : "/api/admin/orders/export"
 
   // ── Build WHERE clause ──────────────────────────────────────────────────
   const conditions: ReturnType<typeof and>[] = []
@@ -324,6 +330,12 @@ export default async function AdminOrdersPage({
               )
             })}
           </div>
+          <Link
+            href={exportHref}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2 hover:bg-paper-2 transition-colors"
+          >
+            <Download size={14} /> Export PDF
+          </Link>
         </div>
 
         {/* Table */}

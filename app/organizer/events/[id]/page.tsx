@@ -12,7 +12,7 @@ import {
 import { db } from "@/db"
 import { events, orders, payouts, ticketTiers, tickets } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
-import { getEventRevenueSummaries, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
+import { getEventRevenueSummaries } from "@/lib/revenue-summary"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
@@ -23,8 +23,6 @@ import PublishEventButton from "../PublishEventButton"
 export const metadata = { title: "Event overview" }
 
 type RouteParams = { id: string }
-
-const PLATFORM_FEE_PERCENT = SHARED_FEE_PERCENT
 
 export default async function EventOverviewPage({
   params,
@@ -206,6 +204,12 @@ export default async function EventOverviewPage({
     : healthScore >= 60
       ? "text-amber-700 bg-amber-50 ring-amber-200"
       : "text-rose-700 bg-rose-50 ring-rose-200"
+  const nextAction = healthItems.find((item) => !item.ok) ?? (
+    availablePayoutBalance > 0
+      ? { label: "Payout is available", ok: true, href: "/payouts/request", action: "Request payout" }
+      : { label: "Ready for live operations", ok: true, href: "/organizer/scan", action: "Open scanner" }
+  )
+  const salesPct = totalCapacity > 0 ? Math.min(100, Math.round((totalSold / totalCapacity) * 100)) : 0
 
   return (
     <div className="tp-fade-up">
@@ -215,6 +219,12 @@ export default async function EventOverviewPage({
         subtitle={`${event.venue} · ${event.city} · ${event.startsAt.toLocaleDateString()}`}
         actions={
           <div className="flex items-center gap-2">
+            <Link
+              href="/organizer/scan"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink/85 transition"
+            >
+              <ScanLine size={14} /> Scan tickets
+            </Link>
             {!isPublished && (
               <>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
@@ -255,6 +265,60 @@ export default async function EventOverviewPage({
           </div>
         )}
 
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+          <div className="grid lg:grid-cols-[1.25fr_1fr_1fr] divide-y lg:divide-y-0 lg:divide-x divide-line">
+            <div className="p-5 md:p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${healthTone}`}>
+                  {healthScore >= 85 ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                  {healthScore}% ready
+                </span>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${
+                  isPublished ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"
+                }`}>
+                  {isPublished ? "Published" : "Draft"}
+                </span>
+              </div>
+              <p className="text-[20px] font-bold tracking-tight text-ink">Event command center</p>
+              <p className="mt-1 text-[13px] text-ink-2 leading-relaxed">
+                {nextAction.label}. Keep publishing, ticketing, scanning, and payout readiness in one place.
+              </p>
+              <Link
+                href={nextAction.href}
+                className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors"
+              >
+                {nextAction.action} <ArrowUpRight size={12} />
+              </Link>
+            </div>
+            <div className="p-5 md:p-6">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[12px] font-semibold text-ink-3 uppercase tracking-[0.14em]">Sales</p>
+                <span className="text-[12px] font-bold text-ink tabular-nums">{salesPct}%</span>
+              </div>
+              <p className="text-[28px] font-bold tracking-tight text-ink tabular-nums">{totalSold.toLocaleString()} / {totalCapacity.toLocaleString()}</p>
+              <p className="mt-1 text-[12px] text-ink-2">confirmed tickets issued</p>
+              <div className="mt-4 h-2 rounded-full bg-paper-3 overflow-hidden">
+                <div className="h-full rounded-full bg-ink" style={{ width: `${salesPct}%` }} />
+              </div>
+            </div>
+            <div className="p-5 md:p-6">
+              <p className="text-[12px] font-semibold text-ink-3 uppercase tracking-[0.14em]">Payout</p>
+              <p className="mt-3 text-[28px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(availablePayoutBalance, currency)}</p>
+              <p className="mt-1 text-[12px] text-ink-2">available from {formatCurrency(netRevenue, currency)} net earned</p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-[12px]">
+                <div className="rounded-lg bg-paper-2 p-2 ring-1 ring-line">
+                  <p className="text-ink-3">Fee</p>
+                  <p className="font-bold text-ink tabular-nums">-{formatCurrency(grossRevenue - netRevenue, currency)}</p>
+                </div>
+                <div className="rounded-lg bg-paper-2 p-2 ring-1 ring-line">
+                  <p className="text-ink-3">Paid out</p>
+                  <p className="font-bold text-ink tabular-nums">{formatCurrency(paidOut, currency)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* KPI strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {[
@@ -273,29 +337,6 @@ export default async function EventOverviewPage({
               <p className={`text-[22px] md:text-[24px] font-bold tracking-tight leading-none tabular-nums ${color}`}>{value}</p>
             </div>
           ))}
-        </div>
-
-        <div className="rounded-2xl border border-line bg-paper px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold text-ink">Payout revenue</p>
-            <p className="text-[12px] text-ink-2 mt-0.5">
-              Net revenue is gross confirmed ticket sales after the {PLATFORM_FEE_PERCENT}% TicketPulse fee.
-            </p>
-          </div>
-          <dl className="grid grid-cols-3 gap-4 text-[12px]">
-            <div>
-              <dt className="text-ink-3">Gross</dt>
-              <dd className="font-bold text-ink tabular-nums">{formatCurrency(grossRevenue, currency)}</dd>
-            </div>
-            <div>
-              <dt className="text-ink-3">Fee</dt>
-              <dd className="font-bold text-ink tabular-nums">-{formatCurrency(grossRevenue - netRevenue, currency)}</dd>
-            </div>
-            <div>
-              <dt className="text-ink-3">Net</dt>
-              <dd className="font-bold text-ink tabular-nums">{formatCurrency(netRevenue, currency)}</dd>
-            </div>
-          </dl>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

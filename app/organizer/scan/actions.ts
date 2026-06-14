@@ -49,16 +49,13 @@ export async function markTicketScannedAction(rawCode: string): Promise<ScanResu
     return ticket
   }
 
-  // Look up ticket by stored QR code first, then by verification URL ticket id.
+  // Look up ticket by stored QR code first, then by the verification URL encoded in PDFs/wallet passes.
   let ticket = await lookupTicket(eq(tickets.qrCode, code))
 
   if (!ticket) {
     const parsed = parseVerificationUrl(code)
     if (parsed) {
-      const legacyTicket = await lookupTicket(and(eq(tickets.id, parsed.ticketId), eq(tickets.orderId, parsed.orderId)))
-      if (legacyTicket?.qrCode?.startsWith("data:image")) {
-        ticket = legacyTicket
-      }
+      ticket = await lookupTicket(and(eq(tickets.id, parsed.ticketId), eq(tickets.orderId, parsed.orderId)))
     }
   }
 

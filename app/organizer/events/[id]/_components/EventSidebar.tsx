@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   HelpCircle,
   Wallet,
+  ScanLine,
 } from "lucide-react"
 
 const NAV = (eventId: string) =>
@@ -26,6 +27,7 @@ const NAV = (eventId: string) =>
     { label: "Overview", href: `/organizer/events/${eventId}`, icon: Activity },
     { label: "Event details", href: `/organizer/events/${eventId}/edit`, icon: Settings },
     { label: "Tickets", href: `/organizer/events/${eventId}/tiers`, icon: Ticket },
+    { label: "Scanner", href: "/organizer/scan", icon: ScanLine },
     { label: "Questions", href: `/organizer/events/${eventId}/questions`, icon: HelpCircle },
     { label: "Photo gallery", href: `/organizer/events/${eventId}/gallery`, icon: ImageIcon },
     { label: "Merch", href: `/organizer/events/${eventId}/merch`, icon: ShoppingBag },

@@ -6,12 +6,13 @@ import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
   Ticket, DollarSign, TrendingUp, Users,
   Activity, Tag, Mail, HelpCircle, Zap,
+  CheckCircle2, ClipboardList, Wallet,
 } from "lucide-react"
 
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, ticketTiers, tickets, payouts } from "@/db/schema"
-import { getEventRevenueSummaries, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
+import { events, eventOrganisers, orders, ticketTiers, tickets } from "@/db/schema"
+import { getEventRevenueSummaries, getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
@@ -50,6 +51,43 @@ function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
   )
 }
 
+function EventHealthBadges({
+  status,
+  capacity,
+  sold,
+  netRevenue,
+  hasTiers,
+  salesEnded,
+}: {
+  status: string
+  capacity: number
+  sold: number
+  netRevenue: number
+  hasTiers: boolean
+  salesEnded: boolean
+}) {
+  const remaining = Math.max(0, capacity - sold)
+  const badges: { label: string; className: string }[] = []
+
+  if (status === "published") badges.push({ label: "Published", className: "bg-emerald-50 text-emerald-700 ring-emerald-200" })
+  if (status === "draft") badges.push({ label: "Draft", className: "bg-amber-50 text-amber-700 ring-amber-200" })
+  if (!hasTiers) badges.push({ label: "Needs tiers", className: "bg-rose-50 text-rose-700 ring-rose-200" })
+  if (salesEnded) badges.push({ label: "Sales closed", className: "bg-rose-50 text-rose-700 ring-rose-200" })
+  if (capacity > 0 && remaining <= 10 && remaining > 0) badges.push({ label: `${remaining} left`, className: "bg-amber-50 text-amber-700 ring-amber-200" })
+  if (capacity > 0 && remaining === 0) badges.push({ label: "Sold out", className: "bg-ink text-white ring-ink" })
+  if (netRevenue > 0) badges.push({ label: "Earning", className: "bg-blue/10 text-blue ring-blue/20" })
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {badges.slice(0, 3).map((badge) => (
+        <span key={badge.label} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badge.className}`}>
+          {badge.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export default async function OrganizerPage({ searchParams }: { searchParams: Promise<{ filter?: string; rev?: string }> }) {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer")
@@ -75,21 +113,49 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, revenueSummaries, attendingByEvent, recentOrdersRaw, pendingPayoutRow, paidOutRow, pendingCountRow] = await Promise.all([
-    eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
+  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, recentOrdersRaw, issueRows] = await Promise.all([
+    eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency, salesEnd: ticketTiers.salesEnd }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     // Canonical per-event revenue — same maths as payout balances and admin pages.
     getEventRevenueSummaries(eventIds),
+    isAdmin ? Promise.resolve(null) : getOrganizerRevenueSummary(session.user.id),
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
-    db.select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` }).from(payouts).where(and(eq(payouts.userId, session.user.id), sql`${payouts.status} in ('pending', 'approved', 'processing')`)),
-    db.select({ total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` }).from(payouts).where(and(eq(payouts.userId, session.user.id), eq(payouts.status, "paid"))),
-    db.select({ count: sql<number>`COUNT(*)::int` }).from(payouts).where(and(eq(payouts.userId, session.user.id), eq(payouts.status, "pending"))),
+    eventIds.length > 0 ? db.execute(sql`
+      WITH organizer_orders AS (
+        SELECT o.id, o.metadata
+        FROM orders o
+        WHERE o.event_id IN (${sql.join(eventIds.map((eventId) => sql`${eventId}`), sql`, `)})
+          AND o.status IN ('paid', 'completed')
+      ),
+      ticket_counts AS (
+        SELECT order_id, COUNT(*)::int AS ticket_count
+        FROM tickets
+        WHERE order_id IN (SELECT id FROM organizer_orders)
+          AND is_staff_ticket = false
+          AND status NOT IN ('cancelled', 'refunded')
+        GROUP BY order_id
+      ),
+      ledger_counts AS (
+        SELECT order_id, COUNT(*)::int AS ledger_count
+        FROM payment_ledger
+        WHERE order_id IN (SELECT id FROM organizer_orders)
+        GROUP BY order_id
+      )
+      SELECT
+        COUNT(*) FILTER (WHERE COALESCE(tc.ticket_count, 0) = 0)::int AS paid_no_tickets,
+        COUNT(*) FILTER (WHERE COALESCE(lc.ledger_count, 0) > 1)::int AS duplicate_ledgers,
+        COUNT(*) FILTER (
+          WHERE COALESCE(organizer_orders.metadata->'delivery'->>'status', '') IN ('FAILED', 'EMAIL_FAILED')
+        )::int AS delivery_attention
+      FROM organizer_orders
+      LEFT JOIN ticket_counts tc ON tc.order_id = organizer_orders.id
+      LEFT JOIN ledger_counts lc ON lc.order_id = organizer_orders.id
+    `) : Promise.resolve({ rows: [] }),
   ])
 
-  const pendingPayout = Number(pendingPayoutRow?.[0]?.total ?? 0)
-  const totalPaidOut = Number(paidOutRow?.[0]?.total ?? 0)
-  const pendingCount = pendingCountRow?.[0]?.count ?? 0
+  // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
+  const now = Date.now()
 
   // Enrich events
   const EVENTS = rawEvents.map(r => {
@@ -101,29 +167,59 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const revenue = summary?.grossRevenue ?? 0
     const netRevenue = summary?.netRevenue ?? 0
     const currency = tiers[0]?.currency ?? "USD"
-    return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft" }
+    const hasTiers = tiers.length > 0
+    const salesEnded = hasTiers && tiers.every((t) => t.salesEnd ? new Date(t.salesEnd).getTime() < now : false)
+    return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded }
   })
 
   const filtered = EVENTS.filter(e => filter === "live" ? e.status === "published" : filter === "drafts" ? e.status === "draft" : true)
-  const totalRevenue = EVENTS.reduce((s, e) => s + e.revenue, 0)
   const totalSold = EVENTS.reduce((s, e) => s + e.sold, 0)
   const liveCount = EVENTS.filter(e => e.status === "published").length
   const draftCount = EVENTS.filter(e => e.status === "draft").length
-  const gross = totalRevenue
-  const platformFee = gross * (PLATFORM_FEE_PERCENT / 100)
-  const net = gross - platformFee
-  const availableBalance = Math.max(0, net - totalPaidOut - pendingPayout)
+  const visibleSummary = Array.from(revenueSummaries.values()).reduce(
+    (acc, summary) => ({
+      grossRevenue: acc.grossRevenue + summary.grossRevenue,
+      platformFee: acc.platformFee + summary.platformFee,
+      netRevenue: acc.netRevenue + summary.netRevenue,
+      paidOut: acc.paidOut + summary.paidOut,
+      pendingPayouts: acc.pendingPayouts + summary.pendingPayouts,
+      availableBalance: acc.availableBalance + summary.availableBalance,
+    }),
+    { grossRevenue: 0, platformFee: 0, netRevenue: 0, paidOut: 0, pendingPayouts: 0, availableBalance: 0 },
+  )
+  const payoutSummary = organizerRevenueSummary ?? visibleSummary
+  const gross = payoutSummary.grossRevenue
+  const platformFee = payoutSummary.platformFee
+  const net = payoutSummary.netRevenue
+  const totalPaidOut = payoutSummary.paidOut
+  const pendingPayout = payoutSummary.pendingPayouts
+  const availableBalance = payoutSummary.availableBalance
 
   const hasEvents = EVENTS.length > 0
   const hasTiers = allTiers.length > 0
   const hasPublished = EVENTS.some(e => e.status === "published")
   const hasSales = totalSold > 0
+  const orderIssues = (issueRows.rows?.[0] ?? {}) as { paid_no_tickets?: number; duplicate_ledgers?: number; delivery_attention?: number }
+  const paidNoTickets = Number(orderIssues.paid_no_tickets ?? 0)
+  const duplicateLedgers = Number(orderIssues.duplicate_ledgers ?? 0)
+  const deliveryAttention = Number(orderIssues.delivery_attention ?? 0)
+  const lowInventoryCount = EVENTS.filter((e) => e.status === "published" && e.capacity > 0 && e.capacity - e.sold <= 10 && e.capacity - e.sold > 0).length
+  const closedSalesCount = EVENTS.filter((e) => e.status === "published" && e.salesEnded).length
+  const missingTierCount = EVENTS.filter((e) => !e.hasTiers).length
+  const needsAttention = [
+    { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
+    { label: "Missing tiers", value: missingTierCount, href: "/organizer/events/new", icon: Ticket, tone: "rose" },
+    { label: "Paid, no tickets", value: paidNoTickets, href: "/organizer/orders", icon: AlertCircle, tone: "rose" },
+    { label: "Delivery issues", value: deliveryAttention, href: "/organizer/orders", icon: Mail, tone: "amber" },
+    { label: "Payment warnings", value: duplicateLedgers, href: "/organizer/orders", icon: Zap, tone: "amber" },
+    { label: "Sales closed", value: closedSalesCount, href: "/organizer", icon: AlertCircle, tone: "rose" },
+    { label: "Low inventory", value: lowInventoryCount, href: "/organizer?filter=live", icon: Ticket, tone: "amber" },
+    { label: "Payout available", value: availableBalance > 0 ? 1 : 0, href: "/payouts/request", icon: Wallet, tone: "green", amount: availableBalance },
+  ].filter((item) => item.value > 0)
 
   const insightEvent = EVENTS.find(e => e.status === "published" && e.sold > 0) || EVENTS.find(e => e.status === "published") || EVENTS[0]
   const SALES_TOP = [...EVENTS].filter(e => e.netRevenue > 0).sort((a, b) => b.netRevenue - a.netRevenue).slice(0, 5)
   const maxRevenue = Math.max(...SALES_TOP.map(e => e.netRevenue), 1)
-  // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
-  const now = Date.now()
 
   const firstName = session.user.name?.split(" ")[0] ?? "organizer"
 
@@ -142,10 +238,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/organizer/scan" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
-              <ScanLine size={14} /> Scanner
+            <Link href="/organizer/scan" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-ink/85 transition-colors">
+              <ScanLine size={14} /> Scan tickets
             </Link>
-            <Link href="/organizer/events/new" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors">
+            <Link href="/organizer/events/new" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2 transition-colors">
               <Plus size={14} /> New event
             </Link>
           </div>
@@ -153,6 +249,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 space-y-8">
+        <Link
+          href="/organizer/scan"
+          className="lg:hidden sticky top-24 z-20 flex items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-[14px] font-bold text-white shadow-lg shadow-ink/15"
+        >
+          <ScanLine size={16} /> Open gate scanner
+        </Link>
 
         {/* Checklist for new organizers */}
         <NewOrganizerChecklist
@@ -162,6 +264,43 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           hasSales={hasSales}
           firstEventId={EVENTS[0]?.id}
         />
+
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
+          <div className="px-5 py-4 border-b border-line flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <p className="text-[15px] font-semibold text-ink">Needs attention</p>
+              <p className="text-[12px] text-ink-2 mt-0.5">Operational checks across publishing, payment, delivery, inventory, and payouts.</p>
+            </div>
+            <Link href="/organizer/orders" className="inline-flex items-center gap-1 text-[12px] font-semibold text-navy">
+              Review orders <ArrowUpRight size={11} />
+            </Link>
+          </div>
+          {needsAttention.length === 0 ? (
+            <div className="px-5 py-5 flex items-center gap-3 text-[13px] text-emerald-700">
+              <CheckCircle2 size={16} className="text-emerald-600" />
+              Everything important is clear right now.
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-line">
+              {needsAttention.slice(0, 4).map(({ label, value, href, icon: Icon, tone, amount }) => (
+                <Link key={label} href={href} className="px-5 py-4 hover:bg-paper-2 transition-colors">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ring-1 ${
+                      tone === "rose" ? "bg-rose-50 text-rose-700 ring-rose-200" :
+                      tone === "green" ? "bg-emerald-50 text-emerald-700 ring-emerald-200" :
+                      "bg-amber-50 text-amber-700 ring-amber-200"
+                    }`}>
+                      <Icon size={15} />
+                    </span>
+                    <ArrowUpRight size={12} className="text-ink-3" />
+                  </div>
+                  <p className="mt-3 text-[20px] font-bold text-ink tabular-nums">{amount ? formatCurrency(amount, "USD") : value.toLocaleString()}</p>
+                  <p className="mt-1 text-[12px] font-medium text-ink-2">{label}</p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Draft nudge */}
         {draftCount > 0 && (
@@ -275,10 +414,11 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                             <Link href={`/organizer/events/${e.id}`} className="block">
                               <div className="flex items-center gap-2 mb-0.5">
                                 <span className={`w-1.5 h-1.5 rounded-full ${s.dot} shrink-0`} />
-                                <p className="text-[14px] font-semibold text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
-                              </div>
-                              <p className="text-[12px] text-ink-3 pl-3.5">{e.venue}</p>
-                            </Link>
+                              <p className="text-[14px] font-semibold text-ink line-clamp-1 hover:text-navy transition-colors">{e.title}</p>
+                            </div>
+                            <p className="text-[12px] text-ink-3 pl-3.5">{e.venue}</p>
+                            <EventHealthBadges status={e.status} capacity={e.capacity} sold={e.sold} netRevenue={e.netRevenue} hasTiers={e.hasTiers} salesEnded={e.salesEnded} />
+                          </Link>
                           </td>
                           <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{e.startsAt.toLocaleDateString()}</td>
                           <td className="px-3 py-4 text-right min-w-[120px]">
@@ -339,7 +479,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 </div>
                 {pendingPayout > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-ink-2">In progress ({pendingCount})</span>
+                    <span className="text-ink-2">In progress</span>
                     <span className="font-semibold text-amber-700 tabular-nums">{formatCurrency(pendingPayout, "USD")}</span>
                   </div>
                 )}
