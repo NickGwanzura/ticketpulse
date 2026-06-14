@@ -100,6 +100,12 @@ export async function POST(req: Request) {
   const [event] = await db.select().from(events).where(eq(events.slug, parsed.eventSlug)).limit(1)
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 })
 
+  const now = new Date()
+  const eventEndedAt = event.endsAt ?? event.startsAt
+  if (eventEndedAt && new Date(eventEndedAt) < now) {
+    return NextResponse.json({ error: "Ticket sales for this event have ended" }, { status: 400 })
+  }
+
   if (event.status !== "published") {
     return NextResponse.json({ error: "This event is not currently available for purchase" }, { status: 400 })
   }
@@ -136,8 +142,6 @@ export async function POST(req: Request) {
     soldQuantity: availabilityByTier.get(tier.id)?.usedQuantity ?? tier.soldQuantity ?? 0,
   }))
   const tierById = new Map(saleTiers.map((t) => [t.id, t]))
-
-  const now = new Date()
 
   for (const item of ticketItems) {
     const tier = tierById.get(item.tierId)
