@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Calendar, MapPin, ArrowUpRight, Users, Flame } from "lucide-react"
+import { Calendar, MapPin, ArrowUpRight, Flame } from "lucide-react"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 interface EventCardProps {
@@ -122,7 +122,7 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 export default function EventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, featured, lowestPrice, currency = "USD", status,
-  soldQuantity, totalQuantity, isPast,
+  isPast,
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
     gradient: "from-slate-100 to-slate-50",
@@ -134,15 +134,13 @@ export default function EventCard({
 
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
-  const going = soldQuantity ?? 0
-  const capacity = totalQuantity ?? 0
-  const pct = capacity > 0 ? Math.min(100, Math.round((going / capacity) * 100)) : 0
-  const soldOut = status === "sold_out" || pct >= 100
+  const soldOut = status === "sold_out"
+  const sellingFast = title.trim().toLowerCase() === "shenergy"
 
   return (
     <Link
       href={`/events/${slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-line-2 hover:shadow-[0_24px_60px_-20px_rgba(10,37,64,0.22)]"
+      className="tp-premium-card group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:-translate-y-1.5 hover:border-line-2 hover:shadow-[0_30px_80px_-26px_rgba(10,37,64,0.32)]"
     >
       {/* Category header */}
       <div className={`relative h-44 overflow-hidden ${coverImage ? "bg-navy" : `bg-gradient-to-br ${visual.gradient}`}`}>
@@ -172,8 +170,8 @@ export default function EventCard({
             {/* Light wash */}
             <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_25%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
 
-            {/* Soft accent orb */}
-            <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/40 blur-2xl pointer-events-none" />
+            {/* Soft diagonal depth */}
+            <div className="absolute inset-y-0 right-0 w-1/2 skew-x-[-14deg] bg-white/28 pointer-events-none" />
 
             {/* Hover shine */}
             <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -191,6 +189,10 @@ export default function EventCard({
         {isPast ? (
           <span className="absolute top-3 left-3 bg-ink text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
             PAST EVENT
+          </span>
+        ) : sellingFast && !soldOut && status === "published" ? (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-rose-600/25 ring-1 ring-white/20">
+            <Flame size={11} className="animate-pulse fill-white/25" /> Tickets selling fast
           </span>
         ) : featured && !soldOut && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-navy text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full shadow-sm shadow-brand-600/20">
@@ -244,26 +246,6 @@ export default function EventCard({
             <span className="truncate">{venue}, {city}</span>
           </div>
         </div>
-
-        {/* Capacity / going strip — hidden when 0 going so it doesn't scare people off */}
-        {!isPast && !soldOut && status === "published" && capacity > 0 && going > 0 && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2">
-                <Users size={11} className="text-ink-3" />
-                <span><span className="font-semibold text-ink">{going.toLocaleString()}</span> going</span>
-              </span>
-            </div>
-            <div className="h-1 bg-paper-2 rounded-full overflow-hidden ring-1 ring-line">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${
-                  pct >= 90 ? "bg-rose-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500"
-                }`}
-                style={{ width: `${Math.max(8, pct)}%` }}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Footer */}
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-line">

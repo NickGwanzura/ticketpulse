@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Calendar, MapPin, ArrowUpRight, Users, Flame, Ticket } from "lucide-react"
+import { Calendar, MapPin, ArrowUpRight, Flame, Ticket } from "lucide-react"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 interface HeroEventProps {
@@ -52,18 +52,15 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 export default function HeroEventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, lowestPrice, currency = "USD",
-  soldQuantity, totalQuantity,
 }: HeroEventProps) {
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
   const emoji = CATEGORY_EMOJI[category.toLowerCase()] ?? "🎫"
   const gradient = CATEGORY_GRADIENT[category.toLowerCase()] ?? "from-navy via-blue-800 to-indigo-900"
-  const going = soldQuantity ?? 0
-  const capacity = totalQuantity ?? 0
-  const pct = capacity > 0 ? Math.min(100, Math.round((going / capacity) * 100)) : 0
+  const sellingFast = title.trim().toLowerCase() === "shenergy"
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-line bg-navy shadow-xl shadow-ink/10">
+    <section className="tp-premium-card relative overflow-hidden rounded-3xl border border-line bg-navy shadow-xl shadow-ink/10">
       {/* Background */}
       {coverImage ? (
         <>
@@ -116,16 +113,16 @@ export default function HeroEventCard({
               <MapPin size={15} className="text-white/60" />
               {venue}, {city}
             </span>
-            {going > 0 && (
-              <span className="flex items-center gap-2">
-                <Users size={15} className="text-white/60" />
-                {going.toLocaleString()} going
-              </span>
-            )}
           </div>
 
           {/* Countdown + CTA row */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
+            {sellingFast && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/22 px-3.5 py-2 text-[13px] font-bold text-rose-100 ring-1 ring-rose-300/45 backdrop-blur-sm">
+                <Flame size={14} className="animate-pulse fill-rose-200/30 text-rose-200" />
+                Tickets selling fast
+              </span>
+            )}
             {remaining && (
               <span className={`inline-flex items-center gap-1.5 backdrop-blur-sm text-[13px] font-semibold px-3.5 py-2 rounded-full ring-1 ${
                 remaining.kind === "soon"
@@ -151,31 +148,6 @@ export default function HeroEventCard({
           </div>
         </div>
 
-        {/* Capacity ring (right side) */}
-        {capacity > 0 && going > 0 && (
-          <div className="shrink-0 flex flex-col items-center gap-2">
-            <div className="relative w-24 h-24">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="white" strokeOpacity="0.15" strokeWidth="6" />
-                <circle
-                  cx="50" cy="50" r="42"
-                  fill="none"
-                  stroke="white"
-                  strokeOpacity="0.7"
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={`${pct * 2.64} ${264 - pct * 2.64}`}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-bold text-lg tabular-nums">{pct}%</span>
-              </div>
-            </div>
-            <p className="text-[11px] text-white/60 font-medium tracking-wide">
-              {going.toLocaleString()} / {capacity.toLocaleString()}
-            </p>
-          </div>
-        )}
       </div>
     </section>
   )
