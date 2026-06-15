@@ -1,14 +1,21 @@
 import Link from "next/link"
 import { Sparkles, ArrowRight, Check, ShieldCheck, Wallet, Calendar } from "lucide-react"
 import { inputBaseClass } from "@/lib/utils"
+import { applyVendorAction } from "./actions"
 
 const PERKS = [
-  { icon: Wallet,      title: "Verified payouts",  body: "USD, ZAR, EcoCash. Released on event completion, no chasing organizers." },
+  { icon: Wallet,      title: "Verified payouts",  body: "USD settlement to bank or EcoCash after confirmed bookings are reconciled." },
   { icon: ShieldCheck, title: "Verification badge", body: "Earn the verified badge after your first 5 paid events on the platform." },
   { icon: Calendar,    title: "Calendar sync",      body: "We block your calendar automatically once an event is confirmed." },
 ]
 
-export default function VendorsApplyPage() {
+export default async function VendorsApplyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
+
   return (
     <div className="bg-paper-2 min-h-[calc(100vh-4rem)]">
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-20">
@@ -66,10 +73,18 @@ export default function VendorsApplyPage() {
             <h2 className="text-[20px] font-semibold tracking-tight text-ink mb-1">Apply to list</h2>
             <p className="text-xs text-ink-3 mb-6">Takes about 3 minutes. We&apos;ll email you within 48 hours.</p>
 
-            <form className="space-y-4">
+            {error === "invalid" && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
+                Please check the highlighted details and submit again. Descriptions must be at least 30 characters.
+              </div>
+            )}
+
+            <form action={applyVendorAction} className="space-y-4">
               <div>
-                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Business name</label>
+                <label htmlFor="businessName" className="block text-[12px] font-medium text-ink-2 mb-1.5">Business name</label>
                 <input
+                  id="businessName"
+                  name="businessName"
                   type="text"
                   required
                   placeholder="e.g. Mama's Kitchen"
@@ -78,8 +93,10 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Category</label>
+                <label htmlFor="category" className="block text-[12px] font-medium text-ink-2 mb-1.5">Category</label>
                 <select
+                  id="category"
+                  name="category"
                   required
                   className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 >
@@ -97,8 +114,10 @@ export default function VendorsApplyPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Primary city</label>
+                  <label htmlFor="city" className="block text-[12px] font-medium text-ink-2 mb-1.5">Primary city</label>
                   <input
+                    id="city"
+                    name="city"
                     type="text"
                     required
                     placeholder="Harare"
@@ -106,8 +125,10 @@ export default function VendorsApplyPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Phone</label>
+                  <label htmlFor="phone" className="block text-[12px] font-medium text-ink-2 mb-1.5">Phone</label>
                   <input
+                    id="phone"
+                    name="phone"
                     type="tel"
                     required
                     placeholder="+263 77…"
@@ -117,8 +138,10 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Contact email</label>
+                <label htmlFor="email" className="block text-[12px] font-medium text-ink-2 mb-1.5">Contact email</label>
                 <input
+                  id="email"
+                  name="email"
                   type="email"
                   required
                   placeholder="hello@yourbusiness.co.zw"
@@ -127,18 +150,23 @@ export default function VendorsApplyPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">About your service</label>
+                <label htmlFor="description" className="block text-[12px] font-medium text-ink-2 mb-1.5">About your service</label>
                 <textarea
+                  id="description"
+                  name="description"
                   rows={4}
                   required
+                  minLength={30}
                   placeholder="What do you offer, who are your past clients, what makes you the right pick?"
                   className={`${inputBaseClass} resize-none`}
                 />
               </div>
 
               <div>
-                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Portfolio link (optional)</label>
+                <label htmlFor="portfolioLink" className="block text-[12px] font-medium text-ink-2 mb-1.5">Portfolio link (optional)</label>
                 <input
+                  id="portfolioLink"
+                  name="portfolioLink"
                   type="url"
                   placeholder="https://…"
                   className={inputBaseClass}
@@ -146,7 +174,7 @@ export default function VendorsApplyPage() {
               </div>
 
               <label className="flex items-start gap-2.5 text-[13px] text-ink-2 leading-relaxed pt-2">
-                <input type="checkbox" required className="mt-0.5 accent-navy" />
+                <input type="checkbox" name="terms" required className="mt-0.5 accent-navy" />
                 <span>
                   I agree to the <Link href="/legal/terms" className="text-navy font-semibold hover:underline">Vendor Terms</Link> and confirm the information above is accurate.
                 </span>

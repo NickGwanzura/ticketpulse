@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { asc } from "drizzle-orm"
 import { Search, ShieldCheck, Sparkles, ArrowRight, SearchX } from "lucide-react"
 import VendorCard from "@/components/vendors/VendorCard"
 import EmptyState from "@/components/dashboard/EmptyState"
-import { VENDORS, VENDOR_VISUAL } from "@/lib/vendors"
+import { db } from "@/db"
+import { vendors } from "@/db/schema"
+import { VENDOR_VISUAL, type VendorProfile } from "@/lib/vendors"
 import type { VendorCategory } from "@/types"
 
 export const metadata: Metadata = {
@@ -23,6 +26,45 @@ const CATEGORIES: { label: string; value: "all" | VendorCategory }[] = [
   { label: "Decor",       value: "decor" },
 ]
 
+function vendorRowToProfile(row: typeof vendors.$inferSelect): VendorProfile {
+  const portfolio = Array.isArray(row.portfolio) ? row.portfolio : []
+  const priceText = row.priceRange?.match(/\d+(\.\d+)?/)?.[0]
+  const priceFrom = priceText ? Number(priceText) : 0
+
+  return {
+    id: row.id,
+    slug: row.id,
+    businessName: row.businessName,
+    category: row.category,
+    tagline: row.description?.slice(0, 140) ?? "Available for events on TicketPulse.",
+    city: row.city ?? "Zimbabwe",
+    serves: row.city ? [row.city] : ["Zimbabwe"],
+    description: row.description ?? "This vendor is completing their TicketPulse profile.",
+    verified: row.verified ?? false,
+    rating: row.rating ? Number(row.rating) : 0,
+    reviewCount: 0,
+    totalEvents: 0,
+    responseTimeHours: 24,
+    priceFrom,
+    currency: "USD",
+    portfolio: portfolio.map((url, index) => ({
+      title: `Portfolio item ${index + 1}`,
+      year: new Date().getFullYear(),
+      venue: url,
+    })),
+    packages: [
+      {
+        id: `${row.id}-quote`,
+        name: "Custom event quote",
+        description: row.priceRange ?? "Request availability and pricing for your event.",
+        price: priceFrom,
+        currency: "USD",
+        bullets: ["Scope confirmed with the vendor", "Organizer enquiry routed by TicketPulse", "Booking support available"],
+      },
+    ],
+  }
+}
+
 export default async function VendorsPage({
   searchParams,
 }: {
@@ -32,8 +74,10 @@ export default async function VendorsPage({
   const activeCategory = (sp.category ?? "all") as "all" | VendorCategory
   const query = (sp.q ?? "").trim().toLowerCase()
   const verifiedOnly = sp.verified === "1"
+  const vendorRows = await db.select().from(vendors).orderBy(asc(vendors.createdAt))
+  const allVendors = vendorRows.map(vendorRowToProfile)
 
-  const filtered = VENDORS.filter((v) => {
+  const filtered = allVendors.filter((v) => {
     if (activeCategory !== "all" && v.category !== activeCategory) return false
     if (verifiedOnly && !v.verified) return false
     if (query) {
@@ -43,8 +87,8 @@ export default async function VendorsPage({
     return true
   })
 
-  const verifiedCount = VENDORS.filter((v) => v.verified).length
-  const cityCount = new Set(VENDORS.flatMap((v) => v.serves)).size
+  const verifiedCount = allVendors.filter((v) => v.verified).length
+  const cityCount = new Set(allVendors.flatMap((v) => v.serves)).size
 
   return (
     <div className="tp-fade-up">
@@ -73,7 +117,7 @@ export default async function VendorsPage({
           {/* Quick stats */}
           <div className="mt-8 grid grid-cols-3 max-w-md gap-4">
             <div>
-              <p className="text-[22px] md:text-[26px] font-bold tracking-tight text-ink leading-none">{VENDORS.length}+</p>
+              <p className="text-[22px] md:text-[26px] font-bold tracking-tight text-ink leading-none">{allVendors.length}+</p>
               <p className="text-[13px] text-ink-3 mt-1.5">Active vendors</p>
             </div>
             <div>
@@ -167,7 +211,7 @@ export default async function VendorsPage({
               <VendorCard key={vendor.slug} vendor={vendor} />
             ))}
           </div>
-        ) : VENDORS.length === 0 ? (
+        ) : allVendors.length === 0 ? (
           <EmptyState
             icon={SearchX}
             title="Vendor catalogue coming soon"
@@ -225,7 +269,7 @@ export default async function VendorsPage({
               <ul className="grid grid-cols-2 gap-3">
                 {[
                   ["Direct bookings", "No middleman, no markup. Organizers find you."],
-                  ["Verified payouts", "USD, ZAR, EcoCash. Cleared on event completion."],
+                  ["Verified payouts", "USD bank or EcoCash settlement after reconciliation."],
                   ["Profile boost", "Verified badge after your first 5 paid events."],
                   ["Calendar sync", "Avoid double bookings with our event calendar."],
                 ].map(([title, body]) => (

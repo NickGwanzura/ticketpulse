@@ -32,24 +32,6 @@ import { db } from "@/db"
 import { events as eventsTable, reviews, ticketTiers, tickets as ticketsTable } from "@/db/schema"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 
-const CATEGORY_HERO_VISUAL: Record<string, { emoji: string; gradient: string; accent: string }> = {
-  concert:    { emoji: "🎵", gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  accent: "text-violet-700" },
-  marathon:   { emoji: "🏃", gradient: "from-sky-100 via-blue-50 to-cyan-50",        accent: "text-sky-700" },
-  walkathon:  { emoji: "🚶", gradient: "from-green-100 via-teal-50 to-cyan-50",    accent: "text-green-700" },
-  film:       { emoji: "🎬", gradient: "from-amber-100 via-orange-50 to-rose-50",    accent: "text-amber-700" },
-  exhibition: { emoji: "🏢", gradient: "from-slate-100 via-blue-50 to-indigo-50",    accent: "text-slate-700" },
-  expedition: { emoji: "⛰️", gradient: "from-lime-100 via-green-50 to-teal-50",    accent: "text-green-800" },
-}
-
-interface HeroTicket {
-  slug: string
-  title: string
-  venue: string
-  date: Date
-  accent: string
-  badge: { label: string; color: string }
-}
-
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox and WhatsApp the moment payment clears. Your account is auto-created — no password required." },
   { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once. You can also find and resend tickets from order lookup." },
@@ -61,26 +43,6 @@ const FAQ = [
   { q: "How do I sell tickets to my own event?",    a: "Sign up as an organizer, build your event in the dashboard, and share your link. You get sales tracking, attendee exports, broadcasts, scanner stats, payout ledgers, and verified reviews in one place." },
   { q: "What about photo packs and merch?",         a: "Built-in. Organizers can add merch and photo packs that attendees can buy at checkout or after the event, no extra integrations." },
 ]
-
-function buildHeroTickets(featured: FeaturedEvent[]): HeroTicket[] {
-  return featured.slice(0, 3).map((event) => {
-    const visual = CATEGORY_HERO_VISUAL[event.category.toLowerCase()] ?? {
-      emoji: "🎫",
-      gradient: "from-slate-100 via-blue-50 to-indigo-50",
-      accent: "text-slate-700",
-    }
-    return {
-      slug: event.slug,
-      title: event.title,
-      venue: `${event.venue} · ${event.city}`,
-      date: event.startsAt,
-      accent: visual.accent,
-      badge: event.status === "sold_out"
-        ? { label: "SOLD OUT", color: "bg-rose-600 text-white" }
-        : { label: "ON SALE", color: "bg-brand-600 text-white" },
-    }
-  })
-}
 
 const CATEGORIES = [
   { label: "Concerts",    value: "concert",    icon: Music,      gradient: "from-violet-50 to-fuchsia-50",   ring: "ring-violet-200/60",   accent: "text-violet-700" },
@@ -140,7 +102,6 @@ const ORGANIZER_BENEFITS = [
 
 export default async function Home() {
   const featuredEvents = await getFeaturedEvents(3)
-  const heroTickets = buildHeroTickets(featuredEvents)
   const eventsOnSale = featuredEvents.length
 
   // ── Events by category (for category cards) ──
@@ -475,30 +436,6 @@ export default async function Home() {
             ))}
           </div>
         </div>
-
-        {heroTickets.length > 0 && (
-          <div className="mt-8 rounded-2xl border border-sky-200/70 bg-gradient-to-br from-sky-50 via-white to-amber-50 p-4 md:p-5">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue">Live examples</p>
-                <h3 className="mt-1 text-[18px] font-bold tracking-tight text-ink">Events currently selling on TicketPulse</h3>
-              </div>
-              <Link href="/events" className="inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:underline">
-                View all <ArrowUpRight size={13} />
-              </Link>
-            </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              {heroTickets.map((ticket) => (
-                <Link key={ticket.slug} href={`/events/${ticket.slug}`} className="tp-premium-card rounded-xl border border-white/80 bg-white/82 p-4 shadow-sm shadow-ink/[0.03] transition hover:border-line-2 hover:bg-white">
-                  <p className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${ticket.accent}`}>{ticket.badge.label}</p>
-                  <h4 className="mt-1 line-clamp-1 text-[15px] font-bold text-ink">{ticket.title}</h4>
-                  <p className="mt-2 flex items-center gap-1.5 text-[12px] text-ink-3"><Calendar size={12} /> {formatDateShort(ticket.date)}</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-3"><MapPin size={12} /> <span className="line-clamp-1">{ticket.venue}</span></p>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
 
         {pastEvents.length > 0 && (
           <div className="mt-5 rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-4 md:p-5">

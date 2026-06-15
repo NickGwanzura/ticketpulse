@@ -1,21 +1,62 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import { eq } from "drizzle-orm"
 import {
   Star, MapPin, ShieldCheck, Calendar, Clock, Globe, Phone, Mail,
   Check, ArrowUpRight, MessageSquare, Sparkles,
 } from "lucide-react"
+import { db } from "@/db"
+import { vendors } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
-import { getVendorBySlug, VENDOR_VISUAL, VENDORS } from "@/lib/vendors"
+import { VENDOR_VISUAL, type VendorProfile } from "@/lib/vendors"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import EnquiryForm from "@/components/vendors/EnquiryForm"
 
-export function generateStaticParams() {
-  return VENDORS.map((v) => ({ slug: v.slug }))
+export const dynamic = "force-dynamic"
+
+function vendorRowToProfile(row: typeof vendors.$inferSelect): VendorProfile {
+  const portfolio = Array.isArray(row.portfolio) ? row.portfolio : []
+  const priceText = row.priceRange?.match(/\d+(\.\d+)?/)?.[0]
+  const priceFrom = priceText ? Number(priceText) : 0
+
+  return {
+    id: row.id,
+    slug: row.id,
+    businessName: row.businessName,
+    category: row.category,
+    tagline: row.description?.slice(0, 140) ?? "Available for events on TicketPulse.",
+    city: row.city ?? "Zimbabwe",
+    serves: row.city ? [row.city] : ["Zimbabwe"],
+    description: row.description ?? "This vendor is completing their TicketPulse profile.",
+    verified: row.verified ?? false,
+    rating: row.rating ? Number(row.rating) : 0,
+    reviewCount: 0,
+    totalEvents: 0,
+    responseTimeHours: 24,
+    priceFrom,
+    currency: "USD",
+    portfolio: portfolio.map((url, index) => ({
+      title: `Portfolio item ${index + 1}`,
+      year: new Date().getFullYear(),
+      venue: url,
+    })),
+    packages: [
+      {
+        id: `${row.id}-quote`,
+        name: "Custom event quote",
+        description: row.priceRange ?? "Request availability and pricing for your event.",
+        price: priceFrom,
+        currency: "USD",
+        bullets: ["Scope confirmed with the vendor", "Organizer enquiry routed by TicketPulse", "Booking support available"],
+      },
+    ],
+  }
 }
 
 export default async function VendorProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const vendor = getVendorBySlug(slug)
+  const [row] = await db.select().from(vendors).where(eq(vendors.id, slug)).limit(1)
+  const vendor = row ? vendorRowToProfile(row) : null
   if (!vendor) notFound()
 
   const visual = VENDOR_VISUAL[vendor.category]
