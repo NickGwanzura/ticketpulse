@@ -606,7 +606,9 @@ export async function POST(req: Request) {
     const redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
     const transactionBody = transaction.body ?? null
     const transactionTrace = getVelocityTransactionTrace(transaction)
-    const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus      log.info("velocity checkout - transaction response", {
+    const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus
+
+    log.info("velocity checkout - transaction response", {
         orderId,
         processor,
         authType,
