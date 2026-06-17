@@ -43,7 +43,12 @@ export async function POST(req: Request) {
   }
 
   const { transactionTrace, salesOrderTrace } = parsed.data
-  log.info("velocity callback - received", { transactionTrace, salesOrderTrace })
+  log.info("velocity callback - received", {
+    transactionTrace,
+    salesOrderTrace,
+    pollStatus: parsed.data.pollStatus,
+    allFields: Object.keys(rawBody as Record<string, unknown>).join(", "),
+  })
 
   const lockKey = `velocity-finalize:${salesOrderTrace}`
 
@@ -60,7 +65,11 @@ export async function POST(req: Request) {
       .limit(1)
 
     if (existing) {
-      log.info("velocity callback - already processed, acknowledging", { salesOrderTrace })
+      log.info("velocity callback - already processed (ledger entry exists), acknowledging", {
+        salesOrderTrace,
+        transactionTrace,
+        existingId: existing.id,
+      })
       return NextResponse.json({ status: "acknowledged", note: "Already processed" })
     }
 
@@ -69,8 +78,11 @@ export async function POST(req: Request) {
 
     log.info("velocity callback - poll result", {
       transactionTrace,
+      salesOrderTrace,
       localStatus: normalized.localStatus,
       velocityPollStatus: normalized.velocityPollStatus,
+      velocityPaymentStatus: normalized.velocityPaymentStatus,
+      velocityWorkflowStatus: normalized.velocityWorkflowStatus,
     })
 
     if (normalized.localStatus === "PAID") {

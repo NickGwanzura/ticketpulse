@@ -295,8 +295,18 @@ export default function CheckoutPage() {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? "Checkout failed")
+        let errorMsg = "Checkout failed"
+        try {
+          const errBody = await res.json()
+          errorMsg = errBody.error ?? errorMsg
+        } catch { /* use default */ }
+
+        // Card payment specific: if we got a 502 (bad gateway) during card
+        // payment, the provider may not have returned a checkout URL.
+        if (res.status === 502 && form.payment === "velocity-card") {
+          throw new Error(errorMsg || "The card payment service is temporarily unavailable. Please try again or choose EcoCash.")
+        }
+        throw new Error(errorMsg)
       }
       const data = (await res.json()) as CheckoutResponse
 

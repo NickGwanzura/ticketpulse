@@ -75,9 +75,29 @@ describe("velocity validation", () => {
   })
 
   describe("validateTransactionPayload", () => {
-    it("returns null for valid payload", () => {
+    it("returns null for valid ECOCASH payload", () => {
       expect(validateTransactionPayload({
         amount: 50, processor: "ECOCASH", phone: "+263771234567", currency: "USD",
+      })).toBeNull()
+    })
+
+    it("returns null for valid VMC (card) payload with valid phone", () => {
+      expect(validateTransactionPayload({
+        amount: 50, processor: "VMC", phone: "+263771234567", currency: "USD",
+      })).toBeNull()
+    })
+
+    it("returns null for VMC (card) payload with unusual phone format", () => {
+      // Card payments relax phone validation — unusual formats are accepted
+      expect(validateTransactionPayload({
+        amount: 50, processor: "VMC", phone: "12345", currency: "USD",
+      })).toBeNull()
+    })
+
+    it("returns null for VMC (card) payload with empty phone", () => {
+      // Card payments relax phone validation — empty phone is accepted
+      expect(validateTransactionPayload({
+        amount: 50, processor: "VMC", phone: "", currency: "USD",
       })).toBeNull()
     })
 
@@ -87,7 +107,7 @@ describe("velocity validation", () => {
       })).toContain("Invalid payment processor")
     })
 
-    it("rejects bad phone", () => {
+    it("rejects bad phone for ECOCASH", () => {
       expect(validateTransactionPayload({
         amount: 50, processor: "ECOCASH", phone: "12345", currency: "USD",
       })).toContain("Invalid phone")

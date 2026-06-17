@@ -244,6 +244,31 @@ async function handlePollSuccess(
     velocitySalesOrderTrace: velocityMeta.salesOrderTrace,
   })
 
+  // ── Re-check if another process (callback, cron, concurrent poll) already
+  // finalized this order. If the order status is no longer "pending", skip
+  // the finalizeWorkflow call to avoid a redundant (and possibly failing)
+  // API call to Velocity.
+  const [currentOrder] = await db
+    .select({ status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, id))
+    .limit(1)
+
+  if (currentOrder && currentOrder.status !== "pending") {
+    log.info("velocity status - order already processed (status changed), skipping finalizeWorkflow", {
+      localOrderId: id,
+      currentStatus: currentOrder.status,
+    })
+    const isPaid = PAID_STATUSES.has(currentOrder.status ?? "")
+    return NextResponse.json({
+      orderId: id,
+      status: currentOrder.status,
+      paid: isPaid,
+      pollStatus: "SUCCESS",
+      note: isPaid ? "Already confirmed by another process" : "Already processed, status unchanged",
+    })
+  }
+
   const finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
 
   log.info("velocity status - finalize workflow response", {

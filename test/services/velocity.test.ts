@@ -156,6 +156,63 @@ describe("velocity service", () => {
       const result = mod.normalizeVelocityPollResponse(raw)
       expect(result.rawResponse).toBe(raw)
     })
+
+    // ── CARD PAYMENT EDGE CASES ──────────────────────────────────────────
+    it("returns PAID when paymentStatus is SUCCESS even if pollStatus is FAILED (async settlement)", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "SUCCESS", pollStatus: "FAILED",
+      }))
+      expect(result.localStatus).toBe("PAID")
+      expect(result.velocityPaymentStatus).toBe("SUCCESS")
+    })
+
+    it("returns PAID when paymentStatus is SUCCESS even if pollStatus is PENDING", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "SUCCESS", pollStatus: "PENDING",
+      }))
+      expect(result.localStatus).toBe("PAID")
+      expect(result.velocityPollStatus).toBe("PENDING")
+      expect(result.velocityPaymentStatus).toBe("SUCCESS")
+    })
+
+    it("returns FAILED when paymentStatus is FAILED and pollStatus is PENDING", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "FAILED", pollStatus: "PENDING",
+      }))
+      expect(result.localStatus).toBe("FAILED")
+    })
+
+    it("returns FAILED when pollStatus is FAILED even without paymentStatus", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: undefined, pollStatus: "FAILED",
+      }))
+      expect(result.localStatus).toBe("FAILED")
+    })
+
+    it("returns PENDING when both statuses are PENDING", () => {
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "PENDING", pollStatus: "PENDING",
+      }))
+      expect(result.localStatus).toBe("PENDING")
+    })
+
+    it("returns UNKNOWN when response body is empty", () => {
+      const resp = pollResponse({})
+      resp.body.paymentStatus = undefined as unknown as string
+      resp.body.pollStatus = undefined as unknown as string
+      const result = mod.normalizeVelocityPollResponse(resp)
+      expect(result.localStatus).toBe("UNKNOWN")
+    })
+
+    it("returns PAID for SUCCESS paymentStatus with post-event settlement delay", () => {
+      // Card payments often settle asynchronously — Velocity confirms the
+      // payment (paymentStatus=SUCCESS) before the poll workflow completes.
+      const result = mod.normalizeVelocityPollResponse(pollResponse({
+        paymentStatus: "SUCCESS",
+        pollStatus: "PENDING",
+      }))
+      expect(result.localStatus).toBe("PAID")
+    })
   })
 
   // ─── FULL FLOW INTEGRATION TESTS ──────────────────────────────────────

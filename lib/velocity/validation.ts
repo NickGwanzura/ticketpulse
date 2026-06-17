@@ -68,6 +68,13 @@ export function validateSalesOrderPayload(params: {
   return null
 }
 
+/**
+ * Validate the transaction payload before sending to Velocity.
+ *
+ * For card (VMC) payments, phone number validation is relaxed because
+ * the debit phone is less critical for hosted checkout — Velocity's
+ * card flow doesn't send a USSD prompt to the phone number.
+ */
 export function validateTransactionPayload(params: {
   amount: number
   processor: string
@@ -80,8 +87,13 @@ export function validateTransactionPayload(params: {
   if (!validatePaymentProcessor(params.processor)) {
     return `Invalid payment processor: ${params.processor}`
   }
-  if (!validatePhone(params.phone)) {
-    return "Invalid phone number format. Must start with +"
+  // For card payments (VMC), the phone number is sent to Velocity but
+  // not used for a USSD prompt — relax validation so that edge cases
+  // (e.g. non-Zimbabwe numbers, slightly unusual formatting) don't block
+  // the transaction. For EcoCash the phone MUST be valid since
+  // Velocity uses it to send the payment prompt.
+  if (params.processor !== "VMC" && !validatePhone(params.phone)) {
+    return "Invalid phone number format. Must start with + and contain 7-14 digits after the country code (e.g. +263771234567)"
   }
   if (!validateCurrency(params.currency)) {
     return `Invalid currency: ${params.currency}`

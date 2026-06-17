@@ -24,6 +24,7 @@ function extractRedirectUrl(body: Record<string, unknown>): string | undefined {
     "authorizationUrl", "authorization_url",
     "hostedUrl", "hosted_url", "paymentLink", "payment_link",
     "checkoutLink", "checkout_link", "embeddedUrl", "embedded_url",
+    "url",
   ]
 
   for (const key of candidates) {
@@ -577,10 +578,15 @@ export async function POST(req: Request) {
       returnUrlFields.cancelUrl = `${getBaseUrl()}/orders/${orderId}?error=cancelled`
     }
 
+    // For card (VMC) payments, use the merchant phone as a fallback if the
+    // buyer's phone is empty or invalid — Velocity still requires a debitPhone
+    // value, but it's not used for a USSD prompt.
+    const effectivePhone = formattedPhone || config.merchantPhone || "+263000000000"
+
     const transactionPayload = {
       amount: total,
       paymentProcessorLabel: processor,
-      debitPhone: formattedPhone,
+      debitPhone: effectivePhone,
       debitRegion: "ZW",
       debitCurrency: currency as "USD" | "ZWG",
       debitRef: orderId,
@@ -599,20 +605,21 @@ export async function POST(req: Request) {
     const redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
     const transactionBody = transaction.body ?? null
     const transactionTrace = getVelocityTransactionTrace(transaction)
-    const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus
-
-    log.info("velocity checkout - transaction response", {
-      orderId,
-      processor,
-      authType,
-      trace: transactionTrace,
-      pollStatus,
-      paymentStatus: transactionBody?.paymentStatus ?? null,
-      externalId: transaction.externalId ?? null,
-      redirectUrlFound: !!redirectUrl,
-      allBodyKeys: transactionBody ? Object.keys(transactionBody).join(", ") : "",
-      allResponseKeys: Object.keys(transaction).join(", "),
-    })
+    const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus      log.info("velocity checkout - transaction response", {
+        orderId,
+        processor,
+        authType,
+        trace: transactionTrace,
+        pollStatus,
+        paymentStatus: transactionBody?.paymentStatus ?? null,
+        externalId: transaction.externalId ?? null,
+        redirectUrlFound: !!redirectUrl,
+        redirectUrlPreview: redirectUrl ? `${redirectUrl.slice(0, 80)}...` : null,
+        bodyType: transactionBody === null ? "null" : typeof transactionBody,
+        allBodyKeys: transactionBody ? Object.keys(transactionBody).join(", ") : "",
+        allResponseKeys: Object.keys(transaction).join(", "),
+        message: transaction.message ?? null,
+      })
 
     if (!transactionTrace) {
       await db
@@ -626,7 +633,7 @@ export async function POST(req: Request) {
               outstandingAmount: total,
               paymentProcessor: processor,
               pollStatus: "UNKNOWN" as VelocityPollStatus,
-              paymentStatus: transactionBody?.paymentStatus ?? null,
+              paymentStatus: null,
               paymentRef: null,
               invoiceRef: null,
               initiatedAt: new Date().toISOString(),
@@ -640,10 +647,16 @@ export async function POST(req: Request) {
 
       log.error("velocity checkout - transaction missing trace", {
         orderId,
+        processor,
+        authType,
         responseBody: JSON.stringify(transaction).slice(0, 2000),
       })
+
+      const userMsg = isCard
+        ? "The card payment service did not return a transaction reference. No charge has been made. Please try again or choose a different payment method."
+        : "The payment service did not return a transaction reference. Please try again."
       return NextResponse.json({
-        error: "Velocity did not return a transaction reference. Please try again.",
+        error: userMsg,
       }, { status: 502 })
     }
 
@@ -681,10 +694,14 @@ export async function POST(req: Request) {
 
       log.error("velocity checkout - card payment missing redirect URL", {
         orderId,
-        responseBody: JSON.stringify(transaction).slice(0, 2000),
+        processor,
+        authType,
+        transactionTrace: transactionTrace ?? "(no trace)",
+        transactionBody: transactionBody ? JSON.stringify(transactionBody).slice(0, 2000) : "null",
+        allResponseKeys: Object.keys(transaction).join(", "),
       })
       return NextResponse.json({
-        error: "Velocity did not return a payment URL for card transaction. Please try a different payment method.",
+        error: "The card payment provider did not return a checkout page. No charge has been made. Please try again or choose EcoCash.",
       }, { status: 502 })
     }
 
