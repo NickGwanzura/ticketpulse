@@ -12,6 +12,7 @@ import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
 import { getTierAvailability } from "@/lib/ticket-availability"
+import { alertTransactionFailed } from "@/lib/payment-alerts"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
 
 // Flexible redirect URL extraction: recursively checks the entire Velocity response
@@ -652,6 +653,14 @@ export async function POST(req: Request) {
         responseBody: JSON.stringify(transaction).slice(0, 2000),
       })
 
+      // Fire alert for missing transaction trace
+      alertTransactionFailed(
+        "Transaction missing trace",
+        orderId,
+        parsed.paymentMethod,
+        { processor, authType, responseBodyPreview: JSON.stringify(transaction).slice(0, 500) },
+      )
+
       const userMsg = isCard
         ? "The card payment service did not return a transaction reference. No charge has been made. Please try again or choose a different payment method."
         : "The payment service did not return a transaction reference. Please try again."
@@ -700,6 +709,20 @@ export async function POST(req: Request) {
         transactionBody: transactionBody ? JSON.stringify(transactionBody).slice(0, 2000) : "null",
         allResponseKeys: Object.keys(transaction).join(", "),
       })
+
+      // Fire alert for missing card redirect URL
+      alertTransactionFailed(
+        `Card payment missing redirect URL (transactionTrace: ${transactionTrace ?? "none"})`,
+        orderId,
+        parsed.paymentMethod,
+        {
+          processor,
+          authType,
+          hasTransactionTrace: !!transactionTrace,
+          responseBodyKeys: Object.keys(transaction).join(", "),
+        },
+      )
+
       return NextResponse.json({
         error: "The card payment provider did not return a checkout page. No charge has been made. Please try again or choose EcoCash.",
       }, { status: 502 })
@@ -720,6 +743,15 @@ export async function POST(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Checkout failed"
     log.error("velocity checkout failed", { orderId, error: message })
+
+    // Alert on Velocity API errors during checkout (network errors, auth failures, etc.)
+    alertTransactionFailed(
+      `Velocity API error: ${message.slice(0, 200)}`,
+      orderId,
+      parsed.paymentMethod,
+      { errorMessage: message.slice(0, 500) },
+    ).catch(() => {})
+
     await cancelWithInventoryRelease()
     return NextResponse.json({ error: message }, { status: 502 })
   }

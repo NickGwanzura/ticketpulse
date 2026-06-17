@@ -7,6 +7,10 @@ import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { log } from "@/lib/logger"
+import {
+  alertCallbackOrderNotFound,
+  alertFinalizeNonPaid,
+} from "@/lib/payment-alerts"
 
 const CallbackBody = z.object({
   transactionTrace: z.string().min(1),
@@ -119,6 +123,13 @@ export async function POST(req: Request) {
 
       if (!order) {
         log.error("velocity callback - order not found for salesOrderTrace", { salesOrderTrace })
+
+        // Alert: Velocity callback received for an order that doesn't exist locally
+        alertCallbackOrderNotFound(
+          transactionTrace,
+          salesOrderTrace,
+          rawBody as Record<string, unknown> | null,
+        )
 
         await db.insert(paymentLedger).values({
           orderId: "00000000-0000-0000-0000-000000000000",

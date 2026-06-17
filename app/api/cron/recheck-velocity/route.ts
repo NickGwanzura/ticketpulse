@@ -10,6 +10,7 @@ import {
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
+import { alertRecheckHighErrorRate } from "@/lib/payment-alerts"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const MAX_ORDERS_PER_RUN = 30
@@ -272,6 +273,16 @@ export async function POST(request: Request) {
     errors: errorCount,
     elapsedMs: elapsed,
   })
+
+  // Alert on high error rates — indicates systemic issue with Velocity API
+  if (targetOrders.length > 0) {
+    alertRecheckHighErrorRate(
+      targetOrders.length,
+      errorCount,
+      fixedCount,
+      results.filter((r) => r.action === "error").map((r) => ({ orderId: r.orderId, reason: r.reason })),
+    ).catch(() => {})
+  }
 
   return NextResponse.json({
     checked: targetOrders.length,

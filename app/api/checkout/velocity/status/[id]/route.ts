@@ -7,6 +7,11 @@ import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
+import {
+  alertPollUnknownStatus,
+  alertFinalizeNonPaid,
+  alertVelocityUnexpectedResponse,
+} from "@/lib/payment-alerts"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
 
 // Must match POLL_TIMEOUT_MS in app/checkout/page.tsx.
@@ -191,6 +196,16 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         state: pollResult.state,
         status: pollResult.status,
       })
+
+      // Alert admin that a payment poll returned an unrecognized status
+      alertPollUnknownStatus(
+        id,
+        velocityMeta.transactionTrace,
+        normalized.velocityPollStatus,
+        normalized.velocityPaymentStatus,
+        pollResult.state,
+      )
+
       return NextResponse.json({
         orderId: id,
         status: "pending",
@@ -290,6 +305,15 @@ async function handlePollSuccess(
       outstandingAmount: finalizeResult.body.salesOrder.outstandingAmount,
       paidAmount: finalizeResult.body.salesOrder.paidAmount,
     })
+
+    // Alert: poll confirmed payment but workflow finalization disagrees
+    alertFinalizeNonPaid(
+      id,
+      velocityMeta.salesOrderTrace,
+      salesOrderStatus,
+      Number(finalizeResult.body.salesOrder.outstandingAmount),
+    )
+
     return NextResponse.json({
       orderId: id,
       status: "pending",

@@ -1,5 +1,6 @@
 import "server-only"
 import { log } from "@/lib/logger"
+import { alertPaymentAnomaly } from "@/lib/payment-alerts"
 import type {
   CreateSalesOrderPayload,
   CreateSalesOrderResponse,
@@ -110,19 +111,40 @@ async function velocityRequest<T>(
       })
 
       let errorMessage: string
+      let parsedErrorBody: Record<string, unknown> | null = null
       if (errorBody) {
         try {
-          const parsed = JSON.parse(errorBody)
-          const details = Array.isArray(parsed.errors) && parsed.errors.length
-            ? parsed.errors.join("; ")
-            : parsed.message ?? errorBody
+          parsedErrorBody = JSON.parse(errorBody)
+          const details = Array.isArray(parsedErrorBody.errors) && parsedErrorBody.errors.length
+            ? parsedErrorBody.errors.join("; ")
+            : parsedErrorBody.message ?? errorBody
           errorMessage = `Velocity API error: ${details}`
         } catch {
+          parsedErrorBody = { rawBody: errorBody.slice(0, 500) }
           errorMessage = `Velocity API error: ${errorBody}`
         }
       } else {
         errorMessage = `Velocity API returned status ${response.status}`
       }
+
+      // Alert on high-severity API errors (5xx server errors, auth failures)
+      if (response.status >= 500 || response.status === 401 || response.status === 403) {
+        alertPaymentAnomaly({
+          type: "VELOCITY_API_UNEXPECTED_FORMAT",
+          severity: response.status >= 500 ? "high" : "critical",
+          title: `Velocity API error (${response.status})`,
+          detail: `${method} ${path} returned HTTP ${response.status}: ${errorMessage.slice(0, 300)}`,
+          context: {
+            path,
+            method,
+            httpStatus: response.status,
+            elapsed,
+            errorPreview: errorMessage.slice(0, 500),
+            parsedErrorBody: parsedErrorBody ? Object.keys(parsedErrorBody).slice(0, 10) : null,
+          },
+        }).catch(() => {})
+      }
+
       throw new Error(errorMessage)
     }
 
@@ -152,6 +174,16 @@ async function velocityRequest<T>(
       path,
       error: err instanceof Error ? err.message : String(err),
     })
+
+    // Alert on network errors to Velocity API
+    alertPaymentAnomaly({
+      type: "VELOCITY_NETWORK_ERROR",
+      severity: "high",
+      title: "Network error communicating with Velocity",
+      detail: `${method} ${path} failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      context: { path, method },
+    }).catch(() => {})
+
     throw new Error(`Network error communicating with Velocity Africa: ${err instanceof Error ? err.message : "Unknown error"}`)
   }
 }
