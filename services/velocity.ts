@@ -16,7 +16,7 @@ import type {
 function getConfig(): VelocityConfig {
   const apiKey = process.env.VELOCITY_API_KEY
   const baseUrl = process.env.VELOCITY_BASE_URL ?? "https://api.velocityafrica.net"
-  const itemCode = process.env.VELOCITY_ITEM_CODE ?? "tp002"
+  const itemCode = process.env.VELOCITY_ITEM_CODE ?? "tp001"
   const merchantPhone = process.env.VELOCITY_MERCHANT_PHONE
 
   if (!apiKey) {
@@ -115,9 +115,10 @@ async function velocityRequest<T>(
       if (errorBody) {
         try {
           parsedErrorBody = JSON.parse(errorBody)
-          const details = Array.isArray(parsedErrorBody.errors) && parsedErrorBody.errors.length
-            ? parsedErrorBody.errors.join("; ")
-            : parsedErrorBody.message ?? errorBody
+          const parsed = parsedErrorBody!
+          const details = Array.isArray(parsed.errors) && parsed.errors.length
+            ? (parsed.errors as unknown[]).join("; ")
+            : (parsed.message as string | undefined) ?? errorBody
           errorMessage = `Velocity API error: ${details}`
         } catch {
           parsedErrorBody = { rawBody: errorBody.slice(0, 500) }

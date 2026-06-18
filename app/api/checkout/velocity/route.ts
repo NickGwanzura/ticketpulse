@@ -4,7 +4,7 @@ import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { checkoutLimiter } from "@/lib/rate-limit"
-import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId } from "@/services/velocity"
+import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
 import { withLock } from "@/lib/velocity/idempotency"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
@@ -13,7 +13,7 @@ import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed } from "@/lib/payment-alerts"
-import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
+import type { VelocityOrderMetadata, VelocityPollStatus, InitiateTransactionPayload } from "@/types/velocity"
 
 // Flexible redirect URL extraction: recursively checks the entire Velocity response
 // for any field name that could contain a hosted checkout URL.
@@ -53,6 +53,85 @@ function getVelocityTransactionTrace(transaction: {
 }): string | null {
   return transaction.body?.trace ?? transaction.externalId ?? null
 }
+
+/**
+ * Recover the hosted checkout redirect URL for an existing card transaction.
+ *
+ * When a card order is resumed (e.g. page refresh / double-click), Velocity has
+ * already created the transaction but the redirect URL was not persisted. We
+ * re-poll the transaction and re-initiate a fresh transaction to get a new
+ * redirect URL from Velocity.
+ *
+ * Returns the URL on success, null if unavailable.
+ */
+async function recoverCardRedirectUrl(
+  transactionTrace: string,
+  salesOrderTrace: string,
+  salesOrderId: string | undefined,
+  orderId: string,
+): Promise<string | null> {
+  try {
+    // First try: poll the existing transaction — Velocity may embed the redirect
+    // URL in the poll response.
+    const pollResult = await pollTransaction(transactionTrace)
+    const pollRedirect = extractRedirectUrl(pollResult as unknown as Record<string, unknown>)
+    if (pollRedirect) {
+      log.info("velocity checkout - recovered redirect URL from poll", { orderId, transactionTrace })
+      return pollRedirect
+    }
+
+    // Second try: re-initiate a new transaction against the same sales order.
+    // Only possible if we have the Velocity sales order UUID. Velocity will
+    // generate a fresh hosted checkout session with a new redirect URL.
+    if (salesOrderId) {
+      const config = getConfig()
+      const txPayload: InitiateTransactionPayload = {
+        amount: 0, // amount is on the sales order; Velocity reads from it
+        paymentProcessorLabel: "VMC",
+        debitPhone: config.merchantPhone || "+263000000000",
+        debitRegion: "ZW",
+        debitCurrency: "USD",
+        debitRef: orderId,
+        creditPhone: config.merchantPhone,
+        creditRegion: "ZW",
+        creditAccount: config.merchantPhone,
+        type: "REQUEST",
+        authType: "WEB",
+        salesOrderId,
+        returnUrl: `${getBaseUrl()}/api/checkout/velocity/return/${orderId}`,
+      }
+      const newTx = await initiateTransaction(txPayload)
+      const newRedirect = extractRedirectUrl(newTx as unknown as Record<string, unknown>)
+      if (newRedirect) {
+        log.info("velocity checkout - recovered redirect URL from re-initiated transaction", {
+          orderId,
+          transactionTrace,
+          newRedirectPreview: `${newRedirect.slice(0, 80)}...`,
+        })
+        return newRedirect
+      }
+    }
+
+    log.warn("velocity checkout - could not recover redirect URL for card order", {
+      orderId,
+      transactionTrace,
+      salesOrderTrace,
+      hasSalesOrderId: !!salesOrderId,
+    })
+    return null
+  } catch (err) {
+    log.error("velocity checkout - redirect URL recovery failed", {
+      orderId,
+      transactionTrace,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return null
+  }
+}
+
+// Maximum retry attempts for Velocity card transactions that fail to return
+// a hosted checkout redirect URL. Each retry re-initiates a new transaction.
+const VMC_REDIRECT_RETRIES = 2
 
 const TicketItem = z.object({
   kind: z.literal("ticket"),
@@ -300,6 +379,33 @@ export async function POST(req: Request) {
     const vm = meta.velocity!
     const isCard = resumable.paymentMethod === "velocity-card"
     log.info("velocity checkout - resuming existing order", { orderId: resumable.id, email: parsed.email })
+
+    // For card payments, attempt to recover the redirect URL so the buyer
+    // actually gets sent to Velocity's hosted checkout instead of being
+    // stuck in a polling loop for a payment they can't complete.
+    let resumeRedirectUrl: string | null = vm.redirectUrl ?? null
+    if (isCard && !resumeRedirectUrl && vm.transactionTrace) {
+      resumeRedirectUrl = await recoverCardRedirectUrl(
+        vm.transactionTrace,
+        vm.salesOrderTrace,
+        undefined, // salesOrderTrace != salesOrderId — we don't store the UUID here
+        resumable.id,
+      )
+      // Persist recovered URL for future resumes
+      if (resumeRedirectUrl) {
+        await db
+          .update(orders)
+          .set({
+            metadata: {
+              ...meta,
+              velocity: { ...vm, redirectUrl: resumeRedirectUrl },
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.id, resumable.id))
+      }
+    }
+
     return NextResponse.json({
       success: true,
       paymentMethod: isCard ? "CARD" : "ECOCASH",
@@ -308,7 +414,7 @@ export async function POST(req: Request) {
       transactionTrace: vm.transactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
       pollRequired: isCard ? undefined : true,
-      redirectUrl: null,
+      redirectUrl: resumeRedirectUrl,
       amount: Number(resumable.totalAmount),
       currency: resumable.currency ?? currency,
       resumed: true,
@@ -432,6 +538,30 @@ export async function POST(req: Request) {
       const vm = meta.velocity!
       const isCard = concurrent.paymentMethod === "velocity-card"
       log.info("velocity checkout - resuming concurrent order after lock wait", { orderId: concurrent.id })
+
+      // Recover redirect URL for card orders (same logic as primary resume path)
+      let resumeRedirectUrl = vm.redirectUrl ?? null
+      if (isCard && !resumeRedirectUrl && vm.transactionTrace) {
+        resumeRedirectUrl = await recoverCardRedirectUrl(
+          vm.transactionTrace,
+          vm.salesOrderTrace,
+          undefined,
+          concurrent.id,
+        )
+        if (resumeRedirectUrl) {
+          await db
+            .update(orders)
+            .set({
+              metadata: {
+                ...meta,
+                velocity: { ...vm, redirectUrl: resumeRedirectUrl },
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(orders.id, concurrent.id))
+        }
+      }
+
       return NextResponse.json({
         success: true,
         paymentMethod: isCard ? "CARD" : "ECOCASH",
@@ -440,7 +570,7 @@ export async function POST(req: Request) {
         transactionTrace: vm.transactionTrace,
         flow: isCard ? "velocity-redirect" : "velocity-seamless",
         pollRequired: isCard ? undefined : true,
-        redirectUrl: null,
+        redirectUrl: resumeRedirectUrl,
         amount: Number(concurrent.totalAmount),
         currency: concurrent.currency ?? currency,
         resumed: true,
@@ -601,11 +731,55 @@ export async function POST(req: Request) {
     }
 
     log.info("velocity checkout - initiating transaction", { orderId, salesOrderId, processor, amount: total, authType })
-    const transaction = await initiateTransaction(transactionPayload)
 
-    const redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
-    const transactionBody = transaction.body ?? null
-    const transactionTrace = getVelocityTransactionTrace(transaction)
+    // For VMC (card) payments, retry the transaction initiation up to
+    // VMC_REDIRECT_RETRIES times if Velocity returns no hosted checkout URL.
+    // Velocity's card gateway is known to intermittently omit the redirect,
+    // so a fresh transaction against the same sales order usually succeeds.
+    let transaction = await initiateTransaction(transactionPayload)
+    let redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
+    let transactionBody = transaction.body ?? null
+    let transactionTrace = getVelocityTransactionTrace(transaction)
+
+    if (isCard && !redirectUrl && transactionTrace) {
+      for (let attempt = 1; attempt <= VMC_REDIRECT_RETRIES; attempt++) {
+        log.warn("velocity checkout - card payment missing redirect URL, retrying", {
+          orderId,
+          attempt,
+          maxRetries: VMC_REDIRECT_RETRIES,
+          transactionTrace,
+        })
+        // Brief delay before retry to avoid hitting Velocity rate limits
+        await new Promise((r) => setTimeout(r, 1000 * attempt))
+        try {
+          const retryTx = await initiateTransaction(transactionPayload)
+          const retryUrl = extractRedirectUrl(retryTx as unknown as Record<string, unknown>)
+          if (retryUrl) {
+            log.info("velocity checkout - redirect URL recovered on retry", {
+              orderId,
+              attempt,
+              retryRedirectPreview: `${retryUrl.slice(0, 80)}...`,
+            })
+            transaction = retryTx
+            redirectUrl = retryUrl
+            transactionBody = retryTx.body ?? null
+            transactionTrace = getVelocityTransactionTrace(retryTx)
+            break
+          }
+          // Update trace if first attempt had none but retry did
+          if (!transactionTrace) {
+            transactionTrace = getVelocityTransactionTrace(retryTx)
+          }
+        } catch (retryErr) {
+          log.warn("velocity checkout - redirect URL retry attempt failed", {
+            orderId,
+            attempt,
+            error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+          })
+        }
+      }
+    }
+
     const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus
 
     log.info("velocity checkout - transaction response", {
@@ -682,6 +856,7 @@ export async function POST(req: Request) {
       invoiceRef: null,
       initiatedAt: new Date().toISOString(),
       finalizedAt: null,
+      redirectUrl: redirectUrl ?? null,
     }
 
     await db
@@ -703,24 +878,26 @@ export async function POST(req: Request) {
         })
         .where(eq(orders.id, orderId))
 
-      log.error("velocity checkout - card payment missing redirect URL", {
+      log.error("velocity checkout - card payment missing redirect URL after retries", {
         orderId,
         processor,
         authType,
         transactionTrace: transactionTrace ?? "(no trace)",
+        retriesAttempted: VMC_REDIRECT_RETRIES,
         transactionBody: transactionBody ? JSON.stringify(transactionBody).slice(0, 2000) : "null",
         allResponseKeys: Object.keys(transaction).join(", "),
       })
 
       // Fire alert for missing card redirect URL
       alertTransactionFailed(
-        `Card payment missing redirect URL (transactionTrace: ${transactionTrace ?? "none"})`,
+        `Card payment missing redirect URL after ${VMC_REDIRECT_RETRIES} retries (transactionTrace: ${transactionTrace ?? "none"})`,
         orderId,
         parsed.paymentMethod,
         {
           processor,
           authType,
           hasTransactionTrace: !!transactionTrace,
+          retriesAttempted: VMC_REDIRECT_RETRIES,
           responseBodyKeys: Object.keys(transaction).join(", "),
         },
       )

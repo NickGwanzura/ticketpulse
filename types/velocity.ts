@@ -169,6 +169,8 @@ export interface VelocityOrderMetadata {
   velocityRawPollResponse?: Record<string, unknown> | null
   recheckedAt?: string | null
   recheckedBy?: string | null
+  /** Hosted checkout redirect URL returned by Velocity for card (VMC) payments */
+  redirectUrl?: string | null
 }
 
 export interface VelocityCheckoutResponse {
