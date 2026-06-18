@@ -44,7 +44,12 @@ function escapeHtml(value: string) {
 export async function applyVendorAction(formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) {
-    redirect("/auth/signup?role=vendor&callbackUrl=/vendors/apply")
+    redirect("/auth/signin?callbackUrl=/vendors/apply")
+  }
+
+  // Only vendors, attendees, and admins can apply
+  if (session.user.role !== "vendor" && session.user.role !== "attendee" && session.user.role !== "admin") {
+    redirect("/vendors/apply?error=forbidden")
   }
 
   const parsed = VendorApplySchema.safeParse({

@@ -14,6 +14,9 @@ export default async function NewEventPage() {
   if (session.user.role !== "organizer" && session.user.role !== "admin") {
     redirect("/dashboard")
   }
+  if (session.user.role === "organizer" && !session.user.approvedAt) {
+    redirect("/dashboard?error=pending_approval")
+  }
 
   return (
     <div className="tp-fade-up">

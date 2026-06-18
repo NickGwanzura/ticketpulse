@@ -13,7 +13,7 @@ import { users, userRoleEnum } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import InviteUserDialog from "./_components/InviteUserDialog"
-import { verifyUserEmailAction, unverifyUserEmailAction, updateCommissionRateAction } from "@/app/admin/actions/users"
+import { verifyUserEmailAction, unverifyUserEmailAction, updateCommissionRateAction, approveOrganizerAction } from "@/app/admin/actions/users"
 import CommissionRateInput from "./_components/CommissionRateInput"
 
 type Role = "attendee" | "organizer" | "vendor" | "admin"
@@ -98,6 +98,7 @@ export default async function AdminUsersPage({
       email: users.email,
       role: users.role,
       emailVerified: users.emailVerified,
+      approvedAt: users.approvedAt,
       commissionRate: users.commissionRate,
       createdAt: users.createdAt,
     })
@@ -213,6 +214,7 @@ export default async function AdminUsersPage({
                       <th className="text-left px-5 py-3 font-semibold">User</th>
                       <th className="text-left px-3 py-3 font-semibold">Role</th>
                       <th className="text-left px-3 py-3 font-semibold">Email verified</th>
+                      <th className="text-left px-3 py-3 font-semibold">Approved</th>
                       <th className="text-left px-3 py-3 font-semibold">Commission</th>
                       <th className="text-left px-3 py-3 font-semibold">Joined</th>
                       <th className="px-3 py-3" />
@@ -246,6 +248,24 @@ export default async function AdminUsersPage({
                             <span className="inline-flex items-center gap-1 text-[12px] font-medium text-ink-3">
                               <BadgeX size={13} /> Unverified
                             </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3.5">
+                          {u.role === "organizer" ? (
+                            u.approvedAt ? (
+                              <span className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700">
+                                <BadgeCheck size={13} /> Approved <span className="text-ink-3 font-normal">{new Date(u.approvedAt).toLocaleDateString()}</span>
+                              </span>
+                            ) : (
+                              <form action={approveOrganizerAction.bind(null, u.id)}>
+                                <button type="submit" title="Approve organizer"
+                                  className="text-[12px] font-medium text-navy hover:underline">
+                                  <BadgeX size={13} className="inline mr-0.5" /> Pending
+                                </button>
+                              </form>
+                            )
+                          ) : (
+                            <span className="text-[12px] text-ink-3">—</span>
                           )}
                         </td>
                         <td className="px-3 py-3.5">

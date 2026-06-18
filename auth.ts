@@ -40,17 +40,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = user.role
         token.id = user.id
+        token.approvedAt = user.approvedAt
         return token
       }
 
       if (token.id && process.env.DATABASE_URL) {
         try {
           const [row] = await db
-            .select({ role: users.role })
+            .select({ role: users.role, approvedAt: users.approvedAt })
             .from(users)
             .where(eq(users.id, token.id as string))
             .limit(1)
           if (row?.role) token.role = row.role
+          token.approvedAt = row?.approvedAt?.toISOString() ?? null
         } catch (err) {
           console.error("[auth] refresh token role", err)
         }
@@ -62,6 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token) {
         session.user.role = token.role as string
         session.user.id = token.id as string
+        session.user.approvedAt = token.approvedAt as string | null | undefined
       }
       return session
     },
@@ -212,9 +215,11 @@ declare module "next-auth" {
       name?: string | null
       email?: string | null
       image?: string | null
+      approvedAt?: string | null
     }
   }
   interface User {
     role?: string
+    approvedAt?: string | null
   }
 }

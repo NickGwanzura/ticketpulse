@@ -60,6 +60,11 @@ export async function createEventAction(
     return { ok: false, error: "Only organizers can create events." }
   }
 
+  // Organizers must be approved by an admin before creating events
+  if (session.user.role === "organizer" && !session.user.approvedAt) {
+    return { ok: false, error: "Your organizer account is pending approval. You'll be able to create events once approved." }
+  }
+
   const raw = {
     title:         formData.get("title")?.toString() ?? "",
     category:      formData.get("category")?.toString() ?? "",

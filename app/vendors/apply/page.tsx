@@ -78,6 +78,11 @@ export default async function VendorsApplyPage({
                 Please check the highlighted details and submit again. Descriptions must be at least 30 characters.
               </div>
             )}
+            {error === "forbidden" && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
+                You do not have permission to apply as a vendor. Only attendees and current vendors can apply.
+              </div>
+            )}
 
             <form action={applyVendorAction} className="space-y-4">
               <div>

@@ -207,6 +207,43 @@ export async function updateCommissionRateAction(userId: string, rate: number) {
 }
 
 /**
+ * Approve an organizer account, allowing them to create events.
+ * Sets approvedAt to the current time. No-op if already approved.
+ */
+export async function approveOrganizerAction(userId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  await db
+    .update(users)
+    .set({ approvedAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, userId))
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+}
+
+/**
+ * Reject/unapprove an organizer account (sets approvedAt to null).
+ */
+export async function rejectOrganizerAction(userId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  await db
+    .update(users)
+    .set({ approvedAt: null, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+}
+
+/**
  * Cancel an order and mark all its tickets as cancelled.
  * Only admins can call this. Restores ticket tier inventory by decrementing
  * soldQuantity for each affected tier.

@@ -55,6 +55,11 @@ export async function updateVendorProfile(
   const userId = session.user.id
   const isAdmin = session.user.role === "admin"
 
+  // Only vendors and admins can manage vendor profiles
+  if (session.user.role !== "vendor" && !isAdmin) {
+    return { ok: false, error: "Only vendors can manage vendor profiles." }
+  }
+
   const parsed = InputSchema.safeParse(input)
   if (!parsed.success) {
     return {

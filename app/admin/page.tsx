@@ -12,7 +12,7 @@ import { db } from "@/db"
 import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { publishEventAction } from "@/app/admin/actions/events"
-import { verifyUserEmailAction } from "@/app/admin/actions/users"
+import { verifyUserEmailAction, approveOrganizerAction } from "@/app/admin/actions/users"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
@@ -73,6 +73,7 @@ export default async function AdminOverviewPage() {
     recentOrders,
     topEventRows,
     draftEvents,
+    pendingOrganizers,
     unverifiedUsers,
     [velocityCountRow],
     [velocityRevenueRow],
@@ -115,6 +116,10 @@ export default async function AdminOverviewPage() {
     db.select({ id: events.id, title: events.title, description: events.description, category: events.category, organizerName: users.name, organizerEmail: users.email })
       .from(events).leftJoin(users, eq(events.organizerId, users.id))
       .where(eq(events.status, "draft")).orderBy(desc(events.createdAt)).limit(10),
+
+    db.select({ id: users.id, name: users.name, email: users.email, createdAt: users.createdAt })
+      .from(users).where(and(eq(users.role, "organizer"), sql`${users.approvedAt} IS NULL`))
+      .orderBy(desc(users.createdAt)).limit(10),
 
     db.select({ id: users.id, name: users.name, email: users.email })
       .from(users).where(sql`${users.emailVerified} IS NULL`)
@@ -204,7 +209,8 @@ export default async function AdminOverviewPage() {
     if (!existing || amt > existing.revenue) revMap.set(r.eventId, { revenue: amt, currency: r.currency ?? "USD" })
   }
 
-  const pendingReview = [...draftEvents, ...unverifiedUsers]
+  const pendingReview = [...draftEvents, ...unverifiedUsers, ...pendingOrganizers]
+  const pendingOrganizerReviewed = draftEvents.length + unverifiedUsers.length + pendingOrganizers.length
   const operationsQueue = [
     { label: "Paid, no tickets", value: paidNoTickets, href: "/admin/orders", icon: Ticket, tone: "rose", detail: "Confirmed money path without issued tickets" },
     { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders", icon: FileWarning, tone: "amber", detail: "Email or ticket delivery needs action" },
@@ -214,6 +220,7 @@ export default async function AdminOverviewPage() {
     { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue", detail: "Customer reviews awaiting moderation" },
     { label: "Draft events", value: draftEvents.length, href: "#review", icon: CalendarCheck, tone: "amber", detail: "Organizer events not published yet" },
     { label: "Unverified users", value: unverifiedUsers.length, href: "#review", icon: Users, tone: "amber", detail: "Accounts awaiting email verification" },
+    { label: "Pending organizers", value: pendingOrganizers.length, href: "#review", icon: Users, tone: "blue", detail: "Organizer accounts awaiting approval" },
   ].filter((item) => item.value > 0)
   const hasPendingAction = operationsQueue.length > 0
 
@@ -483,6 +490,22 @@ export default async function AdminOverviewPage() {
                   <form action={verifyUserEmailAction.bind(null, u.id)} className="shrink-0">
                     <button type="submit" className="rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors">
                       Verify email
+                    </button>
+                  </form>
+                </li>
+              ))}
+              {pendingOrganizers.map((u: { id: string; name: string | null; email: string | null }) => (
+                <li key={u.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[10px] font-bold tracking-widest uppercase text-blue bg-blue/10 px-1.5 py-0.5 rounded">Pending organizer</span>
+                    </div>
+                    <p className="text-[14px] font-semibold text-ink">{u.name ?? "—"}</p>
+                    <p className="text-[12px] text-ink-2">{u.email}</p>
+                  </div>
+                  <form action={approveOrganizerAction.bind(null, u.id)} className="shrink-0">
+                    <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
+                      Approve
                     </button>
                   </form>
                 </li>
