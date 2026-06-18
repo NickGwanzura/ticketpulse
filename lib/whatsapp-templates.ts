@@ -1,4 +1,5 @@
 import "server-only"
+import { getBaseUrl } from "@/lib/url-config"
 
 // ─── Brand Configuration ─────────────────────────────────────────────────────
 // Update these to match your brand identity.
@@ -6,7 +7,7 @@ import "server-only"
 const BRAND = {
   name: "TicketPulse",
   tagline: "Your events, delivered.",
-  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech",
+  get appUrl(): string { return getBaseUrl() },
   support: "https://wa.me/263788689923",
 } as const
 
