@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, paymentLedger } from "@/db/schema"
+import { orders, paymentLedger, events } from "@/db/schema"
 import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
+import { sendAdminAlert } from "@/lib/whatsapp"
 import {
   alertPollUnknownStatus,
   alertFinalizeNonPaid,
@@ -411,6 +412,32 @@ async function handlePollSuccess(
       rawPayload: null,
     })
     .onConflictDoNothing()
+
+  // ── WhatsApp admin alert for new payment (fire-and-forget) ─────────────────
+  const eventTitle =
+    db
+      .select({ title: events.title })
+      .from(events)
+      .where(eq(events.id, order.eventId))
+      .limit(1)
+      .then((rows) => rows[0]?.title ?? "Unknown event")
+      .catch(() => "Unknown event")
+
+  sendAdminAlert(
+    `💰 *New payment received*\n\n` +
+    `Event: ${await eventTitle}\n` +
+    `Amount: ${order.currency ?? "USD"} ${order.totalAmount}\n` +
+    `Buyer: ${order.guestName ?? order.guestEmail ?? "Anonymous"}\n` +
+    `Phone: ${order.guestPhone ?? "—"}\n` +
+    `Payment: ${(order.paymentMethod ?? "card").toUpperCase()}\n` +
+    `Order: ${id.slice(0, 8)}…\n` +
+    `Invoice: ${invoiceId}`,
+  ).catch((err) =>
+    log.error("whatsapp admin alert failed after payment confirmation", {
+      orderId: id,
+      error: String(err),
+    }),
+  )
 
   return NextResponse.json({
     orderId: id,

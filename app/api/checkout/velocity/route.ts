@@ -13,6 +13,7 @@ import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed } from "@/lib/payment-alerts"
+import { sendAdminAlert } from "@/lib/whatsapp"
 import type { VelocityOrderMetadata, VelocityPollStatus, InitiateTransactionPayload } from "@/types/velocity"
 
 // Flexible redirect URL extraction: recursively checks the entire Velocity response
@@ -628,6 +629,20 @@ export async function POST(req: Request) {
     )
 
     trackEvent({ event: "PAYMENT_CONFIRMED", eventId: event.id, orderId, paymentMethod: parsed.paymentMethod, amount: 0 })
+
+    // WhatsApp admin alert for free order (fire-and-forget)
+    sendAdminAlert(
+      `🎟️ *New free order*\n\n` +
+      `Event: ${event.title}\n` +
+      `Buyer: ${parsed.name ?? parsed.email ?? "Anonymous"}\n` +
+      `Phone: ${parsed.phone ?? "—"}\n` +
+      `Order: ${orderId.slice(0, 8)}…`,
+    ).catch((err) =>
+      log.error("whatsapp admin alert failed for free order", {
+        orderId,
+        error: String(err),
+      }),
+    )
 
     return NextResponse.json({
       success: true,
