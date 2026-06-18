@@ -12,7 +12,7 @@ import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
 import { getTierAvailability } from "@/lib/ticket-availability"
-import { alertTransactionFailed } from "@/lib/payment-alerts"
+import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { freeOrderAlert } from "@/lib/whatsapp-templates"
 import type { VelocityOrderMetadata, VelocityPollStatus, InitiateTransactionPayload } from "@/types/velocity"
@@ -935,13 +935,17 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Checkout failed"
     log.error("velocity checkout failed", { orderId, error: message })
 
-    // Alert on Velocity API errors during checkout (network errors, auth failures, etc.)
-    alertTransactionFailed(
-      `Velocity API error: ${message.slice(0, 200)}`,
+    // Alert on Velocity API errors during checkout — medium severity since
+    // these are transient network errors the buyer can retry themselves.
+    alertPaymentAnomaly({
+      type: "TRANSACTION_API_ERROR",
+      severity: "medium",
+      title: "Velocity API error during checkout",
+      detail: `Checkout for order ${orderId} (${parsed.paymentMethod}) hit a Velocity API error: ${message.slice(0, 300)}. The buyer was shown an error and can retry.`,
       orderId,
-      parsed.paymentMethod,
-      { errorMessage: message.slice(0, 500) },
-    ).catch(() => {})
+      paymentMethod: parsed.paymentMethod,
+      context: { errorMessage: message.slice(0, 500) },
+    }).catch(() => {})
 
     await cancelWithInventoryRelease()
     return NextResponse.json({ error: message }, { status: 502 })

@@ -61,7 +61,7 @@ export interface AlertPayload {
 // Prevents flooding the same alert within the cooldown window.
 
 const alertCache = new Map<string, number>()
-const ALERT_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes per alert type + order combo
+const ALERT_COOLDOWN_MS = 30 * 60 * 1000 // 30 minutes per alert type + order combo
 
 function shouldSend(key: string): boolean {
   const lastSent = alertCache.get(key)
