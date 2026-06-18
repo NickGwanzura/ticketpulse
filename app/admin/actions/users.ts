@@ -31,6 +31,30 @@ export async function verifyUserEmailAction(userId: string) {
 }
 
 /**
+ * Update a user's role. Admins can set any role except "admin" itself
+ * (admin accounts must be created via the database directly).
+ */
+export async function updateUserRoleAction(userId: string, newRole: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const allowedRoles = ["attendee", "organizer", "vendor", "transport_operator", "dispatcher", "driver", "conductor"] as const
+  if (!allowedRoles.includes(newRole as typeof allowedRoles[number])) {
+    throw new Error(`Invalid role: "${newRole}"`)
+  }
+
+  await db
+    .update(users)
+    .set({ role: newRole as typeof users.$inferInsert.role, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+
+  revalidatePath("/admin/users")
+  revalidatePath("/admin")
+}
+
+/**
  * Unverify a user's email (set emailVerified to null).
  */
 export async function unverifyUserEmailAction(userId: string) {

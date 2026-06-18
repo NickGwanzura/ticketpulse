@@ -11,7 +11,7 @@ import { sendAdminInviteEmail } from "@/lib/email"
 // address and the role is already attached to their account.
 const InviteSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
-  role: z.enum(["attendee", "organizer", "vendor", "admin", "transport_operator", "dispatcher", "driver", "conductor"]),
+  role: z.enum(["attendee", "organizer", "vendor", "transport_operator", "dispatcher", "driver", "conductor"]),
 })
 
 export async function POST(req: NextRequest) {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const inserted = await db
     .insert(users)
-    .values({ email, role, commissionRate: role === "admin" ? "0" : undefined })
+    .values({ email, role })
     .onConflictDoNothing({ target: users.email })
     .returning({ id: users.id })
 

@@ -19,6 +19,7 @@ const SIGNUP_ERRORS: Record<string, string> = {
   invalid: "Please enter your name, email address, and a password with at least 8 characters.",
   account_exists: "An account already exists for this email. Sign in with the same password, or use Forgot password.",
   password_required: "This account was created with Google. Use Continue with Google, or set a password with Forgot password.",
+  too_many: "Too many signup attempts. Please wait a minute before trying again.",
 }
 
 function signupUrl(role: string, callbackUrl: string | null, error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string) {
@@ -70,7 +71,6 @@ export default async function SignUpPage({
             const { users } = await import("@/db/schema")
             const { eq } = await import("drizzle-orm")
             const { hashPassword, verifyPassword } = await import("@/lib/password")
-
             const ALLOWED_SIGNUP_ROLES = ["attendee", "organizer", "vendor"] as const
             type AllowedRole = typeof ALLOWED_SIGNUP_ROLES[number]
             const rawRole = formData.get("role")
@@ -83,6 +83,17 @@ export default async function SignUpPage({
             const name  = ((formData.get("name") as string) ?? "").trim() || null
             if (!email || password.length < 8 || !name) {
               redirect(signupUrl(role, requestedCallbackUrl, "invalid", email, name ?? undefined))
+            }
+
+            // Rate limit: max 3 signup attempts per IP per minute
+            const { rateLimit: rl } = await import("@/lib/rate-limit")
+            const headersList = await import("next/headers")
+            const hdrs = (await headersList.headers())
+            const signupLimiter = rl({ windowMs: 60_000, max: 3 })
+            const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+            const rlResult = signupLimiter.check(ip)
+            if (!rlResult.allowed) {
+              redirect(signupUrl(role, requestedCallbackUrl, "too_many", email, name ?? undefined))
             }
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
