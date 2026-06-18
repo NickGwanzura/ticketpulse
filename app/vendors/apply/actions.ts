@@ -8,6 +8,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { users, vendors } from "@/db/schema"
+import { log } from "@/lib/logger"
 import { adminEmail, sendEmail } from "@/lib/email"
 
 const VENDOR_CATEGORIES = [
@@ -137,6 +138,7 @@ export async function applyVendorAction(formData: FormData) {
     `,
   }).catch((error) => {
     console.error("[vendors] failed to send vendor application email", error)
+    log.error("vendors/apply — admin notification email failed", { error: String(error) })
   })
 
   revalidatePath("/vendors")

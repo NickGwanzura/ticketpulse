@@ -12,6 +12,7 @@ import {
   verificationTokens,
 } from "@/db/schema"
 import { verifyPassword } from "@/lib/password"
+import { log } from "@/lib/logger"
 import { authConfig } from "@/auth.config"
 import {
   sendMagicLinkEmail,
@@ -55,6 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.approvedAt = row?.approvedAt?.toISOString() ?? null
         } catch (err) {
           console.error("[auth] refresh token role", err)
+          log.error("auth — refresh token role failed", { error: err instanceof Error ? err.message : String(err) })
         }
       }
 
@@ -107,17 +109,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               subject: `New signup: ${user.email} (${role})`,
               html: notice.html,
               text: notice.text,
-            }).catch((e) => console.error("[auth] admin signup notification", e))
+            }).catch((e) => {
+              console.error("[auth] admin signup notification", e)
+              log.error("auth — admin signup notification failed", { error: String(e) })
+            })
 
             // WhatsApp alert to admin (fire-and-forget).
             const { sendAdminAlert } = await import("@/lib/whatsapp")
             const { newSignupAlert } = await import("@/lib/whatsapp-templates")
             sendAdminAlert(
               newSignupAlert(user.name ?? "—", user.email, role),
-            ).catch((e) => console.error("[auth] admin signup WhatsApp alert", e))
+            ).catch((e) => {
+              console.error("[auth] admin signup WhatsApp alert", e)
+              log.error("auth — admin signup WhatsApp alert failed", { error: String(e) })
+            })
           }
         } catch (e) {
           console.error("[auth] welcome email / admin notification", e)
+          log.error("auth — welcome email / admin notification failed", { error: String(e) })
           // Sign-in must not fail if the email send fails.
         }
       }

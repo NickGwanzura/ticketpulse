@@ -108,7 +108,11 @@ export default async function SignUpPage({
 
               // Fire-and-forget welcome email — signup must not fail if mail fails.
               const { sendWelcomeEmail, adminEmail } = await import("@/lib/email")
-              sendWelcomeEmail({ to: email, name }).catch((e) => console.error("welcome email", e))
+              const { log: logger } = await import("@/lib/logger")
+              sendWelcomeEmail({ to: email, name }).catch((e) => {
+                console.error("welcome email", e)
+                logger.error("signup — welcome email failed", { email, error: String(e) })
+              })
 
               // Notify the admin of the new signup (fire-and-forget).
               const { sendEmail } = await import("@/lib/email")
@@ -119,14 +123,20 @@ export default async function SignUpPage({
                 subject: `New signup: ${email} (${role})`,
                 html: adminNotice.html,
                 text: adminNotice.text,
-              }).catch((e) => console.error("admin signup notification", e))
+              }).catch((e) => {
+                console.error("admin signup notification", e)
+                logger.error("signup — admin email notification failed", { email, role, error: String(e) })
+              })
 
               // WhatsApp alert to admin (fire-and-forget).
               const { sendAdminAlert } = await import("@/lib/whatsapp")
               const { newSignupAlert } = await import("@/lib/whatsapp-templates")
               sendAdminAlert(
                 newSignupAlert(name ?? "—", email, role),
-              ).catch((e) => console.error("admin signup WhatsApp alert", e))
+              ).catch((e) => {
+                console.error("admin signup WhatsApp alert", e)
+                logger.error("signup — admin WhatsApp alert failed", { email, role, error: String(e) })
+              })
             } else {
               finalRole = existing.role ?? "attendee"
               const updates: Partial<typeof users.$inferInsert> = {}

@@ -167,9 +167,13 @@ export async function createEventAction(
   // WhatsApp alert to admin (fire-and-forget).
   const { sendAdminAlert } = await import("@/lib/whatsapp")
   const { newEventAlert } = await import("@/lib/whatsapp-templates")
+  const { log: evLogger } = await import("@/lib/logger")
   sendAdminAlert(
     newEventAlert(data.title, data.category, data.city, startsAt.toLocaleDateString("en-GB")),
-  ).catch((e) => console.error("[createEvent] admin WhatsApp alert", e))
+  ).catch((e) => {
+    console.error("[createEvent] admin WhatsApp alert", e)
+    evLogger.error("createEvent — admin WhatsApp alert failed", { eventId: created.id, error: String(e) })
+  })
 
   revalidatePath("/organizer")
   redirect(`/organizer/events/${created.id}/tiers?created=1`)

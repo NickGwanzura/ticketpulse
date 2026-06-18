@@ -79,6 +79,7 @@ export async function publishEventAction(eventId: string) {
       }
     } catch (err) {
       console.error("[publishEvent] failed to notify organiser:", err)
+      log.error("publishEvent — failed to notify organiser", { eventId: ev.id, error: String(err) })
     }
 
     // Notify the admin
@@ -97,6 +98,7 @@ export async function publishEventAction(eventId: string) {
       })
     } catch (err) {
       console.error("[publishEvent] failed to notify admin:", err)
+      log.error("publishEvent — failed to notify admin email", { eventId: ev.id, error: String(err) })
     }
 
     // WhatsApp alert to admin (fire-and-forget).
@@ -106,6 +108,7 @@ export async function publishEventAction(eventId: string) {
       await sendAdminAlert(eventPublishedAlert(ev.title, eventDate, eventUrl))
     } catch (err) {
       console.error("[publishEvent] failed to send admin WhatsApp alert:", err)
+      log.error("publishEvent — failed to send admin WhatsApp alert", { eventId: ev.id, error: String(err) })
     }
   }
 

@@ -4,6 +4,7 @@ import { events, users } from "@/db/schema"
 import { eq, desc, and, gte, like, or } from "drizzle-orm"
 import { auth } from "@/auth"
 import { z } from "zod"
+import { log } from "@/lib/logger"
 
 const PostSchema = z.object({
   title: z.string().min(1),
@@ -106,7 +107,10 @@ export async function POST(req: NextRequest) {
   const { newEventAlert } = await import("@/lib/whatsapp-templates")
   sendAdminAlert(
     newEventAlert(title, category, city, new Date(startsAt).toLocaleDateString("en-GB")),
-  ).catch((e) => console.error("[POST /api/events] admin WhatsApp alert", e))
+  ).catch((e) => {
+    console.error("[POST /api/events] admin WhatsApp alert", e)
+    log.error("events API — admin WhatsApp alert failed", { error: String(e) })
+  })
 
   return NextResponse.json({ event }, { status: 201 })
 }

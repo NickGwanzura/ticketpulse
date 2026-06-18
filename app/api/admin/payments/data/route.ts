@@ -1,16 +1,47 @@
-import { redirect } from "next/navigation"
-import { eq, sql, and, gte, or } from "drizzle-orm"
+import { NextResponse } from "next/server"
+import { eq, sql, and, or, gte, desc } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
-import PaymentsViewer from "@/app/admin/_components/PaymentsViewer"
-import type { PaymentsApiResponse } from "@/app/api/admin/payments/data/route"
 
-export default async function AdminPaymentsPage() {
+export type PaymentsApiResponse = {
+  stats: {
+    todayRevenue: number
+    weekRevenue: number
+    monthRevenue: number
+    allTimeRevenue: number
+    prevWeekRevenue: number
+    paidCount: number
+    failedCount: number
+    weekDelta: number
+    successRate: number
+  }
+  methods: Array<{
+    method: string | null
+    paid: number
+    total: number
+    revenue: number
+  }>
+  transactions: Array<{
+    id: string
+    orderId: string
+    eventId: string
+    amount: string
+    currency: string | null
+    localStatus: string | null
+    processor: string | null
+    source: string | null
+    createdAt: string | null
+    invoiceId: string | null
+  }>
+  sparkPoints: number[]
+}
+
+export async function GET(request: Request) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    redirect("/auth/signin?callbackUrl=/admin/payments")
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
 
   const now = new Date()
@@ -87,10 +118,11 @@ export default async function AdminPaymentsPage() {
       createdAt: paymentLedger.createdAt,
       invoiceId: paymentLedger.invoiceId,
     }).from(paymentLedger)
-      .orderBy(sql`${paymentLedger.createdAt} DESC`)
+      .orderBy(desc(paymentLedger.createdAt))
       .limit(50),
   ])
 
+  // ── Derived stats ─────────────────────────────────────────────────────────
   const weekRev = Number(weekRevenue?.total ?? 0)
   const prevWeekRev = Number(prevWeekRevenue?.total ?? 0)
   const totalPaid = paidCount?.count ?? 0
@@ -104,6 +136,7 @@ export default async function AdminPaymentsPage() {
     ? ((weekRev - prevWeekRev) / prevWeekRev) * 100
     : weekRev > 0 ? 100 : 0
 
+  // Sparkline
   const dayMap = new Map<string, number>()
   for (const r of dailyRevenue) dayMap.set(r.day, Number(r.total))
   const sparkPoints: number[] = []
@@ -112,7 +145,7 @@ export default async function AdminPaymentsPage() {
     sparkPoints.push(dayMap.get(d.toISOString().slice(0, 10)) ?? 0)
   }
 
-  const initialData: PaymentsApiResponse = {
+  return NextResponse.json({
     stats: {
       todayRevenue: Number(todayRevenue?.total ?? 0),
       weekRevenue: weekRev,
@@ -136,17 +169,5 @@ export default async function AdminPaymentsPage() {
       createdAt: t.createdAt ? t.createdAt.toISOString() : null,
     })),
     sparkPoints,
-  }
-
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[20px] font-bold tracking-tight text-ink">Payments</h1>
-          <p className="text-[13px] text-ink-3 mt-1">Real-time payment dashboard with live updates</p>
-        </div>
-      </div>
-      <PaymentsViewer initialData={initialData} />
-    </div>
-  )
+  } as PaymentsApiResponse)
 }

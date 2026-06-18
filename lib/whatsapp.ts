@@ -1,4 +1,5 @@
 import "server-only"
+import { log } from "@/lib/logger"
 
 type OpenWAConfig = {
   baseUrl: string
@@ -243,6 +244,7 @@ export async function sendAdminAlert(text: string): Promise<void> {
   const phone = getAdminPhone()
   if (!phone) {
     console.warn("[whatsapp] ADMIN_PHONE not set — skipping admin alert")
+    log.warn("whatsapp — ADMIN_PHONE not set, skipping admin alert")
     return
   }
 
@@ -250,11 +252,13 @@ export async function sendAdminAlert(text: string): Promise<void> {
     const ready = await isSessionReady()
     if (!ready) {
       console.warn("[whatsapp] session not ready — skipping admin alert")
+      log.warn("whatsapp — session not ready, skipping admin alert")
       return
     }
 
     await sendText(formatChatId(phone), text)
   } catch (err) {
     console.error("[whatsapp] failed to send admin alert:", err)
+    log.error("whatsapp — failed to send admin alert", { error: err instanceof Error ? err.message : String(err) })
   }
 }

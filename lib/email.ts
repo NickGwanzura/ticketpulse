@@ -1,5 +1,6 @@
 import "server-only"
 import { Resend } from "resend"
+import { log } from "@/lib/logger"
 import WelcomeEmail from "@/emails/welcome"
 import MagicLinkEmail from "@/emails/magic-link"
 import OrderConfirmationEmail, { type OrderLine } from "@/emails/order-confirmation"
@@ -8,7 +9,6 @@ import PayoutNotificationEmail from "@/emails/payout-notification"
 import VerifyPurchaseEmail from "@/emails/verify-purchase"
 import AdminInviteEmail from "@/emails/admin-invite"
 import ResetPasswordEmail from "@/emails/reset-password"
-import { log } from "@/lib/logger"
 
 const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
 const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.co.zw"
@@ -47,6 +47,7 @@ function client(): Resend | null {
       throw new Error("AUTH_RESEND_KEY is not set — refusing to send mail in production")
     }
     console.warn("[email] AUTH_RESEND_KEY not set — skipping send")
+    log.warn("email — AUTH_RESEND_KEY not set, skipping send")
     return null
   }
   if (!_resend) _resend = new Resend(key)
@@ -78,6 +79,7 @@ async function send(args: {
   })
   if (error) {
     console.error("[email] Resend rejected send", { to: args.to, subject: args.subject, error })
+    log.error("email — Resend rejected send", { to: args.to, subject: args.subject, error: error.message })
     throw new Error(error.message ?? "Resend send failed")
   }
   return { id: data?.id ?? "" }
@@ -114,6 +116,7 @@ export async function sendEmail(opts: {
   })
   if (error) {
     console.error("[email] Resend rejected send", { to: opts.to, subject: opts.subject, error })
+    log.error("email — Resend rejected send", { to: opts.to, subject: opts.subject, error: error.message })
     throw new Error(error.message ?? "Resend send failed")
   }
   return { id: data?.id ?? "" }

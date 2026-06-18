@@ -1,6 +1,7 @@
 import { db } from "@/db"
 import { analyticsEvents } from "@/db/schema"
 import { sql, and, eq, gte } from "drizzle-orm"
+import { log } from "@/lib/logger"
 
 export type AnalyticsEventType =
   | "EVENT_VIEWED"
@@ -49,6 +50,7 @@ export async function trackEvent(input: TrackEventInput) {
     })
   } catch (err) {
     console.error("[analytics] trackEvent failed", err)
+    log.error("analytics — trackEvent failed", { error: err instanceof Error ? err.message : String(err) })
   }
 }
 
