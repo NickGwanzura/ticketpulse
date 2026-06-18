@@ -1,6 +1,7 @@
 import "server-only"
 import { sendEmail, adminEmail } from "@/lib/email"
 import { sendAdminAlert } from "@/lib/whatsapp"
+import { paymentAnomalyAlert } from "@/lib/whatsapp-templates"
 import { log } from "@/lib/logger"
 import { getBaseUrl } from "@/lib/url-config"
 
@@ -150,17 +151,9 @@ export async function alertPaymentAnomaly(payload: AlertPayload): Promise<void> 
 
   // ── 3. WhatsApp alert (high+ severity only) ───────────────────────────
   if (severity === "high" || severity === "critical") {
-    const whatsappMsg = [
-      `${prefix} *${title}*`,
-      `Order: ${orderId ?? "N/A"}`,
-      `Type: ${type}`,
-      detail.length > 200 ? detail.slice(0, 200) + "…" : detail,
-      orderId ? `${getBaseUrl()}/admin/orders/${orderId}` : undefined,
-    ]
-      .filter(Boolean)
-      .join("\n")
-
-    sendAdminAlert(whatsappMsg).catch((err) => {
+    sendAdminAlert(
+      paymentAnomalyAlert(title, orderId, type, detail),
+    ).catch((err) => {
       log.warn("payment-alert — WhatsApp admin alert failed", { type, error: String(err) })
     })
   }

@@ -97,23 +97,16 @@ export async function POST(req: Request) {
 
     const buyerName = order.guestName ?? "there"
 
-    const message = [
-      `🎟️ *Tickets confirmed — ${ev.title}*`,
-      "",
-      `Hey ${buyerName}! Your tickets are ready.`,
-      "",
-      `📅 *Date:* ${eventDate}`,
-      ev.venue ? `📍 *Venue:* ${ev.venue}` : null,
-      `🆔 *Order:* ${orderId.slice(0, 8)}...`,
-      "",
-      summary ? `*Your tickets:*\n${summary}` : null,
-      "",
-      `👉 View your tickets: ${ticketUrl}`,
-      "",
-      "Show the QR code at the door for entry. See you there! 🎉",
-    ]
-      .filter(Boolean)
-      .join("\n")
+    const { ticketConfirmationMessage } = await import("@/lib/whatsapp-templates")
+    const message = ticketConfirmationMessage(
+      ev.title,
+      buyerName,
+      eventDate,
+      ev.venue,
+      orderId,
+      summary,
+      ticketUrl,
+    )
 
     // ── Send via WhatsApp ──────────────────────────────────────────────────
     const chatId = formatChatId(order.guestPhone)

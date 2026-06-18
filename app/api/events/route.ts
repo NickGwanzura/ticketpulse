@@ -103,8 +103,9 @@ export async function POST(req: NextRequest) {
 
   // WhatsApp alert to admin (fire-and-forget).
   const { sendAdminAlert } = await import("@/lib/whatsapp")
+  const { newEventAlert } = await import("@/lib/whatsapp-templates")
   sendAdminAlert(
-    `📅 *New event created*\n\nTitle: ${title}\nCategory: ${category}\nCity: ${city}\nStarts: ${new Date(startsAt).toLocaleDateString("en-GB")}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/events`,
+    newEventAlert(title, category, city, new Date(startsAt).toLocaleDateString("en-GB")),
   ).catch((e) => console.error("[POST /api/events] admin WhatsApp alert", e))
 
   return NextResponse.json({ event }, { status: 201 })

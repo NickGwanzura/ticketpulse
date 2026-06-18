@@ -161,8 +161,9 @@ export async function createEventAction(
 
   // WhatsApp alert to admin (fire-and-forget).
   const { sendAdminAlert } = await import("@/lib/whatsapp")
+  const { newEventAlert } = await import("@/lib/whatsapp-templates")
   sendAdminAlert(
-    `📅 *New event created*\n\nTitle: ${data.title}\nCategory: ${data.category}\nCity: ${data.city}\nStarts: ${startsAt.toLocaleDateString("en-GB")}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/events`,
+    newEventAlert(data.title, data.category, data.city, startsAt.toLocaleDateString("en-GB")),
   ).catch((e) => console.error("[createEvent] admin WhatsApp alert", e))
 
   revalidatePath("/organizer")

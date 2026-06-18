@@ -108,8 +108,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             // WhatsApp alert to admin (fire-and-forget).
             const { sendAdminAlert } = await import("@/lib/whatsapp")
+            const { newSignupAlert } = await import("@/lib/whatsapp-templates")
             sendAdminAlert(
-              `🆕 *New signup — ${role}*\n\nName: ${user.name ?? "—"}\nEmail: ${user.email}\nRole: ${role}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/users`,
+              newSignupAlert(user.name ?? "—", user.email, role),
             ).catch((e) => console.error("[auth] admin signup WhatsApp alert", e))
           }
         } catch (e) {

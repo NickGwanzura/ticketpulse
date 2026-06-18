@@ -484,18 +484,18 @@ async function notifyOrganizerSale(
   }
 
   if (org?.phone) {
+    const { organizerSaleNotification } = await import("@/lib/whatsapp-templates")
     sendText(
       formatChatId(org.phone),
-      [
-        `🎟️ *New ticket sale — ${ev.title}*`,
-        "",
-        `Buyer: ${order.guestName ?? "Someone"}`,
-        `Order: ${order.id.slice(0, 8)}...`,
-        ...lines.map((l) => `  • ${l.qty}× ${l.label} — ${l.amount}`),
-        `Total: ${order.totalAmount} ${order.currency ?? "USD"}`,
-        "",
-        `👉 ${baseUrl}/organizer/events/${order.eventId}/attendees`,
-      ].join("\n"),
+      organizerSaleNotification(
+        ev.title,
+        order.guestName ?? "Someone",
+        order.id,
+        lines.map((l) => `${l.qty}× ${l.label} — ${l.amount}`),
+        order.totalAmount,
+        order.currency ?? "USD",
+        `${baseUrl}/organizer/events/${order.eventId}/attendees`,
+      ),
     ).catch((e) => log.warn("delivery - WhatsApp to organizer failed", { orderId: order.id, error: String(e) }))
   }
 

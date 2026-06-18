@@ -102,9 +102,8 @@ export async function publishEventAction(eventId: string) {
     // WhatsApp alert to admin (fire-and-forget).
     try {
       const { sendAdminAlert } = await import("@/lib/whatsapp")
-      await sendAdminAlert(
-        `🎉 *Event published*\n\nTitle: ${ev.title}\nDate: ${eventDate}\nURL: ${eventUrl}\n\nView in admin: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/admin/events`,
-      )
+      const { eventPublishedAlert } = await import("@/lib/whatsapp-templates")
+      await sendAdminAlert(eventPublishedAlert(ev.title, eventDate, eventUrl))
     } catch (err) {
       console.error("[publishEvent] failed to send admin WhatsApp alert:", err)
     }

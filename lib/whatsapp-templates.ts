@@ -1,0 +1,205 @@
+import "server-only"
+
+// ─── Brand Configuration ─────────────────────────────────────────────────────
+// Update these to match your brand identity.
+
+const BRAND = {
+  name: "TicketPulse",
+  tagline: "Your events, delivered.",
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech",
+  support: "https://wa.me/263788689923",
+} as const
+
+const DIVIDER = "─".repeat(28)
+
+function footer(isAdmin: boolean): string {
+  return [
+    "",
+    DIVIDER,
+    isAdmin
+      ? `🔧 ${BRAND.name} Admin · ${BRAND.appUrl}/admin`
+      : `💙 ${BRAND.name} · ${BRAND.appUrl}`,
+    isAdmin ? "" : `Need help? Chat with us: ${BRAND.support}`,
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+// ─── Admin Alerts ────────────────────────────────────────────────────────────
+
+export function eventPublishedAlert(title: string, eventDate: string, eventUrl: string): string {
+  return [
+    `🎉 *Event Published*`,
+    ``,
+    `📌 *${title}*`,
+    `📅 ${eventDate}`,
+    `🔗 ${eventUrl}`,
+    footer(true),
+  ].join("\n")
+}
+
+export function newPaymentAlert(
+  eventTitle: string,
+  amount: string,
+  currency: string,
+  buyerName: string,
+  buyerPhone: string,
+  paymentMethod: string,
+  orderId: string,
+  invoiceId: string,
+): string {
+  return [
+    `💰 *New Payment Received*`,
+    ``,
+    `🎫 *${eventTitle}*`,
+    `💵 ${currency} ${amount}`,
+    `👤 ${buyerName}`,
+    buyerPhone !== "—" ? `📱 ${buyerPhone}` : null,
+    `💳 ${paymentMethod.toUpperCase()}`,
+    `🆔 Order #${orderId.slice(0, 8)}`,
+    `🧾 Invoice: ${invoiceId}`,
+    footer(true),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function freeOrderAlert(
+  eventTitle: string,
+  buyerName: string,
+  buyerPhone: string,
+  orderId: string,
+): string {
+  return [
+    `🎟️ *Free Order Processed*`,
+    ``,
+    `🎫 *${eventTitle}*`,
+    `👤 ${buyerName}`,
+    buyerPhone ? `📱 ${buyerPhone}` : null,
+    `🆔 Order #${orderId.slice(0, 8)}`,
+    `💵 $0.00 (promo / free)`,
+    footer(true),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function contactFormAlert(name: string, email: string, topic: string | null, message: string): string {
+  return [
+    `📬 *New Contact Form Submission*`,
+    ``,
+    `👤 ${name} (${email})`,
+    topic ? `📂 ${topic}` : null,
+    `💬 ${message.length > 500 ? message.slice(0, 500) + "…" : message}`,
+    footer(true),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function newEventAlert(
+  title: string,
+  category: string,
+  city: string,
+  startsAt: string,
+): string {
+  return [
+    `📅 *New Event Created*`,
+    ``,
+    `🎫 *${title}*`,
+    `📂 ${category}`,
+    `📍 ${city}`,
+    `📅 ${startsAt}`,
+    footer(true),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function newSignupAlert(name: string, email: string, role: string): string {
+  return [
+    `🆕 *New Signup — ${role}*`,
+    ``,
+    `👤 ${name}`,
+    `📧 ${email}`,
+    `🔑 ${role}`,
+    footer(true),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function paymentAnomalyAlert(
+  title: string,
+  orderId: string | null | undefined,
+  type: string,
+  detail: string,
+): string {
+  return [
+    `⚠️ *Payment Anomaly*`,
+    ``,
+    `📋 *${title}*`,
+    orderId ? `🆔 Order: ${orderId}` : null,
+    `📂 Type: ${type}`,
+    `📝 ${detail.length > 200 ? detail.slice(0, 200) + "…" : detail}`,
+    orderId ? `👉 ${BRAND.appUrl}/admin/orders/${orderId}` : null,
+    footer(true),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+// ─── End-User Messages ───────────────────────────────────────────────────────
+
+export function ticketConfirmationMessage(
+  eventTitle: string,
+  buyerName: string,
+  eventDate: string,
+  venue: string | null,
+  orderId: string,
+  itemsSummary: string,
+  ticketUrl: string,
+): string {
+  return [
+    `🎟️ *Tickets Confirmed — ${eventTitle}*`,
+    ``,
+    `Hey ${buyerName}! 🎉 Your tickets are ready.`,
+    ``,
+    `📅 *Date:* ${eventDate}`,
+    venue ? `📍 *Venue:* ${venue}` : null,
+    `🆔 *Order:* #${orderId.slice(0, 8)}`,
+    ``,
+    itemsSummary ? `*Your Tickets:*\n${itemsSummary}` : null,
+    ``,
+    `👉 View & manage: ${ticketUrl}`,
+    ``,
+    `Show the QR code at the door for entry. See you there! 🎉`,
+    footer(false),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
+export function organizerSaleNotification(
+  eventTitle: string,
+  buyerName: string,
+  orderId: string,
+  itemsLines: string[],
+  total: string,
+  currency: string,
+  organizerUrl: string,
+): string {
+  return [
+    `🎟️ *New Ticket Sale — ${eventTitle}*`,
+    ``,
+    `👤 Buyer: ${buyerName}`,
+    `🆔 Order: #${orderId.slice(0, 8)}`,
+    ...itemsLines.map((l) => `  ${l}`),
+    `💵 *Total:* ${currency} ${total}`,
+    ``,
+    `👉 View attendees: ${organizerUrl}`,
+    footer(false),
+  ]
+    .filter(Boolean)
+    .join("\n")
+}

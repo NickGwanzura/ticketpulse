@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { sendAdminAlert } from "@/lib/whatsapp"
+import { contactFormAlert } from "@/lib/whatsapp-templates"
 import { log } from "@/lib/logger"
 
 /**
@@ -25,19 +26,7 @@ export async function POST(req: Request) {
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
 
-    await sendAdminAlert(
-      [
-        `📬 *New contact form submission*`,
-        "",
-        `From: ${name} (${email})`,
-        topic ? `Topic: ${topic}` : null,
-        `Message: ${message.slice(0, 500)}${message.length > 500 ? "…" : ""}`,
-        "",
-        `👉 ${appUrl}/admin`,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    )
+    await sendAdminAlert(contactFormAlert(name, email, topic, message))
 
     log.info("contact — WhatsApp alert sent", { name, email, topic })
 

@@ -8,6 +8,7 @@ import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { sendAdminAlert } from "@/lib/whatsapp"
+import { newPaymentAlert } from "@/lib/whatsapp-templates"
 import {
   alertPollUnknownStatus,
   alertFinalizeNonPaid,
@@ -424,14 +425,16 @@ async function handlePollSuccess(
       .catch(() => "Unknown event")
 
   sendAdminAlert(
-    `💰 *New payment received*\n\n` +
-    `Event: ${await eventTitle}\n` +
-    `Amount: ${order.currency ?? "USD"} ${order.totalAmount}\n` +
-    `Buyer: ${order.guestName ?? order.guestEmail ?? "Anonymous"}\n` +
-    `Phone: ${order.guestPhone ?? "—"}\n` +
-    `Payment: ${(order.paymentMethod ?? "card").toUpperCase()}\n` +
-    `Order: ${id.slice(0, 8)}…\n` +
-    `Invoice: ${invoiceId}`,
+    newPaymentAlert(
+      await eventTitle,
+      order.totalAmount,
+      order.currency ?? "USD",
+      order.guestName ?? order.guestEmail ?? "Anonymous",
+      order.guestPhone ?? "—",
+      order.paymentMethod ?? "card",
+      id,
+      invoiceId,
+    ),
   ).catch((err) =>
     log.error("whatsapp admin alert failed after payment confirmation", {
       orderId: id,
