@@ -44,6 +44,15 @@ export async function POST(request: Request) {
     results.expireOrders = { error: String(err) }
   }
 
+  // 3. event-reminder (runs every run, only acts on events ~24h away)
+  try {
+    const r = await fetch(`${base}/api/cron/event-reminder`, { method: "POST", headers })
+    results.eventReminder = await r.json()
+  } catch (err) {
+    log.error("cron/tick — event-reminder failed", { error: String(err) })
+    results.eventReminder = { error: String(err) }
+  }
+
   log.info("cron/tick — complete", results)
   return NextResponse.json({ ok: true, ...results })
 }

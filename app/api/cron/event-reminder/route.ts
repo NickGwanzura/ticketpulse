@@ -1,0 +1,175 @@
+import { NextResponse } from "next/server"
+import { and, eq, gte, lt, inArray, isNotNull } from "drizzle-orm"
+import { db } from "@/db"
+import { events, orders, users } from "@/db/schema"
+import { verifyCronSecret } from "@/lib/cron-auth"
+import { log } from "@/lib/logger"
+import { sendEventReminderEmail } from "@/lib/email"
+import { formatChatId } from "@/lib/whatsapp"
+
+const MAX_EVENTS_PER_RUN = 20
+const REMINDER_WINDOW_HOURS = 1 // run every hour, look 23-25h ahead
+
+export async function POST(request: Request) {
+  const authError = verifyCronSecret(request)
+  if (authError) return authError
+
+  const now = new Date()
+  const twentyThreeHoursFromNow = new Date(now.getTime() + 23 * 60 * 60 * 1000)
+  const twentyFiveHoursFromNow = new Date(now.getTime() + 25 * 60 * 60 * 1000)
+
+  log.info("cron/event-reminder — starting run", {
+    windowStart: twentyThreeHoursFromNow.toISOString(),
+    windowEnd: twentyFiveHoursFromNow.toISOString(),
+  })
+
+  // ── 1. Find published events starting in ~24 hours ────────────────────────
+  const upcomingEvents = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      slug: events.slug,
+      startsAt: events.startsAt,
+      venue: events.venue,
+      organizerId: events.organizerId,
+    })
+    .from(events)
+    .where(
+      and(
+        inArray(events.status, ["published", "sold_out"]),
+        gte(events.startsAt, twentyThreeHoursFromNow),
+        lt(events.startsAt, twentyFiveHoursFromNow),
+      ),
+    )
+    .limit(MAX_EVENTS_PER_RUN)
+
+  if (upcomingEvents.length === 0) {
+    log.info("cron/event-reminder — no upcoming events in reminder window")
+    return NextResponse.json({ checked: 0, sent: 0, errors: 0 })
+  }
+
+  log.info("cron/event-reminder — found upcoming events", {
+    count: upcomingEvents.length,
+    events: upcomingEvents.map((e) => ({ id: e.id, title: e.title })),
+  })
+
+  // ── 2. For each event, find paid orders and send reminders ────────────────
+  let totalSent = 0
+  let totalErrors = 0
+  const results: Array<{ eventId: string; eventTitle: string; sent: number; errors: number }> = []
+
+  for (const ev of upcomingEvents) {
+    const eventDate = ev.startsAt.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+
+    // Find paid orders with phone or email
+    const paidOrders = await db
+      .select({
+        id: orders.id,
+        guestName: orders.guestName,
+        guestEmail: orders.guestEmail,
+        guestPhone: orders.guestPhone,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.eventId, ev.id),
+          inArray(orders.status, ["paid", "completed"]),
+        ),
+      )
+
+    if (paidOrders.length === 0) continue
+
+    let eventSent = 0
+    let eventErrors = 0
+
+    for (const order of paidOrders) {
+      const buyerName = order.guestName ?? undefined
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+      const ticketUrl = `${appUrl}/orders/${order.id}`
+
+      // WhatsApp reminder
+      if (order.guestPhone) {
+        try {
+          const { sendText } = await import("@/lib/whatsapp")
+          const { ticketConfirmationMessage } = await import("@/lib/whatsapp-templates")
+          const message = ticketConfirmationMessage(
+            ev.title,
+            buyerName ?? "there",
+            eventDate,
+            ev.venue,
+            order.id,
+            "", // no item summary — this is a reminder
+            ticketUrl,
+          )
+          await sendText(formatChatId(order.guestPhone), message)
+          eventSent++
+        } catch (err) {
+          log.warn("cron/event-reminder — WhatsApp send failed", {
+            orderId: order.id,
+            eventId: ev.id,
+            error: String(err),
+          })
+          eventErrors++
+        }
+      }
+
+      // Email reminder
+      if (order.guestEmail) {
+        try {
+          await sendEventReminderEmail({
+            to: order.guestEmail,
+            buyerName,
+            eventTitle: ev.title,
+            eventDate,
+            eventVenue: ev.venue ?? undefined,
+            ticketUrl,
+          })
+          eventSent++
+        } catch (err) {
+          log.warn("cron/event-reminder — email send failed", {
+            orderId: order.id,
+            eventId: ev.id,
+            error: String(err),
+          })
+          eventErrors++
+        }
+      }
+    }
+
+    totalSent += eventSent
+    totalErrors += eventErrors
+    results.push({
+      eventId: ev.id,
+      eventTitle: ev.title,
+      sent: eventSent,
+      errors: eventErrors,
+    })
+
+    log.info("cron/event-reminder — event processed", {
+      eventId: ev.id,
+      title: ev.title,
+      orders: paidOrders.length,
+      sent: eventSent,
+      errors: eventErrors,
+    })
+  }
+
+  log.info("cron/event-reminder — run complete", {
+    events: upcomingEvents.length,
+    totalSent,
+    totalErrors,
+  })
+
+  return NextResponse.json({
+    ok: true,
+    checked: upcomingEvents.length,
+    sent: totalSent,
+    errors: totalErrors,
+    results,
+  })
+}

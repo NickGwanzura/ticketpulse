@@ -3,13 +3,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
-  LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings, LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, Bus,
+  LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings, LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, Bus, CreditCard,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
 const NAV = [
   { label: "Overview",       href: "/admin",                icon: LayoutGrid },
   { label: "Communications", href: "/admin/communications", icon: Megaphone },
+  { label: "Payments",       href: "/admin/payments",       icon: CreditCard },
   { label: "Velocity",       href: "/admin/velocity",       icon: Activity },
   { label: "Reconciliation", href: "/admin/reconciliation", icon: GitCompareArrows },
   { label: "Analytics",      href: "/admin/analytics",      icon: BarChart3 },

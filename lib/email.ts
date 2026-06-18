@@ -3,6 +3,7 @@ import { Resend } from "resend"
 import WelcomeEmail from "@/emails/welcome"
 import MagicLinkEmail from "@/emails/magic-link"
 import OrderConfirmationEmail, { type OrderLine } from "@/emails/order-confirmation"
+import EventReminderEmail from "@/emails/event-reminder"
 import PayoutNotificationEmail from "@/emails/payout-notification"
 import VerifyPurchaseEmail from "@/emails/verify-purchase"
 import AdminInviteEmail from "@/emails/admin-invite"
@@ -221,5 +222,20 @@ export function sendPayoutNotificationEmail(args: {
     to: args.to,
     subject: `Payout sent: ${args.amount} ${args.currency}`,
     react: PayoutNotificationEmail(args),
+  })
+}
+
+export function sendEventReminderEmail(args: {
+  to: string
+  buyerName?: string | null
+  eventTitle: string
+  eventDate: string
+  eventVenue?: string
+  ticketUrl: string
+}) {
+  return send({
+    to: args.to,
+    subject: `⏰ Reminder: ${args.eventTitle} is tomorrow!`,
+    react: EventReminderEmail(args),
   })
 }
