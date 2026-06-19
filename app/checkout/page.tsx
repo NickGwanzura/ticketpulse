@@ -23,7 +23,7 @@ type CheckoutResponse = {
   resumed?: boolean
 }
 
-type PaymentMethodValue = "velocity-ecocash" | "velocity-card"
+type PaymentMethodValue = "velocity-ecocash"
 
 const POLL_INTERVAL_MS = 4000
 // Must match POLL_TIMEOUT_MS in app/api/checkout/velocity/status/[id]/route.ts.
@@ -32,7 +32,6 @@ const POLL_TIMEOUT_MS = 5.5 * 60 * 1000
 
 const PAYMENT_METHODS: { value: PaymentMethodValue; label: string; body: string; icon: typeof Smartphone }[] = [
   { value: "velocity-ecocash", label: "EcoCash", body: "Pay with EcoCash via mobile money. Instant confirmation.", icon: Smartphone },
-  { value: "velocity-card", label: "Card", body: "Pay with Visa/Mastercard via secure hosted checkout.", icon: CreditCard },
 ]
 
 // Key prefix used to persist polling state across page refresh.
@@ -301,10 +300,10 @@ export default function CheckoutPage() {
           errorMsg = errBody.error ?? errorMsg
         } catch { /* use default */ }
 
-        // Card payment specific: if we got a 502 (bad gateway) during card
-        // payment, the provider may not have returned a checkout URL.
-        if (res.status === 502 && form.payment === "velocity-card") {
-          throw new Error(errorMsg || "The card payment service is temporarily unavailable. Please try again or choose EcoCash.")
+	        // Card payment specific: if we got a 502 (bad gateway) during card
+	      // payment, the provider may not have returned a checkout URL.
+        if (res.status === 502) {
+          throw new Error(errorMsg || "Payment service is temporarily unavailable. Please try again.")
         }
         throw new Error(errorMsg)
       }
@@ -558,9 +557,7 @@ export default function CheckoutPage() {
             className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90"
           >
             {submitting
-              ? form.payment === "velocity-card"
-                ? <><Loader2 size={14} className="animate-spin" /> Redirecting to secure card payment…</>
-                : <><Loader2 size={14} className="animate-spin" /> Processing payment…</>
+              ? <><Loader2 size={14} className="animate-spin" /> Processing payment…</>
               : <><Lock size={14} /> Place order</>}
           </button>
         </div>
@@ -694,9 +691,7 @@ export default function CheckoutPage() {
               className="hidden lg:inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-90 mt-2"
             >
               {submitting
-                ? form.payment === "velocity-card"
-                  ? <><Loader2 size={14} className="animate-spin" /> Redirecting to secure card payment…</>
-                  : <><Loader2 size={14} className="animate-spin" /> Processing payment…</>
+                ? <><Loader2 size={14} className="animate-spin" /> Processing payment…</>
                 : <><Lock size={14} /> Place order</>}
             </button>
 
