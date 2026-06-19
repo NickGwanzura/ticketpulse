@@ -5,7 +5,7 @@ import {
   Users, Activity, CheckCircle2, Clock, TrendingUp,
   Zap, FileWarning, Ticket,
 } from "lucide-react"
-import { desc, eq, sql, and, gte, inArray } from "drizzle-orm"
+import { desc, eq, sql, and, gte, inArray, isNull, lt } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -95,7 +95,7 @@ export default async function AdminOverviewPage() {
       .groupBy(sql`DATE(${orders.createdAt})`).orderBy(sql`DATE(${orders.createdAt})`),
 
     db.select({ day: sql<string>`DATE(${orders.createdAt})`, total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, gte(orders.createdAt, fourteenDaysAgo), sql`${orders.createdAt} < ${sevenDaysAgo}`))
+      .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, gte(orders.createdAt, fourteenDaysAgo), lt(orders.createdAt, sevenDaysAgo)))
       .groupBy(sql`DATE(${orders.createdAt})`),
 
     db.select({ category: events.category, count: sql<number>`COUNT(*)::int` })
@@ -118,11 +118,11 @@ export default async function AdminOverviewPage() {
       .where(eq(events.status, "draft")).orderBy(desc(events.createdAt)).limit(10),
 
     db.select({ id: users.id, name: users.name, email: users.email, createdAt: users.createdAt })
-      .from(users).where(and(eq(users.role, "organizer"), sql`${users.approvedAt} IS NULL`))
+      .from(users).where(and(eq(users.role, "organizer"), isNull(users.approvedAt)))
       .orderBy(desc(users.createdAt)).limit(10),
 
     db.select({ id: users.id, name: users.name, email: users.email })
-      .from(users).where(sql`${users.emailVerified} IS NULL`)
+      .from(users).where(isNull(users.emailVerified))
       .orderBy(desc(users.createdAt)).limit(10),
 
     db.select({
