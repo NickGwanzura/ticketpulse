@@ -6,6 +6,12 @@ let dbCallIndex = 0
 
 vi.mock("@/db", () => ({
   db: {
+    update: () => ({
+      set: () => ({
+        where: () => Promise.resolve(null),
+        catch: () => {}, // only needed if the update is awaited inside catch
+      }),
+    }),
     select: () => ({
       from: () => ({
         where: () => {
@@ -15,7 +21,7 @@ vi.mock("@/db", () => ({
           // A .limit() chain also resolves to val.
           const result = Promise.resolve(val)
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          ;(result as Record<string, unknown>).limit = () => val
+          ;(result as unknown as Record<string, unknown>).limit = () => val
           return result
         },
       }),

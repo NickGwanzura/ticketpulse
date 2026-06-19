@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { and, eq, gte, lt, inArray, isNotNull } from "drizzle-orm"
+import { and, eq, gte, lt, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, users } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
@@ -66,19 +66,22 @@ export async function POST(request: Request) {
       year: "numeric",
     })
 
-    // Find paid orders with phone or email
+    // Find paid orders with phone or email that haven't been reminded yet
     const paidOrders = await db
       .select({
         id: orders.id,
         guestName: orders.guestName,
         guestEmail: orders.guestEmail,
         guestPhone: orders.guestPhone,
+        metadata: orders.metadata,
       })
       .from(orders)
       .where(
         and(
           eq(orders.eventId, ev.id),
           inArray(orders.status, ["paid", "completed"]),
+          // Skip orders that have already been sent a reminder
+          sql`${orders.metadata}->>'reminderSent' IS DISTINCT FROM 'true'`,
         ),
       )
 
@@ -91,6 +94,8 @@ export async function POST(request: Request) {
       const buyerName = order.guestName ?? undefined
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
       const ticketUrl = `${appUrl}/orders/${order.id}`
+      let orderSent = 0
+      let orderErrors = 0
 
       // WhatsApp reminder
       if (order.guestPhone) {
@@ -107,14 +112,14 @@ export async function POST(request: Request) {
             ticketUrl,
           )
           await sendText(formatChatId(order.guestPhone), message)
-          eventSent++
+          orderSent++
         } catch (err) {
           log.warn("cron/event-reminder — WhatsApp send failed", {
             orderId: order.id,
             eventId: ev.id,
             error: String(err),
           })
-          eventErrors++
+          orderErrors++
         }
       }
 
@@ -129,16 +134,34 @@ export async function POST(request: Request) {
             eventVenue: ev.venue ?? undefined,
             ticketUrl,
           })
-          eventSent++
+          orderSent++
         } catch (err) {
           log.warn("cron/event-reminder — email send failed", {
             orderId: order.id,
             eventId: ev.id,
             error: String(err),
           })
-          eventErrors++
+          orderErrors++
         }
       }
+
+      // Mark order as reminded so it won't be picked up by future ticks
+      if (orderSent > 0) {
+        const meta = (order.metadata ?? {}) as Record<string, unknown>
+        await db
+          .update(orders)
+          .set({ metadata: { ...meta, reminderSent: true }, updatedAt: new Date() })
+          .where(eq(orders.id, order.id))
+          .catch((err) => {
+            log.warn("cron/event-reminder — failed to mark reminder sent", {
+              orderId: order.id,
+              error: String(err),
+            })
+          })
+      }
+
+      eventSent += orderSent
+      eventErrors += orderErrors
     }
 
     totalSent += eventSent
