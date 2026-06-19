@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { eq, sql, and, gte, or } from "drizzle-orm"
+import { eq, sql, and, gte, or, desc } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -87,7 +87,7 @@ export default async function AdminPaymentsPage() {
       createdAt: paymentLedger.createdAt,
       invoiceId: paymentLedger.invoiceId,
     }).from(paymentLedger)
-      .orderBy(sql`${paymentLedger.createdAt} DESC`)
+      .orderBy(desc(paymentLedger.createdAt))
       .limit(50),
   ])
 
