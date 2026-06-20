@@ -167,14 +167,24 @@ export default async function AttendeesPage({
               Checked in: <strong className="text-green-700">{checkedIn}</strong> / {totalTickets}
             </span>
           </div>
-          <a
-            href={`/api/events/${id}/attendees/export`}
-            download
-            className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white hover:bg-ink-2 transition"
-          >
-            <Download size={14} />
-            Download CSV
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/events/${id}/attendees/pdf`}
+              download
+              className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white hover:bg-ink-2 transition"
+            >
+              <Download size={14} />
+              Download PDF
+            </a>
+            <a
+              href={`/api/events/${id}/attendees/export`}
+              download
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-4 py-2 text-[13px] font-medium text-ink hover:bg-paper-2 transition"
+            >
+              <Download size={14} />
+              CSV
+            </a>
+          </div>
         </div>
 
         {/* Table */}
