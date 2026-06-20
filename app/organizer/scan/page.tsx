@@ -158,19 +158,23 @@ export default function OrganizerScanPage() {
     } else {
       // Server-first validation — always hit the database for authoritative ticket status
       if (navigator.onLine) {
-        try {
-          const result: ScanResult = await markTicketScannedAction(code)
-          if (result.ok) {
-            status = result.status === "duplicate" ? "duplicate" : "valid"
-            eventTitle = result.ticket?.eventTitle
-            tierName = result.ticket?.tierName
-            holder = result.ticket?.holder
-            isStaffTicket = result.ticket?.isStaffTicket
-            staffRole = result.ticket?.staffRole
-          }
-        } catch {
-          // Server lookup failed — keep as "unknown"
-        }
+	        try {
+	          const result: ScanResult = await markTicketScannedAction(code)
+	          if (result.ok) {
+	            status = result.status === "duplicate" ? "duplicate" : "valid"
+	            eventTitle = result.ticket?.eventTitle
+	            tierName = result.ticket?.tierName
+	            holder = result.ticket?.holder
+	            isStaffTicket = result.ticket?.isStaffTicket
+	            staffRole = result.ticket?.staffRole
+	          } else {
+	            // Show server error in the tier/event fields so the operator sees why
+	            eventTitle = "❌ Scan failed"
+	            tierName = result.error ?? "Scan failed"
+	          }
+	        } catch {
+	          // Server lookup failed — keep as "unknown"
+	        }
       }
     }
 
