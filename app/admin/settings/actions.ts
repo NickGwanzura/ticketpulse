@@ -22,7 +22,7 @@ const DEFAULTS: SettingsMap = {
   platformName: "TicketPulse",
   supportEmail: "nick@ticketpulse.co.zw",
   defaultCurrency: "USD",
-  platformFeePercent: "8.00",
+  platformFeePercent: "7.00",
   maintenanceMode: false,
   updatedAt: null,
 }

@@ -1,7 +1,7 @@
-import { and, eq, inArray, sql } from "drizzle-orm"
+import { eq, inArray, sql, and } from "drizzle-orm"
 
 import { db } from "@/db"
-import { orderItems, orders, tickets, ticketTiers } from "@/db/schema"
+import { ticketTiers } from "@/db/schema"
 
 const DEFAULT_RESERVATION_MINUTES = 30
 
@@ -23,65 +23,30 @@ export async function getTierAvailability(
 
   const reservationMinutes = opts.reservationMinutes ?? DEFAULT_RESERVATION_MINUTES
 
-  const [tierRows, confirmedRows, reservationRows] = await Promise.all([
-    db
-      .select({
-        id: ticketTiers.id,
-        totalQuantity: ticketTiers.totalQuantity,
-      })
-      .from(ticketTiers)
-      .where(inArray(ticketTiers.id, uniqueTierIds)),
-    db
-      .select({
-        tierId: tickets.tierId,
-        count: sql<number>`COUNT(*)::int`,
-      })
-      .from(tickets)
-      .where(and(
-        inArray(tickets.tierId, uniqueTierIds),
-        eq(tickets.isStaffTicket, false),
-        sql`${tickets.status} NOT IN ('cancelled', 'refunded')`,
-      ))
-      .groupBy(tickets.tierId),
-    db
-      .select({
-        tierId: orderItems.tierId,
-        quantity: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int`,
-      })
-      .from(orderItems)
-      .innerJoin(orders, eq(orders.id, orderItems.orderId))
-      .where(and(
-        inArray(orderItems.tierId, uniqueTierIds),
-        inArray(orders.status, ["pending", "awaiting_verification"]),
-        sql`${orders.metadata}->>'inventoryReserved' = 'true'`,
-        sql`${orders.createdAt} > now() - (${reservationMinutes} || ' minutes')::interval`,
-      ))
-      .groupBy(orderItems.tierId),
-  ])
-
-  const confirmedByTier = new Map(
-    confirmedRows
-      .filter((row) => row.tierId)
-      .map((row) => [row.tierId!, Number(row.count ?? 0)]),
-  )
-  const reservedByTier = new Map(
-    reservationRows
-      .filter((row) => row.tierId)
-      .map((row) => [row.tierId!, Number(row.quantity ?? 0)]),
-  )
+  // soldQuantity is atomically maintained by the checkout lock:
+  //   - incremented during Phase 1 (order creation under advisory lock)
+  //   - decremented on cancel (cancelWithInventoryRelease)
+  //   - COALESCEd with 0 to handle NULL
+  // We only need to read it directly instead of summing from pending orders.
+  const tierRows = await db
+    .select({
+      id: ticketTiers.id,
+      totalQuantity: ticketTiers.totalQuantity,
+      soldQuantity: ticketTiers.soldQuantity,
+    })
+    .from(ticketTiers)
+    .where(inArray(ticketTiers.id, uniqueTierIds))
 
   return new Map(
     tierRows.map((tier) => {
-      const confirmedTickets = confirmedByTier.get(tier.id) ?? 0
-      const reservedTickets = reservedByTier.get(tier.id) ?? 0
       const totalQuantity = Number(tier.totalQuantity ?? 0)
-      const usedQuantity = Math.min(totalQuantity, confirmedTickets + reservedTickets)
+      const usedQuantity = Number(tier.soldQuantity ?? 0)
       return [tier.id, {
         tierId: tier.id,
         totalQuantity,
-        confirmedTickets,
-        reservedTickets,
-        usedQuantity,
+        confirmedTickets: usedQuantity, // soldQuantity IS the authoritative count
+        reservedTickets: 0,             // already baked into soldQuantity
+        usedQuantity: Math.min(totalQuantity, usedQuantity),
         availableQuantity: Math.max(0, totalQuantity - usedQuantity),
       }]
     }),

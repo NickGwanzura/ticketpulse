@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { events, orders, paymentLedger, payouts, tickets, users, velocitySettlements } from "@/db/schema"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
-const PLATFORM_FEE_RATE = 0.05
+const PLATFORM_FEE_RATE = 0.07
 
 const PAID_ORDER_STATUSES = new Set(["paid", "completed"])
 const SETTLED_LEDGER_STATUSES = new Set(["paid", "completed", "success", "paid_success"])

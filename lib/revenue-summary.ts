@@ -17,8 +17,12 @@ import { payouts } from "@/db/schema"
  *   paidOut    = payouts with status "paid" (incl. manual payouts)
  *   pending    = payouts in pending/approved/processing
  *   available  = max(0, net − paidOut − pending)
+ *
+ * KEEP THE CONSTANTS BELOW IN SYNC with the admin settings page
+ * (app/admin/settings/actions.ts → platformFeePercent default "8.00").
+ * Both must match the advertised platform fee.
  */
-export const PLATFORM_FEE_RATE = 0.05
+export const PLATFORM_FEE_RATE = 0.07
 export const PLATFORM_FEE_PERCENT = PLATFORM_FEE_RATE * 100
 
 export const ACTIVE_PAYOUT_STATUSES = ["pending", "approved", "processing"] as const

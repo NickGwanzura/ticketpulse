@@ -190,6 +190,7 @@ export async function POST(req: Request) {
         .set({
           status: "paid",
           paidAt: new Date(),
+          completedAt: new Date(),
           paymentRef: invoiceId,
           metadata: updatedMeta,
           updatedAt: new Date(),
@@ -216,11 +217,17 @@ export async function POST(req: Request) {
         // Duplicate — already recorded, safe to continue
       }
 
-      const delivery = await deliverTicketForPaidOrder(order.id)
+      // Fire-and-forget delivery — don't block the HTTP response (Velocity may
+      // time out and retry). The cron recheck handles delivery retries.
+      deliverTicketForPaidOrder(order.id).catch((err) =>
+        log.error("velocity callback - delivery failed (callback will retry via cron)", {
+          orderId: order.id,
+          error: String(err),
+        }),
+      )
 
       log.info("velocity callback - order processed", {
         orderId: order.id,
-        deliveryStatus: delivery.status,
       })
     } else {
       await db.insert(paymentLedger).values({

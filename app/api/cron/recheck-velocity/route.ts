@@ -171,6 +171,7 @@ export async function POST(request: Request) {
         .set({
           status: "paid",
           paidAt: new Date(),
+          completedAt: new Date(),
           paymentRef: invoiceId,
           // Merge only the velocity key — preserves promo, inventoryReserved,
           // questionResponses, and delivery metadata set by other parts of the system.

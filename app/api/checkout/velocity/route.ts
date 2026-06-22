@@ -602,6 +602,13 @@ export async function POST(req: Request) {
             .where(eq(ticketTiers.id, item.tierId))
         }
       }
+      // Revert promo usedCount if a promo code was applied
+      if (appliedPromo) {
+        await db
+          .update(promoCodes)
+          .set({ usedCount: sql`GREATEST(0, ${promoCodes.usedCount} - 1)` })
+          .where(eq(promoCodes.id, appliedPromo.id))
+      }
     } catch (releaseErr) {
       log.error("checkout - inventory release failed during cancel", { orderId, error: String(releaseErr) })
     }

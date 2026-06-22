@@ -343,9 +343,10 @@ async function handlePollSuccess(
   // ── CAS update: WHERE status = 'pending' prevents double-finalization ──
   const [claimed] = await db
     .update(orders)
-    .set({
-      status: "paid",
-      paidAt: new Date(),
+        .set({
+          status: "paid",
+          paidAt: new Date(),
+          completedAt: new Date(),
       paymentRef: invoiceId,
       metadata: finalMeta,
       updatedAt: new Date(),
