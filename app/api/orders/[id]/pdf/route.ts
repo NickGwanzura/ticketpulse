@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { orders, events, tickets, ticketTiers } from "@/db/schema"
 import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
 import { generateTicketQrImageDataUrl } from "@/lib/tickets"
-import { formatDateShort } from "@/lib/utils"
+import { formatDate } from "@/lib/utils"
 
 export async function GET(
   _request: Request,
@@ -66,7 +66,7 @@ export async function GET(
       qrCodeDataUrl: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId),
       humanCode: `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`,
       venue: event?.venue,
-      eventDate: event?.startsAt ? formatDateShort(event.startsAt) : null,
+      eventDate: event?.startsAt ? formatDate(event.startsAt, { timeZone: "Africa/Harare" }) : null,
     })))
 
     const pdfBuffer = await generateTicketPdfBuffer(ticketPages)

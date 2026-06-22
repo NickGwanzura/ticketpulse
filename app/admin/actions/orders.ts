@@ -81,11 +81,14 @@ export async function resendOrderEmailAction(orderId: string) {
     }))
 
     const eventDate = ev.startsAt
-      ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
+      ? new Date(ev.startsAt).toLocaleString("en-GB", {
           weekday: "long",
           day: "numeric",
           month: "long",
           year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Africa/Harare",
         })
       : "TBA"
 
@@ -118,6 +121,8 @@ export async function resendOrderEmailAction(orderId: string) {
 
         const pdfTickets = ticketRecords.map((t) => ({
           eventTitle: ev.title,
+          eventStartsAt: ev.startsAt,
+          venue: ev.venue,
           tierName: tierNameMap.get(t.tierId) ?? "General Admission",
           buyerName: order.guestName ?? "Valued Guest",
           orderId,
@@ -160,7 +165,7 @@ export async function resendOrderEmailAction(orderId: string) {
             ...meta,
             delivery: {
               ...delivery,
-              pdfVersion: "A6_V1",
+              pdfVersion: "A6_V2",
               lastDeliveryAttemptAt: new Date().toISOString(),
               deliveryAttempts: ((delivery.deliveryAttempts as number) ?? 0) + 1,
             },
@@ -477,11 +482,14 @@ export async function regeneratePdfAction(orderId: string) {
   }))
 
   const eventDate = ev.startsAt
-    ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
+    ? new Date(ev.startsAt).toLocaleString("en-GB", {
         weekday: "long",
         day: "numeric",
         month: "long",
         year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Africa/Harare",
       })
     : "TBA"
 
@@ -508,6 +516,8 @@ export async function regeneratePdfAction(orderId: string) {
   try {
     const pdfTickets = ticketRecords.map((t) => ({
       eventTitle: ev.title,
+      eventStartsAt: ev.startsAt,
+      venue: ev.venue,
       tierName: tierNameMap.get(t.tierId) ?? "General Admission",
       buyerName: order.guestName ?? "Valued Guest",
       orderId,
@@ -560,7 +570,7 @@ export async function regeneratePdfAction(orderId: string) {
         ...meta,
         delivery: {
           ...delivery,
-          pdfVersion: "A6_V1",
+          pdfVersion: "A6_V2",
           emailSentAt: new Date().toISOString(),
           emailSentTo: order.guestEmail,
           emailError: null,
@@ -576,7 +586,7 @@ export async function regeneratePdfAction(orderId: string) {
   log.info("regeneratePdfAction - completed", {
     orderId,
     ticketCount: ticketRecords.length,
-    pdfVersion: "A6_V1",
+    pdfVersion: "A6_V2",
     emailSent: true,
   })
 

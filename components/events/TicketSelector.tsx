@@ -1,7 +1,7 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Minus, Plus, ShoppingBag, Check, Zap } from "lucide-react"
+import { Minus, Plus, ShoppingBag, Check, Zap, Users } from "lucide-react"
 import { useCart } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"
 
@@ -17,55 +17,74 @@ interface Tier {
   earlyBirdPrice: number | null
   earlyBirdUntil: Date | string | null
   earlyBirdQuantity: number | null
+  groupPrice: number | null
+  groupMinQty: number | null
 }
 
-function useEffectivePrice(tier: Tier): { price: number; isEarlyBird: boolean; expiresAt: Date | null; spotsLeft: number | null } {
-  const [now, setNow] = useState(() => new Date())
+type EffectivePrice = {
+  price: number
+  isEarlyBird: boolean
+  isGroupDiscount: boolean
+  expiresAt: Date | null
+  spotsLeft: number | null
+}
 
-  useEffect(() => {
-    if (!tier.earlyBirdPrice || !tier.earlyBirdUntil) return
-    const id = setInterval(() => setNow(new Date()), 10_000)
-    return () => clearInterval(id)
-  }, [tier.earlyBirdPrice, tier.earlyBirdUntil])
+function computeEffectivePrice(tier: Tier, qty: number, now: Date): EffectivePrice {
+  // Early bird check
+  if (tier.earlyBirdPrice) {
+    const expiresAt = tier.earlyBirdUntil ? new Date(tier.earlyBirdUntil) : null
+    const dateExpired = expiresAt && now >= expiresAt
+    const spotsLeft = tier.earlyBirdQuantity !== null ? Math.max(0, tier.earlyBirdQuantity - tier.soldQuantity) : null
+    const qtyExpired = spotsLeft !== null && spotsLeft <= 0
+    const isEarlyBird = !dateExpired && !qtyExpired
+    if (isEarlyBird) {
+      return { price: tier.earlyBirdPrice, isEarlyBird: true, isGroupDiscount: false, expiresAt, spotsLeft }
+    }
+  }
 
-  if (!tier.earlyBirdPrice) return { price: tier.price, isEarlyBird: false, expiresAt: null, spotsLeft: null }
+  // Group discount — applies when total qty of this tier >= groupMinQty
+  if (tier.groupPrice && tier.groupMinQty && qty >= tier.groupMinQty) {
+    return { price: tier.groupPrice, isEarlyBird: false, isGroupDiscount: true, expiresAt: null, spotsLeft: null }
+  }
 
-  const expiresAt = tier.earlyBirdUntil ? new Date(tier.earlyBirdUntil) : null
-  const dateExpired = expiresAt && now >= expiresAt
-  const spotsLeft = tier.earlyBirdQuantity !== null ? Math.max(0, tier.earlyBirdQuantity - tier.soldQuantity) : null
-  const qtyExpired = spotsLeft !== null && spotsLeft <= 0
-
-  const isEarlyBird = !dateExpired && !qtyExpired
-  return { price: isEarlyBird ? tier.earlyBirdPrice : tier.price, isEarlyBird, expiresAt, spotsLeft: isEarlyBird ? spotsLeft : null }
+  return { price: tier.price, isEarlyBird: false, isGroupDiscount: false, expiresAt: null, spotsLeft: null }
 }
 
 interface TicketSelectorProps {
   eventSlug: string
   eventTitle: string
+  eventStartsAt: Date | string
+  eventVenue: string
   emoji: string
   tiers: Tier[]
 }
 
-export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: TicketSelectorProps) {
+export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, eventVenue, emoji, tiers }: TicketSelectorProps) {
   const router = useRouter()
   const { addItem } = useCart()
   const [qtys, setQtys] = useState<Record<string, number>>({})
   const [added, setAdded] = useState(false)
+  const [now, setNow] = useState(() => new Date())
+
+  // Refresh clock for early bird expiry checks
+  useEffect(() => {
+    const hasEarlyBird = tiers.some((t) => t.earlyBirdPrice && t.earlyBirdUntil)
+    if (!hasEarlyBird) return
+    const id = setInterval(() => setNow(new Date()), 10_000)
+    return () => clearInterval(id)
+  }, [tiers])
 
   const baseCurrency = tiers[0]?.currency ?? "USD"
 
-  // Build effective prices for all tiers (hooks must be called at top level)
-  const effectivePrices = tiers.map((t) => {
-    if (!t.earlyBirdPrice) return { price: t.price, isEarlyBird: false, expiresAt: null, spotsLeft: null }
-    const expiresAt = t.earlyBirdUntil ? new Date(t.earlyBirdUntil) : null
-    const now = new Date()
-    const dateExpired = expiresAt && now >= expiresAt
-    const spotsLeft = t.earlyBirdQuantity !== null ? Math.max(0, t.earlyBirdQuantity - t.soldQuantity) : null
-    const qtyExpired = spotsLeft !== null && spotsLeft <= 0
-    const isEarlyBird = !dateExpired && !qtyExpired
-    return { price: isEarlyBird ? t.earlyBirdPrice : t.price, isEarlyBird, expiresAt, spotsLeft: isEarlyBird ? spotsLeft : null }
-  })
-  const priceMap = Object.fromEntries(tiers.map((t, i) => [t.id, effectivePrices[i]]))
+  // Compute effective prices — re-computed whenever qtys or now changes
+  const priceMap = useMemo(() => {
+    const map: Record<string, EffectivePrice & { qty: number }> = {}
+    for (const tier of tiers) {
+      const qty = qtys[tier.id] ?? 0
+      map[tier.id] = { ...computeEffectivePrice(tier, qty, now), qty }
+    }
+    return map
+  }, [tiers, qtys, now])
 
   const update = (id: string, delta: number, max: number) => {
     setQtys((prev) => {
@@ -86,6 +105,8 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
           kind: "ticket",
           eventSlug,
           eventTitle,
+          eventStartsAt: new Date(eventStartsAt).toISOString(),
+          eventVenue,
           tierId: t.id,
           tierName: t.name,
           emoji,
@@ -108,6 +129,8 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
           kind: "ticket",
           eventSlug,
           eventTitle,
+          eventStartsAt: new Date(eventStartsAt).toISOString(),
+          eventVenue,
           tierId: t.id,
           tierName: t.name,
           emoji,
@@ -149,6 +172,11 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                   <Zap size={9} /> EARLY BIRD
                 </span>
               )}
+              {ep.isGroupDiscount && (
+                <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                  <Users size={9} /> GROUP RATE
+                </span>
+              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-semibold tracking-tight text-ink">{tier.name}</p>
@@ -161,6 +189,11 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                       Early bird ends {ep.expiresAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                     </p>
                   )}
+                  {tier.groupPrice && tier.groupMinQty && !ep.isGroupDiscount && (
+                    <p className="text-[11px] mt-1 font-medium text-sky-700">
+                      {formatCurrency(tier.groupPrice, tier.currency)}/person for {tier.groupMinQty}+
+                    </p>
+                  )}
                   <p className={`text-[11px] mt-1.5 font-medium ${
                     soldOut ? "text-rose-700" : remaining <= 20 ? "text-amber-700" : "text-green-700"
                   }`}>
@@ -171,7 +204,7 @@ export default function TicketSelector({ eventSlug, eventTitle, emoji, tiers }: 
                   <p className="text-[15px] font-bold tracking-tight text-ink">
                     {formatCurrency(ep.price, tier.currency)}
                   </p>
-                  {ep.isEarlyBird && (
+                  {(ep.isEarlyBird || ep.isGroupDiscount) && tier.price !== ep.price && (
                     <p className="text-[11px] text-ink-3 line-through">{formatCurrency(tier.price, tier.currency)}</p>
                   )}
                   <p className="text-[10px] text-ink-3">per entry</p>

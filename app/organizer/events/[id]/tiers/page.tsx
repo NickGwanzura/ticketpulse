@@ -37,6 +37,9 @@ export default async function TiersPage({
       id: events.id,
       title: events.title,
       status: events.status,
+      startsAt: events.startsAt,
+      venue: events.venue,
+      city: events.city,
     })
     .from(events)
     .where(eq(events.id, id))
@@ -99,6 +102,8 @@ export default async function TiersPage({
                 key={t.id}
                 eventId={id}
                 eventTitle={event.title}
+                eventStartsAt={event.startsAt}
+                eventVenue={[event.venue, event.city].filter(Boolean).join(", ")}
                 
                 tier={{
                   id: t.id,

@@ -19,6 +19,8 @@ type Tier = {
   maxPerOrder: number | null
   salesStart: Date | null
   salesEnd: Date | null
+  groupPrice?: string | null
+  groupMinQty?: number | null
 }
 
 function formatWindow(start: Date | null, end: Date | null): string | null {
@@ -35,10 +37,14 @@ function formatWindow(start: Date | null, end: Date | null): string | null {
 export default function TierCard({
   eventId,
   eventTitle,
+  eventStartsAt,
+  eventVenue,
   tier,
 }: {
   eventId: string
   eventTitle: string
+  eventStartsAt: Date
+  eventVenue: string
   tier: Tier
 }) {
   const [editing, setEditing] = useState(false)
@@ -80,6 +86,12 @@ export default function TierCard({
               <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
               <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
             </p>
+          </div>
+        )}
+
+        {tier.groupPrice && (
+          <div className="mb-2 rounded-lg bg-sky-50 border border-sky-200 px-3 py-1.5 text-[12px] text-sky-800">
+            {formatCurrency(Number(tier.groupPrice), tier.currency ?? "USD")}/person for groups of {tier.groupMinQty ?? 4}+
           </div>
         )}
 
@@ -159,6 +171,8 @@ export default function TierCard({
               earlyBirdPrice: (tier as { earlyBirdPrice?: string | null }).earlyBirdPrice ?? null,
               earlyBirdUntil: (tier as { earlyBirdUntil?: Date | null }).earlyBirdUntil ?? null,
               earlyBirdQuantity: (tier as { earlyBirdQuantity?: number | null }).earlyBirdQuantity ?? null,
+              groupPrice: tier.groupPrice ?? null,
+              groupMinQty: tier.groupMinQty ?? null,
             }}
             onDone={() => setEditing(false)}
           />
@@ -169,6 +183,8 @@ export default function TierCard({
         <SampleTicket
           eventId={eventId}
           eventTitle={eventTitle}
+          eventStartsAt={eventStartsAt}
+          eventVenue={eventVenue}
           tier={{
             id: tier.id,
             name: tier.name,

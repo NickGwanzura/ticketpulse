@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, events, users } from "@/db/schema"
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
-import { sendText, formatChatId } from "@/lib/whatsapp"
+import { sendText, sendImage, formatChatId } from "@/lib/whatsapp"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
@@ -274,7 +274,7 @@ async function _deliver(orderId: string): Promise<{
 
       attemptMeta.status = "TICKETS_CREATED"
       attemptMeta.ticketIssuedAt = new Date().toISOString()
-      attemptMeta.pdfVersion = "A6_V1"
+      attemptMeta.pdfVersion = "A6_V2"
     } else {
       ticketCount = existingTickets.length
     }
@@ -328,7 +328,7 @@ async function _deliver(orderId: string): Promise<{
         }
 
         const eventDate = ev?.startsAt
-          ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+          ? new Date(ev.startsAt).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Harare" })
           : "TBA"
 
         // Generate combined PDF of all tickets
@@ -336,6 +336,8 @@ async function _deliver(orderId: string): Promise<{
         try {
           const pdfTickets = pdfTicketData.map((t) => ({
             eventTitle: ev?.title ?? "Your Ticket",
+            eventStartsAt: ev?.startsAt,
+            venue: ev?.venue,
             tierName: t.tierName,
             buyerName: order.guestName ?? "Valued Guest",
             orderId,
@@ -373,7 +375,7 @@ async function _deliver(orderId: string): Promise<{
         attemptMeta.emailSentTo = order.guestEmail
         attemptMeta.emailId = "id" in result ? result.id : null
         attemptMeta.emailError = null
-        attemptMeta.pdfVersion = "A6_V1"
+        attemptMeta.pdfVersion = "A6_V2"
 
         // ── Notify organizer and admin about the sale ─────────────────────
         if (ev) {
@@ -485,8 +487,11 @@ async function notifyOrganizerSale(
 
   if (org?.phone) {
     const { organizerSaleNotification } = await import("@/lib/whatsapp-templates")
+    const chatId = formatChatId(org.phone)
+    // Send brand image + sale notification
+    sendImage({ chatId, url: `${baseUrl}/ticketpulse-brand.jpg`, caption: "💰 New sale" }).catch(() => {})
     sendText(
-      formatChatId(org.phone),
+      chatId,
       organizerSaleNotification(
         ev.title,
         order.guestName ?? "Someone",

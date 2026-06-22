@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers } from "@/db/schema"
-import { sendText, formatChatId, isSessionReady } from "@/lib/whatsapp"
+import { sendText, sendImage, formatChatId, isSessionReady } from "@/lib/whatsapp"
 import { log } from "@/lib/logger"
 
 /**
@@ -79,11 +79,14 @@ export async function POST(req: Request) {
 
     // ── Build the message ──────────────────────────────────────────────────
     const eventDate = ev.startsAt
-      ? new Date(ev.startsAt).toLocaleDateString("en-GB", {
+      ? new Date(ev.startsAt).toLocaleString("en-GB", {
           weekday: "long",
           day: "numeric",
           month: "long",
           year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Africa/Harare",
         })
       : "TBA"
 
@@ -110,18 +113,26 @@ export async function POST(req: Request) {
 
     // ── Send via WhatsApp ──────────────────────────────────────────────────
     const chatId = formatChatId(order.guestPhone)
-    const result = await sendText(chatId, message)
+    const imageUrl = `${appUrl}/ticketpulse-brand.jpg`
+
+    // Send brand image first, then the text confirmation
+    const [imageResult, textResult] = await Promise.allSettled([
+      sendImage({ chatId, url: imageUrl, caption: "🎟️ TicketPulse" }).catch(() => null),
+      sendText(chatId, message),
+    ])
 
     log.info("send-ticket — WhatsApp sent", {
       orderId,
       phone: order.guestPhone,
-      messageId: result.messageId,
+      imageSent: imageResult.status === "fulfilled",
+      textSent: textResult.status === "fulfilled",
+      messageId: textResult.status === "fulfilled" ? textResult.value.messageId : null,
     })
 
     return NextResponse.json({
       ok: true,
       sentTo: order.guestPhone,
-      messageId: result.messageId,
+      imageSent: imageResult.status === "fulfilled",
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

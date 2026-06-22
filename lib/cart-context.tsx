@@ -8,6 +8,8 @@ interface CartLineBase {
   price: number
   currency: string
   qty: number
+  eventStartsAt?: string
+  eventVenue?: string
 }
 
 export interface TicketLine     extends CartLineBase { kind: "ticket";       tierId: string;  tierName: string; emoji: string }

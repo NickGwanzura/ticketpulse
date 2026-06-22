@@ -38,7 +38,13 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
 
     // Fetch event details
     const [event] = await db
-      .select({ title: events.title, slug: events.slug })
+      .select({
+        title: events.title,
+        slug: events.slug,
+        startsAt: events.startsAt,
+        venue: events.venue,
+        city: events.city,
+      })
       .from(events)
       .where(eq(events.id, order.eventId))
       .limit(1)
@@ -81,6 +87,8 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
           tierId: item.tierId ?? "",
           tierName: item.tierName ?? "Ticket",
           emoji: "",
+          eventStartsAt: event?.startsAt?.toISOString(),
+          eventVenue: [event?.venue, event?.city].filter(Boolean).join(", ") || undefined,
         })
       }
       // Merch, shuttle, and vendor addon items aren't currently reconstructed

@@ -5,8 +5,8 @@ import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { formatDate } from "@/lib/utils"
 import {
-  ArrowLeft, Download, Calendar, MapPin, ShieldCheck, Ticket,
-  DownloadCloud, Loader2,
+  ArrowLeft, Download, Calendar, MapPin, ShieldCheck,
+  DownloadCloud, Loader2, UserRound,
 } from "lucide-react"
 import QRCode from "qrcode"
 
@@ -47,15 +47,15 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!ready) return
 
-    // Try localStorage first
+    // Show local checkout data immediately, then enrich it from the database
+    // with canonical event time and venue details when available.
     const local = getOrder(id)
     if (local) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the printable view from persisted checkout state before the canonical refresh.
       setOrder(local)
-      return
     }
 
-    // Fall back to server-side API
-    setFetching(true)
+    setFetching(!local)
     fetch(`/api/orders/${id}/data`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
@@ -138,13 +138,15 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   return (
     <main className="bg-[#f4f7fa] min-h-screen">
       <style>{`
-        @page { size: A4 portrait; margin: 0; }
+        @page { size: A6 portrait; margin: 0; }
         @media print {
           html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
           main { background: #fff !important; padding: 0 !important; }
           .max-w-\[210mm\] { max-width: none !important; padding: 0 !important; }
           .tp-no-print { display: none !important; }
           .tp-print-page {
+            width: 105mm;
+            min-height: 148mm;
             page-break-after: always;
             break-after: page;
           }
@@ -152,24 +154,13 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
             page-break-after: avoid;
             break-after: avoid;
           }
-          /* Strip all decorative styling from tickets in print */
-          article { box-shadow: none !important; border-radius: 0 !important; border: 0 !important; }
-          article [class*="rounded"]:not([class*="bg-"]) { border-radius: 0 !important; }
-          article [class*="shadow"] { box-shadow: none !important; }
-          article [class*="ring"] { box-shadow: none !important; }
-          article [class*="gap-"] { gap: 0 !important; }
-          article [class*="space-y"] { margin-top: 0 !important; }
-          article [class*="p-"] { padding: 0 !important; }
-          article [class*="px-"] { padding-left: 0 !important; padding-right: 0 !important; }
-          article [class*="py-"] { padding-top: 0 !important; padding-bottom: 0 !important; }
-          article [class*="pt-"] { padding-top: 0 !important; }
-          article [class*="pb-"] { padding-bottom: 0 !important; }
-          article [class*="pl-"] { padding-left: 0 !important; }
-          article [class*="pr-"] { padding-right: 0 !important; }
-          article [class*="mt-"] { margin-top: 0 !important; }
-          article [class*="mb-"] { margin-bottom: 0 !important; }
-          article [class*="ml-"] { margin-left: 0 !important; }
-          article [class*="mr-"] { margin-right: 0 !important; }
+          article {
+            width: 105mm;
+            min-height: 148mm;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            border: 0 !important;
+          }
         }
       `}</style>
 
@@ -261,17 +252,32 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
                       {line.eventTitle}
                     </h2>
 
-                    {/* Detail rows — compact */}
-                    <div className="mt-3 space-y-1.5">
-                      <div className="flex items-center gap-2 text-[11px] text-[#5a6d7c]">
-                        <Calendar size={11} className="shrink-0 text-[#8a9caa]" />
-                        <span>{formatDate(order.createdAt)}</span>
+                    {/* Event and holder details */}
+                    <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="flex items-start gap-2">
+                        <Calendar size={12} className="mt-0.5 shrink-0 text-[#8a9caa]" />
+                        <div>
+                          <dt className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-[#8a9caa]">Starts</dt>
+                          <dd className="mt-0.5 text-[10px] font-semibold text-[#0a2540]">
+                            {line.eventStartsAt ? formatDate(line.eventStartsAt, { timeZone: "Africa/Harare" }) : "Date and time TBA"}
+                          </dd>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] text-[#5a6d7c]">
-                        <MapPin size={11} className="shrink-0 text-[#8a9caa]" />
-                        <span className="truncate">{order.contact.name || order.contact.email}</span>
+                      <div className="flex items-start gap-2">
+                        <MapPin size={12} className="mt-0.5 shrink-0 text-[#8a9caa]" />
+                        <div className="min-w-0">
+                          <dt className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-[#8a9caa]">Venue</dt>
+                          <dd className="mt-0.5 text-[10px] font-semibold text-[#0a2540]">{line.eventVenue || "Venue TBA"}</dd>
+                        </div>
                       </div>
-                    </div>
+                      <div className="flex items-start gap-2 sm:col-span-2">
+                        <UserRound size={12} className="mt-0.5 shrink-0 text-[#8a9caa]" />
+                        <div>
+                          <dt className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-[#8a9caa]">Ticket holder</dt>
+                          <dd className="mt-0.5 text-[10px] font-semibold text-[#0a2540]">{order.contact.name || order.contact.email}</dd>
+                        </div>
+                      </div>
+                    </dl>
 
                     {/* Order reference */}
                     <div className="mt-3 pt-3 border-t border-[#e2e8f0]">

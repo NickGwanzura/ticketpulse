@@ -63,6 +63,8 @@ const SaveSchema = z.object({
   earlyBirdPrice:    z.string().optional(),
   earlyBirdUntil:    z.string().optional(),
   earlyBirdQuantity: z.string().optional(),
+  groupPrice:        z.string().optional(),
+  groupMinQty:       z.string().optional(),
 })
 
 export type TierFormState = {
@@ -104,6 +106,8 @@ export async function saveTierAction(
     earlyBirdPrice:    formData.get("earlyBirdPrice")?.toString() ?? undefined,
     earlyBirdUntil:    formData.get("earlyBirdUntil")?.toString() ?? undefined,
     earlyBirdQuantity: formData.get("earlyBirdQuantity")?.toString() ?? undefined,
+    groupPrice:        formData.get("groupPrice")?.toString() ?? undefined,
+    groupMinQty:       formData.get("groupMinQty")?.toString() ?? undefined,
   }
 
   const parsed = SaveSchema.safeParse(raw)
@@ -152,6 +156,15 @@ export async function saveTierAction(
     return { ok: false, error: "Early bird price must be less than the regular price." }
   }
 
+  const groupPrice = data.groupPrice ? Number.parseFloat(data.groupPrice) : null
+  const groupMinQty = data.groupMinQty ? Number.parseInt(data.groupMinQty, 10) : null
+  if (groupPrice !== null && (Number.isNaN(groupPrice) || groupPrice < 0 || groupPrice >= price)) {
+    return { ok: false, error: "Group discount price must be less than the regular price.", fieldErrors: { groupPrice: "Must be less than regular price" } }
+  }
+  if (groupMinQty !== null && (Number.isNaN(groupMinQty) || groupMinQty < 2)) {
+    return { ok: false, error: "Minimum group size must be at least 2.", fieldErrors: { groupMinQty: "Must be at least 2" } }
+  }
+
   if (data.tierId) {
     const ownerCheck = await requireTierOwnership(data.tierId)
     if (!ownerCheck.ok || ownerCheck.tier.eventId !== data.eventId) {
@@ -181,6 +194,8 @@ export async function saveTierAction(
         earlyBirdPrice:    earlyBirdPrice !== null ? earlyBirdPrice.toFixed(2) : null,
         earlyBirdUntil,
         earlyBirdQuantity: earlyBirdQuantity || null,
+        groupPrice:        groupPrice !== null ? groupPrice.toFixed(2) : null,
+        groupMinQty:       groupMinQty || null,
       })
       .where(eq(ticketTiers.id, data.tierId))
   } else {
@@ -197,6 +212,8 @@ export async function saveTierAction(
       earlyBirdPrice:    earlyBirdPrice !== null ? earlyBirdPrice.toFixed(2) : null,
       earlyBirdUntil,
       earlyBirdQuantity: earlyBirdQuantity || null,
+      groupPrice:        groupPrice !== null ? groupPrice.toFixed(2) : null,
+      groupMinQty:       groupMinQty || null,
     })
   }
 

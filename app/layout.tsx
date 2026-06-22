@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   },
   description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
   manifest: "/manifest",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }],
+    shortcut: "/icon.svg",
+    apple: "/apple-icon",
+  },
   appleWebApp: {
     capable: true,
     title: "TicketPulse",
@@ -37,13 +42,13 @@ export const metadata: Metadata = {
     title: "TicketPulse. Every event. One ticket.",
     description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
     url: "/",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "TicketPulse - Every event. One ticket." }],
   },
   twitter: {
     card: "summary_large_image",
     title: "TicketPulse. Every event. One ticket.",
     description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "TicketPulse - Every event. One ticket." }],
   },
   alternates: {
     canonical: "/",

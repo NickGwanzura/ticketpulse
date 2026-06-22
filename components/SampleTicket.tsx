@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, Loader2, Ticket, Calendar, ShieldCheck, Smartphone, QrCode, Eye, X } from "lucide-react"
+import { Download, Loader2, Calendar, MapPin, ShieldCheck, Smartphone, QrCode, Eye, X } from "lucide-react"
 import QRCode from "qrcode"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDate } from "@/lib/utils"
 
 // Helpers
 
@@ -23,6 +23,8 @@ function qrDataUrl(value: string): Promise<string> {
 type SampleTicketProps = {
   eventId: string
   eventTitle: string
+  eventStartsAt: Date | string
+  eventVenue: string
   tier: {
     id: string
     name: string
@@ -35,7 +37,7 @@ type SampleTicketProps = {
 }
 
 
-export default function SampleTicket({ eventId, eventTitle, tier, onClose }: SampleTicketProps) {
+export default function SampleTicket({ eventId, eventTitle, eventStartsAt, eventVenue, tier, onClose }: SampleTicketProps) {
   const [qrUrl, setQrUrl] = useState<string | null>(null)
 
   const testCode = shortCode(tier.id)
@@ -138,8 +140,15 @@ export default function SampleTicket({ eventId, eventTitle, tier, onClose }: Sam
                 <div className="flex items-start gap-2">
                   <Calendar size={11} className="text-ink-3 mt-0.5 shrink-0" />
                   <div>
-                    <dt className="text-[7.5px] font-semibold tracking-[0.15em] text-ink-3 uppercase">Sample date</dt>
-                    <dd className="text-[11px] text-ink font-medium">Preview ticket</dd>
+                    <dt className="text-[7.5px] font-semibold tracking-[0.15em] text-ink-3 uppercase">Starts</dt>
+                    <dd className="text-[11px] text-ink font-medium">{formatDate(eventStartsAt, { timeZone: "Africa/Harare" })}</dd>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <MapPin size={11} className="text-ink-3 mt-0.5 shrink-0" />
+                  <div>
+                    <dt className="text-[7.5px] font-semibold tracking-[0.15em] text-ink-3 uppercase">Venue</dt>
+                    <dd className="text-[11px] text-ink font-medium">{eventVenue}</dd>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">

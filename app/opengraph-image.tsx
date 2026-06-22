@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og"
 
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
+export const alt = "TicketPulse - Every event. One ticket."
 
 export default function OpenGraphImage() {
   return new ImageResponse(
@@ -12,9 +13,10 @@ export default function OpenGraphImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "center",
-          background: "#ffffff",
+          padding: "72px 88px",
+          background: "linear-gradient(135deg, #0A2540 0%, #131132 58%, #1D1A46 100%)",
           position: "relative",
         }}
       >
@@ -25,8 +27,8 @@ export default function OpenGraphImage() {
             top: 0,
             left: 0,
             right: 0,
-            height: 8,
-            background: "linear-gradient(90deg, #0A2540 0%, #0570DE 60%, #16A34A 100%)",
+            height: 10,
+            background: "linear-gradient(90deg, #84FF00 0%, #42E66B 48%, #4DB8FF 100%)",
           }}
         />
 
@@ -36,19 +38,20 @@ export default function OpenGraphImage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 120,
-            height: 120,
-            borderRadius: 28,
-            background: "#0A2540",
-            marginBottom: 36,
+            width: 104,
+            height: 104,
+            borderRadius: 26,
+            background: "rgba(255,255,255,0.1)",
+            border: "2px solid rgba(255,255,255,0.15)",
+            marginBottom: 42,
           }}
         >
           <div
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 12,
-              border: "4px solid rgba(255,255,255,0.9)",
+              width: 58,
+              height: 52,
+              borderRadius: 10,
+              border: "4px solid #84FF00",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -56,10 +59,9 @@ export default function OpenGraphImage() {
           >
             <div
               style={{
-                width: 28,
+                width: 20,
                 height: 28,
-                borderRadius: 6,
-                background: "rgba(255,255,255,0.9)",
+                borderLeft: "3px dashed rgba(255,255,255,0.75)",
               }}
             />
           </div>
@@ -75,9 +77,9 @@ export default function OpenGraphImage() {
         >
           <span
             style={{
-              fontSize: 96,
+              fontSize: 92,
               fontWeight: 800,
-              color: "#0A2540",
+              color: "#FFFFFF",
               letterSpacing: "-2px",
               lineHeight: 1,
             }}
@@ -86,9 +88,9 @@ export default function OpenGraphImage() {
           </span>
           <span
             style={{
-              fontSize: 96,
+              fontSize: 92,
               fontWeight: 800,
-              color: "#6B7B99",
+              color: "#84FF00",
               letterSpacing: "-2px",
               lineHeight: 1,
             }}
@@ -101,13 +103,30 @@ export default function OpenGraphImage() {
         <div
           style={{
             marginTop: 20,
-            fontSize: 32,
-            color: "#9CAAB8",
+          fontSize: 34,
+          color: "rgba(255,255,255,0.78)",
             letterSpacing: "0.04em",
             fontWeight: 400,
           }}
         >
-          Every event. One ticket.
+          Sell tickets. Scan guests. Get paid.
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            marginTop: 52,
+            gap: 18,
+            fontSize: 20,
+            color: "rgba(255,255,255,0.68)",
+            letterSpacing: "0.03em",
+          }}
+        >
+          <span>Zimbabwean payments</span>
+          <span style={{ color: "#84FF00" }}>•</span>
+          <span>Instant QR delivery</span>
+          <span style={{ color: "#84FF00" }}>•</span>
+          <span>Built-in gate scanning</span>
         </div>
 
         {/* Bottom accent bar */}
@@ -117,8 +136,8 @@ export default function OpenGraphImage() {
             bottom: 0,
             left: 0,
             right: 0,
-            height: 8,
-            background: "linear-gradient(90deg, #0A2540 0%, #0570DE 60%, #16A34A 100%)",
+            height: 10,
+            background: "linear-gradient(90deg, #84FF00 0%, #42E66B 48%, #4DB8FF 100%)",
           }}
         />
       </div>

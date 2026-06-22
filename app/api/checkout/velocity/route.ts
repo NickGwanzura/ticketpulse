@@ -278,18 +278,25 @@ export async function POST(req: Request) {
   }
   const currency = [...allCurrencies][0] ?? "USD"
 
-  // Compute effective price — uses early bird price if still active
-  function effectivePrice(t: typeof tiers[number]): number {
-    if (!t.earlyBirdPrice) return Number(t.price)
-    const dateExpired = t.earlyBirdUntil && new Date() >= new Date(t.earlyBirdUntil)
-    const qtyExpired = t.earlyBirdQuantity !== null && (t.soldQuantity ?? 0) >= t.earlyBirdQuantity
-    return (dateExpired || qtyExpired) ? Number(t.price) : Number(t.earlyBirdPrice)
+  // Compute effective price — uses early bird or group discount when applicable
+  function effectivePrice(t: typeof tiers[number], quantity: number): number {
+    // Early bird takes priority
+    if (t.earlyBirdPrice) {
+      const dateExpired = t.earlyBirdUntil && new Date() >= new Date(t.earlyBirdUntil)
+      const qtyExpired = t.earlyBirdQuantity !== null && (t.soldQuantity ?? 0) >= t.earlyBirdQuantity
+      if (!dateExpired && !qtyExpired) return Number(t.earlyBirdPrice)
+    }
+    // Group / volume discount applies when quantity meets the threshold
+    if (t.groupPrice && t.groupMinQty && quantity >= t.groupMinQty) {
+      return Number(t.groupPrice)
+    }
+    return Number(t.price)
   }
 
   let total = 0
   for (const item of ticketItems) {
     const t = tierById.get(item.tierId)!
-    total += effectivePrice(t) * item.quantity
+    total += effectivePrice(t, item.quantity) * item.quantity
   }
   for (const item of vendorAddonItems) {
     const v = vendorAddonPrices.get(item.listingId)!
@@ -472,7 +479,7 @@ export async function POST(req: Request) {
 
       for (const item of ticketItems) {
         const t = tierById.get(item.tierId)!
-        const unit = effectivePrice(t)
+        const unit = effectivePrice(t, item.quantity)
         orderItemValues.push({
           orderId: order.id,
           tierId: item.tierId,

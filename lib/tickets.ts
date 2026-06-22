@@ -6,6 +6,8 @@ import type { TicketPageData } from "@/lib/pdf/ticket-document"
 
 export type TicketPdfParams = {
   eventTitle: string
+  eventStartsAt?: Date | string | null
+  venue?: string | null
   tierName: string
   buyerName: string
   orderId: string
@@ -83,8 +85,18 @@ export async function generateCombinedTicketPdf(
     ticketId: t.ticketId,
     qrCodeDataUrl: t.qrCodeData,
     humanCode: `${t.orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`,
-    venue: undefined,
-    eventDate: null,
+    venue: t.venue,
+    eventDate: t.eventStartsAt
+      ? new Intl.DateTimeFormat("en-ZW", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Africa/Harare",
+        }).format(new Date(t.eventStartsAt))
+      : null,
   }))
 
   return generateTicketPdfBuffer(pages)

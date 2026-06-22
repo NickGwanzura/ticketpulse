@@ -95,14 +95,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 3,
+    marginBottom: 6,
+  },
+  detailLabel: {
+    fontSize: 6,
+    fontWeight: "bold",
+    color: COLORS.ink3,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 1,
   },
   detailText: {
-    fontSize: 9,
-    color: COLORS.ink2,
+    fontSize: 8.5,
+    fontWeight: "bold",
+    color: COLORS.ink,
   },
   divider: {
     borderTop: `1px solid ${COLORS.line}`,
@@ -161,22 +167,25 @@ function TicketPage({ data }: { data: TicketPageData }) {
             <Text style={styles.eventTitle}>{data.eventTitle}</Text>
             {data.eventDate && (
               <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Starts</Text>
                 <Text style={styles.detailText}>{data.eventDate}</Text>
               </View>
             )}
             {data.venue && (
               <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Venue</Text>
                 <Text style={styles.detailText}>{data.venue}</Text>
               </View>
             )}
             <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Ticket holder</Text>
               <Text style={styles.detailText}>{data.buyerName}</Text>
             </View>
           </View>
 
           <View style={styles.divider}>
-            <Text style={styles.label}>Order</Text>
-            <Text style={styles.mono}>{data.orderId}</Text>
+            <Text style={styles.label}>Order reference</Text>
+            <Text style={styles.mono}>{data.orderId.slice(0, 8).toUpperCase()}</Text>
           </View>
         </View>
 

@@ -289,7 +289,7 @@ export async function sendTicketsAction(
   }))
 
   const eventDate = ev?.startsAt
-    ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    ? new Date(ev.startsAt).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Harare" })
     : "TBA"
 
   // Load latest tickets for PDF
@@ -310,6 +310,8 @@ export async function sendTicketsAction(
     const pdfTickets = await Promise.all(
       latestTickets.map(async (t) => ({
         eventTitle: ev?.title ?? "Your Ticket",
+        eventStartsAt: ev?.startsAt,
+        venue: ev?.venue,
         tierName: tierNameMap.get(t.tierId) ?? "General Admission",
         buyerName: order.guestName ?? "Valued Guest",
         orderId,
@@ -364,7 +366,7 @@ export async function sendTicketsAction(
           emailSentAt: result.emailSent ? new Date().toISOString() : null,
           emailSentTo: result.emailSent ? order.guestEmail : null,
           emailError: result.error,
-          pdfVersion: "A6_V1",
+          pdfVersion: "A6_V2",
           deliveryAttempts: (delivery.deliveryAttempts ?? 0) + 1,
           lastDeliveryAttemptAt: new Date().toISOString(),
         },

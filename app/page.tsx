@@ -29,7 +29,7 @@ import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
 import { db } from "@/db"
-import { events as eventsTable, reviews, ticketTiers, tickets as ticketsTable } from "@/db/schema"
+import { events as eventsTable, reviews, ticketTiers } from "@/db/schema"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 
 const FAQ = [
@@ -189,19 +189,6 @@ export default async function Home() {
     ))
     .orderBy(desc(sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt})`))
     .limit(6)
-
-  const pastAttendeeCounts = new Map<string, number>()
-  if (pastEvents.length > 0) {
-    const pastCounts = await db
-      .select({
-        eventId: ticketsTable.eventId,
-        attending: sql<number>`COUNT(*) FILTER (WHERE ${ticketsTable.isStaffTicket} = false AND ${ticketsTable.status} NOT IN ('cancelled', 'refunded'))::int`,
-      })
-      .from(ticketsTable)
-      .where(inArray(ticketsTable.eventId, pastEvents.map((event) => event.id)))
-      .groupBy(ticketsTable.eventId)
-    for (const row of pastCounts) pastAttendeeCounts.set(row.eventId, Number(row.attending ?? 0))
-  }
 
   return (
     <main>
@@ -450,9 +437,7 @@ export default async function Home() {
               </Link>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
-              {pastEvents.slice(0, 3).map((event) => {
-                const attendees = pastAttendeeCounts.get(event.id) ?? 0
-                return (
+              {pastEvents.slice(0, 3).map((event) => (
                   <Link key={event.id} href={`/events/${event.slug}`} className="tp-premium-card overflow-hidden rounded-xl border border-white/80 bg-white/85 shadow-sm shadow-ink/[0.03] transition hover:border-violet-200 hover:bg-white">
                     <div className="relative h-24 bg-gradient-to-br from-violet-100 to-rose-100">
                       {event.coverImage ? (
@@ -470,13 +455,9 @@ export default async function Home() {
                       <h4 className="mt-1 line-clamp-1 text-[15px] font-bold text-ink">{event.title}</h4>
                       <p className="mt-2 flex items-center gap-1.5 text-[12px] text-ink-3"><Calendar size={12} /> {formatDateShort(event.startsAt)}</p>
                       <p className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-3"><MapPin size={12} /> <span className="line-clamp-1">{event.venue} · {event.city}</span></p>
-                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
-                        <Users size={12} /> {attendees.toLocaleString()} attendee{attendees === 1 ? "" : "s"}
-                      </p>
                     </div>
                   </Link>
-                )
-              })}
+              ))}
             </div>
           </div>
         )}

@@ -2,7 +2,7 @@
  * Bulk A6 PDF Regeneration Script
  *
  * For every paid/completed order, this script:
- * 1. Checks if the delivery metadata already has pdfVersion === "A6_V1"
+ * 1. Checks if the delivery metadata already has pdfVersion === "A6_V2"
  * 2. If not, regenerates QR codes (if missing), generates a fresh A6 PDF,
  *    uploads it to R2 (stored), and updates delivery metadata with pdfVersion.
  *
@@ -25,7 +25,7 @@ import { readDeliveryStatus } from "@/lib/delivery"
 import { log } from "@/lib/logger"
 
 const BATCH_LIMIT = parseInt(process.env.BATCH_LIMIT ?? "500", 10)
-const TARGET_PDF_VERSION = "A6_V1"
+const TARGET_PDF_VERSION = "A6_V2"
 
 interface MigrationResult {
   total: number
@@ -67,8 +67,8 @@ async function main(): Promise<MigrationResult> {
     .where(
       and(
         sql`${orders.status} IN ('paid', 'completed')`,
-        // Exclude orders already tagged with A6_V1
-        sql`NOT (${orders.metadata}->'delivery'->>'pdfVersion' = 'A6_V1')`,
+        // Exclude orders already tagged with A6_V2
+        sql`NOT (${orders.metadata}->'delivery'->>'pdfVersion' = 'A6_V2')`,
       ),
     )
     .limit(BATCH_LIMIT)
@@ -77,7 +77,7 @@ async function main(): Promise<MigrationResult> {
   log.info(`Found ${targetOrders.length} orders needing A6 upgrade`)
 
   if (targetOrders.length === 0) {
-    log.info("No orders need upgrading — all already at A6_V1")
+    log.info("No orders need upgrading — all already at A6_V2")
     return result
   }
 
@@ -92,7 +92,7 @@ async function main(): Promise<MigrationResult> {
         result.details.push({
           orderId: order.id,
           action: "skipped",
-          message: "Already at A6_V1",
+          message: "Already at A6_V2",
         })
         continue
       }
@@ -115,7 +115,7 @@ async function main(): Promise<MigrationResult> {
 
       // 4. Load event data
       const [ev] = await db
-        .select({ title: events.title })
+        .select({ title: events.title, startsAt: events.startsAt, venue: events.venue })
         .from(events)
         .where(eq(events.id, order.eventId))
         .limit(1)
@@ -151,6 +151,8 @@ async function main(): Promise<MigrationResult> {
       // 7. Generate A6 PDF (in-memory buffer — not stored to disk)
       const pdfTickets = ticketRecords.map((t) => ({
         eventTitle: ev.title,
+        eventStartsAt: ev.startsAt,
+        venue: ev.venue,
         tierName: tierNameMap.get(t.tierId) ?? "General Admission",
         buyerName: order.guestName ?? "Valued Guest",
         orderId: order.id,
@@ -225,7 +227,7 @@ main()
     console.log("\n── A6 PDF Migration Summary ──")
     console.log(`  Total orders checked: ${result.total}`)
     console.log(`  Skipped:              ${result.skipped}`)
-    console.log(`  Upgraded to A6_V1:    ${result.upgraded}`)
+    console.log(`  Upgraded to A6_V2:    ${result.upgraded}`)
     console.log(`  Errors:               ${result.errors}`)
 
     if (result.details.length > 0) {
@@ -236,7 +238,7 @@ main()
       }
     }
 
-    console.log(`\nRegenerated ${result.upgraded} order(s) to A6_V1.`)
+    console.log(`\nRegenerated ${result.upgraded} order(s) to A6_V2.`)
     process.exit(result.errors > 0 ? 1 : 0)
   })
   .catch((err) => {

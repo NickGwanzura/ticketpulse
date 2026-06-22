@@ -35,20 +35,22 @@ function SubmitButton({ label }: { label: string }) {
 
 type Props = {
   eventId: string
-  tier?: {
-    id: string
-    name: string
-    description: string | null
-    price: string
-    currency: string | null
-    totalQuantity: number
-    maxPerOrder: number | null
-    salesStart: Date | null
-    salesEnd: Date | null
-    earlyBirdPrice: string | null
-    earlyBirdUntil: Date | null
-    earlyBirdQuantity: number | null
-  }
+	  tier?: {
+	    id: string
+	    name: string
+	    description: string | null
+	    price: string
+	    currency: string | null
+	    totalQuantity: number
+	    maxPerOrder: number | null
+	    salesStart: Date | null
+	    salesEnd: Date | null
+	    earlyBirdPrice: string | null
+	    earlyBirdUntil: Date | null
+	    earlyBirdQuantity: number | null
+	    groupPrice: string | null
+	    groupMinQty: number | null
+	  }
   onDone?: () => void
 }
 
@@ -127,6 +129,27 @@ export default function TierForm({ eventId, tier, onDone }: Props) {
           <label htmlFor="salesEnd" className="block text-[13px] font-medium text-ink mb-1.5">Sales end <span className="text-ink-3 font-normal">(optional)</span></label>
           <input id="salesEnd" name="salesEnd" type="datetime-local" defaultValue={toLocalInputValue(tier?.salesEnd ?? null)} className={inputCls(!!errs.salesEnd)} />
           <FieldError message={errs.salesEnd} />
+        </div>
+      </div>
+
+      {/* Group / volume discount */}
+      <div className="rounded-xl border border-line bg-paper-2 p-4 space-y-4">
+        <div>
+          <p className="text-[13px] font-semibold text-ink mb-0.5">Group discount <span className="text-ink-3 font-normal">(optional)</span></p>
+          <p className="text-[12px] text-ink-3">Offer a reduced per-person price when buyers purchase in groups (e.g. $50/person for groups of 4+).</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="groupPrice" className="block text-[13px] font-medium text-ink mb-1.5">Group discount price</label>
+            <input id="groupPrice" name="groupPrice" type="number" min="0" step="0.01" defaultValue={tier?.groupPrice ?? ""} placeholder={tier?.price ?? "50.00"} className={inputCls(!!errs.groupPrice)} />
+            <FieldError message={errs.groupPrice} />
+          </div>
+          <div>
+            <label htmlFor="groupMinQty" className="block text-[13px] font-medium text-ink mb-1.5">Minimum group size</label>
+            <input id="groupMinQty" name="groupMinQty" type="number" min="2" step="1" defaultValue={tier?.groupMinQty ?? 4} className={inputCls(!!errs.groupMinQty)} />
+            <p className="mt-1 text-[12px] text-ink-3">Buyers purchasing this many or more get the group price.</p>
+            <FieldError message={errs.groupMinQty} />
+          </div>
         </div>
       </div>
 

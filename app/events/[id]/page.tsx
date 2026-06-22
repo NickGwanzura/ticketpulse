@@ -220,6 +220,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     earlyBirdPrice: t.earlyBirdPrice ? Number(t.earlyBirdPrice) : null,
     earlyBirdUntil: t.earlyBirdUntil ?? null,
     earlyBirdQuantity: t.earlyBirdQuantity ?? null,
+    groupPrice: t.groupPrice ? Number(t.groupPrice) : null,
+    groupMinQty: t.groupMinQty ?? null,
     }
   })
 
@@ -285,19 +287,19 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const timeDisplay = (() => {
     const start = row.startsAt
     const end = row.endsAt
-    if (!end) return formatDate(start)
+    const timeZone = "Africa/Harare"
+    if (!end) return formatDate(start, { timeZone })
     // Same day: "Wed 21 May 2026, 14:00 – 18:00"
-    const isSameDay =
-      start.getFullYear() === end.getFullYear() &&
-      start.getMonth() === end.getMonth() &&
-      start.getDate() === end.getDate()
+    const dayKey = (date: Date) => date.toLocaleDateString("en-CA", { timeZone })
+    const isSameDay = dayKey(start) === dayKey(end)
     if (isSameDay) {
-      const datePart = formatDate(start, { dateStyle: "medium" })
-      const startTime = formatDate(start, { timeStyle: "short" })
-      const endTime = formatDate(end, { timeStyle: "short" })
+      const datePart = new Intl.DateTimeFormat("en-ZW", { dateStyle: "medium", timeZone }).format(start)
+      const timeFormatter = new Intl.DateTimeFormat("en-ZW", { timeStyle: "short", timeZone })
+      const startTime = timeFormatter.format(start)
+      const endTime = timeFormatter.format(end)
       return `${datePart}, ${startTime} – ${endTime}`
     }
-    return `${formatDate(start)} – ${formatDate(end)}`
+    return `${formatDate(start, { timeZone })} – ${formatDate(end, { timeZone })}`
   })()
 
   return (
@@ -356,11 +358,35 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
             {/* ── Meta & actions ── */}
             <div>
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-ink-2 mb-6">
-                <span className="flex items-center gap-2"><Calendar size={14} className="text-ink-3" />{timeDisplay}</span>
-                <span className="flex items-center gap-2"><MapPin size={14} className="text-ink-3" />{row.venue}, {row.city}</span>
+              <div className="grid max-w-2xl gap-3 text-ink-2 mb-6">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue ring-1 ring-blue/10">
+                    <Calendar size={14} />
+                  </span>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Date &amp; time</p>
+                    <p className="mt-0.5 text-[14px] font-medium text-ink-2">{timeDisplay}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
+                    <MapPin size={14} />
+                  </span>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Venue</p>
+                    <p className="mt-0.5 text-[14px] font-medium text-ink-2">{row.venue}, {row.city}</p>
+                  </div>
+                </div>
                 {row.organizerName && !row.hideOrganizerName && (
-                  <span className="flex items-center gap-2"><Users size={14} className="text-ink-3" />Organized by {row.organizerName}</span>
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-700 ring-1 ring-green-200/60">
+                      <Users size={14} />
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Organizer</p>
+                      <p className="mt-0.5 text-[14px] font-medium text-ink-2">{row.organizerName}</p>
+                    </div>
+                  </div>
                 )}
               </div>
               {/* Share / Save */}
@@ -480,6 +506,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               <TicketSelector
                 eventSlug={row.slug}
                 eventTitle={row.title}
+                eventStartsAt={row.startsAt}
+                eventVenue={[row.venue, row.city].filter(Boolean).join(", ")}
                 emoji={emoji}
                 tiers={tiers}
               />

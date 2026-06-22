@@ -8,6 +8,7 @@ const BRAND = {
   name: "TicketPulse",
   tagline: "Your events, delivered.",
   get appUrl(): string { return getBaseUrl() },
+  get iconUrl(): string { return `${getBaseUrl()}/ticketpulse-brand.jpg` },
   support: "https://wa.me/263788689923",
 } as const
 
@@ -166,7 +167,7 @@ export function ticketConfirmationMessage(
     ``,
     `Hey ${buyerName}! 🎉 Your tickets are ready.`,
     ``,
-    `📅 *Date:* ${eventDate}`,
+    `📅 *Starts:* ${eventDate}`,
     venue ? `📍 *Venue:* ${venue}` : null,
     `🆔 *Order:* #${orderId.slice(0, 8)}`,
     ``,

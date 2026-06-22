@@ -59,11 +59,14 @@ export async function POST(request: Request) {
   const results: Array<{ eventId: string; eventTitle: string; sent: number; errors: number }> = []
 
   for (const ev of upcomingEvents) {
-    const eventDate = ev.startsAt.toLocaleDateString("en-GB", {
+    const eventDate = ev.startsAt.toLocaleString("en-GB", {
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Africa/Harare",
     })
 
     // Find paid orders with phone or email that haven't been reminded yet
