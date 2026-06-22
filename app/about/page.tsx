@@ -12,7 +12,7 @@ const VALUES = [
   { icon: ShieldCheck, title: "Verified by default", body: "Every organizer and vendor is checked before they go live. Trust isn't a setting. It's the floor." },
   { icon: Zap,         title: "Patchy-data friendly", body: "Mobile-first, EcoCash-native, scans at the gate even when venue Wi-Fi tanks." },
   { icon: Heart,       title: "Local first",          body: "Built in Harare by people who buy these tickets themselves. We sit on the same buses." },
-  { icon: Target,      title: "Aligned incentives",   body: "5% per ticket, paid out of sales, never up front. We only win when sellers do." },
+  { icon: Target,      title: "Aligned incentives",   body: "7% per ticket, paid out of sales, never up front. We only win when sellers do." },
 ]
 
 const MILESTONES = [
@@ -25,7 +25,7 @@ const MILESTONES = [
 const FACTS = [
   { k: "May 2026", v: "Day 1, public launch" },
   { k: "Harare",   v: "Where we sit, code and answer support" },
-  { k: "5% flat",  v: "Per ticket sold. Nothing else" },
+  { k: "7% flat",  v: "Per ticket sold. Nothing else" },
   { k: "1 stack",  v: "Sell · deliver · scan, all on TicketPulse" },
 ]
 

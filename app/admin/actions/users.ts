@@ -13,6 +13,7 @@ import {
 } from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
+import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function verifyUserEmailAction(userId: string) {
@@ -194,12 +195,13 @@ export async function updateCommissionRateAction(userId: string, rate: number) {
     throw new Error("Unauthorized")
   }
 
-  // Clamp to 0–100, round to 2 decimals
-  const clamped = Math.min(100, Math.max(0, Math.round(rate * 100) / 100))
+  if (rate !== PLATFORM_FEE_PERCENT) {
+    throw new Error(`TicketPulse commission is fixed at ${PLATFORM_FEE_PERCENT}%`)
+  }
 
   await db
     .update(users)
-    .set({ commissionRate: String(clamped) })
+    .set({ commissionRate: PLATFORM_FEE_PERCENT.toFixed(2) })
     .where(eq(users.id, userId))
 
   revalidatePath("/admin/users")

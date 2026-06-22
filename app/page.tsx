@@ -58,7 +58,7 @@ function buildStats(eventsOnSale: number) {
     { value: "Live",    label: "Launched May 2026" },
     { value: String(eventsOnSale), label: eventsOnSale === 1 ? "Event on sale today" : "Events on sale today" },
     { value: "2 ways",  label: "EcoCash · Visa" },
-    { value: "5%",      label: "Organizer fee, pay as you sell" },
+    { value: "7%",      label: "Organizer fee, pay as you sell" },
   ]
 }
 
@@ -95,7 +95,7 @@ const ORGANIZER_BENEFITS = [
   { icon: ShieldCheck, label: "Built for Zimbabwean payments", tone: "bg-emerald-50", accent: "text-emerald-700", border: "border-emerald-200/70" },
   { icon: Smartphone, label: "Instant buyer ticket delivery", tone: "bg-sky-50", accent: "text-sky-700", border: "border-sky-200/70" },
   { icon: Users, label: "Live attendee counts", tone: "bg-violet-50", accent: "text-violet-700", border: "border-violet-200/70" },
-  { icon: Wallet, label: "5% fee shown clearly", tone: "bg-amber-50", accent: "text-amber-700", border: "border-amber-200/70" },
+  { icon: Wallet, label: "7% fee shown clearly", tone: "bg-amber-50", accent: "text-amber-700", border: "border-amber-200/70" },
   { icon: ReceiptText, label: "Velocity reconciliation", tone: "bg-cyan-50", accent: "text-cyan-700", border: "border-cyan-200/70" },
   { icon: Megaphone, label: "Email and WhatsApp tools", tone: "bg-rose-50", accent: "text-rose-700", border: "border-rose-200/70" },
 ]

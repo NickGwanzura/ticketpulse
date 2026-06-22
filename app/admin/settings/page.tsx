@@ -84,12 +84,12 @@ export default async function AdminSettingsPage() {
                   name="platformFeePercent"
                   type="number"
                   defaultValue={settings.platformFeePercent}
-                  step={0.1}
-                  min={0}
-                  max={100}
+                  readOnly
+                  aria-describedby="platformFeeHelp"
                   required
-                  className="w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[14px] text-ink focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
+                  className="w-full cursor-not-allowed rounded-xl border border-line bg-paper-2 px-3.5 py-2.5 text-[14px] text-ink-2"
                 />
+                <p id="platformFeeHelp" className="mt-1.5 text-[11px] text-ink-3">Fixed system-wide at 7% per ticket sold.</p>
               </div>
             </div>
 

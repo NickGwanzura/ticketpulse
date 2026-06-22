@@ -2,6 +2,12 @@ import { eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { payouts } from "@/db/schema"
+import {
+  calculateOrganizerNet,
+  calculatePlatformFee,
+} from "@/lib/platform-fee"
+
+export { PLATFORM_FEE_PERCENT, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
 
 /**
  * Canonical revenue maths for the whole app.
@@ -18,12 +24,8 @@ import { payouts } from "@/db/schema"
  *   pending    = payouts in pending/approved/processing
  *   available  = max(0, net − paidOut − pending)
  *
- * KEEP THE CONSTANTS BELOW IN SYNC with the admin settings page
- * (app/admin/settings/actions.ts → platformFeePercent default "8.00").
- * Both must match the advertised platform fee.
+ * The fee policy lives in lib/platform-fee.ts and is fixed system-wide.
  */
-export const PLATFORM_FEE_RATE = 0.07
-export const PLATFORM_FEE_PERCENT = PLATFORM_FEE_RATE * 100
 
 export const ACTIVE_PAYOUT_STATUSES = ["pending", "approved", "processing"] as const
 
@@ -53,8 +55,8 @@ function summarize(base: {
   confirmedTicketCount: number
 }): RevenueSummary {
   const grossRevenue = money(base.grossRevenue)
-  const platformFee = money(grossRevenue * PLATFORM_FEE_RATE)
-  const netRevenue = money(grossRevenue - platformFee)
+  const platformFee = calculatePlatformFee(grossRevenue)
+  const netRevenue = calculateOrganizerNet(grossRevenue)
   const paidOut = money(base.paidOut)
   const pendingPayouts = money(base.pendingPayouts)
   return {

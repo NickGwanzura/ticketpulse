@@ -6,6 +6,7 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import { platformSettings } from "@/db/schema"
 import { log } from "@/lib/logger"
+import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 
 const ENV = "prod"
 
@@ -22,7 +23,7 @@ const DEFAULTS: SettingsMap = {
   platformName: "TicketPulse",
   supportEmail: "nick@ticketpulse.co.zw",
   defaultCurrency: "USD",
-  platformFeePercent: "7.00",
+  platformFeePercent: PLATFORM_FEE_PERCENT.toFixed(2),
   maintenanceMode: false,
   updatedAt: null,
 }
@@ -57,7 +58,8 @@ export async function getPlatformSettings(): Promise<SettingsMap> {
       if (mappedKey === "maintenanceMode") {
         settings.maintenanceMode = row.value === true || row.value === "true"
       } else if (mappedKey === "platformFeePercent") {
-        settings.platformFeePercent = String(row.value)
+        // The fee is fixed policy; ignore stale or manually edited values.
+        settings.platformFeePercent = PLATFORM_FEE_PERCENT.toFixed(2)
       } else if (mappedKey === "platformName") {
         settings.platformName = String(row.value)
       } else if (mappedKey === "supportEmail") {
@@ -88,16 +90,13 @@ export async function updatePlatformSettings(formData: FormData) {
     platformName: formData.get("platformName"),
     supportEmail: formData.get("supportEmail"),
     defaultCurrency: formData.get("defaultCurrency"),
-    platformFeePercent: formData.get("platformFeePercent"),
     maintenanceMode: formData.get("maintenanceMode") === "on",
   }
 
   const platformName = raw.platformName as string
   const supportEmail = raw.supportEmail as string
   const defaultCurrency = raw.defaultCurrency as string
-  const platformFeePercent = parseFloat(raw.platformFeePercent as string)
-
-  if (!platformName || !supportEmail || !defaultCurrency || Number.isNaN(platformFeePercent)) {
+  if (!platformName || !supportEmail || !defaultCurrency) {
     throw new Error("Invalid form data")
   }
 
@@ -105,7 +104,7 @@ export async function updatePlatformSettings(formData: FormData) {
     { key: "platform_name", value: platformName.trim() },
     { key: "support_email", value: supportEmail.trim() },
     { key: "default_currency", value: defaultCurrency.trim() },
-    { key: "platform_fee_percent", value: platformFeePercent.toFixed(2) },
+    { key: "platform_fee_percent", value: PLATFORM_FEE_PERCENT.toFixed(2) },
     { key: "maintenance_mode", value: raw.maintenanceMode },
   ]
 

@@ -126,7 +126,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   bio: text("bio"),
   passwordHash: text("password_hash"),
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("8.00"),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("7.00"),
   approvedAt: timestamp("approved_at", { mode: "date" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

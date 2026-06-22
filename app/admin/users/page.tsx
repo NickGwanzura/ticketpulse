@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Search, UserCheck, ShieldCheck, Store, User, ShieldAlert, Users,
-  BadgeCheck, BadgeX, MailCheck, MailX, Percent,
+  BadgeCheck, BadgeX, MailCheck, MailX,
 } from "lucide-react"
 import { desc, eq, or, ilike, sql } from "drizzle-orm"
 import Pagination from "@/components/ui/Pagination"
@@ -13,8 +13,8 @@ import { users, userRoleEnum } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import InviteUserDialog from "./_components/InviteUserDialog"
-import { verifyUserEmailAction, unverifyUserEmailAction, updateCommissionRateAction, approveOrganizerAction } from "@/app/admin/actions/users"
-import CommissionRateInput from "./_components/CommissionRateInput"
+import { verifyUserEmailAction, unverifyUserEmailAction, approveOrganizerAction } from "@/app/admin/actions/users"
+import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 
 type Role = "attendee" | "organizer" | "vendor" | "admin"
 
@@ -99,7 +99,6 @@ export default async function AdminUsersPage({
       role: users.role,
       emailVerified: users.emailVerified,
       approvedAt: users.approvedAt,
-      commissionRate: users.commissionRate,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -270,7 +269,7 @@ export default async function AdminUsersPage({
                         </td>
                         <td className="px-3 py-3.5">
                           {u.role === "organizer" || u.role === "admin" ? (
-                            <CommissionRateInput userId={u.id} rate={u.commissionRate} />
+                            <span className="text-[12px] font-semibold text-ink tabular-nums">{PLATFORM_FEE_PERCENT}% fixed</span>
                           ) : (
                             <span className="text-[12px] text-ink-3">—</span>
                           )}
@@ -336,7 +335,7 @@ export default async function AdminUsersPage({
                     </div>
                     {(u.role === "organizer" || u.role === "admin") && (
                       <div className="mb-3">
-                        <CommissionRateInput userId={u.id} rate={u.commissionRate} />
+                        <span className="text-[12px] font-semibold text-ink tabular-nums">{PLATFORM_FEE_PERCENT}% fee · fixed</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">

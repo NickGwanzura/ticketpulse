@@ -48,8 +48,8 @@ const STEPS = [
 const PRICING_PERKS = [
   {
     icon: Percent,
-    title: "5% per ticket sold",
-    body: "We charge 5% on every ticket sale. No monthly fees, no setup costs, no hidden charges. You only pay when you sell.",
+    title: "7% per ticket sold",
+    body: "We charge 7% on every ticket sale. No monthly fees, no setup costs, no hidden charges. You only pay when you sell.",
   },
   {
     icon: Banknote,
@@ -97,11 +97,11 @@ const EVENT_DAY = [
 const FAQS = [
   {
     q: "How much does TicketPulse charge organizers?",
-    a: "We charge 5% of every ticket sale. There are no setup fees, no monthly subscriptions, and no hidden costs. You only pay when tickets are sold.",
+    a: "We charge 7% of every ticket sale. There are no setup fees, no monthly subscriptions, and no hidden costs. You only pay when tickets are sold.",
   },
   {
     q: "When and how do I get paid?",
-    a: "You can request a payout at any time from your organizer dashboard. Once requested, funds are sent to your selected settlement method after TicketPulse review. The 5% fee is deducted automatically.",
+    a: "You can request a payout at any time from your organizer dashboard. Once requested, funds are sent to your selected settlement method after TicketPulse review. The 7% fee is deducted automatically.",
   },
   {
     q: "Can I get paid before the event happens?",
@@ -144,7 +144,7 @@ const FAQS = [
 export const metadata = {
   title: "Help for organizers",
   description:
-    "How TicketPulse works for event organizers. 5% per ticket, EcoCash or bank payouts, and built-in scanning.",
+    "How TicketPulse works for event organizers. 7% per ticket, EcoCash or bank payouts, and built-in scanning.",
 }
 
 export default function HelpOrganizersPage() {
@@ -283,7 +283,7 @@ export default function HelpOrganizersPage() {
                   Payouts within 24 hours
                 </p>
                 <p className="mt-1 text-[13px] text-ink-2 leading-relaxed max-w-xl">
-                  Request a payout at any time from your dashboard. We deduct the 5% fee and transfer the balance to your selected settlement method. Your event ledger shows gross, fee, paid out, pending, and available balance before you request.
+                  Request a payout at any time from your dashboard. We deduct the 7% fee and transfer the balance to your selected settlement method. Your event ledger shows gross, fee, paid out, pending, and available balance before you request.
                 </p>
               </div>
             </div>
@@ -337,7 +337,7 @@ export default function HelpOrganizersPage() {
                 Ready to sell your first tickets?
               </h2>
               <p className="mt-3 text-[15px] text-white/80 max-w-md leading-relaxed">
-                No upfront fees, no monthly costs. Just 5% per ticket sold and payouts when you want them.
+                No upfront fees, no monthly costs. Just 7% per ticket sold and payouts when you want them.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 md:justify-end">

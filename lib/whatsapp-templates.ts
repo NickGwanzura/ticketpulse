@@ -8,7 +8,7 @@ const BRAND = {
   name: "TicketPulse",
   tagline: "Your events, delivered.",
   get appUrl(): string { return getBaseUrl() },
-  get iconUrl(): string { return `${getBaseUrl()}/favicon.jpg` },
+  get iconUrl(): string { return `${getBaseUrl()}/icon.png` },
   support: "https://wa.me/263788689923",
 } as const
 

@@ -113,7 +113,7 @@ export async function POST(req: Request) {
 
     // ── Send via WhatsApp ──────────────────────────────────────────────────
     const chatId = formatChatId(order.guestPhone)
-    const imageUrl = `${appUrl}/favicon.jpg`
+    const imageUrl = `${appUrl}/icon.png`
 
     // Send brand image first, then the text confirmation
     const [imageResult, textResult] = await Promise.allSettled([

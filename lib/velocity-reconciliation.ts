@@ -2,9 +2,8 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { events, orders, paymentLedger, payouts, tickets, users, velocitySettlements } from "@/db/schema"
+import { PLATFORM_FEE_RATE } from "@/lib/platform-fee"
 import type { VelocityOrderMetadata } from "@/types/velocity"
-
-const PLATFORM_FEE_RATE = 0.07
 
 const PAID_ORDER_STATUSES = new Set(["paid", "completed"])
 const SETTLED_LEDGER_STATUSES = new Set(["paid", "completed", "success", "paid_success"])

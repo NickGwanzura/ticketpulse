@@ -489,7 +489,7 @@ async function notifyOrganizerSale(
     const { organizerSaleNotification } = await import("@/lib/whatsapp-templates")
     const chatId = formatChatId(org.phone)
     // Send brand image + sale notification
-    sendImage({ chatId, url: `${baseUrl}/favicon.jpg`, caption: "💰 New sale" }).catch(() => {})
+    sendImage({ chatId, url: `${baseUrl}/icon.png`, caption: "💰 New sale" }).catch(() => {})
     sendText(
       chatId,
       organizerSaleNotification(

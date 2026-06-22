@@ -64,7 +64,7 @@ const TRUST = [
   { icon: FileText,    k: "Printable PDF + QR",   v: "Same code, paper or phone" },
   { icon: MessageCircle, k: "WhatsApp delivery",  v: "Tickets land in your chat" },
   { icon: ScanLine,    k: "Our gate scanner",     v: "End-to-end on TicketPulse" },
-  { icon: Wallet,      k: "Pay-as-you-sell",      v: "Flat 5%, never up front" },
+  { icon: Wallet,      k: "Pay-as-you-sell",      v: "Flat 7%, never up front" },
 ]
 
 export default function Footer() {
