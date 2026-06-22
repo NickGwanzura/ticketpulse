@@ -382,6 +382,7 @@ export default async function Home() {
                 currency={featuredEvents[0].currency}
                 soldQuantity={featuredEvents[0].soldQuantity}
                 totalQuantity={featuredEvents[0].totalQuantity}
+                sponsored={featuredEvents[0].sponsored}
               />
             </div>
           ) : (

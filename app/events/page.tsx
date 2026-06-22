@@ -88,11 +88,17 @@ export default async function EventsPage({
       endsAt: events.endsAt,
       coverImage: events.coverImage,
       featured: events.featured,
+      sponsored: events.sponsored,
+      sponsorshipExpiresAt: events.sponsorshipExpiresAt,
       status: events.status,
     })
     .from(events)
     .where(and(...conditions))
-    .orderBy(isPastView ? desc(events.startsAt) : asc(events.startsAt))
+    .orderBy(
+      isPastView
+        ? desc(events.startsAt)
+        : sql`CASE WHEN ${events.sponsored} = true AND (${events.sponsorshipExpiresAt} IS NULL OR ${events.sponsorshipExpiresAt} > NOW()) THEN 0 ELSE 1 END, ${events.startsAt}`,
+    )
     .limit(50)
 
   // Fetch lowest tier price per event in one query

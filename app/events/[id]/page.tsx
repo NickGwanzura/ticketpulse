@@ -122,6 +122,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       organizerId: events.organizerId,
       organizerName: users.name,
       organizerImage: users.image,
+      sponsored: events.sponsored,
+      sponsorName: events.sponsorName,
+      sponsorLogoUrl: events.sponsorLogoUrl,
     })
     .from(events)
     .leftJoin(users, eq(events.organizerId, users.id))
@@ -318,6 +321,27 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <div className="relative w-full h-40 md:h-52 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 [background:radial-gradient(800px_circle_at_30%_20%,rgba(255,255,255,0.7),transparent_60%)] pointer-events-none" />
           <span className="text-7xl">{emoji}</span>
+        </div>
+      )}
+
+      {/* Sponsor banner */}
+      {row.sponsored && (
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-y border-amber-200">
+          <div className="max-w-7xl mx-auto px-5 md:px-8 py-3 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] bg-gradient-to-r from-amber-600 to-yellow-500 text-transparent bg-clip-text">
+                Sponsored
+              </span>
+              {row.sponsorName && (
+                <span className="text-[12px] text-amber-800 font-medium">
+                  Presented by {row.sponsorName}
+                </span>
+              )}
+            </div>
+            {row.sponsorLogoUrl && (
+              <img src={row.sponsorLogoUrl} alt={row.sponsorName ?? "Sponsor"} className="h-6 object-contain" />
+            )}
+          </div>
         </div>
       )}
 

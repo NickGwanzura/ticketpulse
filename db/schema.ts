@@ -193,6 +193,15 @@ export const events = pgTable("events", {
   googleMapsUrl: text("google_maps_url"),
   tags: json("tags").$type<string[]>().default([]),
   featured: boolean("featured").default(false),
+  sponsored: boolean("sponsored").default(false),
+  sponsorName: text("sponsor_name"),
+  sponsorLogoUrl: text("sponsor_logo_url"),
+  sponsoredAt: timestamp("sponsored_at"),
+  sponsorshipExpiresAt: timestamp("sponsorship_expires_at"),
+  designRequestPending: boolean("design_request_pending").default(false),
+  designBrief: text("design_brief"),
+  designLogoUrl: text("design_logo_url"),
+  designDelivered: boolean("design_delivered").default(false),
   hideOrganizerName: boolean("hide_organizer_name").default(false),
   faq: text("faq"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -793,6 +802,20 @@ export const payoutAuditLog = pgTable("payout_audit_log", {
   index("payout_audit_log_payout_id_idx").on(table.payoutId),
   index("payout_audit_log_created_idx").on(table.createdAt),
 ])
+
+// ─── Organiser add-on packages (Sponsored Post, Graphic Design) ─────────────
+export const organizerPackages = pgTable("organizer_packages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  slug: text("slug").unique().notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD"),
+  durationHours: integer("duration_hours"),
+  features: json("features").$type<string[]>().default([]),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+})
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 

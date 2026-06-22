@@ -12,6 +12,7 @@ export interface FeaturedEvent {
   startsAt: Date
   coverImage: string | null
   featured: boolean
+  sponsored: boolean
   lowestPrice: number | null
   currency: string
   status: string
@@ -22,6 +23,7 @@ export interface FeaturedEvent {
 /**
  * Published events starting now or later, soonest first.
  * Used by the home hero, the navbar mega menu, and other "what's on" surfaces.
+ * Sponsored events are sorted to the top.
  */
 export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
   const rows = await db
@@ -35,16 +37,19 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       startsAt: events.startsAt,
       coverImage: events.coverImage,
       featured: events.featured,
+      sponsored: events.sponsored,
       status: events.status,
     })
     .from(events)
-    // Keep events visible while they're still running, not just before they start.
-    // Falls back to startsAt + 6h when no explicit endsAt is set.
     .where(and(
       eq(events.status, "published"),
       sql`COALESCE(${events.endsAt}, ${events.startsAt} + INTERVAL '6 hours') >= NOW()`,
     ))
-    .orderBy(asc(events.startsAt))
+    // Sponsord events first, then by start date
+    .orderBy(
+      sql`CASE WHEN ${events.sponsored} = true AND (${events.sponsorshipExpiresAt} IS NULL OR ${events.sponsorshipExpiresAt} > NOW()) THEN 0 ELSE 1 END`,
+      asc(events.startsAt),
+    )
     .limit(limit)
 
   if (rows.length === 0) return []
@@ -112,6 +117,7 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       startsAt: r.startsAt,
       coverImage: r.coverImage,
       featured: r.featured ?? false,
+      sponsored: r.sponsored ?? false,
       lowestPrice: low?.price ?? null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",

@@ -12,6 +12,7 @@ interface EventCardProps {
   startsAt: Date | string
   coverImage?: string | null
   featured?: boolean
+  sponsored?: boolean
   lowestPrice?: number | null
   currency?: string
   status?: string
@@ -121,7 +122,7 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 
 export default function EventCard({
   slug, title, category, venue, city, startsAt,
-  coverImage, featured, lowestPrice, currency = "USD", status,
+  coverImage, featured, sponsored, lowestPrice, currency = "USD", status,
   isPast,
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
@@ -189,6 +190,10 @@ export default function EventCard({
         {isPast ? (
           <span className="absolute top-3 left-3 bg-ink text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
             PAST EVENT
+          </span>
+        ) : sponsored ? (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm shadow-amber-600/25 ring-1 ring-white/20">
+            <span className="w-1 h-1 rounded-full bg-white" /> SPONSORED
           </span>
         ) : sellingFast && !soldOut && status === "published" ? (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-rose-600/25 ring-1 ring-white/20">

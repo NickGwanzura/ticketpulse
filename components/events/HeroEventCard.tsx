@@ -14,6 +14,7 @@ interface HeroEventProps {
   currency?: string
   soldQuantity?: number
   totalQuantity?: number
+  sponsored?: boolean
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -52,6 +53,7 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 export default function HeroEventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, lowestPrice, currency = "USD",
+  sponsored,
 }: HeroEventProps) {
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
@@ -92,10 +94,17 @@ export default function HeroEventCard({
       {/* Content */}
       <div className="relative z-10 p-6 md:p-10 lg:p-14 flex flex-col md:flex-row md:items-end md:justify-between gap-6 min-h-[360px] md:min-h-[400px]">
         <div className="max-w-2xl">
-          {/* Category badge */}
-          <div className="inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[10px] font-semibold tracking-wide px-3 py-1.5 rounded-full ring-1 ring-white/20 mb-4">
-            <span>{emoji}</span>
-            <span>{category}</span>
+          {/* Category badge + Sponsored badge */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[10px] font-semibold tracking-wide px-3 py-1.5 rounded-full ring-1 ring-white/20">
+              <span>{emoji}</span>
+              <span>{category}</span>
+            </div>
+            {sponsored && (
+              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full ring-1 ring-white/20 shadow-sm">
+                SPONSORED
+              </span>
+            )}
           </div>
 
           {/* Title */}
