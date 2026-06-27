@@ -18,6 +18,7 @@ export interface FeaturedEvent {
   status: string
   soldQuantity: number
   totalQuantity: number
+  tags: string[]
 }
 
 /**
@@ -39,6 +40,7 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       featured: events.featured,
       sponsored: events.sponsored,
       status: events.status,
+      tags: events.tags,
     })
     .from(events)
     .where(and(
@@ -123,6 +125,7 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
       status: r.status ?? "published",
       soldQuantity: attendingByEvent.get(r.id) ?? 0,
       totalQuantity: agg?.total ?? 0,
+      tags: r.tags ?? [],
     }
   })
 }

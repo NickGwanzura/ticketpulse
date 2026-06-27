@@ -91,6 +91,7 @@ export default async function EventsPage({
       sponsored: events.sponsored,
       sponsorshipExpiresAt: events.sponsorshipExpiresAt,
       status: events.status,
+      tags: events.tags,
     })
     .from(events)
     .where(and(...conditions))

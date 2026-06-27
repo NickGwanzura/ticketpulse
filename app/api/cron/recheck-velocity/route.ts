@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { and, eq, inArray, sql, lt } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, paymentLedger } from "@/db/schema"
+import { orders, paymentLedger, events } from "@/db/schema"
 import {
   pollTransaction,
   finalizeWorkflow,
@@ -11,6 +11,8 @@ import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 import { alertRecheckHighErrorRate } from "@/lib/payment-alerts"
+import { sendAdminAlert } from "@/lib/whatsapp"
+import { newPaymentAlert } from "@/lib/whatsapp-templates"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const MAX_ORDERS_PER_RUN = 30
@@ -31,11 +33,15 @@ export async function POST(request: Request) {
       metadata: orders.metadata,
       guestEmail: orders.guestEmail,
       guestName: orders.guestName,
+      guestPhone: orders.guestPhone,
+      paymentMethod: orders.paymentMethod,
       eventId: orders.eventId,
       totalAmount: orders.totalAmount,
       currency: orders.currency,
+      eventTitle: events.title,
     })
     .from(orders)
+    .leftJoin(events, eq(events.id, orders.eventId))
     .where(
       and(
         sql`${orders.metadata}->>'velocity' IS NOT NULL`,
@@ -217,6 +223,25 @@ export async function POST(request: Request) {
 
       fixedCount++
       results.push({ orderId: order.id, action: "fixed" })
+
+      // WhatsApp admin alert — fire-and-forget, same as the real-time poll path
+      sendAdminAlert(
+        newPaymentAlert(
+          order.eventTitle ?? "Unknown event",
+          order.totalAmount,
+          order.currency ?? "USD",
+          order.guestName ?? order.guestEmail ?? "Anonymous",
+          order.guestPhone ?? "—",
+          order.paymentMethod ?? "velocity-card",
+          order.id,
+          invoiceId,
+        ),
+      ).catch((err) =>
+        log.error("cron/recheck-velocity — whatsapp alert failed", {
+          orderId: order.id,
+          error: String(err),
+        }),
+      )
     } catch (err) {
       errorCount++
       log.error("cron/recheck-velocity — error processing order", {

@@ -15,6 +15,7 @@ interface HeroEventProps {
   soldQuantity?: number
   totalQuantity?: number
   sponsored?: boolean
+  tags?: string[] | null
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -53,13 +54,13 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 export default function HeroEventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, lowestPrice, currency = "USD",
-  sponsored,
+  sponsored, tags,
 }: HeroEventProps) {
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
   const emoji = CATEGORY_EMOJI[category.toLowerCase()] ?? "🎫"
   const gradient = CATEGORY_GRADIENT[category.toLowerCase()] ?? "from-navy via-blue-800 to-indigo-900"
-  const sellingFast = title.trim().toLowerCase() === "shenergy"
+  const sellingFast = tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy"
 
   return (
     <section className="tp-premium-card relative overflow-hidden rounded-3xl border border-line bg-navy shadow-xl shadow-ink/10">

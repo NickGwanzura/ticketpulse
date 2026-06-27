@@ -116,6 +116,7 @@ export default async function Home() {
       city: eventsTable.city,
       startsAt: eventsTable.startsAt,
       coverImage: eventsTable.coverImage,
+      tags: eventsTable.tags,
     })
     .from(eventsTable)
     .where(and(
@@ -374,6 +375,7 @@ export default async function Home() {
                 soldQuantity={featuredEvents[0].soldQuantity}
                 totalQuantity={featuredEvents[0].totalQuantity}
                 sponsored={featuredEvents[0].sponsored}
+                tags={featuredEvents[0].tags}
               />
             </div>
           ) : (

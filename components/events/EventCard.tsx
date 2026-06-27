@@ -19,6 +19,7 @@ interface EventCardProps {
   soldQuantity?: number
   totalQuantity?: number
   isPast?: boolean
+  tags?: string[] | null
 }
 
 interface CategoryVisual {
@@ -123,7 +124,7 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 export default function EventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, featured, sponsored, lowestPrice, currency = "USD", status,
-  isPast,
+  isPast, tags,
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
     gradient: "from-slate-100 to-slate-50",
@@ -136,7 +137,7 @@ export default function EventCard({
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
   const soldOut = status === "sold_out"
-  const sellingFast = title.trim().toLowerCase() === "shenergy"
+  const sellingFast = tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy"
 
   return (
     <Link
