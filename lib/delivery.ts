@@ -36,6 +36,7 @@ export type DeliveryMetadata = {
   emailError: string | null
   pdfVersion: string | null
   whatsappSent: boolean
+  smsSent: boolean
   deliveryAttempts: number
   lastDeliveryError: string | null
   lastDeliveryAttemptAt: string | null
@@ -50,6 +51,7 @@ const DEFAULT_DELIVERY: DeliveryMetadata = {
   emailError: null,
   pdfVersion: null,
   whatsappSent: false,
+  smsSent: false,
   deliveryAttempts: 0,
   lastDeliveryError: null,
   lastDeliveryAttemptAt: null,
@@ -411,6 +413,27 @@ async function _deliver(orderId: string): Promise<{
         .catch((err) => log.warn("delivery - WhatsApp send failed (non-blocking)", { orderId, error: String(err) }))
     }
 
+    // ── 6b. Send SMS ticket confirmation (non-blocking, idempotent) ────────
+    if (order.guestPhone && !delivery.smsSent) {
+      const internalKey = process.env.INTERNAL_API_KEY
+      fetch(`${baseUrl}/api/sms/send-ticket`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(internalKey ? { "X-Internal-Key": internalKey } : {}),
+        },
+        body: JSON.stringify({ orderId }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`SMS API returned ${res.status}`)
+          return res.json()
+        })
+        .then(() => {
+          log.info("delivery - SMS ticket sent", { orderId })
+        })
+        .catch((err) => log.warn("delivery - SMS send failed (non-blocking)", { orderId, error: String(err) }))
+    }
+
     // ── 7. Final status ───────────────────────────────────────────────────
     const finalStatus: DeliveryStatus = attemptMeta.status === "EMAIL_FAILED" ? "EMAIL_FAILED" : "DELIVERED"
     attemptMeta.status = finalStatus
@@ -489,7 +512,7 @@ async function notifyOrganizerSale(
     const { organizerSaleNotification } = await import("@/lib/whatsapp-templates")
     const chatId = formatChatId(org.phone)
     // Send brand image + sale notification
-    sendImage({ chatId, url: `${baseUrl}/icon.png`, caption: "💰 New sale" }).catch(() => {})
+    sendImage({ chatId, url: `${baseUrl}/favicon.jpg`, caption: "New sale" }).catch(() => {})
     sendText(
       chatId,
       organizerSaleNotification(

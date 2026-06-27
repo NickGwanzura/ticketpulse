@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
+import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
 import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
@@ -33,8 +34,8 @@ import { events as eventsTable, reviews, ticketTiers } from "@/db/schema"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
 
 const FAQ = [
-  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox and WhatsApp the moment payment clears. Your account is auto-created — no password required." },
-  { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, and a WhatsApp message with your ticket details — all at once. You can also find and resend tickets from order lookup." },
+  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Your account is auto-created — no password required." },
+  { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, a WhatsApp message, and an SMS with your ticket details — all at once. You can also find and resend tickets from order lookup." },
   { q: "What client service is included?",          a: "TicketPulse helps clients before, during, and after the event: secure checkout, instant ticket delivery, order lookup, ticket resend, transfer links, event reviews, and support if payment clears but tickets do not arrive." },
   { q: "Who scans the tickets at the gate?",        a: "We do. TicketPulse ships with a built-in gate-scanner app that organizers run on any phone or tablet. It reads the QR from a printed PDF, your phone, or wallet pass and checks you in instantly. No third-party scanners, no extra hardware fees." },
   { q: "Can I get a refund?",                       a: "Yes, full refund up to 24 hours before the event, processed back to your original payment method (instant for EcoCash, 24 to 72h for cards)." },
@@ -58,7 +59,7 @@ function buildStats(eventsOnSale: number) {
     { value: "Live",    label: "Launched May 2026" },
     { value: String(eventsOnSale), label: eventsOnSale === 1 ? "Event on sale today" : "Events on sale today" },
     { value: "2 ways",  label: "EcoCash · Visa" },
-    { value: "7%",      label: "Organizer fee, pay as you sell" },
+    { value: "6%",      label: "Organizer fee, pay as you sell" },
   ]
 }
 
@@ -95,9 +96,9 @@ const ORGANIZER_BENEFITS = [
   { icon: ShieldCheck, label: "Built for Zimbabwean payments", tone: "bg-emerald-50", accent: "text-emerald-700", border: "border-emerald-200/70" },
   { icon: Smartphone, label: "Instant buyer ticket delivery", tone: "bg-sky-50", accent: "text-sky-700", border: "border-sky-200/70" },
   { icon: Users, label: "Live attendee counts", tone: "bg-violet-50", accent: "text-violet-700", border: "border-violet-200/70" },
-  { icon: Wallet, label: "7% fee shown clearly", tone: "bg-amber-50", accent: "text-amber-700", border: "border-amber-200/70" },
+  { icon: Wallet, label: "6% fee shown clearly", tone: "bg-amber-50", accent: "text-amber-700", border: "border-amber-200/70" },
   { icon: ReceiptText, label: "Velocity reconciliation", tone: "bg-cyan-50", accent: "text-cyan-700", border: "border-cyan-200/70" },
-  { icon: Megaphone, label: "Email and WhatsApp tools", tone: "bg-rose-50", accent: "text-rose-700", border: "border-rose-200/70" },
+  { icon: Megaphone, label: "Email, WhatsApp and SMS tools", tone: "bg-rose-50", accent: "text-rose-700", border: "border-rose-200/70" },
 ]
 
 export default async function Home() {
@@ -193,7 +194,9 @@ export default async function Home() {
   return (
     <main>
       {/* HERO */}
-      <section className="relative overflow-hidden">
+      <section className="relative isolate overflow-hidden bg-navy text-white">
+        <HeroBackgroundSlideshow />
+        <div className="hidden" aria-hidden>
         {/* Base surface: bright, structured, and quiet enough for the product UI to lead. */}
         <div
           className="absolute inset-0 -z-10"
@@ -257,45 +260,46 @@ export default async function Home() {
         >
           <path d="M0 60 Q 300 0, 600 30 T 1200 60 Z" fill="rgba(5,112,222,0.06)" />
         </svg>
+        </div>
 
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-12 md:pb-20">
           <div className="mx-auto max-w-5xl text-center">
-            <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-line bg-paper/85 px-3.5 py-1.5 shadow-sm shadow-ink/5 backdrop-blur">
+            <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-navy/55 px-3.5 py-1.5 shadow-sm shadow-black/10 backdrop-blur-md">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
                 <span className="relative block h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span className="text-[12px] font-semibold tracking-[0.04em] text-ink">
+              <span className="text-[12px] font-semibold tracking-[0.04em] text-white">
                 Organizer ticketing, payments, scanning, and payouts
               </span>
             </div>
 
-            <h1 className="tp-fade-up-1 mx-auto mt-8 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94] text-ink">
+            <h1 className="tp-fade-up-1 mx-auto mt-8 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94]">
               Sell tickets.<br />
-              <span className="text-navy">Scan guests.</span><br />
+              <span className="text-[#b8e448]">Scan guests.</span><br />
               Get paid.
             </h1>
 
-            <p className="tp-fade-up-2 mx-auto mt-7 max-w-2xl text-[16px] md:text-[18px] leading-relaxed text-ink-2">
+            <p className="tp-fade-up-2 mx-auto mt-7 max-w-2xl text-[16px] leading-relaxed text-white/82 md:text-[18px]">
               TicketPulse helps organizers sell online, deliver instant QR tickets, manage attendees, reconcile Velocity payments, and request payouts. Buyers get secure checkout and support without needing an account.
             </p>
 
             <div className="tp-fade-up-3 mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               <Link
                 href="/auth/signup?role=organizer"
-                className="h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-7 text-[15px] font-semibold text-white shadow-sm shadow-ink/20 transition hover:bg-navy active:scale-[0.99] group"
+                className="group inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-[#a3d63c] px-7 text-[15px] font-semibold text-navy shadow-sm shadow-black/20 transition hover:bg-[#b8e448] active:scale-[0.99]"
               >
                 Start selling <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 href="/contact"
-                className="h-14 inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-7 text-[15px] font-semibold text-ink shadow-sm shadow-ink/[0.04] transition hover:border-line-2 hover:bg-paper-2 active:scale-[0.99]"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-white/40 hover:bg-white/16 active:scale-[0.99]"
               >
                 <PhoneCall size={15} /> Book a call
               </Link>
               <Link
                 href="/events"
-                className="h-14 inline-flex items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold text-navy transition hover:text-brand-700 active:scale-[0.99]"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold text-white transition hover:text-[#b8e448] active:scale-[0.99]"
               >
                 Browse events <ArrowUpRight size={15} />
               </Link>
@@ -303,7 +307,7 @@ export default async function Home() {
 
             <div className="tp-fade-up-4 mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
               {HERO_TRUST_ITEMS.map(({ icon: Icon, label, tone, accent, ring }) => (
-                <span key={label} className={`inline-flex items-center gap-2 rounded-full border border-line/80 bg-paper/80 px-3 py-2 text-[12px] font-semibold text-ink-2 ring-1 ${ring} backdrop-blur`}>
+                <span key={label} className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-navy/55 px-3 py-2 text-[12px] font-semibold text-white/90 ring-1 ${ring} backdrop-blur-md`}>
                   <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${tone}`}>
                     <Icon size={12} className={accent} />
                   </span>
@@ -312,26 +316,26 @@ export default async function Home() {
               ))}
             </div>
 
-            <p className="tp-fade-up-5 mx-auto mt-5 max-w-2xl text-[13px] font-medium text-ink-3">
+            <p className="tp-fade-up-5 mx-auto mt-5 max-w-2xl text-[13px] font-medium text-white/65">
               One platform for ticket sales, QR delivery, gate scanning, reconciliation, and payouts.
             </p>
           </div>
         </div>
 
         {/* Stats strip */}
-        <div className="border-t border-line bg-paper/60 backdrop-blur">
+        <div className="border-t border-white/15 bg-navy/70 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 md:py-9">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-line">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-white/15">
               {buildStats(eventsOnSale).map((s, i) => (
                 <div
                   key={i}
                   style={{ animationDelay: `${300 + i * 70}ms` }}
                   className="tp-fade-up md:px-6 md:first:pl-0 md:last:pr-0"
                 >
-                  <p className="text-[26px] md:text-[32px] font-bold tracking-tight text-ink leading-none pb-0.5">
+                  <p className="pb-0.5 text-[26px] font-bold leading-none tracking-tight text-white md:text-[32px]">
                     {s.value}
                   </p>
-                  <p className="mt-1.5 text-[13px] text-ink-3">{s.label}</p>
+                  <p className="mt-1.5 text-[13px] text-white/60">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -645,7 +649,7 @@ export default async function Home() {
               {[
                 { icon: ScanLine, title: "Fast gate scanning", body: "Valid, duplicate, invalid, and already-used states are clear for event staff.", accent: "bg-emerald-300 text-emerald-950" },
                 { icon: Users, title: "Live attendee count", body: "See confirmed tickets and check-ins without waiting for a spreadsheet export.", accent: "bg-sky-300 text-sky-950" },
-                { icon: Megaphone, title: "Buyer messaging", body: "Use email and WhatsApp tools to reach attendees before or after the event.", accent: "bg-amber-300 text-amber-950" },
+                { icon: Megaphone, title: "Buyer messaging", body: "Use email, WhatsApp, and SMS tools to reach attendees before or after the event.", accent: "bg-amber-300 text-amber-950" },
                 { icon: BarChart3, title: "Revenue snapshot", body: "Keep sales, payouts, and reconciliation close to the operator running the event.", accent: "bg-fuchsia-300 text-fuchsia-950" },
               ].map(({ icon: Icon, title, body, accent }, i) => (
                 <div

@@ -124,6 +124,18 @@ export async function POST(request: Request) {
           })
           orderErrors++
         }
+
+        // SMS reminder (non-blocking — failure doesn't affect WhatsApp/email counts)
+        try {
+          const { sendEventReminderSms } = await import("@/lib/sms")
+          await sendEventReminderSms(order.guestPhone)
+        } catch (err) {
+          log.warn("cron/event-reminder — SMS send failed", {
+            orderId: order.id,
+            eventId: ev.id,
+            error: String(err),
+          })
+        }
       }
 
       // Email reminder

@@ -32,12 +32,12 @@ const ATTENDEE_STEPS = [
   {
     icon: CreditCard,
     title: "Pay, no signup",
-    body: "EcoCash or Visa, USD or ZAR. Just your name, email, and phone. We hold your seat the moment you pay.",
+    body: "EcoCash or Visa, USD. Just your name, email, and phone. We hold your seat the moment you pay.",
   },
   {
     icon: Ticket,
     title: "Client service after checkout",
-    body: "The moment payment clears, your printable PDF ticket arrives by email and WhatsApp. If you lose it, use order lookup to resend it, transfer tickets, or open support.",
+    body: "The moment payment clears, your printable PDF ticket arrives by email, WhatsApp, and SMS. If you lose it, use order lookup to resend it, transfer tickets, or open support.",
   },
   {
     icon: ScanLine,
@@ -60,7 +60,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Ticket,
     title: "Sell tickets",
-    body: "Public on-sale with EcoCash and Visa. Buyers get printable PDF, mobile QR, WhatsApp delivery, ticket recovery, and review links instantly.",
+    body: "Public on-sale with EcoCash and Visa. Buyers get printable PDF, mobile QR, WhatsApp and SMS delivery, ticket recovery, and review links instantly.",
   },
   {
     icon: ScanLine,
