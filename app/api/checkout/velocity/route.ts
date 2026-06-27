@@ -151,7 +151,7 @@ const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
   phone: z.string().min(3).max(40).trim(),
-  paymentMethod: z.enum(["velocity-ecocash"]),
+  paymentMethod: z.enum(["velocity-ecocash", "velocity-card"]),
   eventSlug: z.string().min(1).max(160),
   items: z
     .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))

@@ -22,7 +22,7 @@ import { db } from "@/db"
 import { events, ticketTiers, tickets, orders, users } from "@/db/schema"
 import { and, asc, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
 
-const CATEGORIES = ["All", "Concerts", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
+const CATEGORIES = ["All", "Concerts", "Food & Drink", "Cocktail Experience", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
 // Simple stat card for the hero view
 function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: number | string }) {

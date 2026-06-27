@@ -23,6 +23,17 @@ import DeleteEventForm from "../DeleteEventForm"
 
 export const metadata = { title: "Event overview" }
 
+function timeAgo(d: Date): string {
+  const ms = Date.now() - d.getTime()
+  const sec = Math.floor(ms / 1000)
+  if (sec < 60) return `${sec}s ago`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  return `${Math.floor(hr / 24)}d ago`
+}
+
 type RouteParams = { id: string }
 
 export default async function EventOverviewPage({
@@ -128,8 +139,6 @@ export default async function EventOverviewPage({
     .from(orders)
     .where(and(eq(orders.eventId, id), inArray(orders.status, ["paid", "completed"])))
 
-  const totalAttendees = totalSold
-
   // Top buyers by total spend
   const spendByBuyer = new Map<string, { name: string; spent: number; tickets: number }>()
   for (const r of attendeeRows) {
@@ -146,6 +155,7 @@ export default async function EventOverviewPage({
       })
     }
   }
+  const totalBuyers = spendByBuyer.size
   const topBuyers = Array.from(spendByBuyer.values())
     .sort((a, b) => b.spent - a.spent)
     .slice(0, 5)
@@ -175,16 +185,16 @@ export default async function EventOverviewPage({
 
   // ── Recent activity (synthesized) ──────────────────────────────────────────
   const activity: { text: string; ago: string }[] = []
-  for (const o of recentOrders.slice(0, 3)) {
-    if (o.status === "paid") {
+  for (const o of recentOrders.slice(0, 4)) {
+    if (o.status === "paid" || o.status === "awaiting_verification") {
       activity.push({
         text: `${o.guestName || o.guestEmail || "Someone"} purchased tickets`,
-        ago: o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "Recently",
+        ago: o.createdAt ? timeAgo(new Date(o.createdAt)) : "Recently",
       })
     }
   }
   if (checkedIn > 0) {
-    activity.push({ text: `${checkedIn} attendee${checkedIn !== 1 ? "s" : ""} checked in`, ago: "Total" })
+    activity.push({ text: `${checkedIn} attendee${checkedIn !== 1 ? "s" : ""} checked in`, ago: "Total so far" })
   }
 
   const daysRemaining = Math.max(0, Math.ceil((new Date(event.startsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
@@ -195,8 +205,7 @@ export default async function EventOverviewPage({
     { label: "Ticket tiers are configured", ok: tiers.length > 0, href: `/organizer/events/${id}/tiers`, action: "Add tiers" },
     { label: "Capacity is set", ok: totalCapacity > 0, href: `/organizer/events/${id}/tiers`, action: "Set capacity" },
     { label: "Public page has venue and date", ok: Boolean(event.venue && event.startsAt), href: `/organizer/events/${id}/edit`, action: "Edit details" },
-    { label: "Attendee messaging is ready", ok: totalSold > 0, href: `/organizer/events/${id}/email`, action: "Open email" },
-    { label: "Scanner can be opened", ok: true, href: "/organizer/scan", action: "Open scanner" },
+    { label: "Email tool ready", ok: tiers.length > 0, href: `/organizer/events/${id}/email`, action: "Open email" },
     { label: "Payout ledger is balanced", ok: availablePayoutBalance >= 0, href: "/payouts", action: "Review payouts" },
   ]
   const healthScore = Math.round((healthItems.filter((item) => item.ok).length / healthItems.length) * 100)
@@ -250,13 +259,13 @@ export default async function EventOverviewPage({
 
       <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-8">
         {sp.published === "1" && (
-          <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
             Event published. It is now visible on TicketPulse.
           </div>
         )}
 
         {sp.published === "already" && (
-          <div className="rounded-xl border border-brand-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
             This event is already published.
           </div>
         )}
@@ -326,7 +335,7 @@ export default async function EventOverviewPage({
           {[
             { label: "Tickets sold", value: `${totalSold.toLocaleString()} / ${totalCapacity.toLocaleString()}`, icon: Ticket, color: "text-navy" },
             { label: "Net revenue", value: formatCurrency(netRevenue, currency), icon: DollarSign, color: "text-green-700" },
-            { label: "Attendees", value: totalAttendees.toLocaleString(), icon: Users, color: "text-blue" },
+            { label: "Unique buyers", value: totalBuyers.toLocaleString(), icon: Users, color: "text-blue" },
             { label: "Checked in", value: `${checkedIn.toLocaleString()} / ${totalSold.toLocaleString()}`, icon: Activity, color: "text-violet-700" },
           ].map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 tp-lift">
@@ -594,7 +603,7 @@ export default async function EventOverviewPage({
 
             {/* Activity */}
             <div className="rounded-2xl border border-line bg-paper p-5">
-              <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">What&apos;s happening</p>
+              <p className="text-[16px] font-semibold tracking-tight text-ink mb-4">Latest orders</p>
               {activity.length === 0 ? (
                 <EmptyState
                   icon={Calendar}

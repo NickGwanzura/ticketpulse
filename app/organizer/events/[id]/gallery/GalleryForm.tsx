@@ -103,9 +103,6 @@ export default function GalleryForm({ eventId, gallery, onDone }: Props) {
           <label htmlFor="currency" className="block text-[13px] font-medium text-ink mb-1.5">Currency</label>
           <select id="currency" name="currency" defaultValue={gallery?.currency ?? "USD"} className={inputCls()}>
             <option value="USD">USD</option>
-            <option value="ZWL">ZWL</option>
-            <option value="ZAR">ZAR</option>
-            <option value="GBP">GBP</option>
           </select>
         </div>
       </div>

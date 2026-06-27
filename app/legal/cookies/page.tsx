@@ -31,7 +31,7 @@ export default function CookiesPage() {
           body: <>
             <p>These cookies remember your choices to make repeat visits smoother.</p>
             <ul>
-              <li><strong>tp_currency</strong>, remembers your preferred currency for prices (USD / ZAR / GBP).</li>
+              <li><strong>tp_currency</strong>, remembers your preferred currency for prices (USD).</li>
               <li><strong>tp_locale</strong>, remembers your language preference.</li>
             </ul>
           </>,

@@ -32,7 +32,7 @@ const CreatePromoSchema = z.object({
   value: z.string().min(1, "Value is required"),
   maxUses: z.string().optional(),
   minPurchaseAmount: z.string().optional(),
-  expiresAt: z.string().optional(),
+  expiresAt: z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), { message: "Invalid expiry date" }).optional(),
 })
 
 export type PromoFormState = {
@@ -104,14 +104,14 @@ export async function togglePromoCodeAction(
   const [row] = await db
     .select({ id: promoCodes.id, active: promoCodes.active })
     .from(promoCodes)
-    .where(eq(promoCodes.id, promoId))
+    .where(and(eq(promoCodes.id, promoId), eq(promoCodes.eventId, eventId)))
     .limit(1)
   if (!row) return
 
   await db
     .update(promoCodes)
     .set({ active: !row.active })
-    .where(eq(promoCodes.id, promoId))
+    .where(and(eq(promoCodes.id, promoId), eq(promoCodes.eventId, eventId)))
 
   revalidatePath(`/organizer/events/${eventId}/promos`)
 }
@@ -123,6 +123,6 @@ export async function deletePromoCodeAction(
   const ownership = await requireEventOwnership(eventId)
   if (!ownership.ok) redirect(ownership.redirectTo)
 
-  await db.delete(promoCodes).where(eq(promoCodes.id, promoId))
+  await db.delete(promoCodes).where(and(eq(promoCodes.id, promoId), eq(promoCodes.eventId, eventId)))
   revalidatePath(`/organizer/events/${eventId}/promos`)
 }

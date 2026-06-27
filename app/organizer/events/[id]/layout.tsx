@@ -1,9 +1,9 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 
 import { db } from "@/db"
-import { events } from "@/db/schema"
+import { events, eventOrganisers } from "@/db/schema"
 import EventSidebar from "./_components/EventSidebar"
 
 export default async function EventLayout({
@@ -31,8 +31,15 @@ export default async function EventLayout({
     .limit(1)
 
   if (!event) notFound()
-  if (event.organizerId !== session.user.id && session.user.role !== "admin") {
-    redirect("/organizer")
+
+  const isOwner = event.organizerId === session.user.id || session.user.role === "admin"
+  if (!isOwner) {
+    const [invited] = await db
+      .select({ id: eventOrganisers.id })
+      .from(eventOrganisers)
+      .where(and(eq(eventOrganisers.eventId, id), eq(eventOrganisers.userId, session.user.id)))
+      .limit(1)
+    if (!invited) redirect("/organizer")
   }
 
   return (
@@ -43,7 +50,7 @@ export default async function EventLayout({
         eventTitle={event.title}
         eventStatus={event.status}
       />
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 bg-paper-2 min-h-[calc(100vh-6rem)]">
         {children}
       </main>
     </div>

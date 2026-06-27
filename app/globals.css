@@ -1,11 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  /* Font families — CSS variables set by next/font/local in layout.tsx */
-  --font-heading: "Clash Display", "system-ui", sans-serif;
-  --font-body: "General Sans", "system-ui", sans-serif;
-  --font-polysans: "PolySans", "system-ui", sans-serif;
-  --font-polysans-wide: "PolySans Wide", "system-ui", sans-serif;
+  --font-heading: var(--font-grift), "system-ui", sans-serif;
+  --font-body: var(--font-grift), "system-ui", sans-serif;
   --font-sans: var(--font-body);
 
   --color-paper: #ffffff;
@@ -141,7 +138,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
 
 /* ─── Typography scale utilities ─────────────────────────────────────────── */
 
-/* Hero title — Clash Display Bold */
+/* Hero title */
 .tp-heading-hero {
   font-family: var(--font-heading);
   font-weight: 700;
@@ -156,7 +153,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Section heading — Clash Display Semibold */
+/* Section heading */
 .tp-heading-section {
   font-family: var(--font-heading);
   font-weight: 600;
@@ -170,7 +167,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Card / sub-section title — Clash Display Medium */
+/* Card / sub-section title */
 .tp-heading-card {
   font-family: var(--font-heading);
   font-weight: 500;
@@ -184,7 +181,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Modal / panel heading — Clash Display Medium */
+/* Modal / panel heading */
 .tp-heading-panel {
   font-family: var(--font-heading);
   font-weight: 500;
@@ -198,7 +195,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Body text — General Sans Regular */
+/* Body text */
 .tp-body {
   font-family: var(--font-body);
   font-weight: 400;
@@ -212,7 +209,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Small label / meta — General Sans Medium */
+/* Small label / meta */
 .tp-label {
   font-family: var(--font-body);
   font-weight: 500;
@@ -221,7 +218,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   letter-spacing: 0.01em;
 }
 
-/* Button text — General Sans Semibold with letter-spacing */
+/* Button text */
 .tp-button {
   font-family: var(--font-body);
   font-weight: 600;
@@ -235,7 +232,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Caption / footnote — General Sans Regular */
+/* Caption / footnote */
 .tp-caption {
   font-family: var(--font-body);
   font-weight: 400;
@@ -244,7 +241,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   letter-spacing: 0;
 }
 
-/* Dashboard stat value — General Sans Bold */
+/* Dashboard stat value */
 .tp-stat {
   font-family: var(--font-body);
   font-weight: 700;
@@ -259,7 +256,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   }
 }
 
-/* Monospace code — General Sans Medium (mono-esque spacing via tabular-nums) */
+/* Monospace code */
 .tp-mono {
   font-family: var(--font-body);
   font-weight: 500;
@@ -268,7 +265,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* Link text — General Sans Medium, underline on hover */
+/* Link text */
 .tp-link {
   font-family: var(--font-body);
   font-weight: 500;

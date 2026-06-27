@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
 import Link from "next/link"
-import { ArrowLeft, ImageIcon, Save, Sparkles, Loader2, MapPin } from "lucide-react"
+import { ArrowLeft, Ticket, Save, Sparkles, Loader2, MapPin } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import VenueMap from "@/components/events/VenueMap"
@@ -18,6 +18,8 @@ const INITIAL: CreateEventState = { ok: true }
 const CATEGORIES = [
   "Concert",
   "Festival",
+  "Food & Drink",
+  "Cocktail Experience",
   "Marathon",
   "Walkathon",
   "Film",
@@ -60,6 +62,8 @@ export default function NewEventForm() {
 
   const [genDesc, setGenDesc] = useState(false)
   const [genLoc, setGenLoc] = useState(false)
+  const [descError, setDescError] = useState("")
+  const [locError, setLocError] = useState("")
   const [tags, setTags] = useState<string[]>([])
 
   // Tracked for AI button context
@@ -85,7 +89,8 @@ export default function NewEventForm() {
   const geocodeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
-    if (!venue || !city) {
+    const isTBA = (s: string) => s.trim().toLowerCase() === "tba"
+    if (!venue || !city || isTBA(venue) || isTBA(city)) {
       setLiveLat(null)
       setLiveLng(null)
       setGeocodeNotFound(false)
@@ -121,10 +126,11 @@ export default function NewEventForm() {
     const tags = fd.get("tags")?.toString()
 
     if (!title || !category || !venue || !city) {
-      alert("Fill in title, category, venue, and city first.")
+      setDescError("Fill in title, category, venue, and city first.")
       return
     }
 
+    setDescError("")
     setGenDesc(true)
     try {
       const res = await fetch("/api/ai/description", {
@@ -150,10 +156,11 @@ export default function NewEventForm() {
     const city = fd.get("city")?.toString() ?? ""
 
     if (!venue || !city) {
-      alert("Fill in venue and city first.")
+      setLocError("Fill in venue and city first.")
       return
     }
 
+    setLocError("")
     setGenLoc(true)
     try {
       const res = await fetch("/api/ai/location", {
@@ -254,6 +261,7 @@ export default function NewEventForm() {
               </button>
             </div>
           </div>
+          {descError && <p className="mb-1.5 text-[12px] text-rose-600">{descError}</p>}
           <textarea
             id="description"
             name="description"
@@ -300,14 +308,14 @@ export default function NewEventForm() {
         </div>
 
         <div>
-          <label htmlFor="venue" className="block text-[13px] font-medium text-ink mb-1.5">Venue</label>
+          <label htmlFor="venue" className="block text-[13px] font-medium text-ink mb-1.5">Venue <span className="text-ink-3 font-normal">(or TBA)</span></label>
           <input
             id="venue"
             name="venue"
             type="text"
             required
             maxLength={160}
-            placeholder="HICC"
+            placeholder="HICC or TBA"
             value={venue}
             onChange={(e) => setVenue(e.target.value)}
             className={inputCls(!!errs.venue)}
@@ -376,6 +384,7 @@ export default function NewEventForm() {
             )}
             {genLoc ? "Looking up location…" : "Suggest country & address from venue"}
           </button>
+          {locError && <p className="mt-1 text-[12px] text-rose-600">{locError}</p>}
         </div>
 
         {/* Hidden lat/lng forwarded to server action */}
@@ -458,38 +467,37 @@ export default function NewEventForm() {
           <FieldError message={errs.endsAt} />
         </div>
 
-        {/* AI Tools — only shown once the minimum fields are filled */}
-        {title && category && venue && city && (
-          <>
-            <div className="md:col-span-2 mt-2">
-              <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">AI Tools</p>
-            </div>
+        {/* AI Tools — always visible, disabled until minimum fields are filled */}
+        <div className="md:col-span-2 mt-2">
+          <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">AI Tools</p>
+          {!(title && category && venue && city) && (
+            <p className="mt-1 text-[12px] text-ink-3">Fill in title, category, venue, and city to unlock AI tools.</p>
+          )}
+        </div>
 
-            <div className="md:col-span-2 space-y-3">
-              <AiSocialButton
-                eventTitle={title}
-                category={category}
-                eventDate={startsAt ? new Date(startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
-                venue={venue}
-                city={city}
-              />
-            </div>
+        <div className={`md:col-span-2 space-y-3 ${!(title && category && venue && city) ? "pointer-events-none opacity-40" : ""}`}>
+          <AiSocialButton
+            eventTitle={title}
+            category={category}
+            eventDate={startsAt ? new Date(startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
+            venue={venue}
+            city={city}
+          />
+        </div>
 
-            <div className="md:col-span-2">
-              <AiPricingButton
-                eventTitle={title}
-                category={category}
-                venue={venue}
-                city={city}
-              />
-            </div>
-          </>
-        )}
+        <div className={`md:col-span-2 ${!(title && category && venue && city) ? "pointer-events-none opacity-40" : ""}`}>
+          <AiPricingButton
+            eventTitle={title}
+            category={category}
+            venue={venue}
+            city={city}
+          />
+        </div>
       </div>
 
       <div className="rounded-xl border border-dashed border-line bg-paper-2/40 p-4 flex items-start gap-3">
         <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line shrink-0">
-          <ImageIcon size={15} className="text-ink-3" />
+          <Ticket size={15} className="text-ink-3" />
         </span>
         <div className="text-[13px] text-ink-2 leading-relaxed">
           <p className="font-semibold text-ink">Next: set up your ticket tiers.</p>

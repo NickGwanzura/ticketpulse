@@ -25,48 +25,44 @@ export default function PageHeader({
   className,
 }: Props) {
   return (
-    <div className={cn("relative overflow-hidden border-b border-line", className)}>
-      <div className="absolute inset-0 -z-10 tp-header-bg" aria-hidden />
-      {/* Subtle animated accent arc in the top-right */}
-      <svg
-        className="absolute -top-6 -right-6 -z-10 w-36 h-36 opacity-30 hidden md:block"
-        viewBox="0 0 100 100"
+    <div className={cn("relative bg-[#0a2540] overflow-hidden", className)}>
+      {/* Subtle radial glow in top-right */}
+      <div
+        className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full opacity-20"
+        style={{ background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)" }}
         aria-hidden
-      >
-        <defs>
-          <linearGradient id="headerArc" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#0570DE" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#0570DE" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M10 80 Q 30 25, 80 10"
-          fill="none"
-          stroke="url(#headerArc)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeDasharray="2 4"
-        />
-      </svg>
+      />
+      {/* Fine grid texture overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+        aria-hidden
+      />
       <div
         className={cn(
           WIDTHS[width],
           width !== "full" && "mx-auto",
-          "px-5 md:px-8 py-9 md:py-12 flex flex-col md:flex-row md:items-end md:justify-between gap-5",
+          "relative px-5 md:px-8 py-7 md:py-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4",
         )}
       >
         <div className="min-w-0">
-          <p className="text-[12px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
+          <p className="text-[10px] font-semibold tracking-[0.2em] text-white/40 uppercase mb-2">
             {eyebrow}
           </p>
-          <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-[1.1] text-ink">
+          <h1 className="text-[24px] md:text-[32px] font-bold tracking-tight leading-[1.1] text-white">
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-1.5 text-[15px] text-ink-2">{subtitle}</p>
+            <p className="mt-1.5 text-[13px] text-white/50">{subtitle}</p>
           )}
         </div>
-        {actions && <div className="shrink-0 flex items-center gap-2">{actions}</div>}
+        {actions && (
+          <div className="shrink-0 flex items-center gap-2">{actions}</div>
+        )}
       </div>
     </div>
   )

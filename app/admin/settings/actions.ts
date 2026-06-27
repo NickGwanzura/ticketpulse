@@ -21,7 +21,7 @@ type SettingsMap = {
 
 const DEFAULTS: SettingsMap = {
   platformName: "TicketPulse",
-  supportEmail: "nick@ticketpulse.co.zw",
+  supportEmail: "nick@ticketpulse.tech",
   defaultCurrency: "USD",
   platformFeePercent: PLATFORM_FEE_PERCENT.toFixed(2),
   maintenanceMode: false,

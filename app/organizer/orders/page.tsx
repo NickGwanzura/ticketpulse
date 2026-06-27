@@ -24,21 +24,30 @@ import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RecheckButton from "@/app/admin/_components/RecheckButton"
 
 const STATUS_STYLE: Record<string, string> = {
-  paid:       "bg-emerald-50 text-emerald-700",
-  pending:    "bg-amber-50 text-amber-700",
-  completed:  "bg-violet-50 text-violet-700 ring-1 ring-violet-200/50",
-  refunded:   "bg-rose-50 text-rose-700",
-  cancelled:  "bg-paper-2 text-ink-3 ring-1 ring-line",
-  expired:    "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
+  paid:                   "bg-emerald-50 text-emerald-700",
+  pending:                "bg-amber-50 text-amber-700",
+  completed:              "bg-violet-50 text-violet-700 ring-1 ring-violet-200/50",
+  refunded:               "bg-rose-50 text-rose-700",
+  cancelled:              "bg-paper-2 text-ink-3 ring-1 ring-line",
+  expired:                "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
+  awaiting_verification:  "bg-blue-50 text-blue-700 ring-1 ring-blue-200/50",
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  paid:       "Paid",
-  pending:    "Pending",
-  completed:  "Completed",
-  refunded:   "Refunded",
-  cancelled:  "Cancelled",
-  expired:    "Expired",
+  paid:                   "Paid",
+  pending:                "Pending",
+  completed:              "Completed",
+  refunded:               "Refunded",
+  cancelled:              "Cancelled",
+  expired:                "Expired",
+  awaiting_verification:  "Awaiting",
+}
+
+const FILTER_DOT: Record<string, string> = {
+  paid:       "bg-emerald-500",
+  pending:    "bg-amber-400",
+  completed:  "bg-violet-500",
+  cancelled:  "bg-ink-3",
 }
 
 const FILTER_PILLS = [
@@ -150,11 +159,12 @@ export default async function OrganizerOrdersPage({
   const conditions: ReturnType<typeof and>[] = [inArray(orders.eventId, myEventIds)]
 
   if (query) {
+    const escaped = query.replace(/%/g, "\\%").replace(/_/g, "\\_")
     conditions.push(
       or(
-        like(orders.guestEmail, `%${query}%`),
-        like(orders.guestName, `%${query}%`),
-        like(orders.id, `%${query}%`),
+        like(orders.guestEmail, `%${escaped}%`),
+        like(orders.guestName, `%${escaped}%`),
+        like(orders.id, `%${escaped}%`),
       ),
     )
   }
@@ -200,11 +210,6 @@ export default async function OrganizerOrdersPage({
 
   return (
     <div className="tp-fade-up">
-      <div className="max-w-7xl mx-auto px-5 md:px-8 pt-6 md:pt-8">
-        <Link href="/organizer">
-          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-10 w-auto lg:hidden" />
-        </Link>
-      </div>
       <PageHeader
         eyebrow="Organizer"
         title="Order management"
@@ -249,12 +254,15 @@ export default async function OrganizerOrdersPage({
                   key={value}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-paper-2 text-ink font-semibold ring-1 ring-line"
                       : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
                   }`}
                 >
+                  {FILTER_DOT[value] && (
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${FILTER_DOT[value]}`} />
+                  )}
                   {label}
                 </Link>
               )
@@ -264,7 +272,7 @@ export default async function OrganizerOrdersPage({
             href={exportHref}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2 hover:bg-paper-2 transition-colors"
           >
-            <Download size={14} /> Export PDF
+            <Download size={14} /> Export CSV
           </Link>
         </div>
 
@@ -373,6 +381,7 @@ export default async function OrganizerOrdersPage({
                                 target="_blank"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
                                 title="View order"
+                                aria-label="View order"
                               >
                                 <ExternalLink size={14} />
                               </Link>

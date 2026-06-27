@@ -77,17 +77,15 @@ export default function TierCard({
           </p>
         </div>
 
-        {sold >= 100 && (
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-1.5 bg-paper-2 rounded-full overflow-hidden">
-              <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
-              <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
-              <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
-            </p>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-1.5 bg-paper-2 rounded-full overflow-hidden">
+            <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
           </div>
-        )}
+          <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
+            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
+            <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
+          </p>
+        </div>
 
         {tier.groupPrice && (
           <div className="mb-2 rounded-lg bg-sky-50 border border-sky-200 px-3 py-1.5 text-[12px] text-sky-800">
@@ -104,7 +102,7 @@ export default function TierCard({
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setEditing((v) => !v)}
+            onClick={() => { setEditing((v) => !v); setShowingSample(false) }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-line-2"
           >
             {editing ? <><X size={12} /> Cancel</> : <><Pencil size={12} /> Edit</>}
@@ -112,45 +110,21 @@ export default function TierCard({
 
           <button
             type="button"
-            onClick={() => setShowingSample((v) => !v)}
+            onClick={() => { setShowingSample((v) => !v); setEditing(false) }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-1.5 text-[13px] font-medium text-ink hover:border-brand-200 hover:text-green-700"
           >
             {showingSample ? <><X size={12} /> Close</> : <><Eye size={12} /> Test ticket</>}
           </button>
 
-          {deleteConfirm ? (
-            <div className="inline-flex items-center gap-1">
-              <span className="text-[11px] text-rose-700 font-medium whitespace-nowrap">
-                {sold > 0 ? "Also cancels sold tickets — delete?" : "Delete tier?"}
-              </span>
-              <form action={deleteTierAction}>
-                <input type="hidden" name="tierId" value={tier.id} />
-                <input type="hidden" name="eventId" value={eventId} />
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-700 transition-colors"
-                >
-                  Yes
-                </button>
-              </form>
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(false)}
-                className="inline-flex items-center gap-1 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
-              >
-                No
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setDeleteConfirm(true)}
-              title="Delete tier"
-              className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 transition-colors"
-            >
-              <Trash2 size={13} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setDeleteConfirm(true)}
+            title="Delete tier"
+            aria-label="Delete tier"
+            className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 transition-colors"
+          >
+            <Trash2 size={13} />
+          </button>
         </div>
       </div>
 
@@ -176,6 +150,39 @@ export default function TierCard({
             }}
             onDone={() => setEditing(false)}
           />
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 shadow-2xl">
+            <p className="text-[16px] font-semibold text-ink mb-1">Delete tier?</p>
+            {sold > 0 && (
+              <p className="text-[13px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mb-4">
+                This tier has {sold} sold ticket{sold !== 1 ? "s" : ""}. Deleting it will also cancel those tickets.
+              </p>
+            )}
+            <p className="text-[13px] text-ink-2 mb-6">This action cannot be undone.</p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(false)}
+                className="rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+              <form action={deleteTierAction}>
+                <input type="hidden" name="tierId" value={tier.id} />
+                <input type="hidden" name="eventId" value={eventId} />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-rose-700 transition-colors min-h-[44px]"
+                >
+                  Delete tier
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 

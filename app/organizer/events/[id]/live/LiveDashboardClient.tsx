@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Users, TicketCheck, Percent } from "lucide-react"
+import { Users, TicketCheck, Percent, ScanLine } from "lucide-react"
 import StatCard from "@/components/dashboard/StatCard"
+import EmptyState from "@/components/dashboard/EmptyState"
 
 type LiveStats = {
   totalSold: number
@@ -28,6 +29,8 @@ export default function LiveDashboardClient({
 }) {
   const [stats, setStats] = useState<LiveStats>(initialStats)
   const [recent, setRecent] = useState<RecentCheckin[]>([])
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [fetchError, setFetchError] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -36,9 +39,13 @@ export default function LiveDashboardClient({
         const data = await res.json()
         setStats(data.stats)
         setRecent(data.recent ?? [])
+        setLastUpdated(new Date())
+        setFetchError(false)
+      } else {
+        setFetchError(true)
       }
     } catch {
-      // silent — keep last known stats
+      setFetchError(true)
     }
   }, [eventId])
 
@@ -51,6 +58,15 @@ export default function LiveDashboardClient({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between text-[12px]">
+        <span className="text-ink-3">Updates every 5 seconds</span>
+        {fetchError ? (
+          <span className="text-rose-600 font-medium">Live data unavailable — retrying…</span>
+        ) : lastUpdated ? (
+          <span className="text-ink-3">Last updated {lastUpdated.toLocaleTimeString()}</span>
+        ) : null}
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
@@ -66,8 +82,8 @@ export default function LiveDashboardClient({
           label="Tickets sold"
           value={String(stats.totalSold)}
           trendLabel={stats.totalCapacity > 0 ? `of ${stats.totalCapacity} capacity` : "No capacity set"}
-          iconBg="bg-green-100"
-          iconColor="text-green-700"
+          iconBg="bg-blue-100"
+          iconColor="text-blue-700"
         />
         <StatCard
           icon={Percent}
@@ -83,7 +99,11 @@ export default function LiveDashboardClient({
       <div className="rounded-2xl border border-line bg-paper p-6 md:p-7">
         <h3 className="text-[15px] font-semibold tracking-tight text-ink mb-4">Recent check-ins</h3>
         {recent.length === 0 ? (
-          <p className="text-[13px] text-ink-3">No check-ins recorded yet.</p>
+          <EmptyState
+            icon={ScanLine}
+            title="No check-ins yet"
+            body="Scanned tickets will appear here in real time."
+          />
         ) : (
           <div className="space-y-2">
             {recent.map((r, i) => (

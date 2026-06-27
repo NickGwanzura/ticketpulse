@@ -170,9 +170,13 @@ export async function saveTierAction(
     if (!ownerCheck.ok || ownerCheck.tier.eventId !== data.eventId) {
       return { ok: false, error: "Not allowed." }
     }
-    // Refuse to drop capacity below what's already sold — would otherwise put
-    // the tier into a permanently oversold state.
-    const sold = ownerCheck.tier.soldQuantity ?? 0
+    // Refuse to drop capacity below what's already sold — use a live COUNT
+    // rather than the denormalized soldQuantity counter which can lag under load.
+    const [soldRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tickets)
+      .where(eq(tickets.tierId, data.tierId))
+    const sold = soldRow?.count ?? 0
     if (total < sold) {
       return {
         ok: false,

@@ -8,34 +8,26 @@ const BRAND = {
   name: "TicketPulse",
   tagline: "Your events, delivered.",
   get appUrl(): string { return getBaseUrl() },
-  get iconUrl(): string { return `${getBaseUrl()}/icon.png` },
+  get iconUrl(): string { return `${getBaseUrl()}/favicon.jpg` },
   support: "https://wa.me/263788689923",
 } as const
 
-const DIVIDER = "─".repeat(28)
-
 function footer(isAdmin: boolean): string {
-  return [
-    "",
-    DIVIDER,
-    isAdmin
-      ? `🔧 ${BRAND.name} Admin · ${BRAND.appUrl}/admin`
-      : `💙 ${BRAND.name} · ${BRAND.appUrl}`,
-    isAdmin ? "" : `Need help? Chat with us: ${BRAND.support}`,
-  ]
-    .filter(Boolean)
-    .join("\n")
+  if (isAdmin) {
+    return `\n${BRAND.name} Admin · ${BRAND.appUrl}/admin`
+  }
+  return `\n${BRAND.name} · ${BRAND.appUrl}\nSupport: ${BRAND.support}`
 }
 
 // ─── Admin Alerts ────────────────────────────────────────────────────────────
 
 export function eventPublishedAlert(title: string, eventDate: string, eventUrl: string): string {
   return [
-    `🎉 *Event Published*`,
+    `*Event Published*`,
     ``,
-    `📌 *${title}*`,
-    `📅 ${eventDate}`,
-    `🔗 ${eventUrl}`,
+    title,
+    eventDate,
+    eventUrl,
     footer(true),
   ].join("\n")
 }
@@ -51,15 +43,14 @@ export function newPaymentAlert(
   invoiceId: string,
 ): string {
   return [
-    `💰 *New Payment Received*`,
+    `*New Payment — ${currency} ${amount}*`,
     ``,
-    `🎫 *${eventTitle}*`,
-    `💵 ${currency} ${amount}`,
-    `👤 ${buyerName}`,
-    buyerPhone !== "—" ? `📱 ${buyerPhone}` : null,
-    `💳 ${paymentMethod.toUpperCase()}`,
-    `🆔 Order #${orderId.slice(0, 8)}`,
-    `🧾 Invoice: ${invoiceId}`,
+    eventTitle,
+    `Buyer: ${buyerName}`,
+    buyerPhone !== "—" ? `Phone: ${buyerPhone}` : null,
+    `Method: ${paymentMethod.toUpperCase()}`,
+    `Order: #${orderId.slice(0, 8)}`,
+    `Invoice: ${invoiceId}`,
     footer(true),
   ]
     .filter(Boolean)
@@ -73,13 +64,13 @@ export function freeOrderAlert(
   orderId: string,
 ): string {
   return [
-    `🎟️ *Free Order Processed*`,
+    `*Free Order Processed*`,
     ``,
-    `🎫 *${eventTitle}*`,
-    `👤 ${buyerName}`,
-    buyerPhone ? `📱 ${buyerPhone}` : null,
-    `🆔 Order #${orderId.slice(0, 8)}`,
-    `💵 $0.00 (promo / free)`,
+    eventTitle,
+    `Buyer: ${buyerName}`,
+    buyerPhone ? `Phone: ${buyerPhone}` : null,
+    `Order: #${orderId.slice(0, 8)}`,
+    `Amount: $0.00 (promo / free)`,
     footer(true),
   ]
     .filter(Boolean)
@@ -88,11 +79,12 @@ export function freeOrderAlert(
 
 export function contactFormAlert(name: string, email: string, topic: string | null, message: string): string {
   return [
-    `📬 *New Contact Form Submission*`,
+    `*New Contact Form Message*`,
     ``,
-    `👤 ${name} (${email})`,
-    topic ? `📂 ${topic}` : null,
-    `💬 ${message.length > 500 ? message.slice(0, 500) + "…" : message}`,
+    `From: ${name} (${email})`,
+    topic ? `Topic: ${topic}` : null,
+    ``,
+    message.length > 500 ? message.slice(0, 500) + "…" : message,
     footer(true),
   ]
     .filter(Boolean)
@@ -106,12 +98,12 @@ export function newEventAlert(
   startsAt: string,
 ): string {
   return [
-    `📅 *New Event Created*`,
+    `*New Event Created*`,
     ``,
-    `🎫 *${title}*`,
-    `📂 ${category}`,
-    `📍 ${city}`,
-    `📅 ${startsAt}`,
+    title,
+    `Category: ${category}`,
+    `City: ${city}`,
+    `Date: ${startsAt}`,
     footer(true),
   ]
     .filter(Boolean)
@@ -120,11 +112,11 @@ export function newEventAlert(
 
 export function newSignupAlert(name: string, email: string, role: string): string {
   return [
-    `🆕 *New Signup — ${role}*`,
+    `*New Signup — ${role}*`,
     ``,
-    `👤 ${name}`,
-    `📧 ${email}`,
-    `🔑 ${role}`,
+    name,
+    email,
+    `Role: ${role}`,
     footer(true),
   ]
     .filter(Boolean)
@@ -138,13 +130,13 @@ export function paymentAnomalyAlert(
   detail: string,
 ): string {
   return [
-    `⚠️ *Payment Anomaly*`,
+    `*Payment Anomaly*`,
     ``,
-    `📋 *${title}*`,
-    orderId ? `🆔 Order: ${orderId}` : null,
-    `📂 Type: ${type}`,
-    `📝 ${detail.length > 200 ? detail.slice(0, 200) + "…" : detail}`,
-    orderId ? `👉 ${BRAND.appUrl}/admin/orders/${orderId}` : null,
+    title,
+    orderId ? `Order: ${orderId}` : null,
+    `Type: ${type}`,
+    detail.length > 200 ? detail.slice(0, 200) + "…" : detail,
+    orderId ? `${BRAND.appUrl}/admin/orders/${orderId}` : null,
     footer(true),
   ]
     .filter(Boolean)
@@ -163,19 +155,19 @@ export function ticketConfirmationMessage(
   ticketUrl: string,
 ): string {
   return [
-    `🎟️ *Tickets Confirmed — ${eventTitle}*`,
+    `*Your tickets are confirmed!*`,
     ``,
-    `Hey ${buyerName}! 🎉 Your tickets are ready.`,
+    `Hi ${buyerName}, you're going to *${eventTitle}*.`,
     ``,
-    `📅 *Starts:* ${eventDate}`,
-    venue ? `📍 *Venue:* ${venue}` : null,
-    `🆔 *Order:* #${orderId.slice(0, 8)}`,
+    `Date: ${eventDate}`,
+    venue ? `Venue: ${venue}` : null,
+    `Order: #${orderId.slice(0, 8)}`,
     ``,
-    itemsSummary ? `*Your Tickets:*\n${itemsSummary}` : null,
+    itemsSummary ? `${itemsSummary}` : null,
     ``,
-    `👉 View & manage: ${ticketUrl}`,
+    `View tickets: ${ticketUrl}`,
     ``,
-    `Show the QR code at the door for entry. See you there! 🎉`,
+    `Show the QR code at the door. See you there!`,
     footer(false),
   ]
     .filter(Boolean)
@@ -192,14 +184,14 @@ export function organizerSaleNotification(
   organizerUrl: string,
 ): string {
   return [
-    `🎟️ *New Ticket Sale — ${eventTitle}*`,
+    `*New Sale — ${eventTitle}*`,
     ``,
-    `👤 Buyer: ${buyerName}`,
-    `🆔 Order: #${orderId.slice(0, 8)}`,
-    ...itemsLines.map((l) => `  ${l}`),
-    `💵 *Total:* ${currency} ${total}`,
+    `Buyer: ${buyerName}`,
+    `Order: #${orderId.slice(0, 8)}`,
+    ...itemsLines,
+    `Total: ${currency} ${total}`,
     ``,
-    `👉 View attendees: ${organizerUrl}`,
+    `Attendees: ${organizerUrl}`,
     footer(false),
   ]
     .filter(Boolean)

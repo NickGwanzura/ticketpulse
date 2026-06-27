@@ -11,7 +11,7 @@ import AdminInviteEmail from "@/emails/admin-invite"
 import ResetPasswordEmail from "@/emails/reset-password"
 
 const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
-const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.co.zw"
+const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.tech"
 
 export function validateEmailConfig(): { valid: boolean; warnings: string[] } {
   const warnings: string[] = []
@@ -120,6 +120,59 @@ export async function sendEmail(opts: {
     throw new Error(error.message ?? "Resend send failed")
   }
   return { id: data?.id ?? "" }
+}
+
+/** Resend hard limit per batch.send() call */
+const BATCH_SIZE = 100
+
+/**
+ * Send up to thousands of emails via Resend's batch API.
+ * Automatically chunks into groups of 100 (Resend max per request).
+ * Returns counts of sent and failed emails.
+ */
+export async function sendBatchEmails(emails: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+}[]): Promise<{ sent: number; failed: number }> {
+  const resend = client()
+  if (!resend) return { sent: 0, failed: emails.length }
+
+  let sent = 0
+  let failed = 0
+
+  for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+    const chunk = emails.slice(i, i + BATCH_SIZE)
+    const payload = chunk.map((e) => ({
+      from: FROM,
+      to: [e.to],
+      subject: e.subject,
+      html: e.html,
+      ...(e.text ? { text: e.text } : {}),
+    }))
+
+    try {
+      const { error } = await resend.batch.send(payload)
+      if (error) {
+        console.error("[email] batch send error", error)
+        log.error("email — batch send error", { error: (error as { message?: string }).message })
+        failed += chunk.length
+      } else {
+        sent += chunk.length
+      }
+    } catch (err) {
+      console.error("[email] batch send threw", err)
+      failed += chunk.length
+    }
+
+    // Brief pause between batch chunks to stay within rate limits
+    if (i + BATCH_SIZE < emails.length) {
+      await new Promise((r) => setTimeout(r, 200))
+    }
+  }
+
+  return { sent, failed }
 }
 
 export const adminEmail = ADMIN

@@ -6,7 +6,7 @@ import { inputBaseClass } from "@/lib/utils"
 
 const CHANNELS = [
   { icon: MessageSquare, title: "Live chat",     body: "Mon to Fri, 8:00 to 18:00 CAT", value: "Open chat",         href: "#chat" },
-  { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "nick@ticketpulse.co.zw", href: "mailto:nick@ticketpulse.co.zw" },
+  { icon: Mail,          title: "Email",         body: "Replies within 4 hours",  value: "nick@ticketpulse.tech", href: "mailto:nick@ticketpulse.tech" },
   { icon: Phone,         title: "Phone / WhatsApp", body: "Daily, 8:00 to 20:00 CAT", value: "+263 788 689 923",  href: "https://wa.me/263788689923" },
 ]
 

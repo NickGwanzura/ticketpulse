@@ -14,7 +14,7 @@ import { useFormStatus } from "react-dom"
 import { useActionState } from "react"
 import Button from "@/components/ui/Button"
 
-const CURRENCIES = ["USD", "ZWL", "ZAR"]
+const CURRENCIES = ["USD"]
 
 type ListingVendor = {
   businessName: string

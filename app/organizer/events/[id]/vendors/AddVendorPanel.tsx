@@ -8,7 +8,7 @@ import Button from "@/components/ui/Button"
 import { vendorCategoryLabel } from "@/lib/utils"
 import { addVendorListingAction, type VendorListingFormState } from "./actions"
 
-const CURRENCIES = ["USD", "ZWL", "ZAR"]
+const CURRENCIES = ["USD"]
 
 type MarketplaceVendor = {
   id: string

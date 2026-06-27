@@ -22,6 +22,8 @@ const INITIAL: UpdateEventState = { ok: true }
 const CATEGORIES = [
   "Concert",
   "Festival",
+  "Food & Drink",
+  "Cocktail Experience",
   "Marathon",
   "Walkathon",
   "Film",
@@ -101,6 +103,7 @@ type Props = {
     googleMapsUrl: string | null
     hideOrganizerName: boolean | null
     faq: string | null
+    promoImages: string[] | null
   }
   tiers: TierSummary[]
   showCreatedToast?: boolean
@@ -120,11 +123,16 @@ function ReqMark() {
 export default function EditEventForm({ event, tiers, showCreatedToast }: Props) {
   const [state, formAction] = useActionState(updateEventAction, INITIAL)
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
+  const [promoImages, setPromoImages] = useState<string[]>(event.promoImages ?? [])
   const [hideOrganizer, setHideOrganizer] = useState(event.hideOrganizerName ?? false)
   const errs = state.fieldErrors ?? {}
 
   const [genDesc, setGenDesc] = useState(false)
   const [genLoc, setGenLoc] = useState(false)
+  const [descError, setDescError] = useState("")
+  const [locError, setLocError] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState(event.status)
+  const [deletingTier, setDeletingTier] = useState<{ id: string; name: string } | null>(null)
   const [tags, setTags] = useState<string[]>(event.tags ?? [])
 
   async function handleGenerateDesc() {
@@ -137,10 +145,11 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
     const tags = (document.getElementById("tags") as HTMLInputElement | null)?.value ?? ""
 
     if (!title || !category || !venue || !city) {
-      alert("Title, category, venue, and city are required.")
+      setDescError("Title, category, venue, and city are required.")
       return
     }
 
+    setDescError("")
     setGenDesc(true)
     try {
       const res = await fetch("/api/ai/description", {
@@ -167,10 +176,11 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
     const city = cityEl?.value ?? event.city
 
     if (!venue || !city) {
-      alert("Venue and city are required.")
+      setLocError("Venue and city are required.")
       return
     }
 
+    setLocError("")
     setGenLoc(true)
     try {
       const res = await fetch("/api/ai/location", {
@@ -272,6 +282,19 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
         />
         <input type="hidden" name="coverImage" value={coverImage ?? ""} />
 
+        <ImageUploader
+          kind="event-promo"
+          eventId={event.id}
+          multiple={true}
+          values={promoImages}
+          onValuesChange={setPromoImages}
+          maxItems={6}
+          aspectRatio="wide"
+          label="Additional photos"
+          helperText="Up to 6 photos shown in a gallery on the event page. Drag to reorder."
+        />
+        <input type="hidden" name="promoImages" value={JSON.stringify(promoImages)} />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="md:col-span-2">
             <label htmlFor="title" className="block text-[13px] font-medium text-ink mb-1.5">Title<ReqMark /></label>
@@ -292,10 +315,15 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
 
           <div>
             <label htmlFor="status" className="block text-[13px] font-medium text-ink mb-1.5">Status</label>
-            <select id="status" name="status" required defaultValue={event.status} className={inputCls(!!errs.status)}>
+            <select id="status" name="status" required defaultValue={event.status} onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)} className={inputCls(!!errs.status)}>
               {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
             <FieldError message={errs.status} />
+            {(selectedStatus === "cancelled" || selectedStatus === "completed") && (
+              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                Setting status to <strong>{selectedStatus}</strong> will hide this event from public listings. Buyers will still be able to view their tickets.
+              </p>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -322,6 +350,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
                 </button>
               </div>
             </div>
+            {descError && <p className="mb-1.5 text-[12px] text-rose-600">{descError}</p>}
             <textarea id="description" name="description" rows={4} maxLength={4000} defaultValue={event.description ?? ""} className={inputCls()} />
           </div>
 
@@ -400,6 +429,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
               )}
               {genLoc ? "Looking up location…" : "Suggest country & address from venue"}
             </button>
+            {locError && <p className="mt-1 text-[12px] text-rose-600">{locError}</p>}
           </div>
 
           {/* Hidden lat/lng so the form can forward them on save too */}
@@ -566,28 +596,16 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
                       {formatCurrency(price, t.currency ?? "USD")} · {t.totalQuantity.toLocaleString()} capacity · {sold.toLocaleString()} sold
                     </p>
                   </div>
-                  <form
-                    action={deleteTierAction}
-                    onSubmit={(e) => {
-                      if (sold > 0) {
-                        e.preventDefault()
-                        alert("This tier has sold tickets and can't be deleted. Set its sales end date instead.")
-                        return
-                      }
-                      if (!confirm(`Delete "${t.name}"?`)) e.preventDefault()
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => { if (sold === 0) setDeletingTier({ id: t.id, name: t.name }) }}
+                    title={sold > 0 ? "Can't delete — has sales" : "Delete tier"}
+                    disabled={sold > 0}
+                    className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Delete tier"
                   >
-                    <input type="hidden" name="tierId" value={t.id} />
-                    <input type="hidden" name="eventId" value={event.id} />
-                    <button
-                      type="submit"
-                      title={sold > 0 ? "Can't delete — has sales" : "Delete tier"}
-                      disabled={sold > 0}
-                      className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </form>
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               )
             })}
@@ -595,13 +613,42 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
         )}
       </div>
 
-      <div className="border-t border-line pt-6">
+      <div className="border border-rose-200 rounded-2xl p-5 md:p-6">
         <h3 className="text-[13px] font-semibold text-ink mb-1.5">Danger zone</h3>
         <p className="text-[13px] text-ink-3 mb-3">
           Delete is only available before an event has orders, tickets, or payment records. Events with buyer activity should be cancelled instead.
         </p>
         <DeleteEventForm eventId={event.id} eventTitle={event.title} />
       </div>
+
+      {/* Tier delete confirmation modal */}
+      {deletingTier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 shadow-2xl">
+            <p className="text-[16px] font-semibold text-ink mb-1">Delete &ldquo;{deletingTier.name}&rdquo;?</p>
+            <p className="text-[13px] text-ink-2 mb-6">This action cannot be undone.</p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeletingTier(null)}
+                className="rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors min-h-[44px]"
+              >
+                Cancel
+              </button>
+              <form action={deleteTierAction} onSubmit={() => setDeletingTier(null)}>
+                <input type="hidden" name="tierId" value={deletingTier.id} />
+                <input type="hidden" name="eventId" value={event.id} />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-rose-700 transition-colors min-h-[44px]"
+                >
+                  Delete tier
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

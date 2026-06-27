@@ -7,6 +7,7 @@ export const UPLOAD_LIMITS = {
   "vendor-logo":      2  * 1024 * 1024, // 2 MB
   "vendor-portfolio": 8  * 1024 * 1024, // 8 MB per image
   "event-cover":      5  * 1024 * 1024, // 5 MB
+  "event-promo":      5  * 1024 * 1024, // 5 MB per promo photo
   "event-gallery":    10 * 1024 * 1024, // 10 MB per photo
   merch:              5  * 1024 * 1024, // 5 MB
 } as const

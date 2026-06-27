@@ -93,6 +93,7 @@ export default async function EditEventPage({
               googleMapsUrl: row.googleMapsUrl,
               hideOrganizerName: row.hideOrganizerName,
               faq: row.faq,
+              promoImages: row.promoImages ?? [],
             }}
             tiers={tiers}
             showCreatedToast={sp.created === "1"}

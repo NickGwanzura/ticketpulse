@@ -102,7 +102,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
   </a>
 </p>
 <p style="color:#6b7280;font-size:13px;margin-top:16px">This link expires in 48 hours. If you weren't expecting this, you can ignore this email.</p>
-<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · <a href="mailto:nick@ticketpulse.co.zw" style="color:#6b7280">nick@ticketpulse.co.zw</a></p>
+<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · <a href="mailto:nick@ticketpulse.tech" style="color:#6b7280">nick@ticketpulse.tech</a></p>
 </div>`,
       text: `Hi ${name},\n\n${senderName} has sent you a ticket for ${eventTitle}.\n\nClaim it here: ${claimUrl}\n\nThis link expires in 48 hours.\n\nTicketPulse`,
     })

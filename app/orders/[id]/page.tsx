@@ -30,6 +30,8 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const [fetching, setFetching] = useState(false)
   const [resendingTickets, setResendingTickets] = useState(false)
   const [resendTicketNote, setResendTicketNote] = useState<string | null>(null)
+  const [resendingWA, setResendingWA] = useState(false)
+  const [resendWANote, setResendWANote] = useState<string | null>(null)
   const [pollingForCard, setPollingForCard] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const ticketsEnabled = order?.status === "paid" || order?.status === "completed"
@@ -155,6 +157,26 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       setResendTicketNote("Couldn't resend. Try again shortly.")
     } finally {
       setResendingTickets(false)
+    }
+  }
+
+  async function resendWhatsApp() {
+    if (resendingWA) return
+    setResendingWA(true)
+    setResendWANote(null)
+    try {
+      const res = await fetch("/api/whatsapp/send-ticket", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) setResendWANote(body.error ?? "Couldn't send. Try again shortly.")
+      else setResendWANote("Sent to WhatsApp!")
+    } catch {
+      setResendWANote("Couldn't send. Try again shortly.")
+    } finally {
+      setResendingWA(false)
     }
   }
 
@@ -432,17 +454,31 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                   disabled={resendingTickets}
                   className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 disabled:opacity-60 transition"
                 >
-                  {resendingTickets ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Send size={14} />
-                  )}
+                  {resendingTickets ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   {resendingTickets ? "Sending…" : "Resend ticket email"}
                 </button>
                 {resendTicketNote && (
                   <p className={`mt-2 text-[12px] text-center ${resendTicketNote.startsWith("Sent") ? "text-green-700" : "text-ink-3"}`}>
                     {resendTicketNote}
                   </p>
+                )}
+                {order.contact.phone && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={resendWhatsApp}
+                      disabled={resendingWA}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-[#25D366] bg-[#25D366]/5 px-4 py-2.5 text-[13px] font-semibold text-[#128C4A] hover:bg-[#25D366]/10 disabled:opacity-60 transition"
+                    >
+                      {resendingWA ? <Loader2 size={14} className="animate-spin" /> : <Smartphone size={14} />}
+                      {resendingWA ? "Sending…" : "Send PDF to WhatsApp"}
+                    </button>
+                    {resendWANote && (
+                      <p className={`mt-1 text-[12px] text-center ${resendWANote.startsWith("Sent") ? "text-green-700" : "text-ink-3"}`}>
+                        {resendWANote}
+                      </p>
+                    )}
+                  </>
                 )}
                 {/* Wallet buttons */}
                 <div className="flex gap-2 pt-1">

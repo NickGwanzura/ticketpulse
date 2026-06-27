@@ -643,3 +643,24 @@ export async function deleteOrderAction(orderId: string) {
   revalidatePath("/admin/orders")
   revalidatePath("/admin")
 }
+
+export async function sendWhatsAppTicketAction(orderId: string): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") throw new Error("Unauthorized")
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  try {
+    const res = await fetch(`${appUrl}/api/whatsapp/send-ticket`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orderId }),
+    })
+    const data = await res.json() as { ok?: boolean; error?: string }
+    if (!res.ok) return { ok: false, error: data.error ?? "WhatsApp send failed" }
+    log.info("admin - whatsapp ticket resent", { orderId, by: session.user.id })
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" }
+  }
+}
+

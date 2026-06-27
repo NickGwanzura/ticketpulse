@@ -248,7 +248,11 @@ export default function EventCard({
           </div>
           <div className="flex items-center gap-2 text-[13px] text-ink-2">
             <MapPin size={13} className="text-ink-3 shrink-0" />
-            <span className="truncate">{venue}, {city}</span>
+            <span className="truncate">
+              {venue.trim().toLowerCase() === "tba" || city.trim().toLowerCase() === "tba"
+                ? "Location TBA"
+                : `${venue}, ${city}`}
+            </span>
           </div>
         </div>
 

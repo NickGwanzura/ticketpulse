@@ -125,7 +125,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
           </p>
           <p className="mt-4 text-[13px] text-ink-3">
             Still can&apos;t find it?{" "}
-            <a href="mailto:nick@ticketpulse.co.zw" className="underline hover:text-ink transition">
+            <a href="mailto:nick@ticketpulse.tech" className="underline hover:text-ink transition">
               Contact support
             </a>
           </p>

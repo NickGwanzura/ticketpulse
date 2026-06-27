@@ -124,7 +124,7 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   ${ticket.eventVenue ? `<tr><td style="padding:8px 0;color:#6b7280">Venue</td><td style="padding:8px 0">${ticket.eventVenue}</td></tr>` : ""}
 </table>
 <p style="color:#6b7280;font-size:13px;margin-top:8px">Holder: <strong style="color:#1a1a1a">${ticket.transferToName ?? ""}</strong></p>
-<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · <a href="mailto:nick@ticketpulse.co.zw" style="color:#6b7280">nick@ticketpulse.co.zw</a></p>
+<p style="color:#6b7280;font-size:13px;margin-top:24px">TicketPulse · <a href="mailto:nick@ticketpulse.tech" style="color:#6b7280">nick@ticketpulse.tech</a></p>
 </div>`,
       text: `Hi ${ticket.transferToName ?? "there"},\n\nYour ticket for ${ticket.eventTitle} has been confirmed.\n\nEvent: ${ticket.eventTitle}\nTicket: ${ticket.tierName}\nDate: ${eventDate}\n${ticket.eventVenue ? `Venue: ${ticket.eventVenue}\n` : ""}\nHolder: ${ticket.transferToName}\n\nTicketPulse`,
     }).catch((err) => log.warn("transfer claim - email failed", { error: String(err) }))

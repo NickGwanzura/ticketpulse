@@ -1,107 +1,28 @@
 import localFont from "next/font/local"
 
-/**
- * Clash Display — a sharp, modern geometric sans for headings.
- * https://fontshare.com/fonts/clash-display
- */
-export const clashDisplay = localFont({
+export const grift = localFont({
   src: [
-    {
-      path: "../public/fonts/ClashDisplay-Light.woff2",
-      weight: "300",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/ClashDisplay-Regular.woff2",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/ClashDisplay-Medium.woff2",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/ClashDisplay-Semibold.woff2",
-      weight: "600",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/ClashDisplay-Bold.woff2",
-      weight: "700",
-      style: "normal",
-    },
+    { path: "../public/fonts/Grift-Thin.woff2",            weight: "100", style: "normal" },
+    { path: "../public/fonts/Grift-ThinItalic.woff2",      weight: "100", style: "italic" },
+    { path: "../public/fonts/Grift-ExtraLight.woff2",      weight: "200", style: "normal" },
+    { path: "../public/fonts/Grift-ExtraLightItalic.woff2",weight: "200", style: "italic" },
+    { path: "../public/fonts/Grift-Light.woff2",           weight: "300", style: "normal" },
+    { path: "../public/fonts/Grift-LightItalic.woff2",     weight: "300", style: "italic" },
+    { path: "../public/fonts/Grift-Regular.woff2",         weight: "400", style: "normal" },
+    { path: "../public/fonts/Grift-Italic.woff2",          weight: "400", style: "italic" },
+    { path: "../public/fonts/Grift-Medium.woff2",          weight: "500", style: "normal" },
+    { path: "../public/fonts/Grift-MediumItalic.woff2",    weight: "500", style: "italic" },
+    { path: "../public/fonts/Grift-SemiBold.woff2",        weight: "600", style: "normal" },
+    { path: "../public/fonts/Grift-SemiBoldItalic.woff2",  weight: "600", style: "italic" },
+    { path: "../public/fonts/Grift-Bold.woff2",            weight: "700", style: "normal" },
+    { path: "../public/fonts/Grift-BoldItalic.woff2",      weight: "700", style: "italic" },
+    { path: "../public/fonts/Grift-ExtraBold.woff2",       weight: "800", style: "normal" },
+    { path: "../public/fonts/Grift-ExtraBoldItalic.woff2", weight: "800", style: "italic" },
+    { path: "../public/fonts/Grift-Black.woff2",           weight: "900", style: "normal" },
+    { path: "../public/fonts/Grift-BlackItalic.woff2",     weight: "900", style: "italic" },
   ],
   display: "swap",
   preload: true,
   fallback: ["system-ui", "sans-serif"],
-  variable: "--font-heading",
-})
-
-/**
- * General Sans — a humanist sans-serif optimised for body text and UI.
- * https://fontshare.com/fonts/general-sans
- */
-export const generalSans = localFont({
-  src: [
-    {
-      path: "../public/fonts/GeneralSans-Light.woff2",
-      weight: "300",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/GeneralSans-Regular.woff2",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/GeneralSans-Medium.woff2",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/GeneralSans-Semibold.woff2",
-      weight: "600",
-      style: "normal",
-    },
-    {
-      path: "../public/fonts/GeneralSans-Bold.woff2",
-      weight: "700",
-      style: "normal",
-    },
-  ],
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "sans-serif"],
-  variable: "--font-body",
-})
-
-/**
- * PolySans — a geometric sans-serif with soft-edge inktrap details,
- * designed by Gradient. Trial weights from fontshare-gradeint.
- */
-export const polysans = localFont({
-  src: [
-    { path: "../public/fonts/polysans-Slim.woff2", weight: "300", style: "normal" },
-    { path: "../public/fonts/polysans-Neutral.woff2", weight: "400", style: "normal" },
-    { path: "../public/fonts/polysans-Median.woff2", weight: "500", style: "normal" },
-    { path: "../public/fonts/polysans-Bulky.woff2", weight: "700", style: "normal" },
-  ],
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "sans-serif"],
-  variable: "--font-polysans",
-})
-
-export const polysansWide = localFont({
-  src: [
-    { path: "../public/fonts/polysans-SlimWide.woff2", weight: "300", style: "normal" },
-    { path: "../public/fonts/polysans-NeutralWide.woff2", weight: "400", style: "normal" },
-    { path: "../public/fonts/polysans-MedianWide.woff2", weight: "500", style: "normal" },
-    { path: "../public/fonts/polysans-BulkyWide.woff2", weight: "700", style: "normal" },
-  ],
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "sans-serif"],
-  variable: "--font-polysans-wide",
+  variable: "--font-grift",
 })

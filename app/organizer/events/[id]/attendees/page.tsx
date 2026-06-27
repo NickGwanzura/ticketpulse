@@ -133,8 +133,8 @@ export default async function AttendeesPage({
     responseMap.get(r.orderId)!.set(r.questionId, r.response)
   }
 
-  const totalBuyers = new Set(rows.map((r) => r.guestEmail)).size
-  const totalTickets = rows.reduce((sum, r) => sum + r.quantity, 0)
+  const totalBuyers = new Set(allRows.map((r) => r.guestEmail)).size
+  const totalTickets = allRows.reduce((sum, r) => sum + r.quantity, 0)
   const checkedIn = enrichedRows.reduce((sum, r) => sum + r.scannedCount, 0)
 
   return (
@@ -144,7 +144,7 @@ export default async function AttendeesPage({
         title={`Attendees: ${event.title}`}
         actions={
           <Link
-            href={`/organizer/events/${id}/edit`}
+            href={`/organizer/events/${id}`}
             className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-3 hover:text-ink transition-colors"
           >
             <ArrowLeft size={14} />
@@ -328,7 +328,7 @@ export default async function AttendeesPage({
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between text-[13px] text-ink-2">
-            <span>{totalRows} attendees · page {page} of {totalPages}</span>
+            <span>Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, totalRows)} of {totalRows} attendees</span>
             <div className="flex items-center gap-1">
               {page > 1 && (
                 <Link

@@ -161,16 +161,7 @@ export async function getOrganizerPayouts(userId: string) {
   }
 }
 
-export async function getOrganizerBalance(userId: string) {
-  const session = await auth()
-  if (!session?.user) {
-    throw new Error("Unauthorized")
-  }
-
-  if (session.user.id !== userId && session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
-
+async function fetchBalanceForUser(userId: string) {
   const [userRow] = await db
     .select({ role: users.role })
     .from(users)
@@ -191,10 +182,7 @@ export async function getOrganizerBalance(userId: string) {
     }
   }
 
-  // Single source of truth — same maths as the organizer dashboard and
-  // admin reconciliation surfaces.
   const summary = await getOrganizerRevenueSummary(userId)
-
   return {
     availableBalance: summary.availableBalance,
     totalEarned: summary.netRevenue,
@@ -206,6 +194,19 @@ export async function getOrganizerBalance(userId: string) {
     confirmedOrderCount: summary.confirmedOrderCount,
     confirmedTicketCount: summary.confirmedTicketCount,
   }
+}
+
+export async function getOrganizerBalance(userId: string) {
+  const session = await auth()
+  if (!session?.user) {
+    throw new Error("Unauthorized")
+  }
+
+  if (session.user.id !== userId && session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  return fetchBalanceForUser(userId)
 }
 
 export async function requestPayoutAction(formData: FormData) {
@@ -240,6 +241,10 @@ export async function requestPayoutAction(formData: FormData) {
     throw new Error("Maximum payout amount is $100,000")
   }
 
+  if (amount < 1) {
+    throw new Error("Minimum payout amount is $1.00")
+  }
+
   if (method === "ecocash") {
     if (!ecocashNumber || !/^(\+?263|0)?7[1789]\d{7}$/.test(ecocashNumber.replace(/\s/g, ""))) {
       throw new Error("Please enter a valid EcoCash number (e.g. 0771 234 567)")
@@ -256,31 +261,14 @@ export async function requestPayoutAction(formData: FormData) {
     }
   }
 
-  // Check available balance
-  const balance = await getOrganizerBalance(userId)
+  // Check available balance — avoids a second auth() call vs getOrganizerBalance
+  const balance = await fetchBalanceForUser(userId)
   const { availableBalance } = balance
-  if (amount > availableBalance) {
-    throw new Error("Insufficient balance")
-  }
-
   if (availableBalance <= 0) {
     throw new Error("No funds available for payout")
   }
-
-  // Prevent duplicate active payout
-  const [existingPending] = await db
-    .select({ id: payouts.id })
-    .from(payouts)
-    .where(
-      and(
-        eq(payouts.userId, userId),
-        inArray(payouts.status, ACTIVE_PAYOUT_STATUSES)
-      )
-    )
-    .limit(1)
-
-  if (existingPending) {
-    throw new Error("You already have a pending payout request. Please wait for it to be processed before requesting another.")
+  if (amount > availableBalance) {
+    throw new Error("Insufficient balance")
   }
 
   const [organizer] = await db
@@ -299,8 +287,24 @@ export async function requestPayoutAction(formData: FormData) {
     accountNumber,
   })
 
-  // Insert the payout and audit log atomically.
+  // Insert the payout and audit log atomically. The duplicate check runs inside
+  // the transaction to close the TOCTOU window between the balance read and insert.
   const inserted = await db.transaction(async (tx) => {
+    const [existingPending] = await tx
+      .select({ id: payouts.id })
+      .from(payouts)
+      .where(
+        and(
+          eq(payouts.userId, userId),
+          inArray(payouts.status, ACTIVE_PAYOUT_STATUSES)
+        )
+      )
+      .limit(1)
+
+    if (existingPending) {
+      throw new Error("You already have a pending payout request. Please wait for it to be processed before requesting another.")
+    }
+
     const [result] = await tx
       .insert(payouts)
       .values({
@@ -352,7 +356,7 @@ export async function requestPayoutAction(formData: FormData) {
   }
 
   if (organizer?.email) {
-    await sendEmail({
+    sendEmail({
       to: organizer.email,
       subject: "Payout request received",
       html: payoutRequestEmailHtml({
@@ -365,7 +369,7 @@ export async function requestPayoutAction(formData: FormData) {
     }).catch((err) => log.warn("requestPayoutAction - organizer email failed", { payoutId: inserted.id, error: String(err) }))
   }
 
-  await sendEmail({
+  sendEmail({
     to: adminEmail,
     subject: `New payout request — ${money(cleanAmount)}`,
     html: payoutRequestEmailHtml({

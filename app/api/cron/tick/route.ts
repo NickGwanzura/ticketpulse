@@ -53,6 +53,33 @@ export async function POST(request: Request) {
     results.eventReminder = { error: String(err) }
   }
 
+  // 4. card-recovery — emails buyers whose card payment has been pending 15 min+
+  try {
+    const r = await fetch(`${base}/api/cron/card-recovery`, { method: "POST", headers })
+    results.cardRecovery = await r.json()
+  } catch (err) {
+    log.error("cron/tick — card-recovery failed", { error: String(err) })
+    results.cardRecovery = { error: String(err) }
+  }
+
+  // 5. cleanup-logs — prunes old past_announce_log rows (cheap, returns fast when nothing to do)
+  try {
+    const r = await fetch(`${base}/api/cron/cleanup-logs`, { method: "POST", headers })
+    results.cleanupLogs = await r.json()
+  } catch (err) {
+    log.error("cron/tick — cleanup-logs failed", { error: String(err) })
+    results.cleanupLogs = { error: String(err) }
+  }
+
+  // 6. whatsapp-watchdog — daily session health-check (internally gated to 07:00 UTC)
+  try {
+    const r = await fetch(`${base}/api/cron/whatsapp-watchdog`, { method: "POST", headers })
+    results.whatsappWatchdog = await r.json()
+  } catch (err) {
+    log.error("cron/tick — whatsapp-watchdog failed", { error: String(err) })
+    results.whatsappWatchdog = { error: String(err) }
+  }
+
   log.info("cron/tick — complete", results)
   return NextResponse.json({ ok: true, ...results })
 }

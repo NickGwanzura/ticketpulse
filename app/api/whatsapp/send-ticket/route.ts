@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server"
-import { eq } from "drizzle-orm"
+import { and, eq, inArray, notInArray } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, events, orderItems, ticketTiers } from "@/db/schema"
-import { sendText, sendImage, formatChatId, isSessionReady } from "@/lib/whatsapp"
+import { orders, events, orderItems, ticketTiers, tickets } from "@/db/schema"
+import { sendText, sendDocument, formatChatId, isSessionReady } from "@/lib/whatsapp"
+import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
+import { generateTicketQrImageDataUrl } from "@/lib/tickets"
+import { formatDate } from "@/lib/utils"
 import { log } from "@/lib/logger"
 
 /**
  * POST /api/whatsapp/send-ticket
  *
  * Sends a WhatsApp notification to the buyer with their ticket details
- * after a successful purchase. This can be called from:
+ * and attaches the ticket PDF after a successful purchase. Called from:
  *   - The order finalize flow (after payment + verification)
  *   - The resend-tickets endpoint
  *   - Manually by an admin
@@ -77,7 +80,17 @@ export async function POST(req: Request) {
       .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
       .where(eq(orderItems.orderId, orderId))
 
-    // ── Build the message ──────────────────────────────────────────────────
+    // ── Look up individual tickets for PDF ────────────────────────────────
+    const orderTickets = await db
+      .select({
+        id: tickets.id,
+        qrCode: tickets.qrCode,
+        tierId: tickets.tierId,
+      })
+      .from(tickets)
+      .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded"])))
+
+    // ── Build the text message ─────────────────────────────────────────────
     const eventDate = ev.startsAt
       ? new Date(ev.startsAt).toLocaleString("en-GB", {
           weekday: "long",
@@ -90,8 +103,7 @@ export async function POST(req: Request) {
         })
       : "TBA"
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
     const ticketUrl = `${appUrl}/orders/${orderId}`
 
     const summary = items
@@ -111,28 +123,73 @@ export async function POST(req: Request) {
       ticketUrl,
     )
 
-    // ── Send via WhatsApp ──────────────────────────────────────────────────
     const chatId = formatChatId(order.guestPhone)
-    const imageUrl = `${appUrl}/icon.png`
 
-    // Send brand image first, then the text confirmation
-    const [imageResult, textResult] = await Promise.allSettled([
-      sendImage({ chatId, url: imageUrl, caption: "🎟️ TicketPulse" }).catch(() => null),
+    // ── Generate PDF ───────────────────────────────────────────────────────
+    let pdfBase64: string | null = null
+    if (orderTickets.length > 0) {
+      try {
+        // Load tier names for PDF pages
+        const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
+        const tierRows =
+          tierIds.length > 0
+            ? await db
+                .select({ id: ticketTiers.id, name: ticketTiers.name })
+                .from(ticketTiers)
+                .where(inArray(ticketTiers.id, tierIds))
+            : []
+        const tierNameMap = new Map(tierRows.map((t) => [t.id, t.name]))
+
+        const ticketPages = await Promise.all(
+          orderTickets.map(async (t, idx) => ({
+            eventTitle: ev.title,
+            tierName: tierNameMap.get(t.tierId) ?? "General Admission",
+            buyerName: order.guestName ?? "Valued Guest",
+            orderId,
+            ticketId: t.id,
+            qrCodeDataUrl: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, appUrl),
+            humanCode: `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`,
+            venue: ev.venue,
+            eventDate: ev.startsAt ? formatDate(ev.startsAt, { timeZone: "Africa/Harare" }) : null,
+          })),
+        )
+
+        const pdfBuffer = await generateTicketPdfBuffer(ticketPages)
+        pdfBase64 = Buffer.from(pdfBuffer).toString("base64")
+      } catch (pdfErr) {
+        log.warn("send-ticket — PDF generation failed, sending text only", {
+          orderId,
+          error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
+        })
+      }
+    }
+
+    // ── Send text confirmation first, then PDF ────────────────────────────
+    const [textResult, pdfResult] = await Promise.allSettled([
       sendText(chatId, message),
+      pdfBase64
+        ? sendDocument({
+            chatId,
+            base64: pdfBase64,
+            mimetype: "application/pdf",
+            filename: `tickets-${orderId.slice(0, 8)}.pdf`,
+            caption: "Your ticket PDF — show the QR code at the door.",
+          })
+        : Promise.resolve(null),
     ])
 
     log.info("send-ticket — WhatsApp sent", {
       orderId,
       phone: order.guestPhone,
-      imageSent: imageResult.status === "fulfilled",
       textSent: textResult.status === "fulfilled",
+      pdfSent: pdfResult.status === "fulfilled" && pdfResult.value !== null,
       messageId: textResult.status === "fulfilled" ? textResult.value.messageId : null,
     })
 
     return NextResponse.json({
       ok: true,
       sentTo: order.guestPhone,
-      imageSent: imageResult.status === "fulfilled",
+      pdfSent: pdfResult.status === "fulfilled" && pdfResult.value !== null,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

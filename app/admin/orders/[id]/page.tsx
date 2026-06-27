@@ -24,6 +24,7 @@ import {
   completeAndSendAction,
   resendOrderEmailAction,
   regeneratePdfAction,
+  sendWhatsAppTicketAction,
 } from "@/app/admin/actions/orders"
 
 export default async function AdminOrderDetailPage({
@@ -138,6 +139,11 @@ export default async function AdminOrderDetailPage({
   const regeneratePdf = async () => {
     "use server"
     await regeneratePdfAction(id)
+  }
+
+  const sendWhatsAppTicket = async () => {
+    "use server"
+    await sendWhatsAppTicketAction(id)
   }
 
   return (
@@ -321,6 +327,16 @@ export default async function AdminOrderDetailPage({
                   <FileDown size={14} /> Regenerate A6 PDF
                 </button>
               </form>
+              {order.guestPhone && (
+                <form action={sendWhatsAppTicket}>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#25D366] bg-[#25D366]/5 px-4 py-2.5 text-[13px] font-semibold text-[#128C4A] hover:bg-[#25D366]/10 transition-colors"
+                  >
+                    <Smartphone size={14} /> Send PDF to WhatsApp
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         )}

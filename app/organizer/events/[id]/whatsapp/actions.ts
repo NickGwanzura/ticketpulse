@@ -38,7 +38,7 @@ async function getAttendeePhones(eventId: string) {
     .where(
       and(
         eq(orders.eventId, eventId),
-        inArray(orders.status, ["paid"]),
+        inArray(orders.status, ["paid", "completed"]),
         isNotNull(orders.guestPhone),
       ),
     )
@@ -61,7 +61,7 @@ export async function getAttendeePhoneCount(eventId: string): Promise<number> {
     .where(
       and(
         eq(orders.eventId, eventId),
-        inArray(orders.status, ["paid"]),
+        inArray(orders.status, ["paid", "completed"]),
         isNotNull(orders.guestPhone),
       ),
     )
@@ -113,15 +113,8 @@ export async function sendBulkWhatsAppAction(
       return { ok: false, error: "No attendees with phone numbers found" }
     }
 
-    if (attendees.length > 100) {
-      return {
-        ok: false,
-        error: `Too many recipients (${attendees.length}). Maximum is 100 per batch.`,
-      }
-    }
-
     // Build bulk message items with template interpolation
-    const messages: BulkMessageItem[] = attendees.map((a) => ({
+    const allMessages: BulkMessageItem[] = attendees.map((a) => ({
       chatId: formatChatId(a.guestPhone!),
       type: "text" as const,
       content: {
@@ -132,16 +125,32 @@ export async function sendBulkWhatsAppAction(
       },
     }))
 
-    const result = await sendBulk(messages, {
-      delayBetweenMessages: 3000,
-      randomizeDelay: true,
-    })
+    // OpenWA hard limit is 100 per sendBulk call — chunk and fire sequentially
+    const CHUNK = 100
+    const chunks: BulkMessageItem[][] = []
+    for (let i = 0; i < allMessages.length; i += CHUNK) {
+      chunks.push(allMessages.slice(i, i + CHUNK))
+    }
+
+    let totalSent = 0
+    const batchIds: string[] = []
+
+    for (const chunk of chunks) {
+      const result = await sendBulk(chunk, {
+        delayBetweenMessages: 3000,
+        randomizeDelay: true,
+      })
+      totalSent += chunk.length
+      batchIds.push(result.batchId)
+      // Brief pause between chunks so we don't overwhelm OpenWA
+      if (chunks.length > 1) await new Promise((r) => setTimeout(r, 2000))
+    }
 
     return {
       ok: true,
-      sent: messages.length,
+      sent: totalSent,
       total: attendees.length,
-      batchId: result.batchId,
+      batchId: batchIds[0],
     }
   } catch (err) {
     return {

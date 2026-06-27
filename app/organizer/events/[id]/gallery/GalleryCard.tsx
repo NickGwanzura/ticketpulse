@@ -85,6 +85,7 @@ export default function GalleryCard({ eventId, gallery, photos }: Props) {
               <button
                 type="submit"
                 title="Delete gallery"
+                aria-label="Delete gallery"
                 className="inline-flex items-center justify-center rounded-lg border border-line bg-paper p-1.5 text-ink-2 hover:text-rose-600 hover:border-rose-200"
               >
                 <Trash2 size={13} />

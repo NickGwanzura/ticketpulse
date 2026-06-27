@@ -126,7 +126,7 @@ export const users = pgTable("users", {
   phone: text("phone"),
   bio: text("bio"),
   passwordHash: text("password_hash"),
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("7.00"),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("6.00"),
   approvedAt: timestamp("approved_at", { mode: "date" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -204,6 +204,7 @@ export const events = pgTable("events", {
   designDelivered: boolean("design_delivered").default(false),
   hideOrganizerName: boolean("hide_organizer_name").default(false),
   faq: text("faq"),
+  promoImages: json("promo_images").$type<string[]>().default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -852,4 +853,16 @@ export const notifications = pgTable("notifications", {
   index("notifications_user_id_idx").on(table.userId),
   index("notifications_read_idx").on(table.read),
   index("notifications_created_idx").on(table.createdAt),
+])
+
+// ─── Past-attendee announcement log ──────────────────────────────────────────
+// Tracks which recipient emails have already been sent a past-attendee
+// announcement for a given event, so re-sends never duplicate.
+export const pastAnnounceLog = pgTable("past_announce_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  recipientEmail: text("recipient_email").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("past_announce_log_event_email_idx").on(table.eventId, table.recipientEmail),
 ])

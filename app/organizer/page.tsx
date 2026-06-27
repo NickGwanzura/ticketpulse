@@ -214,9 +214,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const lowInventoryCount = EVENTS.filter((e) => e.status === "published" && e.capacity > 0 && e.capacity - e.sold <= 10 && e.capacity - e.sold > 0).length
   const closedSalesCount = EVENTS.filter((e) => e.status === "published" && e.salesEnded).length
   const missingTierCount = EVENTS.filter((e) => !e.hasTiers).length
+  const missingTierEvent = EVENTS.find(e => !e.hasTiers)
   const needsAttention = [
     { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
-    { label: "Missing tiers", value: missingTierCount, href: "/organizer/events/new", icon: Ticket, tone: "rose" },
+    { label: "Missing tiers", value: missingTierCount, href: missingTierEvent ? `/organizer/events/${missingTierEvent.id}/tiers` : "/organizer/events/new", icon: Ticket, tone: "rose" },
     { label: "Paid, no tickets", value: paidNoTickets, href: "/organizer/orders", icon: AlertCircle, tone: "rose" },
     { label: "Delivery issues", value: deliveryAttention, href: "/organizer/orders", icon: Mail, tone: "amber" },
     { label: "Payment warnings", value: duplicateLedgers, href: "/organizer/orders", icon: Zap, tone: "amber" },
@@ -289,8 +290,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               Everything important is clear right now.
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-line">
-              {needsAttention.slice(0, 4).map(({ label, value, href, icon: Icon, tone, amount }) => (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-x-0 lg:divide-x divide-line">
+              {needsAttention.map(({ label, value, href, icon: Icon, tone, amount }) => (
                 <Link key={label} href={href} className="px-5 py-4 hover:bg-paper-2 transition-colors">
                   <div className="flex items-center justify-between gap-3">
                     <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ring-1 ${
@@ -309,19 +310,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </div>
           )}
         </div>
-
-        {/* Draft nudge */}
-        {draftCount > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3">
-            <AlertCircle size={14} className="text-amber-600 shrink-0" />
-            <p className="text-[13px] text-amber-800 flex-1">
-              {draftCount} draft event{draftCount !== 1 ? "s" : ""} not yet published.{" "}
-              <Link href={`/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit`} className="font-semibold underline">
-                Open draft
-              </Link>
-            </p>
-          </div>
-        )}
 
         {/* KPI row — flat, no card borders */}
         <div className="grid grid-cols-2 md:grid-cols-4 border border-line rounded-2xl bg-paper overflow-hidden divide-y md:divide-y-0 md:divide-x divide-line tp-fade-up-1">
@@ -349,7 +337,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <div className="px-5 py-4 border-b border-line flex items-center justify-between gap-3">
               <h2 className="text-[15px] font-semibold text-ink">Your events</h2>
               <div className="flex items-center gap-1">
-                {[{ v: "all", l: "All" }, { v: "live", l: "Live" }, { v: "drafts", l: "Drafts" }, { v: "past", l: `Past${pastCount > 0 ? ` ${pastCount}` : ""}` }].map(f => (
+                {[
+                { v: "all",    l: "All" },
+                { v: "live",   l: liveCount  > 0 ? `Live ${liveCount}`   : "Live"   },
+                { v: "drafts", l: draftCount > 0 ? `Drafts ${draftCount}` : "Drafts" },
+                { v: "past",   l: pastCount  > 0 ? `Past ${pastCount}`   : "Past"   },
+              ].map(f => (
                   <Link key={f.v} href={`/organizer?filter=${f.v}`}
                     className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${filter === f.v ? "bg-paper-2 text-ink ring-1 ring-line" : "text-ink-2 hover:text-ink"}`}>
                     {f.l}
@@ -390,6 +383,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                             { icon: Activity, label: "Live", href: `/organizer/events/${e.id}/live` },
                             { icon: Users, label: "Attendees", href: `/organizer/events/${e.id}/attendees` },
                             { icon: Tag, label: "Promos", href: `/organizer/events/${e.id}/promos` },
+                            { icon: HelpCircle, label: "Questions", href: `/organizer/events/${e.id}/questions` },
                             { icon: Mail, label: "Email", href: `/organizer/events/${e.id}/email` },
                           ].map(({ icon: Icon, label, href }) => (
                             <Link key={label} href={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
@@ -439,13 +433,13 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           <td className="px-3 py-4 text-right">
                             <div className="flex items-center gap-0.5 justify-end">
                               {[
-                                { icon: Activity, title: "Live", href: `/organizer/events/${e.id}/live` },
+                                { icon: Activity, title: "Live dashboard", href: `/organizer/events/${e.id}/live` },
                                 { icon: Users, title: "Attendees", href: `/organizer/events/${e.id}/attendees` },
-                                { icon: Tag, title: "Promos", href: `/organizer/events/${e.id}/promos` },
+                                { icon: Tag, title: "Promo codes", href: `/organizer/events/${e.id}/promos` },
                                 { icon: HelpCircle, title: "Questions", href: `/organizer/events/${e.id}/questions` },
-                                { icon: Mail, title: "Email", href: `/organizer/events/${e.id}/email` },
+                                { icon: Mail, title: "Email attendees", href: `/organizer/events/${e.id}/email` },
                               ].map(({ icon: Icon, title, href }) => (
-                                <Link key={title} href={href} title={title}
+                                <Link key={title} href={href} title={title} aria-label={title}
                                   className="p-1.5 rounded-md text-ink-3 hover:text-navy hover:bg-navy/5 transition-colors">
                                   <Icon size={14} />
                                 </Link>
@@ -492,10 +486,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                   </div>
                 )}
               </div>
-              <Link href="/payouts/request"
-                className="block w-full rounded-xl bg-ink text-center py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors">
-                {availableBalance > 0 ? `Request ${formatCurrency(availableBalance, "USD")}` : "Request payout"}
-              </Link>
+              {availableBalance > 0 ? (
+                <Link href="/payouts/request"
+                  className="block w-full rounded-xl bg-ink text-center py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors">
+                  Request {formatCurrency(availableBalance, "USD")}
+                </Link>
+              ) : (
+                <p className="text-center text-[13px] text-ink-3 py-2">No balance available to withdraw.</p>
+              )}
             </div>
 
             {/* AI insight */}
@@ -553,8 +551,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <EmptyState icon={Ticket} title="No orders yet" body="Orders appear as attendees buy tickets." />
             ) : (
               <ul className="divide-y divide-line">
-                {recentOrdersRaw.map((o, i) => (
-                  <li key={i} className="px-5 py-3.5 flex items-center gap-3">
+                {recentOrdersRaw.map((o) => (
+                  <li key={`${o.guestEmail ?? "guest"}-${o.createdAt ? new Date(o.createdAt).toISOString() : Math.random()}`} className="px-5 py-3.5 flex items-center gap-3">
                     <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" || o.status === "completed" ? "bg-emerald-500" : "bg-rose-400"}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>

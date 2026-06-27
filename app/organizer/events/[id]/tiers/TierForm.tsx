@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect } from "react"
 import { useFormStatus } from "react-dom"
 import { Save } from "lucide-react"
 
@@ -64,9 +64,10 @@ export default function TierForm({ eventId, tier, onDone }: Props) {
   const [state, formAction] = useActionState(saveTierAction, INITIAL)
   const errs = state.fieldErrors ?? {}
 
-  if (state.ok && state.message && onDone) {
-    setTimeout(onDone, 0)
-  }
+  useEffect(() => {
+    if (state.ok && state.message && onDone) onDone()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.ok, state.message])
 
   return (
     <form action={formAction} className="space-y-6">
@@ -101,9 +102,6 @@ export default function TierForm({ eventId, tier, onDone }: Props) {
           <label htmlFor="currency" className="block text-[13px] font-medium text-ink mb-1.5">Currency</label>
           <select id="currency" name="currency" defaultValue={tier?.currency ?? "USD"} className={inputCls()}>
             <option value="USD">USD</option>
-            <option value="ZWL">ZWL</option>
-            <option value="ZAR">ZAR</option>
-            <option value="GBP">GBP</option>
           </select>
         </div>
 
@@ -151,13 +149,16 @@ export default function TierForm({ eventId, tier, onDone }: Props) {
             <FieldError message={errs.groupMinQty} />
           </div>
         </div>
+        <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Both fields are required to activate group pricing — filling in only one will be ignored.
+        </p>
       </div>
 
       {/* Early bird pricing */}
       <div className="rounded-xl border border-line bg-paper-2 p-4 space-y-4">
         <div>
           <p className="text-[13px] font-semibold text-ink mb-0.5">Early bird pricing <span className="text-ink-3 font-normal">(optional)</span></p>
-          <p className="text-[12px] text-ink-3">Offer a lower price that auto-switches to the regular price after a date or quantity.</p>
+          <p className="text-[12px] text-ink-3">Offer a lower price that auto-switches to the regular price after a date or quantity. The early bird price must be lower than the regular price — set it first.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>

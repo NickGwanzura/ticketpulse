@@ -49,7 +49,6 @@ const TOP_LINKS: { label: string; href: string }[] = [
   { label: "How it works", href: "/how-it-works" },
   { label: "Vendors",      href: "/vendors" },
   { label: "Pricing",      href: "/pricing" },
-  { label: "About",        href: "/about" },
 ]
 
 export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedItem[] }) {
@@ -117,18 +116,16 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
       )}
 
       <nav className="max-w-7xl mx-auto px-5 md:px-8 h-16 md:h-24 flex items-center gap-3 md:gap-6">
-        {/* Brand — hidden on dashboard routes */}
-        {!isDashboardRoute && (
-          <Link
-            href="/"
-            className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[18px] tracking-tight text-ink"
-            aria-label="TicketPulse home"
-          >
-            <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
-              <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 md:h-[86px] w-auto" />
-            </span>
-          </Link>
-        )}
+        {/* Brand */}
+        <Link
+          href="/"
+          className="group flex items-center gap-2.5 mr-auto md:mr-0 font-bold text-[18px] tracking-tight text-ink"
+          aria-label="TicketPulse home"
+        >
+          <span className="relative inline-flex items-center justify-center py-1.5 px-1 transition-transform group-hover:scale-105">
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 md:h-[86px] w-auto" />
+          </span>
+        </Link>
 
         {/* Desktop nav with mega menu */}
         <div className="hidden md:flex items-center gap-1 mx-auto">

@@ -47,7 +47,6 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
   {
     title: "Company",
     links: [
-      ["About",          "/about"],
       ["Contact",        "/contact"],
       ["Terms",          "/legal/terms"],
       ["Privacy",        "/legal/privacy"],
@@ -214,7 +213,7 @@ export default function Footer() {
             <div className="mt-7">
               <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">We accept</p>
               <div className="flex flex-wrap gap-1.5">
-                {["EcoCash", "Visa", "USD", "ZAR"].map((m) => (
+                {["EcoCash", "Visa", "USD"].map((m) => (
                   <span
                     key={m}
                     className="text-[11px] font-medium rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/75"

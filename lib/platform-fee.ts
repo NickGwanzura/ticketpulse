@@ -1,5 +1,5 @@
 /** The single, system-wide TicketPulse fee charged per ticket sold. */
-export const PLATFORM_FEE_PERCENT = 7 as const
+export const PLATFORM_FEE_PERCENT = 6 as const
 export const PLATFORM_FEE_RATE = PLATFORM_FEE_PERCENT / 100
 
 export function calculatePlatformFee(grossAmount: number): number {

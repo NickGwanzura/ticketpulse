@@ -866,6 +866,70 @@ export function eventEmailTemplate(opts: {
   return { html, text }
 }
 
+// ─── New event announcement to past attendees ─────────────────────────────────
+
+export function newEventAnnouncementTemplate(opts: {
+  recipientName?: string | null
+  newEventTitle: string
+  newEventUrl: string
+  subject: string
+  message: string
+  organizerName: string
+}): { html: string; text: string } {
+  const first = opts.recipientName?.split(" ")[0]?.trim()
+  const greeting = first ? `Hi ${escape(first)},` : "Hi there,"
+  const bodyHtml = opts.message
+    .replace(/\n/g, "<br>")
+    .replace(/\{name\}/g, escape(first ?? "there"))
+    .replace(/\{event\}/g, escape(opts.newEventTitle))
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${escape(greeting)}
+    </p>
+    <div style="margin:0 0 20px;font-size:14px;line-height:1.7;color:${BRAND.ink2};">
+      ${bodyHtml}
+    </div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+      <tr>
+        <td>
+          <a href="${opts.newEventUrl}"
+            style="display:inline-block;background:${BRAND.navy};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:10px;">
+            View ${escape(opts.newEventTitle)} →
+          </a>
+        </td>
+      </tr>
+    </table>
+    <hr style="border:0;border-top:1px solid ${BRAND.line};margin:24px 0 16px;">
+    <p style="margin:0;font-size:12px;color:${BRAND.ink3};">
+      You are receiving this because you previously purchased tickets through
+      <strong style="color:${BRAND.ink};">${escape(opts.organizerName)}</strong> on
+      <a href="${APP_URL}" style="color:${BRAND.blue};text-decoration:underline;">TicketPulse</a>.
+      This is not a transactional email — if you do not wish to receive announcements, reply and let us know.
+    </p>`
+
+  const html = layout({
+    preheader: opts.subject,
+    heading: escape(opts.newEventTitle),
+    body,
+  })
+
+  const text = [
+    opts.subject,
+    "",
+    greeting,
+    "",
+    opts.message.replace(/\{name\}/g, first ?? "there").replace(/\{event\}/g, opts.newEventTitle),
+    "",
+    `View event: ${opts.newEventUrl}`,
+    "",
+    `---`,
+    `You are receiving this because you previously purchased tickets through ${opts.organizerName} on TicketPulse (${APP_URL}).`,
+  ].join("\n")
+
+  return { html, text }
+}
+
 // ─── GROQ AI announcement ──────────────────────────────────────────────────────
 
 export function groqAiAnnouncementEmail(opts: {

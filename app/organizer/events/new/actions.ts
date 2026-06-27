@@ -110,7 +110,7 @@ export async function createEventAction(
   }
 
   const tagList = data.tags
-    ? data.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10)
+    ? data.tags.split(",").map((t) => t.trim()).filter((t) => t.length > 0 && t.length <= 50).slice(0, 10)
     : []
 
   const slug = await generateUniqueSlug(data.title)
@@ -126,14 +126,20 @@ export async function createEventAction(
     lat = data.lat
     lng = data.lng
   } else {
-    const result = await geocodeFromLocation(
-      data.venue,
-      data.city,
-      data.country,
-      data.address,
-    )
-    lat = result.lat?.toString() ?? null
-    lng = result.lng?.toString() ?? null
+    const isTBA = (s: string) => s.trim().toLowerCase() === "tba"
+    if (isTBA(data.venue) || isTBA(data.city)) {
+      lat = null
+      lng = null
+    } else {
+      const result = await geocodeFromLocation(
+        data.venue,
+        data.city,
+        data.country,
+        data.address,
+      )
+      lat = result.lat?.toString() ?? null
+      lng = result.lng?.toString() ?? null
+    }
   }
 
   const [created] = await db

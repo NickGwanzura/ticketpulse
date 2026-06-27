@@ -31,6 +31,7 @@ const UpdateSchema = z.object({
   googleMapsUrl: z.string().trim().url("Must be a valid URL").max(500).optional().or(z.literal("")),
   hideOrganizerName: z.string().optional(),
   faq:           z.string().trim().max(8000).optional(),
+  promoImages:   z.string().optional(),
 })
 
 export type UpdateEventState = {
@@ -94,6 +95,7 @@ export async function updateEventAction(
     googleMapsUrl: formData.get("googleMapsUrl")?.toString() ?? undefined,
     hideOrganizerName: formData.get("hideOrganizerName")?.toString() ?? undefined,
     faq:           formData.get("faq")?.toString() ?? undefined,
+    promoImages:   formData.get("promoImages")?.toString() ?? undefined,
   }
 
   const parsed = UpdateSchema.safeParse(raw)
@@ -111,6 +113,12 @@ export async function updateEventAction(
   const guard = await requireOwnership(data.id)
   if (!guard.ok) {
     return { ok: false, error: "Not allowed." }
+  }
+
+  // Organizers can only toggle between draft and published.
+  // cancelled and sold_out are admin-only transitions.
+  if (guard.session.user.role !== "admin" && !["draft", "published"].includes(data.status)) {
+    return { ok: false, error: "Not allowed.", fieldErrors: { status: "Not allowed" } }
   }
 
   const startsAt = parseDateTimeLocal(data.startsAt)
@@ -135,19 +143,35 @@ export async function updateEventAction(
     lat = data.lat
     lng = data.lng
   } else {
-    const result = await geocodeFromLocation(data.venue, data.city, data.country, data.address)
-    lat = result.lat?.toString() ?? null
-    lng = result.lng?.toString() ?? null
+    const isTBA = (s: string) => s.trim().toLowerCase() === "tba"
+    if (isTBA(data.venue) || isTBA(data.city)) {
+      lat = null
+      lng = null
+    } else {
+      const result = await geocodeFromLocation(data.venue, data.city, data.country, data.address)
+      lat = result.lat?.toString() ?? null
+      lng = result.lng?.toString() ?? null
+    }
   }
 
   const tagList = data.tags
-    ? data.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10)
+    ? data.tags.split(",").map((t) => t.trim()).filter((t) => t.length > 0 && t.length <= 50).slice(0, 10)
     : []
 
   // Re-slug if the title changed.
   let slug = guard.event.slug
   if (slugify(data.title) !== slugify(guard.event.title)) {
     slug = await generateUniqueSlug(data.title, { excludeEventId: data.id })
+  }
+
+  let promoImagesList: string[] = []
+  if (data.promoImages) {
+    try {
+      const parsed = JSON.parse(data.promoImages)
+      if (Array.isArray(parsed)) {
+        promoImagesList = parsed.slice(0, 6).filter((v) => typeof v === "string" && /^https?:\/\//.test(v))
+      }
+    } catch { /* ignore malformed JSON */ }
   }
 
   await db
@@ -171,6 +195,7 @@ export async function updateEventAction(
       googleMapsUrl: data.googleMapsUrl || null,
       hideOrganizerName: data.hideOrganizerName === "on",
       faq:           data.faq || null,
+      promoImages:   promoImagesList,
       updatedAt:     new Date(),
     })
     .where(eq(events.id, data.id))
