@@ -12,7 +12,7 @@ import CommandPalette from "@/components/command-palette/CommandPalette"
 import MobileNav from "@/components/layout/MobileNav"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
-import { clashDisplay, generalSans, polysans, polysansWide } from "@/lib/fonts"
+import { grift } from "@/lib/fonts"
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"),
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
   manifest: "/manifest",
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png", sizes: "2000x2000" }],
-    shortcut: "/icon.png",
+    icon: [{ url: "/favicon.jpg", type: "image/jpeg", sizes: "3000x3000" }],
+    shortcut: "/favicon.jpg",
     apple: "/apple-icon",
   },
   appleWebApp: {
@@ -42,13 +42,13 @@ export const metadata: Metadata = {
     title: "TicketPulse. Every event. One ticket.",
     description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
     url: "/",
-    images: [{ url: "/icon.png", width: 2000, height: 2000, alt: "TicketPulse" }],
+    images: [{ url: "/favicon.jpg", width: 3000, height: 3000, alt: "TicketPulse" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "TicketPulse. Every event. One ticket.",
     description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
-    images: [{ url: "/icon.png", width: 2000, height: 2000, alt: "TicketPulse" }],
+    images: [{ url: "/favicon.jpg", width: 3000, height: 3000, alt: "TicketPulse" }],
   },
   alternates: {
     canonical: "/",
@@ -88,7 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" className={`${clashDisplay.variable} ${generalSans.variable} ${polysans.variable} ${polysansWide.variable}`}>
+    <html lang="en" className={grift.variable}>
       <body className="font-body bg-paper text-ink antialiased">
         <script
           type="application/ld+json"
@@ -104,6 +104,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 "@type": "PostalAddress",
                 addressLocality: "Harare",
                 addressCountry: "ZW",
+              },
+              contactPoint: {
+                "@type": "ContactPoint",
+                contactType: "Customer Service",
+                telephone: "+263-788-689-923",
+                email: "nick@ticketpulse.tech",
+                url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/contact`,
+                availableLanguage: "English",
               },
               description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more.",
             }),

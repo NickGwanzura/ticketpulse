@@ -35,6 +35,8 @@ const CATEGORY_EMOJI: Record<string, string> = {
   film: "🎬",
   exhibition: "🏢",
   expedition: "⛰️",
+  "food & drink": "🍽️",
+  "cocktail experience": "🍹",
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -68,7 +70,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     ? row.description.length > 160
       ? row.description.slice(0, 157) + "..."
       : row.description
-    : `Get tickets for ${row.title} at ${row.venue}, ${row.city}. ${row.startsAt.toLocaleDateString("en-ZW", { dateStyle: "long" })}.`
+    : `Get tickets for ${row.title}${row.venue.toLowerCase() === "tba" ? "" : ` at ${row.venue}, ${row.city}`}. ${row.startsAt.toLocaleDateString("en-ZW", { dateStyle: "long" })}.`
 
   return {
     title,
@@ -77,12 +79,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       title,
       description,
       type: "article",
-      images: row.coverImage ? [{ url: row.coverImage }] : undefined,
+      images: row.coverImage
+        ? [{ url: row.coverImage, width: 1200, height: 630, alt: row.title }]
+        : undefined,
     },
     twitter: {
+      card: "summary_large_image",
       title,
       description,
-      images: row.coverImage ? [{ url: row.coverImage }] : undefined,
+      images: row.coverImage
+        ? [{ url: row.coverImage, width: 1200, height: 630, alt: row.title }]
+        : undefined,
     },
     alternates: {
       canonical: `${baseUrl}/events/${row.slug}`,
@@ -119,6 +126,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       googleMapsUrl: events.googleMapsUrl,
       hideOrganizerName: events.hideOrganizerName,
       faq: events.faq,
+      promoImages: events.promoImages,
       organizerId: events.organizerId,
       organizerName: users.name,
       organizerImage: users.image,
@@ -302,11 +310,25 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     return `${formatDate(start, { timeZone })} – ${formatDate(end, { timeZone })}`
   })()
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home",   item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "Events", item: `${siteUrl}/events` },
+      { "@type": "ListItem", position: 3, name: row.title, item: `${siteUrl}/events/${row.slug}` },
+    ],
+  }
+
   return (
     <div>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
 
       {/* ── Hero banner (cover image only, no title overlay) ── */}
@@ -374,7 +396,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   </span>
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Venue</p>
-                    <p className="mt-0.5 text-[14px] font-medium text-ink-2">{row.venue}, {row.city}</p>
+                    <p className="mt-0.5 text-[14px] font-medium text-ink-2">
+                      {row.venue.trim().toLowerCase() === "tba" || row.city.trim().toLowerCase() === "tba"
+                        ? "Location TBA"
+                        : `${row.venue}, ${row.city}`}
+                    </p>
                   </div>
                 </div>
                 {row.organizerName && !row.hideOrganizerName && (
@@ -411,6 +437,39 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </div>
               )}
             </div>
+
+            {/* ── Promo photo gallery ── */}
+            {row.promoImages && (row.promoImages as string[]).length > 0 && (
+              <div>
+                <div
+                  className={[
+                    "grid gap-3",
+                    (row.promoImages as string[]).length === 1
+                      ? "grid-cols-1"
+                      : (row.promoImages as string[]).length === 2
+                        ? "grid-cols-2"
+                        : "grid-cols-2 md:grid-cols-3",
+                  ].join(" ")}
+                >
+                  {(row.promoImages as string[]).map((url, i) => (
+                    <div
+                      key={url}
+                      className={[
+                        "relative overflow-hidden rounded-2xl bg-paper-2",
+                        (row.promoImages as string[]).length === 1 ? "aspect-[16/9]" : "aspect-[4/3]",
+                        i === 0 && (row.promoImages as string[]).length >= 3 ? "md:col-span-2 md:row-span-2 aspect-[4/3] md:aspect-auto md:h-full" : "",
+                      ].join(" ")}
+                    >
+                      <img
+                        src={url}
+                        alt={`${row.title} photo ${i + 1}`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {isPastEvent && (
               <div className="rounded-2xl border border-line bg-paper p-6 md:p-8">
@@ -463,15 +522,17 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             )}
 
             {/* ── Venue map ── */}
-            <VenueMap
-              lat={row.lat}
-              lng={row.lng}
-              venue={row.venue}
-              address={row.address}
-              city={row.city}
-              country={row.country}
-              googleMapsUrl={row.googleMapsUrl}
-            />
+            {row.venue.trim().toLowerCase() !== "tba" && row.city.trim().toLowerCase() !== "tba" && (
+              <VenueMap
+                lat={row.lat}
+                lng={row.lng}
+                venue={row.venue}
+                address={row.address}
+                city={row.city}
+                country={row.country}
+                googleMapsUrl={row.googleMapsUrl}
+              />
+            )}
 
             {/* ── FAQ / More About ── */}
             {row.faq && (

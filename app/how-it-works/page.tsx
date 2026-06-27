@@ -21,6 +21,17 @@ export const metadata: Metadata = {
   title: "How it works",
   description: "Buy tickets in under a minute, no signup needed. Or sell tickets to your event with our all-in-one platform. TicketPulse.",
   alternates: { canonical: "/how-it-works" },
+  openGraph: {
+    title: "How TicketPulse works — buy or sell tickets in minutes",
+    description: "Buy tickets in under a minute, no signup needed. Or sell tickets to your event with our all-in-one platform.",
+    url: "/how-it-works",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "How TicketPulse works — buy or sell tickets in minutes",
+    description: "Buy tickets in under a minute, no signup needed. Or sell tickets to your event with our all-in-one platform.",
+  },
 }
 
 const ATTENDEE_STEPS = [
