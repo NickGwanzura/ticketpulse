@@ -2,6 +2,9 @@ import { NextResponse } from "next/server"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { contactFormAlert } from "@/lib/whatsapp-templates"
 import { log } from "@/lib/logger"
+import { rateLimit } from "@/lib/rate-limit"
+
+const contactLimiter = rateLimit({ windowMs: 60_000, max: 5 })
 
 /**
  * POST /api/contact
@@ -12,6 +15,14 @@ import { log } from "@/lib/logger"
  * Body: { name, email, topic, message }
  */
 export async function POST(req: Request) {
+  const rl = contactLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
   try {
     const body = await req.json()
     const { name, email, topic, message } = body

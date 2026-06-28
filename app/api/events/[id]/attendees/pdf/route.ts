@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server"
 import { eq, and, inArray, desc, asc } from "drizzle-orm"
-import jsPDF from "jspdf"
-import "jspdf-autotable"
 
 import { db } from "@/db"
 import { events, orders, tickets, ticketTiers } from "@/db/schema"
@@ -59,6 +57,8 @@ export async function GET(_req: Request, ctx: RouteParams) {
     .orderBy(desc(orders.createdAt), asc(tickets.createdAt))
 
   // Build PDF
+  const jsPDF = (await import("jspdf")).default
+  await import("jspdf-autotable")
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
 
   // Title

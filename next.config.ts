@@ -15,6 +15,12 @@ const csp = [
 ].join("; ")
 
 const nextConfig: NextConfig = {
+  // Enable compression for API responses and static assets
+  compress: true,
+
+  // Optimize bundle — tree-shake dev warnings from heavy libraries in prod
+  serverExternalPackages: ["@react-pdf/renderer", "passkit-generator"],
+
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
@@ -22,6 +28,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.r2.dev" },
       { protocol: "https", hostname: "*.r2.cloudflarestorage.com" },
     ],
+    // Enable AVIF for better compression than WebP
+    formats: ["image/avif", "image/webp"],
+    // Limit device sizes to reduce generated image variants
+    deviceSizes: [480, 768, 1024, 1280, 1536],
+    // Limit image sizes for cards vs full-width
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
   async headers() {

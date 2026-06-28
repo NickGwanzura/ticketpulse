@@ -198,8 +198,8 @@ describe("velocity service", () => {
 
     it("returns UNKNOWN when response body is empty", () => {
       const resp = pollResponse({})
-      resp.body.paymentStatus = undefined as unknown as string
-      resp.body.pollStatus = undefined as unknown as string
+      resp.body.paymentStatus = undefined as unknown as "PENDING" | "FAILED" | "SUCCESS" | "TIMEOUT" | "INITIATED_BUT_NO_REDIRECT" | "UNKNOWN"
+      resp.body.pollStatus = undefined as unknown as "PENDING" | "FAILED" | "SUCCESS" | "TIMEOUT" | "INITIATED_BUT_NO_REDIRECT" | "UNKNOWN"
       const result = mod.normalizeVelocityPollResponse(resp)
       expect(result.localStatus).toBe("UNKNOWN")
     })

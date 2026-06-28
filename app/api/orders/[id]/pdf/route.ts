@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import { and, eq, inArray, notInArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, events, tickets, ticketTiers } from "@/db/schema"
-import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
 import { generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { formatDate } from "@/lib/utils"
 
@@ -69,6 +68,7 @@ export async function GET(
       eventDate: event?.startsAt ? formatDate(event.startsAt, { timeZone: "Africa/Harare" }) : null,
     })))
 
+    const { generateTicketPdfBuffer } = await import("@/lib/pdf/generate")
     const pdfBuffer = await generateTicketPdfBuffer(ticketPages)
 
     return new NextResponse(new Uint8Array(pdfBuffer), {

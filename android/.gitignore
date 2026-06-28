@@ -1,0 +1,25 @@
+# Android generated files
+*.iml
+.gradle/
+build/
+local.properties
+.idea/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+
+# JNI
+*.so
+
+# Bundle artifacts
+*.aar
+*.jar
+
+# OS files
+.DS_Store
+Thumbs.db

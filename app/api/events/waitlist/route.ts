@@ -2,8 +2,19 @@ import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { eventWaitlist } from "@/db/schema"
 import { eq } from "drizzle-orm"
+import { rateLimit } from "@/lib/rate-limit"
+
+const waitlistLimiter = rateLimit({ windowMs: 60_000, max: 5 })
 
 export async function POST(req: Request) {
+  const rl = waitlistLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
   try {
     const { email } = await req.json()
 

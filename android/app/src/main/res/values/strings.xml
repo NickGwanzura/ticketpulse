@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TicketPulse</string>
+    <string name="login_title">Sign in to TicketPulse</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Password</string>
+    <string name="login_button">Sign in</string>
+    <string name="register_button">Create account</string>
+    <string name="scan_tickets">Scan tickets</string>
+    <string name="my_tickets">My Tickets</string>
+    <string name="upcoming_events">Upcoming Events</string>
+    <string name="camera_permission">TicketPulse needs camera access to scan attendee QR tickets.</string>
+</resources>

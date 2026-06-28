@@ -5,6 +5,9 @@ import { eq, desc, and, gte, like, or } from "drizzle-orm"
 import { auth } from "@/auth"
 import { z } from "zod"
 import { log } from "@/lib/logger"
+import { rateLimit } from "@/lib/rate-limit"
+
+const eventsLimiter = rateLimit({ windowMs: 60_000, max: 60 })
 
 const PostSchema = z.object({
   title: z.string().min(1),
@@ -20,6 +23,14 @@ const PostSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
+  const rl = eventsLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
   const { searchParams } = new URL(req.url)
   const category = searchParams.get("category")
   const city = searchParams.get("city")
@@ -74,6 +85,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = eventsLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
   const session = await auth()
   if (!session?.user || session.user.role !== "organizer") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

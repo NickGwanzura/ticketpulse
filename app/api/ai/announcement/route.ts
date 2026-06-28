@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { generateAnnouncementContent } from "@/lib/groq"
+import { rateLimit } from "@/lib/rate-limit"
+
+const aiLimiter = rateLimit({ windowMs: 60_000, max: 10 })
 
 export async function POST(req: NextRequest) {
+  const rl = aiLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
   try {
     const { topic, audience, tone } = await req.json()
 

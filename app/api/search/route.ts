@@ -3,8 +3,19 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events, users, tickets } from "@/db/schema"
 import { or, ilike, and, eq, desc } from "drizzle-orm"
+import { rateLimit } from "@/lib/rate-limit"
+
+const searchLimiter = rateLimit({ windowMs: 60_000, max: 30 })
 
 export async function GET(req: Request) {
+  const rl = searchLimiter.checkRequest(req)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

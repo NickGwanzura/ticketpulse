@@ -5,6 +5,9 @@ import { inArray } from "drizzle-orm"
 import { users } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
 import { groqAiAnnouncementEmail } from "@/lib/email-templates"
+import { rateLimit } from "@/lib/rate-limit"
+
+const announceLimiter = rateLimit({ windowMs: 3600_000, max: 2 }) // 2 per hour — this sends real emails
 
 export async function POST() {
   const databaseUrl = process.env.DATABASE_URL
