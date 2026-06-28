@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { Calendar, MapPin, ArrowUpRight, Flame, Ticket } from "lucide-react"
+import { Calendar, MapPin, Flame } from "lucide-react"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
+import SplitCTA from "@/components/ui/SplitCTA"
 
 interface HeroEventProps {
   slug: string
@@ -145,16 +146,11 @@ export default function HeroEventCard({
                 {remaining.label}
               </span>
             )}
-            <Link
+            <SplitCTA
               href={`/events/${slug}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-[14px] font-bold text-navy hover:bg-white/90 hover:gap-3 transition-all shadow-lg shadow-black/20"
-            >
-              <Ticket size={16} />
-              {lowestPrice != null
-                ? `Get tickets from ${formatCurrency(lowestPrice, currency)}`
-                : "Get tickets"}
-              <ArrowUpRight size={14} />
-            </Link>
+              label={lowestPrice != null ? `Get tickets from ${formatCurrency(lowestPrice, currency)}` : "Get tickets"}
+              size="lg"
+            />
           </div>
         </div>
 

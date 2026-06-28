@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react"
 import { useCart } from "@/lib/cart-context"
 import { getDashboardPathForRole } from "@/lib/role-routes"
+import SplitCTA from "@/components/ui/SplitCTA"
 
 interface NavCategory {
   label: string
@@ -270,14 +271,7 @@ export default function Navbar({ featured = [] }: { featured?: NavbarFeaturedIte
               <Link href="/auth/signin" className="text-sm font-medium text-ink-2 hover:text-ink px-3 py-2 transition-colors">
                 Sign in
               </Link>
-              <Link
-                href="/events"
-                className="group relative inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-navy-600 via-navy to-navy-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(10,37,64,0.45)] hover:shadow-[0_8px_22px_-6px_rgba(10,37,64,0.55)] hover:-translate-y-px active:translate-y-0 transition-all overflow-hidden"
-              >
-                <span className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "radial-gradient(120px 40px at 30% 0%, rgba(255,255,255,0.18), transparent 70%)" }} aria-hidden />
-                Get tickets
-                <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              <SplitCTA href="/events" label="Get tickets" size="sm" />
             </>
           )}
         </div>

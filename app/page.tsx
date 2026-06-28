@@ -22,6 +22,7 @@ import {
   Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
   BarChart3, Megaphone, PhoneCall, ReceiptText, TicketCheck, Users,
 } from "lucide-react"
+import SplitCTA from "@/components/ui/SplitCTA"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
 import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
@@ -286,12 +287,7 @@ export default async function Home() {
             </p>
 
             <div className="tp-fade-up-3 mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-              <Link
-                href="/auth/signup?role=organizer"
-                className="group inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-[#a3d63c] px-7 text-[15px] font-semibold text-navy shadow-sm shadow-black/20 transition hover:bg-[#b8e448] active:scale-[0.99]"
-              >
-                Start selling <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              <SplitCTA href="/auth/signup?role=organizer" label="Start selling" size="lg" />
               <Link
                 href="/contact"
                 className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-white/40 hover:bg-white/16 active:scale-[0.99]"

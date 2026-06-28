@@ -15,6 +15,7 @@ import { events, eventOrganisers, orders, ticketTiers, tickets } from "@/db/sche
 import { getEventRevenueSummaries, getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
+import SplitCTA from "@/components/ui/SplitCTA"
 import NewOrganizerChecklist from "@/components/dashboard/NewOrganizerChecklist"
 
 function timeAgo(d: Date): string {
@@ -254,9 +255,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <Link href="/organizer/scan" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-ink/85 transition-colors">
               <ScanLine size={14} /> Scan tickets
             </Link>
-            <Link href="/organizer/events/new" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2 transition-colors">
-              <Plus size={14} /> New event
-            </Link>
+            <SplitCTA href="/organizer/events/new" label="New event" size="sm" />
           </div>
         </div>
       </div>
