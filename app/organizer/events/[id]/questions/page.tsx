@@ -33,6 +33,7 @@ export default async function QuestionsPage({ params }: { params: Promise<RouteP
       id: ticketQuestions.id,
       question: ticketQuestions.question,
       required: ticketQuestions.required,
+      scope: ticketQuestions.scope,
       sortOrder: ticketQuestions.sortOrder,
     })
     .from(ticketQuestions)
@@ -43,6 +44,7 @@ export default async function QuestionsPage({ params }: { params: Promise<RouteP
     id: q.id,
     question: q.question,
     required: q.required ?? false,
+    scope: (q.scope ?? "order") as "order" | "attendee",
     sortOrder: q.sortOrder ?? 0,
   }))
 

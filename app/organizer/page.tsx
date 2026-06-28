@@ -6,7 +6,7 @@ import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
   Ticket, DollarSign, TrendingUp, Users,
   Activity, Tag, Mail, HelpCircle, Zap,
-  CheckCircle2, ClipboardList, Wallet,
+  CheckCircle2, ClipboardList, Wallet, Calendar,
 } from "lucide-react"
 
 import { formatCurrency } from "@/lib/utils"
@@ -333,6 +333,25 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               </div>
               <p className="text-[22px] md:text-[24px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
             </div>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tp-fade-up-2">
+          {[
+            { label: "New event",     href: "/organizer/events/new", icon: Plus },
+            { label: "Scan tickets",  href: "/organizer/scan",       icon: ScanLine },
+            { label: "View payouts",  href: "/payouts",              icon: Wallet },
+            { label: "Browse events", href: "/events",               icon: Calendar },
+          ].map(({ label, href, icon: Icon }) => (
+            <Link
+              key={label}
+              href={href}
+              className="flex flex-col items-center gap-2 rounded-xl border border-line bg-paper p-4 hover:border-line-2 hover:bg-paper-2 transition-all text-[12px] font-medium text-ink-2"
+            >
+              <Icon size={18} className="text-ink-3" />
+              {label}
+            </Link>
           ))}
         </div>
 

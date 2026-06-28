@@ -12,6 +12,7 @@ const QuestionSchema = z.object({
   id: z.string().uuid().optional(),
   question: z.string().min(1).max(500),
   required: z.boolean().default(false),
+  scope: z.enum(["order", "attendee"]).default("order"),
   sortOrder: z.number().int().min(0).max(3),
 })
 
@@ -53,6 +54,7 @@ export async function saveEventQuestions(
           .set({
             question: q.question,
             required: q.required,
+            scope: q.scope,
             sortOrder: q.sortOrder,
           })
           .where(eq(ticketQuestions.id, q.id))
@@ -61,6 +63,7 @@ export async function saveEventQuestions(
           eventId,
           question: q.question,
           required: q.required,
+          scope: q.scope,
           sortOrder: q.sortOrder,
         })
       }

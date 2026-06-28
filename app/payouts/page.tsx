@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { eq, count, and } from "drizzle-orm"
 import {
   Wallet, CheckCircle2,
   Send, Smartphone, Building2, Inbox, Banknote, ReceiptText,
@@ -9,6 +10,9 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getOrganizerPayouts, getOrganizerBalance } from "./actions"
+import { db } from "@/db"
+import { users, payouts } from "@/db/schema"
+import TrustJourney from "./TrustJourney"
 
 type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
@@ -57,7 +61,7 @@ export default async function PayoutsDashboardPage() {
 
   const userId = session.user.id
 
-  const { payouts } = await getOrganizerPayouts(userId)
+  const { payouts: payoutRows } = await getOrganizerPayouts(userId)
   const {
     availableBalance,
     totalEarned,
@@ -69,6 +73,29 @@ export default async function PayoutsDashboardPage() {
     confirmedTicketCount,
   } = await getOrganizerBalance(userId)
 
+  // Trust journey data
+  const [userRow, paidPayoutCount] = await Promise.all([
+    db
+      .select({ approvedAt: users.approvedAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then((rows) => rows[0] ?? null),
+    db
+      .select({ count: count() })
+      .from(payouts)
+      .where(and(eq(payouts.userId, userId), eq(payouts.status, "paid")))
+      .then((rows) => rows[0]?.count ?? 0),
+  ])
+
+  const totalPaidPayouts = Number(paidPayoutCount)
+  const trustStatus =
+    !userRow?.approvedAt
+      ? "new"
+      : totalPaidPayouts >= 3
+      ? "trusted"
+      : "verified"
+
   return (
     <div className="tp-fade-up">
       <PageHeader
@@ -79,6 +106,9 @@ export default async function PayoutsDashboardPage() {
       />
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-8">
+        {/* Trust journey */}
+        <TrustJourney status={trustStatus} totalPaidPayouts={totalPaidPayouts} />
+
         {/* Balance cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
           <div className="rounded-2xl border border-line bg-paper p-5 tp-lift">
@@ -180,7 +210,7 @@ export default async function PayoutsDashboardPage() {
             <h2 className="text-[18px] font-semibold tracking-tight text-ink">Payout history</h2>
           </div>
 
-          {payouts.length > 0 ? (
+          {payoutRows.length > 0 ? (
             <>
               <div className="hidden md:block">
                 <table className="w-full">
@@ -194,7 +224,7 @@ export default async function PayoutsDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {payouts.map((p) => (
+                    {payoutRows.map((p) => (
                       <tr key={p.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-4">
                           <p className="text-[14px] font-semibold tracking-tight text-ink">{p.eventTitle ?? "General"}</p>
@@ -225,7 +255,7 @@ export default async function PayoutsDashboardPage() {
 
               {/* Mobile cards */}
               <ul className="md:hidden divide-y divide-line">
-                {payouts.map((p) => (
+                {payoutRows.map((p) => (
                   <li key={p.id} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="min-w-0">

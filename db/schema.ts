@@ -125,6 +125,8 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").default("attendee"),
   phone: text("phone"),
   bio: text("bio"),
+  organizerSlug: text("organizer_slug").unique(),
+  organizerBio: text("organizer_bio"),
   passwordHash: text("password_hash"),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("6.00"),
   approvedAt: timestamp("approved_at", { mode: "date" }),
@@ -205,11 +207,28 @@ export const events = pgTable("events", {
   hideOrganizerName: boolean("hide_organizer_name").default(false),
   faq: text("faq"),
   promoImages: json("promo_images").$type<string[]>().default([]),
+  absorbFee: boolean("absorb_fee").default(false),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("events_organizer_id_idx").on(table.organizerId),
   index("events_status_idx").on(table.status),
+])
+
+export const eventLineup = pgTable("event_lineup", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  role: text("role"),
+  bio: text("bio"),
+  imageUrl: text("image_url"),
+  socialUrl: text("social_url"),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("event_lineup_event_id_idx").on(table.eventId),
 ])
 
 export const ticketTiers = pgTable("ticket_tiers", {
@@ -623,6 +642,7 @@ export const ticketQuestions = pgTable("ticket_questions", {
   eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
   question: text("question").notNull(),
   required: boolean("required").default(false),
+  scope: text("scope").$type<"order" | "attendee">().default("order"),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [

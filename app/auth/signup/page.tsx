@@ -1,6 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
-import { Check, User, CalendarCog, Store, Mail, ArrowRight } from "lucide-react"
+import { Check, User, CalendarCog, Store, Mail, ArrowRight, Ticket, QrCode, Wallet, BarChart3, MessageSquare, Zap } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
 import { redirect } from "next/navigation"
 import { getDashboardPathForRole } from "@/lib/role-routes"
@@ -45,6 +45,15 @@ export default async function SignUpPage({
   const defaultEmail = sp.email?.toLowerCase().trim() ?? ""
   const defaultName = sp.name?.trim() ?? ""
 
+  const FEATURE_HIGHLIGHTS = [
+    { icon: Ticket,       label: "Sell tickets in minutes",   body: "Set up your event, add tiers, and go live — no tech skills needed." },
+    { icon: QrCode,       label: "Mobile QR scanning",        body: "Scan tickets at the door with any phone. No hardware required." },
+    { icon: Wallet,       label: "EcoCash & card payments",   body: "Accept EcoCash, Visa, and Mastercard out of the box." },
+    { icon: BarChart3,    label: "Real-time analytics",       body: "See sales, capacity, and revenue update live as tickets sell." },
+    { icon: MessageSquare, label: "WhatsApp & email comms",  body: "Send blast messages and updates directly to your attendees." },
+    { icon: Zap,          label: "Fast payouts",              body: "Request your earnings any time. Processed within 24 hours." },
+  ]
+
   return (
     <div
       className="relative min-h-[calc(100vh-4rem)] px-4 py-10 md:py-16"
@@ -52,7 +61,46 @@ export default async function SignUpPage({
         background:
           "radial-gradient(800px 400px at 80% -10%, #DBE8FB 0%, transparent 55%), radial-gradient(600px 300px at 0% 100%, rgba(254,235,200,0.4) 0%, transparent 55%), linear-gradient(180deg, #F6F9FC 0%, #FFFFFF 100%)",
       }}>
-      <div className="max-w-md mx-auto">
+      <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[1fr_448px] lg:gap-16 lg:items-start">
+
+        {/* ── Feature highlights panel (desktop only) ── */}
+        <div className="hidden lg:flex flex-col pt-4 sticky top-24">
+          <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink mb-10">
+            <span className="relative inline-flex w-6 h-6 items-center justify-center rounded-md bg-navy">
+              <span className="block w-1.5 h-1.5 rounded-full bg-white" />
+            </span>
+            TicketPulse
+          </Link>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">Built for Zimbabwe</p>
+          <h2 className="text-[28px] font-bold tracking-tight text-ink leading-snug mb-2">
+            Everything you need to run a great event
+          </h2>
+          <p className="text-[14px] text-ink-2 mb-8">
+            From draft to sold-out in minutes. Join organizers who&apos;ve sold thousands of tickets on TicketPulse.
+          </p>
+          <div className="space-y-4">
+            {FEATURE_HIGHLIGHTS.map(({ icon: Icon, label, body }) => (
+              <div key={label} className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-navy/8 text-navy">
+                  <Icon size={15} />
+                </span>
+                <div>
+                  <p className="text-[13px] font-semibold text-ink">{label}</p>
+                  <p className="text-[12px] text-ink-3 mt-0.5">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 rounded-xl border border-line bg-paper p-4">
+            <p className="text-[12px] text-ink-2 leading-relaxed">
+              &ldquo;We sold out 400 tickets in under 3 days. TicketPulse made it simple.&rdquo;
+            </p>
+            <p className="mt-2 text-[11px] font-semibold text-ink-3">— Event organizer, Harare</p>
+          </div>
+        </div>
+
+        {/* ── Sign-up form ── */}
+        <div className="max-w-md mx-auto lg:mx-0 lg:max-w-none">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">
             <span className="relative inline-flex w-6 h-6 items-center justify-center rounded-md bg-navy">
@@ -309,7 +357,8 @@ export default async function SignUpPage({
             </li>
           ))}
         </ul>
-      </div>
+        </div>{/* end form wrapper */}
+      </div>{/* end grid container */}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   Ticket, ImageIcon, ShoppingBag, Store, Activity, Mail, MessageCircle,
   Tag, UserPlus, QrCode, Users, ExternalLink, Settings,
   HelpCircle, Wallet, ScanLine, LayoutDashboard, ChevronLeft,
+  BarChart2, Search, Music2, Percent, CalendarDays, Share2, MailOpen,
 } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
@@ -23,6 +24,8 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
       { label: "Event details", href: `/organizer/events/${eventId}/edit`, icon: Settings },
       { label: "Tickets",       href: `/organizer/events/${eventId}/tiers`, icon: Ticket },
       { label: "Questions",     href: `/organizer/events/${eventId}/questions`, icon: HelpCircle },
+      { label: "Lineup",        href: `/organizer/events/${eventId}/lineup`,    icon: Music2 },
+      { label: "Capacity",      href: `/organizer/events/${eventId}/capacity`,  icon: BarChart2 },
       { label: "Live feed",     href: `/organizer/events/${eventId}/live`, icon: Activity },
       { label: "Scanner",       href: "/organizer/scan", icon: ScanLine },
     ],
@@ -44,6 +47,16 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
       { label: "Vendors",       href: `/organizer/events/${eventId}/vendors`, icon: Store },
       { label: "Staff",         href: `/organizer/events/${eventId}/staff`, icon: QrCode },
       { label: "Organisers",    href: `/organizer/events/${eventId}/organisers`, icon: UserPlus },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { label: "SEO",             href: `/organizer/events/${eventId}/seo`,             icon: Search },
+      { label: "Fee handling",    href: `/organizer/events/${eventId}/platform-fees`,   icon: Percent },
+      { label: "Recurring",       href: `/organizer/events/${eventId}/recurring`,       icon: CalendarDays },
+      { label: "Affiliates",      href: `/organizer/events/${eventId}/affiliates`,      icon: Share2 },
+      { label: "Email templates", href: `/organizer/events/${eventId}/email-templates`, icon: MailOpen },
     ],
   },
   {

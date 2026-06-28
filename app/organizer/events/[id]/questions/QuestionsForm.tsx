@@ -8,6 +8,7 @@ type Question = {
   id?: string
   question: string
   required: boolean
+  scope: "order" | "attendee"
   sortOrder: number
 }
 
@@ -33,7 +34,7 @@ export default function QuestionsForm({
     if (!canAdd) return
     setQuestions((prev) => [
       ...prev,
-      { question: "", required: false, sortOrder: prev.length },
+      { question: "", required: false, scope: "order", sortOrder: prev.length },
     ])
     setSaved(false)
   }
@@ -117,15 +118,33 @@ export default function QuestionsForm({
                       className="w-full bg-paper border border-line rounded-xl px-4 py-2.5 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                     />
                   </div>
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={q.required}
-                      onChange={(e) => updateQuestion(index, { required: e.target.checked })}
-                      className="rounded border-line text-brand-600 focus:ring-brand-500"
-                    />
-                    <span className="text-[13px] text-ink-2">Required</span>
-                  </label>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={q.required}
+                        onChange={(e) => updateQuestion(index, { required: e.target.checked })}
+                        className="rounded border-line text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="text-[13px] text-ink-2">Required</span>
+                    </label>
+                    <div className="flex items-center gap-1.5 rounded-lg border border-line bg-paper-2 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => updateQuestion(index, { scope: "order" })}
+                        className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${q.scope === "order" ? "bg-paper text-ink shadow-sm" : "text-ink-3 hover:text-ink-2"}`}
+                      >
+                        Per order
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateQuestion(index, { scope: "attendee" })}
+                        className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${q.scope === "attendee" ? "bg-paper text-ink shadow-sm" : "text-ink-3 hover:text-ink-2"}`}
+                      >
+                        Per attendee
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"
