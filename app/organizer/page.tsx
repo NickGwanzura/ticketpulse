@@ -113,13 +113,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, recentOrdersRaw, issueRows] = await Promise.all([
+  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueRows] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency, salesEnd: ticketTiers.salesEnd }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     // Canonical per-event revenue — same maths as payout balances and admin pages.
     getEventRevenueSummaries(eventIds),
     isAdmin ? Promise.resolve(null) : getOrganizerRevenueSummary(session.user.id),
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
+    eventIds.length > 0 ? db.select({ eventId: tickets.eventId, checkedIn: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]), sql`scanned_at IS NOT NULL`)).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
     eventIds.length > 0 ? db.execute(sql`
       WITH organizer_orders AS (
@@ -163,6 +164,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const capacity = tiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
     // Use delivered buyer tickets so the dashboard matches the attendee list.
     const sold = attendingByEvent.find(s => s.eventId === r.id)?.attending ?? 0
+    const checkedIn = checkedInByEvent.find(s => s.eventId === r.id)?.checkedIn ?? 0
     const summary = revenueSummaries.get(r.id)
     const revenue = summary?.grossRevenue ?? 0
     const netRevenue = summary?.netRevenue ?? 0
@@ -171,7 +173,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const eventEndedAt = r.endsAt ?? r.startsAt
     const isPast = eventEndedAt.getTime() < now
     const salesEnded = hasTiers && tiers.every((t) => t.salesEnd ? new Date(t.salesEnd).getTime() < now : false)
-    return { ...r, capacity, sold, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded, isPast }
+    return { ...r, capacity, sold, checkedIn, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded, isPast }
   })
 
   const filtered = EVENTS.filter(e =>
@@ -215,6 +217,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const closedSalesCount = EVENTS.filter((e) => e.status === "published" && e.salesEnded).length
   const missingTierCount = EVENTS.filter((e) => !e.hasTiers).length
   const missingTierEvent = EVENTS.find(e => !e.hasTiers)
+  const lowCheckinEvent = EVENTS.find(e => e.status === "published" && e.sold > 0 && e.checkedIn < e.sold && !e.isPast)
   const needsAttention = [
     { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
     { label: "Missing tiers", value: missingTierCount, href: missingTierEvent ? `/organizer/events/${missingTierEvent.id}/tiers` : "/organizer/events/new", icon: Ticket, tone: "rose" },
@@ -224,6 +227,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     { label: "Sales closed", value: closedSalesCount, href: "/organizer", icon: AlertCircle, tone: "rose" },
     { label: "Low inventory", value: lowInventoryCount, href: "/organizer?filter=live", icon: Ticket, tone: "amber" },
     { label: "Payout available", value: availableBalance > 0 ? 1 : 0, href: "/payouts/request", icon: Wallet, tone: "green", amount: availableBalance },
+    ...(lowCheckinEvent ? [{ label: "Low check-in rate", value: Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100), href: `/organizer/events/${lowCheckinEvent.id}/live`, icon: Activity, tone: "amber" as const }] : []),
   ].filter((item) => item.value > 0)
 
   const insightEvent = EVENTS.find(e => e.status === "published" && !e.isPast && e.sold > 0) || EVENTS.find(e => e.status === "published" && !e.isPast) || EVENTS[0]
@@ -263,6 +267,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           className="lg:hidden sticky top-24 z-20 flex items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-[14px] font-bold text-white shadow-lg shadow-ink/15"
         >
           <ScanLine size={16} /> Open gate scanner
+          {EVENTS.some(e => e.status === "published" && !e.isPast && e.sold > 0) && (
+            <span className="inline-flex ml-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          )}
         </Link>
 
         {/* Checklist for new organizers */}
@@ -375,7 +382,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                         </div>
                         <div className="flex items-center justify-between">
                           <p className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(e.netRevenue, e.currency)}</p>
-                          <p className="text-[12px] text-ink-3">{e.sold} / {e.capacity} attending</p>
+                          <div className="text-right">
+                            <p className="text-[12px] text-ink-3">{e.sold} / {e.capacity} attending</p>
+                            {e.checkedIn > 0 && <p className="text-[11px] text-green-700 font-semibold">{e.checkedIn} checked in</p>}
+                          </div>
                         </div>
                         <CapacityBar sold={e.sold} capacity={e.capacity} />
                         <div className="mt-3 flex items-center gap-3 pt-3 border-t border-line">
@@ -403,6 +413,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                       <th className="text-left px-5 py-3">Event</th>
                       <th className="text-left px-3 py-3">Date</th>
                       <th className="text-right px-3 py-3">Attending</th>
+                      <th className="text-right px-3 py-3">Checked in</th>
                       <th className="text-right px-3 py-3">Net revenue</th>
                       <th className="px-3 py-3" />
                     </tr>
@@ -426,6 +437,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           <td className="px-3 py-4 text-right min-w-[120px]">
                             <p className="text-[13px] font-medium text-ink tabular-nums">{e.sold}<span className="text-ink-3 font-normal"> / {e.capacity}</span></p>
                             <CapacityBar sold={e.sold} capacity={e.capacity} />
+                          </td>
+                          <td className="px-3 py-4 text-right">
+                            <p className="text-[13px] font-semibold text-ink tabular-nums">{e.checkedIn}</p>
+                            {e.sold > 0 && <p className="text-[11px] text-ink-3">{Math.round((e.checkedIn / e.sold) * 100)}%</p>}
                           </td>
                           <td className="px-3 py-4 text-right text-[14px] font-bold text-ink tabular-nums whitespace-nowrap">
                             {formatCurrency(e.netRevenue, e.currency)}
@@ -575,7 +590,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </span>
             <div>
               <p className="text-[10px] font-semibold tracking-[0.18em] text-white/60 uppercase mb-1">Gate entry</p>
-              <p className="text-[16px] font-bold tracking-tight text-white">Open scanner</p>
+              <div className="flex items-center gap-2">
+                {EVENTS.some(e => e.status === "published" && !e.isPast && e.sold > 0) && (
+                  <span className="inline-flex w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+                <p className="text-[16px] font-bold tracking-tight text-white">Open scanner</p>
+              </div>
               <p className="text-[13px] text-white/70 mt-1 leading-relaxed">
                 Reads PDF, mobile QR, and wallet passes. No extra hardware.
               </p>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Users, TicketCheck, Percent, ScanLine } from "lucide-react"
+import { Users, TicketCheck, Percent, ScanLine, Pause, Play, RefreshCw } from "lucide-react"
 import StatCard from "@/components/dashboard/StatCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 
@@ -20,6 +20,8 @@ type RecentCheckin = {
   scannedAt: string
 }
 
+const POLL_INTERVAL_MS = 30_000 // 30 seconds (was 5s — causing refresh complaints)
+
 export default function LiveDashboardClient({
   eventId,
   initialStats,
@@ -31,8 +33,12 @@ export default function LiveDashboardClient({
   const [recent, setRecent] = useState<RecentCheckin[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [fetchError, setFetchError] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [isFetching, setIsFetching] = useState(false)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (isManual = false) => {
+    if (isFetching && !isManual) return
+    setIsFetching(true)
     try {
       const res = await fetch(`/api/events/${eventId}/live/stats`)
       if (res.ok) {
@@ -46,20 +52,43 @@ export default function LiveDashboardClient({
       }
     } catch {
       setFetchError(true)
+    } finally {
+      setIsFetching(false)
     }
-  }, [eventId])
+  }, [eventId, isFetching])
 
+  // Auto-refresh only when not paused
   useEffect(() => {
-    const interval = setInterval(refresh, 5_000)
-    // Also fetch immediately to get recent check-ins
-    refresh()
+    if (paused) return
+    const interval = setInterval(refresh, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [refresh])
+  }, [refresh, paused])
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between text-[12px]">
-        <span className="text-ink-3">Updates every 5 seconds</span>
+        <div className="flex items-center gap-3">
+          <span className="text-ink-3">
+            {paused ? "Auto-refresh paused" : "Updates every 30 seconds"}
+          </span>
+          <button
+            onClick={() => setPaused((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[11px] font-medium text-ink-2 hover:bg-paper-2 transition-colors"
+            title={paused ? "Resume auto-refresh" : "Pause auto-refresh"}
+          >
+            {paused ? <Play size={12} /> : <Pause size={12} />}
+            {paused ? "Resume" : "Pause"}
+          </button>
+          <button
+            onClick={() => refresh(true)}
+            disabled={isFetching}
+            className="inline-flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-[11px] font-medium text-ink-2 hover:bg-paper-2 transition-colors disabled:opacity-50"
+            title="Refresh now"
+          >
+            <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
         {fetchError ? (
           <span className="text-rose-600 font-medium">Live data unavailable — retrying…</span>
         ) : lastUpdated ? (
