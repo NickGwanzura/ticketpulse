@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Next.js 16 uses proxy.ts not middleware.ts
+middleware.ts
+
 # vercel
 .vercel
 
