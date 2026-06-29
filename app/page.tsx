@@ -375,12 +375,12 @@ export default async function Home() {
               />
             </div>
           ) : (
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 md:gap-6 space-y-5 md:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
               {featuredEvents.map((e, i) => (
                 <div
                   key={e.id}
                   style={{ animationDelay: `${i * 90}ms` }}
-                  className="tp-fade-up break-inside-avoid"
+                  className="tp-fade-up"
                 >
                   <EventCard {...e} />
                 </div>
