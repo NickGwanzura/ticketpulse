@@ -81,7 +81,7 @@ export default function QuestionsForm({
       <div className="rounded-2xl border border-line bg-paper p-6 md:p-7">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-1">Ticket questions</p>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-navy uppercase mb-1">Ticket questions</p>
             <h2 className="text-[18px] font-semibold tracking-tight text-ink">Pre-sale questions</h2>
             <p className="text-xs text-ink-3 mt-1">Ask attendees up to 4 questions before they buy a ticket.</p>
           </div>

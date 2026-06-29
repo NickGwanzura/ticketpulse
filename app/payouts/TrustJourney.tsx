@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, Shield } from "lucide-react"
+import { CheckCircle2, Shield } from "lucide-react"
 
 type TrustStep = "new" | "verified" | "trusted"
 

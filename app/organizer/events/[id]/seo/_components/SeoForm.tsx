@@ -96,7 +96,7 @@ export default function SeoForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe your event for search engines"
-            className={inputBaseClass}
+            className={`${inputBaseClass} resize-none`}
           />
           <p className="mt-1 text-[11px] text-ink-3">
             Shown below the title in search results. {MAX_DESC} chars max.

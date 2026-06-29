@@ -3,7 +3,7 @@ import Link from "next/link"
 import { MapPin, Calendar, Tag } from "lucide-react"
 import { db } from "@/db"
 import { events, users, ticketTiers } from "@/db/schema"
-import { eq, and, asc, inArray } from "drizzle-orm"
+import { eq, and, asc, inArray, gte } from "drizzle-orm"
 import { formatCurrency } from "@/lib/utils"
 
 export const revalidate = 60
@@ -80,6 +80,7 @@ export default async function OrganizerPublicPage({ params }: Props) {
       and(
         eq(events.organizerId, organizer.id),
         eq(events.status, "published"),
+        gte(events.startsAt, new Date()),
       ),
     )
     .orderBy(asc(events.startsAt))
@@ -118,6 +119,15 @@ export default async function OrganizerPublicPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-paper">
+      {/* ── Nav bar ── */}
+      <div className="border-b border-white/10 bg-[#0a2540]">
+        <div className="max-w-5xl mx-auto px-5 md:px-8 py-3 flex items-center justify-between">
+          <Link href="/" className="text-[13px] font-semibold text-white/60 hover:text-white transition-colors">
+            ← TicketPulse
+          </Link>
+        </div>
+      </div>
+
       {/* ── Profile header ── */}
       <div className="bg-[#0a2540]">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">

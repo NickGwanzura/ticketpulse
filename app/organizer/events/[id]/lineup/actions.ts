@@ -79,7 +79,7 @@ export async function deleteLineupMemberAction(
   eventId: string,
 ): Promise<void> {
   const access = await requireEventAccess(eventId)
-  if (!access.allowed) redirect("/organizer")
+  if (!access.allowed) redirect(access.redirectTo)
 
   await db
     .delete(eventLineup)

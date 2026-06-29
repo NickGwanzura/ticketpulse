@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { CheckCircle2, Users, Building2 } from "lucide-react"
 import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 import { updateAbsorbFeeAction } from "../actions"
@@ -11,6 +12,7 @@ interface FeeSwitcherProps {
 }
 
 export default function FeeSwitcher({ eventId, currentlyAbsorb }: FeeSwitcherProps) {
+  const router = useRouter()
   const [absorb, setAbsorb] = useState(currentlyAbsorb)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -29,6 +31,7 @@ export default function FeeSwitcher({ eventId, currentlyAbsorb }: FeeSwitcherPro
       const result = await updateAbsorbFeeAction(eventId, absorb)
       if (result.success) {
         setSaved(true)
+        router.refresh()
         setTimeout(() => setSaved(false), 3000)
       } else {
         setError(result.error ?? "Something went wrong.")
@@ -40,7 +43,7 @@ export default function FeeSwitcher({ eventId, currentlyAbsorb }: FeeSwitcherPro
     <div className="space-y-6">
       {/* Current status note */}
       <p className="text-[13px] text-ink-2 rounded-xl border border-line bg-paper-2 px-4 py-3">
-        {currentlyAbsorb
+        {absorb
           ? "Currently: You absorb the fee — buyers see the clean ticket price."
           : "Currently: Buyers pay — the platform fee is added on top at checkout."}
       </p>

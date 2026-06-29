@@ -91,7 +91,7 @@ function EventHealthBadges({
 
 export default async function OrganizerPage({ searchParams }: { searchParams: Promise<{ filter?: string; rev?: string }> }) {
   const session = await auth()
-  if (!session) redirect("/auth/signin?callbackUrl=/organizer")
+  if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/organizer")
   const isAdmin = session.user.role === "admin"
 
   const invitedEventIds = isAdmin ? [] : await db

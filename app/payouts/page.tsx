@@ -59,7 +59,8 @@ export default async function PayoutsDashboardPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin")
 
-  const userId = session.user.id
+  const userId = session.user?.id
+  if (!userId) redirect("/auth/signin")
 
   const { payouts: payoutRows } = await getOrganizerPayouts(userId)
   const {

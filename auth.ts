@@ -38,14 +38,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter,
   callbacks: {
     async jwt({ token, user }) {
+      // At sign-in, user is present. Set id immediately so the DB query below
+      // can run. Role comes from DB (source of truth), not the user object,
+      // because OAuth providers don't carry our platform role.
       if (user) {
-        token.role = user.role
         token.id = user.id
-        token.approvedAt = user.approvedAt
-        return token
+        if (user.role) token.role = user.role
       }
 
-      if (token.id && process.env.DATABASE_URL) {
+      // Sync role + approvedAt from DB. We do this on every sign-in (user present)
+      // AND on a 5-minute cadence for existing sessions. Running at sign-in ensures
+      // the initial JWT is fully correct so the cookie never needs to change on the
+      // first page load — preventing the SessionProvider from triggering
+      // router.refresh() and causing the "dashboard keeps refreshing" loop.
+      const FIVE_MIN = 5 * 60 * 1000
+      const lastRefreshed = (token.lastRefreshed as number) ?? 0
+      const needsRefresh = !!user || Date.now() - lastRefreshed > FIVE_MIN
+
+      if (token.id && process.env.DATABASE_URL && needsRefresh) {
         try {
           const [row] = await db
             .select({ role: users.role, approvedAt: users.approvedAt })
@@ -54,6 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             .limit(1)
           if (row?.role) token.role = row.role
           token.approvedAt = row?.approvedAt?.toISOString() ?? null
+          token.lastRefreshed = Date.now()
         } catch (err) {
           console.error("[auth] refresh token role", err)
           log.error("auth — refresh token role failed", { error: err instanceof Error ? err.message : String(err) })
