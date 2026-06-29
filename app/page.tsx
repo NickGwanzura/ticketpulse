@@ -103,7 +103,7 @@ const ORGANIZER_BENEFITS = [
 ]
 
 export default async function Home() {
-  const featuredEvents = await getFeaturedEvents(3)
+  const featuredEvents = await getFeaturedEvents(6)
   const eventsOnSale = featuredEvents.length
 
   // ── Events by category (for category cards) ──
@@ -169,7 +169,7 @@ export default async function Home() {
     const cat = ev.category.toLowerCase()
     if (!eventsByCategory.has(cat)) eventsByCategory.set(cat, [])
     const list = eventsByCategory.get(cat)!
-    if (list.length < 3) list.push(ev)
+    list.push(ev)
   }
 
   const pastEvents = await db
