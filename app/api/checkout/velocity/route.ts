@@ -903,9 +903,14 @@ export async function POST(req: Request) {
     trackEvent({ event: "PAYMENT_INITIATED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, amount: total })
 
     if (isCard && !redirectUrl) {
+      // Release inventory before returning the error — soldQuantity was already
+      // incremented at order creation but the user can't complete payment.
+      await cancelWithInventoryRelease()
+
       await db
         .update(orders)
         .set({
+          status: "cancelled",
           metadata: { ...baseMeta, velocity: { ...velocityMeta, pollStatus: "INITIATED_BUT_NO_REDIRECT" as VelocityPollStatus } },
           updatedAt: new Date(),
         })
