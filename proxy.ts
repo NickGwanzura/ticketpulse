@@ -76,5 +76,12 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Only run on page routes, not on API calls or static assets.
+  // API calls handle their own auth. This prevents auth-middleware
+  // redirects from interrupting API requests made by the client,
+  // which was causing "page keeps refreshing" when organizers filled
+  // out the event creation form (geocode AI calls, etc.).
+  matcher: [
+    "/((?!api/|_next/static|_next/image|favicon.ico|images/|fonts/|.*\\.svg$).*)",
+  ],
 }

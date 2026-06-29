@@ -85,8 +85,10 @@ export default function NewEventForm() {
 
   const searchQuery = [venue, address, city, country].filter(Boolean).join(", ")
 
-  // Debounce geocoding: call Nominatim 600 ms after the user stops typing
+  // Debounce geocoding: call Nominatim 1.2 s after the user stops typing
+  // Increased from 600ms to 1200ms to reduce mid-typing interruptions
   const geocodeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const lastGeoQuery = useRef("")
 
   useEffect(() => {
     const isTBA = (s: string) => s.trim().toLowerCase() === "tba"
@@ -99,18 +101,27 @@ export default function NewEventForm() {
 
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
 
+    const q = [venue, address, city, country].filter(Boolean).join(",")
+    if (q === lastGeoQuery.current) return // unchanged
+    lastGeoQuery.current = q
+
     geocodeTimer.current = setTimeout(async () => {
       setGeocoding(true)
       setGeocodeNotFound(false)
       const params = new URLSearchParams({ venue, city, country })
       if (address) params.set("address", address)
-      const res = await fetch(`/api/geocode?${params}`)
-      const result: { lat: number | null; lng: number | null } = await res.json()
-      setLiveLat(result.lat?.toString() ?? null)
-      setLiveLng(result.lng?.toString() ?? null)
-      setGeocodeNotFound(result.lat === null || result.lng === null)
-      setGeocoding(false)
-    }, 600)
+      try {
+        const res = await fetch(`/api/geocode?${params}`)
+        const result: { lat: number | null; lng: number | null } = await res.json()
+        setLiveLat(result.lat?.toString() ?? null)
+        setLiveLng(result.lng?.toString() ?? null)
+        setGeocodeNotFound(result.lat === null || result.lng === null)
+      } catch {
+        // silently fail — geocoding is optional
+      } finally {
+        setGeocoding(false)
+      }
+    }, 1200)
 
     return () => {
       if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
