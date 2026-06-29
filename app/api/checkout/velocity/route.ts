@@ -150,7 +150,7 @@ const VendorAddonItem = z.object({
 const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
-  phone: z.string().min(3).max(40).trim(),
+  phone: z.string().max(40).trim().optional().default(""),
   paymentMethod: z.enum(["velocity-ecocash", "velocity-card"]),
   eventSlug: z.string().min(1).max(160),
   items: z
@@ -171,11 +171,18 @@ export async function POST(req: Request) {
   }
 
   let parsed: z.infer<typeof Body>
+  let rawBody: unknown
   try {
-    parsed = Body.parse(await req.json())
+    rawBody = await req.json()
+    parsed = Body.parse(rawBody)
   } catch (err) {
+    const detail = err instanceof Error ? err.message : null
+    // Log full validation failure for debugging
+    if (err instanceof z.ZodError) {
+      console.error("[checkout] validation failed:", JSON.stringify(err.issues))
+    }
     return NextResponse.json(
-      { error: "Invalid request", detail: err instanceof Error ? err.message : null },
+      { error: "Invalid request — " + (detail ?? "check your details and try again") },
       { status: 400 },
     )
   }
