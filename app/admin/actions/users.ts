@@ -218,10 +218,31 @@ export async function approveOrganizerAction(userId: string) {
     throw new Error("Unauthorized")
   }
 
+  const [organizer] = await db
+    .select({ email: users.email, name: users.name, approvedAt: users.approvedAt })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+
   await db
     .update(users)
     .set({ approvedAt: new Date(), updatedAt: new Date() })
     .where(eq(users.id, userId))
+
+  // Send approval email (fire-and-forget — don't block the admin action)
+  if (organizer?.email && !organizer.approvedAt) {
+    const { sendEmail } = await import("@/lib/email")
+    const { organizerApprovedEmail } = await import("@/lib/email-templates")
+    const tpl = organizerApprovedEmail({ name: organizer.name })
+    sendEmail({
+      to: organizer.email,
+      subject: "You're approved — start creating events on TicketPulse",
+      html: tpl.html,
+      text: tpl.text,
+    }).catch((e) => {
+      console.error("[admin] organizer approval email failed", e)
+    })
+  }
 
   revalidatePath("/admin/users")
   revalidatePath("/admin")

@@ -171,6 +171,41 @@ export function welcomeEmail(opts: { name?: string | null }): { html: string; te
   return { html, text }
 }
 
+// ─── Organizer approved ───────────────────────────────────────────────────────
+
+export function organizerApprovedEmail(opts: { name?: string | null }): { html: string; text: string } {
+  const first = opts.name?.split(" ")[0]?.trim()
+  const heading = first ? `You&rsquo;re approved, ${first}.` : "Your organizer account is approved."
+  const dashboardUrl = `${APP_URL}/organizer`
+  const body = `
+    <p style="margin:0 0 14px;">
+      Great news &mdash; your TicketPulse organizer account has been reviewed and
+      approved. You can now create and publish events, sell tickets, and manage
+      your payouts.
+    </p>
+    <p style="margin:0;">
+      Head to your dashboard to get started.
+    </p>`
+
+  const html = layout({
+    preheader: "Your organizer account is approved — start creating events on TicketPulse.",
+    heading,
+    body,
+    cta: { label: "Go to dashboard", href: dashboardUrl },
+  })
+
+  const text = [
+    heading,
+    "",
+    "Great news — your TicketPulse organizer account has been reviewed and approved.",
+    "You can now create and publish events, sell tickets, and manage your payouts.",
+    "",
+    `Dashboard: ${dashboardUrl}`,
+  ].join("\n")
+
+  return { html, text }
+}
+
 // ─── New-signup admin notification ───────────────────────────────────────────
 
 export function newSignupAdminNotification(opts: {
