@@ -46,7 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user.role) token.role = user.role
       }
 
-      // Sync role + approvedAt from DB. We do this on every sign-in (user present)
+      // Sync role + approvedAt + emailVerified from DB. We do this on every sign-in (user present)
       // AND on a 5-minute cadence for existing sessions. Running at sign-in ensures
       // the initial JWT is fully correct so the cookie never needs to change on the
       // first page load — preventing the SessionProvider from triggering
@@ -58,12 +58,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id && process.env.DATABASE_URL && needsRefresh) {
         try {
           const [row] = await db
-            .select({ role: users.role, approvedAt: users.approvedAt })
+            .select({ role: users.role, approvedAt: users.approvedAt, emailVerified: users.emailVerified })
             .from(users)
             .where(eq(users.id, token.id as string))
             .limit(1)
           if (row?.role) token.role = row.role
           token.approvedAt = row?.approvedAt?.toISOString() ?? null
+          token.emailVerified = row?.emailVerified?.toISOString() ?? null
           token.lastRefreshed = Date.now()
         } catch (err) {
           console.error("[auth] refresh token role", err)
@@ -78,6 +79,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as string
         session.user.id = token.id as string
         session.user.approvedAt = token.approvedAt as string | null | undefined
+        session.user.emailVerified = token.emailVerified as string | null | undefined
       }
       return session
     },
@@ -236,10 +238,12 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       approvedAt?: string | null
+      emailVerified?: string | null
     }
   }
   interface User {
     role?: string
     approvedAt?: string | null
+    emailVerified?: string | null
   }
 }

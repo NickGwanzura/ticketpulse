@@ -185,6 +185,38 @@ export default async function SignUpPage({
                 console.error("admin signup WhatsApp alert", e)
                 logger.error("signup — admin WhatsApp alert failed", { email, role, error: String(e) })
               })
+
+              // If the user signed up as an organiser, send an email-verification
+              // link. The organiser dashboard is gated behind emailVerified.
+              if (role === "organizer") {
+                const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+                const { generateVerificationToken, VERIFICATION_TOKEN_EXPIRY_HOURS } = await import("@/lib/email-verification")
+                const { emailVerificationTokens } = await import("@/db/schema")
+                const { sendEmailVerificationEmail } = await import("@/lib/email")
+
+                const tokenInfo = generateVerificationToken()
+                const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000)
+                // Re-fetch the new user's id since the insert above didn't return it.
+                const [newUser] = await db
+                  .select({ id: users.id })
+                  .from(users)
+                  .where(eq(users.email, email))
+                  .limit(1)
+
+                if (newUser) {
+                  await db.insert(emailVerificationTokens).values({
+                    userId: newUser.id,
+                    tokenHash: tokenInfo.hash,
+                    expiresAt,
+                  })
+
+                  const verifyUrl = `${APP_URL}/api/auth/verify-email/${tokenInfo.raw}`
+                  sendEmailVerificationEmail({ to: email, name, url: verifyUrl }).catch((e) => {
+                    console.error("signup — verification email", e)
+                    logger.error("signup — verification email failed", { email, error: String(e) })
+                  })
+                }
+              }
             } else {
               finalRole = existing.role ?? "attendee"
               const updates: Partial<typeof users.$inferInsert> = {}

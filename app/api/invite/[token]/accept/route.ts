@@ -3,7 +3,7 @@ import { eq, and, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { organiserInvites, eventOrganisers, events } from "@/db/schema"
+import { organiserInvites, eventOrganisers, events, users } from "@/db/schema"
 
 export async function POST(
   _req: Request,
@@ -95,6 +95,15 @@ export async function POST(
     userId: session.user.id,
     invitedBy: invite.invitedBy,
   })
+
+  // Auto-upgrade the user's platform role to organizer if they were still an attendee.
+  // Accepting an organiser invite implies they should have platform-level organiser access.
+  if (session.user.role === "attendee") {
+    await db
+      .update(users)
+      .set({ role: "organizer", updatedAt: new Date() })
+      .where(eq(users.id, session.user.id))
+  }
 
   await db
     .update(organiserInvites)

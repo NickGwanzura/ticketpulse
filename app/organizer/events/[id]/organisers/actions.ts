@@ -60,14 +60,27 @@ export async function inviteOrganiserAction(
   const guard = await requireOwnerAccess(eventId)
   if (!guard.ok) return { ok: false, error: "Not allowed." }
 
-  // Count current active invited organisers (accepted)
-  const [countResult] = await db
+  // Count current active invited organisers (accepted) AND pending invites
+  // to prevent sending more invites than the slot limit.
+  const [acceptedCount] = await db
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(eventOrganisers)
     .where(eq(eventOrganisers.eventId, eventId))
 
-  const activeCount = Number(countResult?.count ?? 0)
-  if (activeCount >= MAX_INVITED_ORGANISERS) {
+  const [pendingCount] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(organiserInvites)
+    .where(
+      and(
+        eq(organiserInvites.eventId, eventId),
+        eq(organiserInvites.status, "pending"),
+        // Exclude the email being invited right now — it hasn't been inserted yet
+        // and we already check for duplicate pending invites below anyway.
+      ),
+    )
+
+  const total = Number(acceptedCount?.count ?? 0) + Number(pendingCount?.count ?? 0)
+  if (total >= MAX_INVITED_ORGANISERS) {
     return {
       ok: false,
       error: `Maximum of ${MAX_INVITED_ORGANISERS} invited organisers reached. Remove an existing one first.`,

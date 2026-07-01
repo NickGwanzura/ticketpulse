@@ -89,7 +89,7 @@
     {
       "idx": 12,
       "version": "7",
-      "when": 1748534400000,
+      "when": 1780080850589,
       "tag": "0012_add_payment_ledger",
       "breakpoints": true
     },
@@ -126,6 +126,83 @@
       "version": "7",
       "when": 1780131700000,
       "tag": "0017_orders_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780132000000,
+      "tag": "0018_ticket_transfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780133000000,
+      "tag": "0019_early_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780134000000,
+      "tag": "0020_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780135000000,
+      "tag": "0021_transport_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1780136000000,
+      "tag": "0022_velocity_settlements",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1780137000000,
+      "tag": "0023_velocity_settlement_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1780138000000,
+      "tag": "0024_marketing_addons",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1780139000000,
+      "tag": "0025_enforce_seven_percent_fee",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1780140000000,
+      "tag": "0026_event_promo_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1780141000000,
+      "tag": "0027_past_announce_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1780650030000,
+      "tag": "0028_email_verification_tokens",
       "breakpoints": true
     }
   ]

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { users } from "@/db/schema"
+import { log } from "@/lib/logger"
 
 function slugify(s: string) {
   return s
@@ -28,8 +29,14 @@ export async function saveOrganizerProfileAction(formData: FormData) {
       .update(users)
       .set({ organizerBio: bio || null, organizerSlug, updatedAt: new Date() })
       .where(eq(users.id, session.user.id))
-  } catch {
-    redirect("/organizer/onboarding?step=2&error=slug_taken")
+  } catch (err: unknown) {
+    console.error("[onboarding] saveOrganizerProfileAction", err)
+    log.error("onboarding — saveOrganizerProfileAction failed", { userId: session.user.id, error: String(err) })
+    // PostgreSQL unique violation code
+    if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505") {
+      redirect("/organizer/onboarding?step=2&error=slug_taken")
+    }
+    redirect("/organizer/onboarding?step=2&error=generic")
   }
 
   redirect("/organizer/onboarding?step=3")

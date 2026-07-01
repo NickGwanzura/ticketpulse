@@ -9,6 +9,7 @@ import PayoutNotificationEmail from "@/emails/payout-notification"
 import VerifyPurchaseEmail from "@/emails/verify-purchase"
 import AdminInviteEmail from "@/emails/admin-invite"
 import ResetPasswordEmail from "@/emails/reset-password"
+import VerifyEmailEmail from "@/emails/verify-email"
 
 const FROM = "TicketPulse <no-reply@ticketpulse.tech>"
 const ADMIN = process.env.ADMIN_EMAIL ?? "nick@ticketpulse.tech"
@@ -223,6 +224,18 @@ export function sendPasswordResetEmail(args: {
     to: args.to,
     subject: "Reset your TicketPulse password",
     react: ResetPasswordEmail({ name: args.name, resetUrl: args.resetUrl }),
+  })
+}
+
+export function sendEmailVerificationEmail(args: {
+  to: string
+  name?: string | null
+  url: string
+}) {
+  return send({
+    to: args.to,
+    subject: "Verify your email address — TicketPulse",
+    react: VerifyEmailEmail({ name: args.name, url: args.url }),
   })
 }
 
