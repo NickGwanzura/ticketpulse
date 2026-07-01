@@ -79,7 +79,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as string
         session.user.id = token.id as string
         session.user.approvedAt = token.approvedAt as string | null | undefined
-        session.user.emailVerified = token.emailVerified as string | null
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).emailVerified = token.emailVerified
       }
       return session
     },
