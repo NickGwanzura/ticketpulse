@@ -25,7 +25,7 @@ export const authConfig = {
       if (token) {
         session.user.role = token.role as string
         session.user.id = token.id as string
-        session.user.emailVerified = token.emailVerified as string | null
+        session.user.emailVerified = token.emailVerified as unknown as string | null
       }
       return session
     },
