@@ -8,7 +8,7 @@ import type {
 } from "./types"
 import type { SmsTemplateName } from "./templates"
 import { SmsError } from "./types"
-import { getSmsEnv } from "./env"
+import { getSmsBaseUrl, getSmsTimeout, getSmsHeaders } from "./env"
 import { resolveTemplateId, SMS_TEMPLATES } from "./templates"
 import { normaliseMsisdn } from "./validation"
 import { log } from "@/lib/logger"
@@ -46,37 +46,18 @@ function parseBody(text: string, statusCode: number) {
   }
 }
 
-function buildHeaders(env: ReturnType<typeof getSmsEnv>): Record<string, string> {
-  const { VELOCITY_SMS_USERNAME, VELOCITY_SMS_PASSWORD, VELOCITY_SMS_API_KEY } = env
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  }
-
-  if (VELOCITY_SMS_USERNAME && VELOCITY_SMS_PASSWORD) {
-    headers["Authorization"] = `Basic ${Buffer.from(`${VELOCITY_SMS_USERNAME}:${VELOCITY_SMS_PASSWORD}`).toString("base64")}`
-  } else if (VELOCITY_SMS_API_KEY) {
-    headers["x-api-key"] = VELOCITY_SMS_API_KEY
-  } else {
-    // Fallback to legacy Bearer token
-    headers["Authorization"] = `Bearer ${process.env.VELOCITY_AFRICA_SMS_TOKEN}`
-  }
-
-  return headers
-}
-
 // ─── Core send (single recipient) ────────────────────────────────────────
 
 async function sendSingle(
   msisdn: string,
   templateId: number,
   variables: Record<string, string>,
-  env: ReturnType<typeof getSmsEnv>,
 ): Promise<SmsSendResult> {
   const batchReference = randomUUID()
   const messageReference = randomUUID()
-  const timeoutMs = Number(env.VELOCITY_SMS_TIMEOUT) || 30_000
-  const url = `${env.VELOCITY_SMS_BASE_URL}/sms/send`
+  const timeoutMs = getSmsTimeout()
+  const url = `${getSmsBaseUrl()}/sms/send`
+  const headers = getSmsHeaders()
 
   const start = Date.now()
 
@@ -101,7 +82,7 @@ async function sendSingle(
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: buildHeaders(env),
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       })
@@ -209,12 +190,10 @@ export async function sendSms(
   recipient: string,
   variables: Record<string, string> = {},
 ): Promise<SmsBatchResult> {
-  const env = getSmsEnv()
   const templateId = resolveTemplateId(template)
   const msisdn = normaliseMsisdn(recipient)
-  const templateDef = SMS_TEMPLATES[template]
 
-  const result = await sendSingle(msisdn, templateId, variables, env)
+  const result = await sendSingle(msisdn, templateId, variables)
 
   log.info("velocity/sms — sent", {
     template,

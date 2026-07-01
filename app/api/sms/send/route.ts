@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : String(err)
     log.error("sms — send failed", { error: msg })
 
-    if (msg.includes("Missing required SMS env vars")) {
+    if (msg.includes("No SMS credentials configured")) {
       return NextResponse.json({ success: false, error: "SMS not configured" }, { status: 401 })
     }
 

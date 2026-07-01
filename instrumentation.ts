@@ -1,17 +1,16 @@
 /**
  * Next.js instrumentation hook — runs once at server startup.
- *
- * Validates critical environment variables so the app fails fast on deploy
- * rather than at runtime when a user tries to trigger a feature.
  */
 export async function register() {
-  // Validate SMS environment when config is present
+  // validate SMS config at startup so missing env vars fail fast
   if (process.env.VELOCITY_SMS_BASE_URL) {
     try {
-      const { getSmsEnv } = await import("@/lib/velocity/env")
-      getSmsEnv()
+      const { isSmsConfigured } = await import("@/lib/velocity/env")
+      if (!isSmsConfigured()) {
+        console.warn("[instrumentation] SMS is partially configured — VELOCITY_SMS_BASE_URL set but no auth method found")
+      }
     } catch (err) {
-      console.error("[instrumentation] SMS env validation failed:", (err as Error).message)
+      console.error("[instrumentation] SMS env check failed:", (err as Error).message)
     }
   }
 }
