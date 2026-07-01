@@ -3,11 +3,10 @@ import { randomUUID } from "crypto"
 
 import type {
   VelocitySmsRequest,
-  VelocitySmsResponse,
   SmsSendResult,
   SmsBatchResult,
-  SmsTemplateName,
 } from "./types"
+import type { SmsTemplateName } from "./templates"
 import { SmsError } from "./types"
 import { getSmsEnv } from "./env"
 import { resolveTemplateId, SMS_TEMPLATES } from "./templates"

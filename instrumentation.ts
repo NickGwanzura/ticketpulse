@@ -8,11 +8,10 @@ export async function register() {
   // Validate SMS environment when config is present
   if (process.env.VELOCITY_SMS_BASE_URL) {
     try {
-      const { getSmsEnv } = await import("@/lib/velocity/sms/env")
+      const { getSmsEnv } = await import("@/lib/velocity/env")
       getSmsEnv()
     } catch (err) {
       console.error("[instrumentation] SMS env validation failed:", (err as Error).message)
-      process.exit(1)
     }
   }
 }

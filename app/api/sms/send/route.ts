@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { sendSms } from "@/lib/velocity/sms"
-import { isKnownTemplate, resolveTemplateId, SMS_TEMPLATES } from "@/lib/velocity/templates"
+import { isKnownTemplate, SMS_TEMPLATES } from "@/lib/velocity/templates"
 import { log } from "@/lib/logger"
 
 // ─── Validation schema ───────────────────────────────────────────────────
@@ -9,7 +9,6 @@ import { log } from "@/lib/logger"
 const SendSmsSchema = z.object({
   template: z.string().min(1),
   recipient: z.string().min(3),
-  variables: z.record(z.string()).optional(),
 })
 
 // ─── Route ───────────────────────────────────────────────────────────────
@@ -46,7 +45,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { template, recipient, variables } = parsed.data
+    const { template, recipient } = parsed.data
 
     if (!isKnownTemplate(template)) {
       const known = Object.keys(SMS_TEMPLATES).join(", ")
@@ -56,7 +55,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const result = await sendSms(template, recipient, variables)
+    const result = await sendSms(template, recipient)
 
     return NextResponse.json(result, { status: result.success ? 200 : 207 })
   } catch (err) {
