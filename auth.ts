@@ -246,6 +246,9 @@ declare module "next-auth" {
     approvedAt?: string | null
     emailVerified?: string | null
   }
+}
+
+declare module "@auth/core/jwt" {
   interface JWT {
     role?: string
     approvedAt?: string | null
