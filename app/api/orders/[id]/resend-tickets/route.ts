@@ -3,8 +3,10 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
+import { sendTicketsResentSms } from "@/lib/sms"
 import { rateLimit } from "@/lib/rate-limit"
 import { getBaseUrl } from "@/lib/url-config"
+import { log } from "@/lib/logger"
 
 type Params = { id: string }
 
@@ -103,16 +105,23 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       ticketUrl: `${appUrl}/orders/${id}`,
     })
 
-    // ── WhatsApp ticket resend (non-blocking) ──────────────────────────
-    if (order.guestPhone) {
-      fetch(`${getBaseUrl()}/api/whatsapp/send-ticket`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: id }),
-      }).catch((err) =>
-        console.error("[resend-tickets] failed to send WhatsApp:", err),
-      )
-    }
+	    // ── WhatsApp ticket resend (non-blocking) ──────────────────────────
+	    if (order.guestPhone) {
+	      fetch(`${getBaseUrl()}/api/whatsapp/send-ticket`, {
+	        method: "POST",
+	        headers: { "Content-Type": "application/json" },
+	        body: JSON.stringify({ orderId: id }),
+	      }).catch((err) =>
+	        log.warn("resend-tickets — WhatsApp send failed", { orderId: id, error: String(err) }),
+	      )
+	    }
+
+	    // ── SMS ticket resend (non-blocking) ──────────────────────────────
+	    if (order.guestPhone) {
+	      sendTicketsResentSms(order.guestPhone).catch((err) =>
+	        log.warn("resend-tickets — SMS send failed", { orderId: id, error: String(err) }),
+	      )
+	    }
 
   } catch (err) {
     console.error("[resend-tickets] failed to send:", err)

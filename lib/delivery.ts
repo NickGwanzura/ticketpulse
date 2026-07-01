@@ -5,6 +5,7 @@ import { orders, orderItems, ticketTiers, tickets, events, users } from "@/db/sc
 import { sendOrderConfirmationEmail, sendEmail, adminEmail } from "@/lib/email"
 import { saleNotificationEmail } from "@/lib/email-templates"
 import { sendText, sendImage, formatChatId } from "@/lib/whatsapp"
+import { sendTicketConfirmationSms } from "@/lib/sms"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
@@ -415,23 +416,11 @@ async function _deliver(orderId: string): Promise<{
 
     // ── 6b. Send SMS ticket confirmation (non-blocking, idempotent) ────────
     if (order.guestPhone && !delivery.smsSent) {
-      const internalKey = process.env.INTERNAL_API_KEY
-      fetch(`${baseUrl}/api/sms/send-ticket`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(internalKey ? { "X-Internal-Key": internalKey } : {}),
-        },
-        body: JSON.stringify({ orderId }),
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error(`SMS API returned ${res.status}`)
-          return res.json()
+      sendTicketConfirmationSms(order.guestPhone)
+        .then((result) => {
+          log.info("delivery - SMS ticket sent", { orderId, batchResult: result })
         })
-        .then(() => {
-          log.info("delivery - SMS ticket sent", { orderId })
-        })
-        .catch((err) => log.warn("delivery - SMS send failed (non-blocking)", { orderId, error: String(err) }))
+        .catch((err: unknown) => log.warn("delivery - SMS send failed (non-blocking)", { orderId, error: String(err) }))
     }
 
     // ── 7. Final status ───────────────────────────────────────────────────

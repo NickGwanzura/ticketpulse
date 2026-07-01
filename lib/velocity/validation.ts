@@ -100,3 +100,55 @@ export function validateTransactionPayload(params: {
   }
   return null
 }
+
+// ─── SMS Validation ──────────────────────────────────────────────────────
+
+const ZIM_CODE = "263"
+
+/**
+ * Normalise a Zimbabwe phone number into MSISDN format ("26377xxxxxxx").
+ *
+ * Accepts: 077xxxxxxx, +26377xxxxxxx, 26377xxxxxxx
+ *
+ * @throws {Error} for empty, too-short, or non-Zimbabwean numbers.
+ */
+export function normaliseMsisdn(raw: string): string {
+  const cleaned = raw.replace(/[\s\-\(\)]+/g, "").trim()
+
+  if (!cleaned) {
+    throw new Error("Phone number is empty")
+  }
+
+  let digits = cleaned.startsWith("+") ? cleaned.slice(1) : cleaned
+
+  if (!digits.startsWith("263") && !digits.startsWith("0")) {
+    throw new Error(`Not a Zimbabwe number: "${raw}"`)
+  }
+
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1)
+  }
+
+  if (!digits.startsWith(ZIM_CODE)) {
+    digits = `${ZIM_CODE}${digits}`
+  }
+
+  if (digits.length < 11) {
+    throw new Error(`MSISDN too short after normalisation: "${digits}"`)
+  }
+
+  if (!/^\d{11,}$/.test(digits)) {
+    throw new Error(`MSISDN contains non-digit characters: "${digits}"`)
+  }
+
+  return digits
+}
+
+export function isValidMsisdn(raw: string): boolean {
+  try {
+    normaliseMsisdn(raw)
+    return true
+  } catch {
+    return false
+  }
+}
