@@ -79,7 +79,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as string
         session.user.id = token.id as string
         session.user.approvedAt = token.approvedAt as string | null | undefined
-        session.user.emailVerified = token.emailVerified as string | null | undefined
+        session.user.emailVerified = token.emailVerified as string | null
       }
       return session
     },
