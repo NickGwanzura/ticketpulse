@@ -9,7 +9,7 @@ import { log } from "@/lib/logger"
 const SendSmsSchema = z.object({
   template: z.string().min(1),
   recipient: z.string().min(3),
-  variables: z.record(z.string()).optional().default(() => ({})),
+  variables: z.record(z.string()).optional(),
 })
 
 // ─── Route ───────────────────────────────────────────────────────────────
