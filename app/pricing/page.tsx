@@ -5,18 +5,18 @@ import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
 export const metadata: Metadata = {
   title: "Pricing — transparent fees for organizers and buyers",
-  description: "Free for ticket buyers. Organizers pay 6% per ticket sold, no monthly fees, no setup costs. Vendors list for free. TicketPulse.",
+  description: "Free for ticket buyers. Organizers pay 5% per ticket sold, no monthly fees, no setup costs. Vendors list for free. TicketPulse.",
   alternates: { canonical: "/pricing" },
   openGraph: {
     title: "Pricing — transparent fees for organizers and buyers",
-    description: "Free for ticket buyers. Organizers pay 6% per ticket sold, no monthly fees, no setup costs. Vendors list for free.",
+    description: "Free for ticket buyers. Organizers pay 5% per ticket sold, no monthly fees, no setup costs. Vendors list for free.",
     url: "/pricing",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Pricing — transparent fees for organizers and buyers",
-    description: "Free for ticket buyers. Organizers pay 6% per ticket sold, no monthly fees, no setup costs. Vendors list for free.",
+    description: "Free for ticket buyers. Organizers pay 5% per ticket sold, no monthly fees, no setup costs. Vendors list for free.",
   },
 }
 
@@ -43,7 +43,7 @@ const TIERS = [
   {
     name: "Organizer",
     tagline: "For event hosts",
-    price: "6%",
+    price: "5%",
     sub: "per ticket sold · negotiable for large festivals",
     features: [
       "Unlimited events & tiers",
@@ -81,12 +81,12 @@ const TIERS = [
 const FAQ = [
   { q: "What service do clients get after buying?", a: "Clients get instant PDF and mobile QR delivery, WhatsApp ticket delivery, order lookup, ticket resend, ticket transfer, review links, and support if payment clears but the ticket does not arrive." },
   { q: "Do attendees need an account to buy?", a: "No, and that's by design. Buyers check out with just name, email, and phone. The moment payment clears, tickets arrive instantly by email PDF and WhatsApp. The account is auto-created passwordless. Cuts cart abandonment dramatically." },
-  { q: "How does the 6% organizer fee work?", a: "We deduct 6% from each confirmed ticket sold and pay out the rest directly to your selected EcoCash or USD bank settlement method. There are no monthly fees, no setup fees, and no charges if you don't sell." },
-  { q: "Is the gate scanner included in the 6%?", a: "Yes. The 6% covers the full pipeline: sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
-  { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash processing fees out of our 6% on amounts under USD 50. For Visa card payments above USD 50, a 2.5% processor fee is passed through." },
+  { q: "How does the 5% organizer fee work?", a: "We deduct 5% from each confirmed ticket sold and pay out the rest directly to your selected EcoCash or USD bank settlement method. There are no monthly fees, no setup fees, and no charges if you don't sell." },
+  { q: "Is the gate scanner included in the 5%?", a: "Yes. The 5% covers the full pipeline: sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
+  { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash processing fees out of our 5% on amounts under USD 50. For Visa card payments above USD 50, a 2.5% processor fee is passed through." },
   { q: "When do payouts arrive?",             a: "Payout requests normally take about 24 hours, plus or minus depending on bank processing times and TicketPulse review." },
   { q: "Can I refund attendees?",             a: "Yes, full or partial, any time. Funds are returned to the original payment method automatically." },
-  { q: "Can the fee be negotiated for large festivals?", a: "Yes. Our standard rate is 6% but we offer custom rates for large-scale festivals and high-volume events. Get in touch on WhatsApp or email and we will sort something out." },
+  { q: "Can the fee be negotiated for large festivals?", a: "Yes. Our standard rate is 5% but we offer custom rates for large-scale festivals and high-volume events. Get in touch on WhatsApp or email and we will sort something out." },
 ]
 
 export default function PricingPage() {
@@ -103,7 +103,7 @@ export default function PricingPage() {
             Simple. <span className="text-brand-600">Pay-as-you-sell.</span>
           </h1>
           <p className="mt-5 text-[16px] md:text-[18px] text-ink-2 max-w-2xl leading-relaxed">
-            Free for clients and ticket buyers. Free to list as a vendor. Organizers pay a flat 6%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts.
+            Free for clients and ticket buyers. Free to list as a vendor. Organizers pay a flat 5%, and only when you actually sell tickets. No setup costs, no monthly fees, no third-party scanner contracts.
           </p>
 
           <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl">
@@ -111,7 +111,7 @@ export default function PricingPage() {
               { icon: FileText,   k: "Printable PDF tickets", v: "Emailed at checkout. A4-ready, scan from paper." },
               { icon: Smartphone, k: "Mobile QR + wallet",    v: "Same code in your account, on any device." },
               { icon: MessageCircle, k: "WhatsApp delivery",  v: "Tickets land straight in your WhatsApp chat." },
-              { icon: ScanLine,   k: "Our gate scanner",      v: "Reader app for organizers, included in 6%." },
+              { icon: ScanLine,   k: "Our gate scanner",      v: "Reader app for organizers, included in 5%." },
             ].map(({ icon: Icon, k, v }) => (
               <div key={k} className="rounded-xl border border-line bg-paper/80 backdrop-blur p-3.5 flex items-start gap-3">
                 <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-green-50 ring-1 ring-green-500/15 shrink-0">

@@ -1,6 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
-import { Check, User, CalendarCog, Store, Mail, ArrowRight, Ticket, QrCode, Wallet, BarChart3, MessageSquare, Zap } from "lucide-react"
+import { Check, User, CalendarCog, Store, Mail, ArrowRight, Ticket, QrCode, Wallet, BarChart3, MessageSquare, Zap, Smartphone } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
 import { redirect } from "next/navigation"
 import { getDashboardPathForRole } from "@/lib/role-routes"
@@ -17,23 +17,30 @@ function localCallback(value: string | undefined): string | null {
 
 const SIGNUP_ERRORS: Record<string, string> = {
   invalid: "Please enter your name, email address, and a password with at least 8 characters.",
+  whatsapp_required: "Organizer accounts must include a valid WhatsApp contact number.",
   account_exists: "An account already exists for this email. Sign in with the same password, or use Forgot password.",
   password_required: "This account was created with Google. Use Continue with Google, or set a password with Forgot password.",
   too_many: "Too many signup attempts. Please wait a minute before trying again.",
 }
 
-function signupUrl(role: string, callbackUrl: string | null, error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string) {
+function signupUrl(role: string, callbackUrl: string | null, error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string, phone?: string) {
   const params = new URLSearchParams({ role, error })
   if (callbackUrl) params.set("callbackUrl", callbackUrl)
   if (email) params.set("email", email)
   if (name) params.set("name", name)
+  if (phone) params.set("phone", phone)
   return `/auth/signup?${params.toString()}`
+}
+
+function isValidWhatsappContact(value: string) {
+  const compact = value.replace(/[\s()-]/g, "")
+  return /^(\+?263|0)?7[1789]\d{7}$/.test(compact)
 }
 
 export default async function SignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; callbackUrl?: string; error?: string; email?: string; name?: string }>
+  searchParams: Promise<{ role?: string; callbackUrl?: string; error?: string; email?: string; name?: string; phone?: string }>
 }) {
   const sp = await searchParams
   const roleValues = ROLES.map((role) => role.value)
@@ -44,6 +51,7 @@ export default async function SignUpPage({
   const errorMessage = sp.error ? SIGNUP_ERRORS[sp.error] : null
   const defaultEmail = sp.email?.toLowerCase().trim() ?? ""
   const defaultName = sp.name?.trim() ?? ""
+  const defaultPhone = sp.phone?.trim() ?? ""
 
   const FEATURE_HIGHLIGHTS = [
     { icon: Ticket,       label: "Sell tickets in minutes",   body: "Set up your event, add tiers, and go live — no tech skills needed." },
@@ -65,11 +73,8 @@ export default async function SignUpPage({
 
         {/* ── Feature highlights panel (desktop only) ── */}
         <div className="hidden lg:flex flex-col pt-4 sticky top-24">
-          <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink mb-10">
-            <span className="relative inline-flex w-6 h-6 items-center justify-center rounded-md bg-navy">
-              <span className="block w-1.5 h-1.5 rounded-full bg-white" />
-            </span>
-            TicketPulse
+          <Link href="/" className="inline-flex items-center mb-10" aria-label="TicketPulse home">
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-auto" />
           </Link>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">Built for Zimbabwe</p>
           <h2 className="text-[28px] font-bold tracking-tight text-ink leading-snug mb-2">
@@ -102,11 +107,8 @@ export default async function SignUpPage({
         {/* ── Sign-up form ── */}
         <div className="max-w-md mx-auto lg:mx-0 lg:max-w-none">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">
-            <span className="relative inline-flex w-6 h-6 items-center justify-center rounded-md bg-navy">
-              <span className="block w-1.5 h-1.5 rounded-full bg-white" />
-            </span>
-            TicketPulse
+          <Link href="/" className="inline-flex items-center justify-center" aria-label="TicketPulse home">
+            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-auto" />
           </Link>
           <h1 className="mt-6 text-[24px] md:text-[28px] font-bold tracking-tight text-ink">Create your account</h1>
           <p className="text-[14px] text-ink mt-1.5">Free forever for attendees. Pay-as-you-sell for organizers.</p>
@@ -129,8 +131,12 @@ export default async function SignUpPage({
             const email = ((formData.get("email") as string) ?? "").toLowerCase().trim()
             const password = (formData.get("password") as string) ?? ""
             const name  = ((formData.get("name") as string) ?? "").trim() || null
+            const whatsappContact = ((formData.get("whatsappContact") as string) ?? "").trim()
             if (!email || password.length < 8 || !name) {
-              redirect(signupUrl(role, requestedCallbackUrl, "invalid", email, name ?? undefined))
+              redirect(signupUrl(role, requestedCallbackUrl, "invalid", email, name ?? undefined, whatsappContact))
+            }
+            if (role === "organizer" && !isValidWhatsappContact(whatsappContact)) {
+              redirect(signupUrl(role, requestedCallbackUrl, "whatsapp_required", email, name ?? undefined, whatsappContact))
             }
 
             // Rate limit: max 3 signup attempts per IP per minute
@@ -151,6 +157,7 @@ export default async function SignUpPage({
                 email,
                 name,
                 role,
+                phone: role === "organizer" ? whatsappContact : undefined,
                 passwordHash: hashPassword(password),
               })
 
@@ -232,6 +239,9 @@ export default async function SignUpPage({
               if (existing.role === "attendee" && role !== "attendee") {
                 updates.role = role
                 finalRole = role
+              }
+              if (role === "organizer") {
+                updates.phone = whatsappContact
               }
 
               if (Object.keys(updates).length > 0) {
@@ -315,6 +325,27 @@ export default async function SignUpPage({
                 className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-ink mb-2">
+              Organizer WhatsApp contact <span className="text-ink-3 font-normal">(required for organizers)</span>
+            </label>
+            <div className="relative">
+              <Smartphone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-2" />
+              <input
+                type="tel"
+                name="whatsappContact"
+                autoComplete="tel"
+                inputMode="tel"
+                placeholder="+263 77 123 4567"
+                defaultValue={defaultPhone}
+                className="w-full bg-paper border border-line-2 rounded-xl pl-10 pr-4 py-3.5 text-[15px] text-ink placeholder:text-ink-2 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+              />
+            </div>
+            <p className="mt-1.5 text-[11px] text-ink-3">
+              Used for urgent ticket, payout, event approval, and buyer-support issues.
+            </p>
           </div>
 
           <div>

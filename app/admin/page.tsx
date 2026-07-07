@@ -117,7 +117,7 @@ export default async function AdminOverviewPage() {
       .from(events).leftJoin(users, eq(events.organizerId, users.id))
       .where(eq(events.status, "draft")).orderBy(desc(events.createdAt)).limit(10),
 
-    db.select({ id: users.id, name: users.name, email: users.email, createdAt: users.createdAt })
+    db.select({ id: users.id, name: users.name, email: users.email, phone: users.phone, createdAt: users.createdAt })
       .from(users).where(and(eq(users.role, "organizer"), isNull(users.approvedAt)))
       .orderBy(desc(users.createdAt)).limit(10),
 
@@ -494,14 +494,18 @@ export default async function AdminOverviewPage() {
                   </form>
                 </li>
               ))}
-              {pendingOrganizers.map((u: { id: string; name: string | null; email: string | null }) => (
+              {pendingOrganizers.map((u: { id: string; name: string | null; email: string | null; phone: string | null }) => (
                 <li key={u.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-[10px] font-bold tracking-widest uppercase text-blue bg-blue/10 px-1.5 py-0.5 rounded">Pending organizer</span>
+                      {!u.phone && (
+                        <span className="text-[10px] font-bold tracking-widest uppercase text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">Missing WhatsApp</span>
+                      )}
                     </div>
                     <p className="text-[14px] font-semibold text-ink">{u.name ?? "—"}</p>
                     <p className="text-[12px] text-ink-2">{u.email}</p>
+                    <p className="text-[12px] text-ink-3">WhatsApp: {u.phone ?? "Not provided"}</p>
                   </div>
                   <form action={approveOrganizerAction.bind(null, u.id)} className="shrink-0">
                     <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">

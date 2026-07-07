@@ -30,7 +30,7 @@ export default function SeoForm({
 
   const previewTitle = title.trim() || eventTitle
   const previewDesc = description.trim() || "Discover this event on TicketPulse."
-  const previewUrl = `ticketpulse.com/events/${eventSlug}`
+  const previewUrl = `ticketpulse.tech/events/${eventSlug}`
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

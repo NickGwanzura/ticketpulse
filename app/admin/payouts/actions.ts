@@ -10,6 +10,17 @@ import { sendPayoutNotificationEmail } from "@/lib/email"
 
 const VALID_STATUSES = ["pending", "approved", "processing", "paid", "held", "rejected", "failed", "cancelled"] as const
 
+export type AdminPayoutActionResult = {
+  ok: boolean
+  message: string
+  payoutId?: string
+}
+
+function adminPayoutResult(ok: boolean, message: string, payoutId?: string): AdminPayoutActionResult {
+  revalidatePath("/admin/payouts")
+  return { ok, message, payoutId }
+}
+
 async function createAuditLog(opts: {
   payoutId: string
   action: string
@@ -122,12 +133,11 @@ export async function getPayouts(status?: string) {
  * immediately "paid" so balances and reconciliation reflect the money that
  * has actually left TicketPulse.
  */
-export async function recordManualPayoutAction(formData: FormData): Promise<void> {
+export async function recordManualPayoutAction(formData: FormData): Promise<AdminPayoutActionResult> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     log.warn("[manual-payout] Unauthorized attempt")
-    revalidatePath("/admin/payouts")
-    return
+    return adminPayoutResult(false, "You are not authorized to record payouts.")
   }
 
   const userId = ((formData.get("userId") as string) ?? "").trim()
@@ -139,21 +149,21 @@ export async function recordManualPayoutAction(formData: FormData): Promise<void
   const proofReference = ((formData.get("proofReference") as string) ?? "").trim()
   const notes = ((formData.get("notes") as string) ?? "").trim()
 
-  if (!userId) { log.warn("[manual-payout] Missing userId"); revalidatePath("/admin/payouts"); return }
-  if (!amount || Number.isNaN(amount) || amount <= 0) { log.warn("[manual-payout] Invalid amount"); revalidatePath("/admin/payouts"); return }
-  if (amount > 100000) { log.warn("[manual-payout] Amount exceeds max"); revalidatePath("/admin/payouts"); return }
-  if (!["ecocash", "bank_usd", "cash"].includes(method)) { log.warn("[manual-payout] Invalid method"); revalidatePath("/admin/payouts"); return }
-  if (!proofReference || proofReference.length < 3) { log.warn("[manual-payout] Missing reference"); revalidatePath("/admin/payouts"); return }
+  if (!userId) { log.warn("[manual-payout] Missing userId"); return adminPayoutResult(false, "Select the organizer who was paid.") }
+  if (!amount || Number.isNaN(amount) || amount <= 0) { log.warn("[manual-payout] Invalid amount"); return adminPayoutResult(false, "Enter a valid payout amount.") }
+  if (amount > 100000) { log.warn("[manual-payout] Amount exceeds max"); return adminPayoutResult(false, "This payout amount is above the allowed limit.") }
+  if (!["ecocash", "bank_usd", "cash"].includes(method)) { log.warn("[manual-payout] Invalid method"); return adminPayoutResult(false, "Choose a valid payout method.") }
+  if (!proofReference || proofReference.length < 3) { log.warn("[manual-payout] Missing reference"); return adminPayoutResult(false, "Add a receipt, transfer, or cash reference.") }
 
   const paidDate = paidDateRaw ? new Date(paidDateRaw) : new Date()
-  if (Number.isNaN(paidDate.getTime())) { log.warn("[manual-payout] Invalid date"); revalidatePath("/admin/payouts"); return }
+  if (Number.isNaN(paidDate.getTime())) { log.warn("[manual-payout] Invalid date"); return adminPayoutResult(false, "Choose a valid payout date.") }
 
   const [organizer] = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
-  if (!organizer) { log.warn("[manual-payout] Organiser not found"); revalidatePath("/admin/payouts"); return }
+  if (!organizer) { log.warn("[manual-payout] Organiser not found"); return adminPayoutResult(false, "Organizer not found.") }
 
   if (eventId) {
     const [event] = await db
@@ -161,8 +171,8 @@ export async function recordManualPayoutAction(formData: FormData): Promise<void
       .from(events)
       .where(eq(events.id, eventId))
       .limit(1)
-    if (!event) { log.warn("[manual-payout] Event not found"); revalidatePath("/admin/payouts"); return }
-    if (event.organizerId !== userId) { log.warn("[manual-payout] Event doesn't belong to organizer"); revalidatePath("/admin/payouts"); return }
+    if (!event) { log.warn("[manual-payout] Event not found"); return adminPayoutResult(false, "Event not found.") }
+    if (event.organizerId !== userId) { log.warn("[manual-payout] Event doesn't belong to organizer"); return adminPayoutResult(false, "That event belongs to a different organizer. Choose the matching organizer/event pair.") }
   }
 
   const admin = session.user.email ?? session.user.id
@@ -200,13 +210,14 @@ export async function recordManualPayoutAction(formData: FormData): Promise<void
     })
 
     log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
+    revalidatePath("/admin/payouts")
+    revalidatePath("/admin/reconciliation")
+    revalidatePath("/payouts")
+    return { ok: true, message: `Manual payout of ${cleanAmount.toFixed(2)} ${currency} recorded.`, payoutId: inserted.id }
   } catch (err) {
     log.error("[manual-payout] Failed to record", { error: String(err) })
+    return adminPayoutResult(false, "The payout could not be recorded. Check the details and try again.")
   }
-
-  revalidatePath("/admin/payouts")
-  revalidatePath("/admin/reconciliation")
-  revalidatePath("/payouts")
 }
 
 export async function approvePayoutAction(payoutId: string): Promise<void> {

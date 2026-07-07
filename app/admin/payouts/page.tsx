@@ -13,8 +13,9 @@ import { events, users } from "@/db/schema"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import {
   getPayouts, approvePayoutAction, rejectPayoutAction,
-  markPayoutPaidAction, markPayoutProcessingAction, recordManualPayoutAction,
+  markPayoutPaidAction, markPayoutProcessingAction,
 } from "./actions"
+import ManualPayoutForm from "./ManualPayoutForm"
 
 type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
@@ -166,74 +167,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
               <p className="text-[12px] text-ink-3">Already paid an organiser outside the app (cash, manual EcoCash, or direct transfer)? Record it here so balances and reconciliation stay accurate.</p>
             </div>
           </div>
-          <form action={recordManualPayoutAction} className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Organiser
-                <select name="userId" required defaultValue="" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
-                  <option value="" disabled>Select organiser…</option>
-                  {organizerRows.map((organizer) => (
-                    <option key={organizer.id} value={organizer.id}>
-                      {organizer.name ?? organizer.email ?? organizer.id}{organizer.email && organizer.name ? ` (${organizer.email})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Event (optional)
-                <select name="eventId" defaultValue="" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
-                  <option value="">Not tied to one event</option>
-                  {(() => {
-                    // Group events by organizerId for easier pairing
-                    const byOrg = new Map<string, { id: string; title: string }[]>()
-                    for (const e of eventRows) {
-                      const list = byOrg.get(e.organizerId) ?? []
-                      list.push(e)
-                      byOrg.set(e.organizerId, list)
-                    }
-                    return Array.from(byOrg.entries()).map(([orgId, evts]) => (
-                      <optgroup key={orgId} label={organizerRows.find((o) => o.id === orgId)?.name ?? `Organizer ${orgId.slice(0, 8)}`}>
-                        {evts.map((e) => (
-                          <option key={e.id} value={e.id}>{e.title}</option>
-                        ))}
-                      </optgroup>
-                    ))
-                  })()}
-                </select>
-              </label>
-            </div>
-            <div className="grid gap-3 md:grid-cols-4">
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Amount
-                <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
-              </label>
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Method
-                <select name="method" required defaultValue="cash" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
-                  <option value="cash">Cash</option>
-                  <option value="ecocash">EcoCash</option>
-                  <option value="bank_usd">Bank transfer</option>
-                </select>
-              </label>
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Date paid
-                <input name="paidDate" type="date" required className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
-              </label>
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Reference
-                <input name="proofReference" required placeholder="Receipt / transfer ref" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
-              </label>
-            </div>
-            <div className="grid gap-3 md:grid-cols-[1.6fr_auto] md:items-end">
-              <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-                Notes (optional)
-                <input name="notes" maxLength={500} placeholder="e.g. Paid at the office after The Sunday Table" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
-              </label>
-              <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-ink">
-                <Banknote size={14} /> Record payout
-              </button>
-            </div>
-          </form>
+          <ManualPayoutForm organizers={organizerRows} events={eventRows} />
         </div>
 
         {/* Tabs */}

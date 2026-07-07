@@ -1,7 +1,10 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, ChevronRight, Rocket, User, Calendar } from "lucide-react"
+import { eq } from "drizzle-orm"
+import { CheckCircle2, ChevronRight, Rocket, User, Calendar, Smartphone } from "lucide-react"
+import { db } from "@/db"
+import { users } from "@/db/schema"
 import { saveOrganizerProfileAction } from "./actions"
 
 export const metadata = { title: "Get started — TicketPulse" }
@@ -40,6 +43,11 @@ function StepIndicator({ current }: { current: number }) {
   )
 }
 
+function isValidWhatsappContact(value: string | null | undefined) {
+  const compact = (value ?? "").replace(/[\s()-]/g, "")
+  return /^(\+?263|0)?7[1789]\d{7}$/.test(compact)
+}
+
 export default async function OnboardingPage({
   searchParams,
 }: {
@@ -51,6 +59,14 @@ export default async function OnboardingPage({
   const sp = await searchParams
   const step = Number(sp.step ?? "1")
   const error = sp.error
+  const [profile] = await db
+    .select({ phone: users.phone })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1)
+  if (step >= 3 && !isValidWhatsappContact(profile?.phone)) {
+    redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+  }
 
   return (
     <div
@@ -82,11 +98,12 @@ export default async function OnboardingPage({
               Welcome, {session.user.name?.split(" ")[0] ?? "organizer"}!
             </h1>
             <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              You&apos;re set up as an organizer on TicketPulse. Let&apos;s get your profile ready so attendees can find your events.
+              You&apos;re set up as an organizer on TicketPulse. Let&apos;s get your profile and WhatsApp contact ready so attendees and TicketPulse can reach you when it matters.
             </p>
             <div className="space-y-3 text-left mb-8">
               {[
                 "Set your public organizer profile",
+                "Add a required WhatsApp contact",
                 "Create your first event with ticket tiers",
                 "Share your link and start selling",
               ].map((s) => (
@@ -120,6 +137,16 @@ export default async function OnboardingPage({
                 That URL handle is already taken — try a different one.
               </div>
             )}
+            {error === "whatsapp_required" && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+                Organizer WhatsApp contact is required. Use a valid Zimbabwean number such as +263 77 123 4567.
+              </div>
+            )}
+            {error === "generic" && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+                We could not save your organizer profile. Please check the details and try again.
+              </div>
+            )}
 
             <form action={saveOrganizerProfileAction} className="space-y-5">
               <div>
@@ -136,11 +163,33 @@ export default async function OnboardingPage({
 
               <div>
                 <label className="block text-[13px] font-semibold text-ink mb-1.5">
+                  Organizer WhatsApp contact <span className="text-rose-600">*</span>
+                </label>
+                <div className="relative">
+                  <Smartphone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
+                  <input
+                    type="tel"
+                    name="whatsappContact"
+                    required
+                    autoComplete="tel"
+                    inputMode="tel"
+                    placeholder="+263 77 123 4567"
+                    defaultValue={profile?.phone ?? ""}
+                    className="w-full rounded-xl border border-line bg-paper pl-10 pr-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                  />
+                </div>
+                <p className="text-[11px] text-ink-3 mt-1">
+                  Required for event approval, payout follow-up, ticket support, and urgent buyer issues.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold text-ink mb-1.5">
                   Your page URL handle
                 </label>
                 <div className="flex items-center rounded-xl border border-line bg-paper overflow-hidden focus-within:border-green-500 focus-within:ring-4 focus-within:ring-brand-500/10 transition">
                   <span className="px-3 py-3 text-[13px] text-ink-3 bg-paper-2 border-r border-line shrink-0">
-                    ticketpulse.com/o/
+                    ticketpulse.tech/o/
                   </span>
                   <input
                     type="text"
@@ -174,12 +223,6 @@ export default async function OnboardingPage({
                 >
                   Save & continue <ChevronRight size={15} />
                 </button>
-                <Link
-                  href="/organizer/onboarding?step=3"
-                  className="text-[13px] text-ink-3 hover:text-ink-2 transition"
-                >
-                  Skip for now
-                </Link>
               </div>
             </form>
           </div>
@@ -213,7 +256,7 @@ export default async function OnboardingPage({
 
         <p className="text-center text-[12px] text-ink-3 mt-6">
           Need help?{" "}
-          <a href="mailto:support@ticketpulse.co.zw" className="text-navy hover:underline">
+          <a href="mailto:support@ticketpulse.tech" className="text-navy hover:underline">
             Contact support
           </a>
         </p>

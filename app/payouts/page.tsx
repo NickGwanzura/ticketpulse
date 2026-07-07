@@ -44,6 +44,18 @@ function payoutMethodLabel(payout: { method: string }) {
   return "USD Bank"
 }
 
+function payoutDestination(payout: {
+  method: string
+  accountNumber: string | null
+  accountName: string | null
+  bankName: string | null
+  proofReference: string | null
+}) {
+  if (payout.method === "cash") return payout.proofReference ? `Ref: ${payout.proofReference}` : "Manual cash"
+  if (payout.method === "ecocash") return payout.accountNumber ? `EcoCash ${payout.accountNumber}` : "EcoCash"
+  return [payout.bankName, payout.accountName, payout.accountNumber].filter(Boolean).join(" · ") || "Bank account"
+}
+
 export default async function PayoutsDashboardPage() {
   const session = await auth()
   if (!session) redirect("/auth/signin")
@@ -193,6 +205,18 @@ export default async function PayoutsDashboardPage() {
             </Link>
           </div>
         )}
+        {availableBalance <= 0 && (
+          <div className="rounded-2xl border border-line bg-paper-2 px-5 md:px-6 py-5 tp-fade-up-2">
+            <p className="text-[14px] font-semibold tracking-tight text-ink">No payout available right now</p>
+            <p className="mt-1 text-[13px] text-ink-2">
+              {pendingTotal > 0
+                ? `${formatCurrency(pendingTotal, "USD")} is already pending review.`
+                : grossRevenue > 0
+                ? "Your confirmed net revenue has either been paid out or is not yet available after reconciliation."
+                : "Confirmed paid ticket revenue will appear here once tickets are sold and payments clear."}
+            </p>
+          </div>
+        )}
 
         {/* Payout history */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
@@ -208,6 +232,7 @@ export default async function PayoutsDashboardPage() {
                     <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-5 py-3 font-semibold">Event</th>
                       <th className="text-left px-3 py-3 font-semibold">Method</th>
+                      <th className="text-left px-3 py-3 font-semibold">Destination / proof</th>
                       <th className="text-left px-3 py-3 font-semibold">Date</th>
                       <th className="text-left px-3 py-3 font-semibold">Status</th>
                       <th className="text-right px-3 py-3 font-semibold">Amount</th>
@@ -225,6 +250,15 @@ export default async function PayoutsDashboardPage() {
                             {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                             {payoutMethodLabel(p)}
                           </span>
+                        </td>
+                        <td className="px-3 py-4">
+                          <p className="max-w-[260px] truncate text-[12px] text-ink-2">{payoutDestination(p)}</p>
+                          {p.rejectionReason && (
+                            <p className="mt-1 max-w-[260px] truncate text-[11px] text-red-600">Rejected: {p.rejectionReason}</p>
+                          )}
+                          {p.proofReference && p.method !== "cash" && (
+                            <p className="mt-1 max-w-[260px] truncate text-[11px] text-ink-3">Proof: {p.proofReference}</p>
+                          )}
                         </td>
                         <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">
                           {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
@@ -265,6 +299,13 @@ export default async function PayoutsDashboardPage() {
                         {formatCurrency(Number(p.amount), p.currency)}
                       </span>
                     </div>
+                    <p className="mt-2 text-[11px] text-ink-3 leading-4">{payoutDestination(p)}</p>
+                    {p.rejectionReason && (
+                      <p className="mt-1 text-[11px] text-red-600">{p.rejectionReason}</p>
+                    )}
+                    {p.proofReference && p.method !== "cash" && (
+                      <p className="mt-1 text-[11px] text-ink-3">Proof: {p.proofReference}</p>
+                    )}
                   </li>
                 ))}
               </ul>

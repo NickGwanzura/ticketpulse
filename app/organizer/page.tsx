@@ -11,7 +11,7 @@ import {
 
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, ticketTiers, tickets } from "@/db/schema"
+import { events, eventOrganisers, orders, ticketTiers, tickets, users } from "@/db/schema"
 import { getEventRevenueSummaries, getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -38,6 +38,11 @@ const STATUS: Record<string, { dot: string; label: string }> = {
 }
 
 const PLATFORM_FEE_PERCENT = SHARED_FEE_PERCENT
+
+function hasValidWhatsappContact(phone: string | null | undefined) {
+  if (!phone) return false
+  return /^(\+?263|0)?7[1789]\d{7}$/.test(phone.replace(/[\s-]/g, ""))
+}
 
 function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
   const pct = capacity > 0 ? Math.min(100, Math.round((sold / capacity) * 100)) : 0
@@ -191,6 +196,18 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     .from(eventOrganisers).where(eq(eventOrganisers.userId, session.user.id))
 
   if (!isAdmin && session.user.role !== "organizer" && invitedEventIds.length === 0) redirect("/dashboard")
+
+  if (!isAdmin && session.user.role === "organizer") {
+    const [profile] = await db
+      .select({ phone: users.phone })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+
+    if (!hasValidWhatsappContact(profile?.phone)) {
+      redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+    }
+  }
 
   const sp = await searchParams
   const filter = sp.filter || "all"

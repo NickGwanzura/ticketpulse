@@ -216,12 +216,22 @@ export async function getOrganizerBalance(userId: string) {
   return fetchBalanceForUser(userId)
 }
 
-export async function requestPayoutAction(formData: FormData): Promise<void> {
+export type PayoutActionResult = {
+  ok: boolean
+  message: string
+  payoutId?: string
+}
+
+function payoutActionError(message: string): PayoutActionResult {
+  revalidatePath("/payouts")
+  return { ok: false, message }
+}
+
+export async function requestPayoutAction(formData: FormData): Promise<PayoutActionResult> {
   const session = await auth()
   if (!session?.user) {
     log.warn("[request-payout] Unauthorized")
-    revalidatePath("/payouts")
-    return
+    return payoutActionError("Please sign in again before requesting a payout.")
   }
 
   const userId = session.user.id
@@ -233,20 +243,20 @@ export async function requestPayoutAction(formData: FormData): Promise<void> {
   const accountName = ((formData.get("accountName") as string) ?? "").trim()
   const bankName = ((formData.get("bankName") as string) ?? "").trim()
 
-  if (!isPayoutMethod(method)) { log.warn("[request-payout] Invalid method"); revalidatePath("/payouts"); return }
-  if (currency !== "USD") { log.warn("[request-payout] Non-USD currency"); revalidatePath("/payouts"); return }
-  if (!amount || amount <= 0 || isNaN(amount)) { log.warn("[request-payout] Invalid amount"); revalidatePath("/payouts"); return }
-  if (amount > 100000) { log.warn("[request-payout] Amount exceeds max"); revalidatePath("/payouts"); return }
-  if (amount < 1) { log.warn("[request-payout] Amount below min"); revalidatePath("/payouts"); return }
+  if (!isPayoutMethod(method)) { log.warn("[request-payout] Invalid method"); return payoutActionError("Choose a valid payout method.") }
+  if (currency !== "USD") { log.warn("[request-payout] Non-USD currency"); return payoutActionError("Payouts are currently only available in USD.") }
+  if (!amount || amount <= 0 || isNaN(amount)) { log.warn("[request-payout] Invalid amount"); return payoutActionError("Enter a valid payout amount.") }
+  if (amount > 100000) { log.warn("[request-payout] Amount exceeds max"); return payoutActionError("This payout amount is above the allowed limit.") }
+  if (amount < 1) { log.warn("[request-payout] Amount below min"); return payoutActionError("Minimum payout request is USD 1.00.") }
 
   if (method === "ecocash") {
     if (!ecocashNumber || !/^(\+?263|0)?7[1789]\d{7}$/.test(ecocashNumber.replace(/\s/g, ""))) {
-      log.warn("[request-payout] Invalid EcoCash number"); revalidatePath("/payouts"); return
+      log.warn("[request-payout] Invalid EcoCash number"); return payoutActionError("Enter a valid Zimbabwe EcoCash number.")
     }
   } else {
-    if (!accountNumber || accountNumber.length < 5) { log.warn("[request-payout] Invalid account number"); revalidatePath("/payouts"); return }
-    if (!accountName || accountName.trim().length < 2) { log.warn("[request-payout] Missing account name"); revalidatePath("/payouts"); return }
-    if (!bankName || bankName.trim().length < 2) { log.warn("[request-payout] Missing bank name"); revalidatePath("/payouts"); return }
+    if (!accountNumber || accountNumber.length < 5) { log.warn("[request-payout] Invalid account number"); return payoutActionError("Enter a valid bank account number.") }
+    if (!accountName || accountName.trim().length < 2) { log.warn("[request-payout] Missing account name"); return payoutActionError("Enter the bank account holder name.") }
+    if (!bankName || bankName.trim().length < 2) { log.warn("[request-payout] Missing bank name"); return payoutActionError("Enter the bank name.") }
   }
 
   // Check available balance
@@ -255,12 +265,11 @@ export async function requestPayoutAction(formData: FormData): Promise<void> {
     balance = await fetchBalanceForUser(userId)
   } catch (err) {
     log.error("[request-payout] Balance fetch failed", { error: String(err) })
-    revalidatePath("/payouts")
-    return
+    return payoutActionError("We could not calculate your payout balance. Please try again.")
   }
   const { availableBalance } = balance
-  if (availableBalance <= 0) { log.warn("[request-payout] No funds available"); revalidatePath("/payouts"); return }
-  if (amount > availableBalance) { log.warn("[request-payout] Insufficient balance"); revalidatePath("/payouts"); return }
+  if (availableBalance <= 0) { log.warn("[request-payout] No funds available"); return payoutActionError("There is no available balance to withdraw yet.") }
+  if (amount > availableBalance) { log.warn("[request-payout] Insufficient balance"); return payoutActionError(`You can request up to ${money(availableBalance)} right now.`) }
 
   const [organizer] = await db
     .select({ name: users.name, email: users.email })
@@ -340,18 +349,15 @@ export async function requestPayoutAction(formData: FormData): Promise<void> {
     const message = String(txErr)
     if (message === "ALREADY_PENDING" || message.includes("unique") || message.includes("duplicate")) {
       log.warn("[request-payout] Already pending", { userId })
-      revalidatePath("/payouts")
-      return
+      return payoutActionError("You already have an active payout request. Wait for it to be processed before requesting another one.")
     }
     log.error("[request-payout] Transaction failed", { error: String(txErr) })
-    revalidatePath("/payouts")
-    return
+    return payoutActionError("We could not submit the payout request. Please try again.")
   }
 
   if (!inserted) {
     log.warn("[request-payout] Insert returned no id")
-    revalidatePath("/payouts")
-    return
+    return payoutActionError("We could not confirm the payout request. Please try again.")
   }
 
   const baseUrl = getBaseUrl()
@@ -397,4 +403,5 @@ export async function requestPayoutAction(formData: FormData): Promise<void> {
   log.info("Payout requested", { userId, amount: cleanAmount, currency, method, payoutId: inserted.id })
   revalidatePath("/payouts")
   revalidatePath("/admin/payouts")
+  return { ok: true, message: "Payout request submitted.", payoutId: inserted.id }
 }

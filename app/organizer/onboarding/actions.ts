@@ -16,18 +16,27 @@ function slugify(s: string) {
     .slice(0, 40)
 }
 
+function isValidWhatsappContact(value: string) {
+  const compact = value.replace(/[\s()-]/g, "")
+  return /^(\+?263|0)?7[1789]\d{7}$/.test(compact)
+}
+
 export async function saveOrganizerProfileAction(formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) redirect("/auth/signin")
 
   const bio = ((formData.get("bio") as string) ?? "").trim().slice(0, 280)
+  const phone = ((formData.get("whatsappContact") as string) ?? "").trim()
   const rawSlug = ((formData.get("organizerSlug") as string) ?? "").trim()
   const organizerSlug = rawSlug ? slugify(rawSlug) : slugify(session.user.name ?? session.user.email ?? session.user.id)
+  if (!isValidWhatsappContact(phone)) {
+    redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+  }
 
   try {
     await db
       .update(users)
-      .set({ organizerBio: bio || null, organizerSlug, updatedAt: new Date() })
+      .set({ organizerBio: bio || null, organizerSlug, phone, updatedAt: new Date() })
       .where(eq(users.id, session.user.id))
   } catch (err: unknown) {
     console.error("[onboarding] saveOrganizerProfileAction", err)

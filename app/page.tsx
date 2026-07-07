@@ -60,7 +60,7 @@ function buildStats(eventsOnSale: number) {
     { value: "Live",    label: "Launched May 2026" },
     { value: String(eventsOnSale), label: eventsOnSale === 1 ? "Event on sale today" : "Events on sale today" },
     { value: "2 ways",  label: "EcoCash · Visa" },
-    { value: "6%",      label: "Organizer fee, pay as you sell" },
+    { value: "5%",      label: "Organizer fee, pay as you sell" },
   ]
 }
 
@@ -97,7 +97,7 @@ const ORGANIZER_BENEFITS = [
   { icon: ShieldCheck, label: "Built for Zimbabwean payments", tone: "bg-emerald-50", accent: "text-emerald-700", border: "border-emerald-200/70" },
   { icon: Smartphone, label: "Instant buyer ticket delivery", tone: "bg-sky-50", accent: "text-sky-700", border: "border-sky-200/70" },
   { icon: Users, label: "Live attendee counts", tone: "bg-violet-50", accent: "text-violet-700", border: "border-violet-200/70" },
-  { icon: Wallet, label: "6% fee shown clearly", tone: "bg-amber-50", accent: "text-amber-700", border: "border-amber-200/70" },
+  { icon: Wallet, label: "5% fee shown clearly", tone: "bg-amber-50", accent: "text-amber-700", border: "border-amber-200/70" },
   { icon: ReceiptText, label: "Velocity reconciliation", tone: "bg-cyan-50", accent: "text-cyan-700", border: "border-cyan-200/70" },
   { icon: Megaphone, label: "Email, WhatsApp and SMS tools", tone: "bg-rose-50", accent: "text-rose-700", border: "border-rose-200/70" },
 ]
@@ -205,7 +205,7 @@ export default async function Home() {
           style={{
             background: [
               "linear-gradient(135deg, rgba(246,249,252,0.96) 0%, rgba(255,255,255,0.98) 42%, rgba(238,243,248,0.9) 100%)",
-              "linear-gradient(90deg, rgba(5,112,222,0.06) 0%, transparent 36%, rgba(19,17,50,0.04) 100%)",
+              "linear-gradient(90deg, rgba(5,112,222,0.06) 0%, transparent 35%, rgba(19,17,50,0.04) 100%)",
               "linear-gradient(150deg, rgba(16,185,129,0.1) 0%, transparent 34%, rgba(245,158,11,0.1) 100%)",
               "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(5,112,222,0.045) 100%)",
             ].join(", "),
@@ -247,8 +247,8 @@ export default async function Home() {
           className="absolute inset-x-0 top-0 -z-10 h-[520px] opacity-[0.08]"
           style={{
             backgroundImage: "repeating-linear-gradient(115deg, #0a2540 0 1px, transparent 1px 36px)",
-            maskImage: "linear-gradient(to bottom, black, transparent 76%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black, transparent 76%)",
+            maskImage: "linear-gradient(to bottom, black, transparent 75%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black, transparent 75%)",
           }}
           aria-hidden
         />
