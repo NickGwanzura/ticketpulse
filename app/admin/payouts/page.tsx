@@ -1,9 +1,11 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import {
   Wallet, Clock, CheckCircle2, Send,
   Smartphone, Building2, Inbox, XCircle, Banknote,
 } from "lucide-react"
 import { desc, eq, isNotNull, or } from "drizzle-orm"
+import { auth } from "@/auth"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { db } from "@/db"
@@ -47,42 +49,55 @@ const TABS: { key: PayoutStatus | "all"; label: string }[] = [
   { key: "rejected",  label: "Rejected" },
 ]
 
-type PayoutDisplay = {
-  method: string
-  bankName?: string | null
-  notes?: string | null
-}
-
-function isManualCashPayout(payout: PayoutDisplay) {
-  return payout.bankName?.toLowerCase() === "manual cash payment"
-    || payout.notes?.toLowerCase().includes("manual cash")
-}
-
-function payoutMethodLabel(payout: PayoutDisplay) {
-  if (isManualCashPayout(payout)) return "Manual cash"
+function payoutMethodLabel(payout: { method: string }) {
+  if (payout.method === "cash") return "Manual cash"
   if (payout.method === "ecocash") return "EcoCash"
   return "USD Bank"
 }
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    redirect("/auth/signin")
+  }
+
   const params = await searchParams
   const active = (params.status as PayoutStatus | "all" | undefined) ?? "pending"
 
-  const { payouts: payoutRows, stats } = await getPayouts(active === "all" ? undefined : active)
+  // Wrap data fetching so a single failed query degrades gracefully
+  // instead of blanking the entire admin page.
+  let payoutRows: Awaited<ReturnType<typeof getPayouts>>["payouts"] = []
+  let stats = { pending: 0, approved: 0, processing: 0, paid: 0, held: 0, rejected: 0, failed: 0, cancelled: 0, pendingTotal: 0 }
+  let organizerRows: { id: string; name: string | null; email: string | null }[] = []
+  let eventRows: { id: string; title: string; organizerId: string }[] = []
 
-  const [organizerRows, eventRows] = await Promise.all([
-    db
-      .selectDistinct({ id: users.id, name: users.name, email: users.email })
-      .from(users)
-      .leftJoin(events, eq(events.organizerId, users.id))
-      .where(or(eq(users.role, "organizer"), isNotNull(events.id)))
-      .orderBy(users.name),
-    db
-      .select({ id: events.id, title: events.title, organizerId: events.organizerId })
-      .from(events)
-      .orderBy(desc(events.startsAt))
-      .limit(200),
-  ])
+  try {
+    const result = await getPayouts(active === "all" ? undefined : active)
+    payoutRows = result.payouts
+    stats = result.stats
+  } catch (err) {
+    console.error("[admin/payouts] Failed to load payouts:", err)
+  }
+
+  try {
+    const [orgs, evts] = await Promise.all([
+      db
+        .selectDistinct({ id: users.id, name: users.name, email: users.email })
+        .from(users)
+        .leftJoin(events, eq(events.organizerId, users.id))
+        .where(or(eq(users.role, "organizer"), isNotNull(events.id)))
+        .orderBy(users.name),
+      db
+        .select({ id: events.id, title: events.title, organizerId: events.organizerId })
+        .from(events)
+        .orderBy(desc(events.startsAt))
+        .limit(200),
+    ])
+    organizerRows = orgs
+    eventRows = evts
+  } catch (err) {
+    console.error("[admin/payouts] Failed to load organizers/events:", err)
+  }
 
   const statsCards = [
     { label: "Pending",     value: stats.pending,     icon: Clock,          tone: "text-amber-700",  bg: "bg-amber-50" },
@@ -168,9 +183,22 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                 Event (optional)
                 <select name="eventId" defaultValue="" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
                   <option value="">Not tied to one event</option>
-                  {eventRows.map((event) => (
-                    <option key={event.id} value={event.id}>{event.title}</option>
-                  ))}
+                  {(() => {
+                    // Group events by organizerId for easier pairing
+                    const byOrg = new Map<string, { id: string; title: string }[]>()
+                    for (const e of eventRows) {
+                      const list = byOrg.get(e.organizerId) ?? []
+                      list.push(e)
+                      byOrg.set(e.organizerId, list)
+                    }
+                    return Array.from(byOrg.entries()).map(([orgId, evts]) => (
+                      <optgroup key={orgId} label={organizerRows.find((o) => o.id === orgId)?.name ?? `Organizer ${orgId.slice(0, 8)}`}>
+                        {evts.map((e) => (
+                          <option key={e.id} value={e.id}>{e.title}</option>
+                        ))}
+                      </optgroup>
+                    ))
+                  })()}
                 </select>
               </label>
             </div>
@@ -267,11 +295,11 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         <td className="px-3 py-4">
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                              {isManualCashPayout(p) ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                              {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                               {payoutMethodLabel(p)}
                             </span>
                             <p className="text-[11px] text-ink-3 leading-4">
-                              {isManualCashPayout(p)
+                              {p.method === "cash"
                                 ? p.proofReference
                                 : p.method === "ecocash"
                                 ? p.accountNumber
@@ -374,7 +402,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
-                        {isManualCashPayout(p) ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                        {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                         {payoutMethodLabel(p)} · {p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}
                       </span>
                       <span className="text-[14px] font-bold tracking-tight text-ink">
@@ -382,7 +410,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                       </span>
                     </div>
                     <p className="mt-2 text-[11px] text-ink-3 leading-4">
-                      {isManualCashPayout(p)
+                      {p.method === "cash"
                         ? p.proofReference
                         : p.method === "ecocash"
                         ? p.accountNumber

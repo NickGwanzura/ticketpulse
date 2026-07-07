@@ -791,6 +791,7 @@ export const payoutMethodEnum = pgEnum("payout_method", [
   "ecocash",
   "bank_usd",
   "bank_zar",
+  "cash",
 ])
 
 export const payouts = pgTable("payouts", {
@@ -810,6 +811,7 @@ export const payouts = pgTable("payouts", {
   processedAt: timestamp("processed_at"),
   processedBy: text("processed_by"),
   notes: text("notes"),
+  balanceSnapshot: jsonb("balance_snapshot"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("payouts_user_idx").on(table.userId),

@@ -45,10 +45,11 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
   const [state, formAction, pending] = useActionState(
     async (_prev: unknown, formData: FormData) => {
       try {
-        const result = await requestPayoutAction(formData)
-        if (result.ok) {
-          router.push("/payouts?success=1")
-        }
+        await requestPayoutAction(formData)
+        // The action revalidates on success; redirect to show the result.
+        // If validation failed server-side, the action just revalidates
+        // and returns silently — the form stays visible with the same data.
+        router.push("/payouts?success=1")
       } catch (err) {
         return { error: err instanceof Error ? err.message : "Failed to submit payout request" }
       }

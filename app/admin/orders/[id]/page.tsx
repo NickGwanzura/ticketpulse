@@ -105,6 +105,7 @@ export default async function AdminOrderDetailPage({
       velocityPollStatus: paymentLedger.velocityPollStatus,
       localStatus: paymentLedger.localStatus,
       source: paymentLedger.source,
+      errorMessage: paymentLedger.errorMessage,
       createdAt: paymentLedger.createdAt,
     })
     .from(paymentLedger)
@@ -114,6 +115,17 @@ export default async function AdminOrderDetailPage({
   const customerName = order.guestName ?? buyer?.name ?? "Guest"
   const customerEmail = order.guestEmail ?? buyer?.email ?? "—"
   const paymentAuditIssues = auditOrderPaymentLedger(order, ledgerEntries)
+
+  const isUnsettled = order.status !== "paid" && order.status !== "completed"
+  const latestLedgerEntry = ledgerEntries[0] ?? null
+  const incompleteReason = isUnsettled
+    ? latestLedgerEntry?.errorMessage
+      ?? (latestLedgerEntry?.localStatus === "pending"
+        ? "Payment is still pending confirmation from the gateway."
+        : latestLedgerEntry
+        ? `Last ledger entry is "${latestLedgerEntry.localStatus}" with no error message recorded.`
+        : "No payment ledger entry exists for this order — the customer likely never reached the gateway.")
+    : null
 
   // ── Bound server actions for the client component ───────────────────────
   const recheckPayment = async () => {
@@ -184,6 +196,24 @@ export default async function AdminOrderDetailPage({
             sendTickets,
           }}
         />
+
+        {incompleteReason && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 ring-1 ring-amber-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-700" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold text-amber-900">Why this payment never completed</p>
+                <p className="mt-1 text-[13px] text-amber-800">{incompleteReason}</p>
+                {latestLedgerEntry && (
+                  <p className="mt-2 text-[12px] text-amber-700">
+                    Last attempt: {latestLedgerEntry.createdAt ? formatDateShort(latestLedgerEntry.createdAt) : "—"} via {latestLedgerEntry.processor}
+                    {latestLedgerEntry.velocityPollStatus ? ` (Velocity poll: ${latestLedgerEntry.velocityPollStatus})` : ""}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {paymentAuditIssues.length > 0 && (
           <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 ring-1 ring-rose-100">
@@ -404,7 +434,8 @@ export default async function AdminOrderDetailPage({
                       }`}>
                         {entry.localStatus}
                       </span>
-                      <span className="text-[12px] text-ink-3">{entry.source}</span>
+                      <span className="text-[12px] text-ink-3 capitalize">{entry.processor}</span>
+                      <span className="text-[12px] text-ink-3">via {entry.source}</span>
                       {entry.velocityPollStatus && (
                         <span className="text-[12px] text-ink-3">Velocity {entry.velocityPollStatus}</span>
                       )}
@@ -419,6 +450,11 @@ export default async function AdminOrderDetailPage({
                     <p className="truncate font-mono">invoice: {entry.invoiceId || "—"}</p>
                     <p>{entry.createdAt ? formatDateShort(entry.createdAt) : "—"}</p>
                   </div>
+                  {entry.errorMessage && (
+                    <p className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1.5 text-[12px] text-rose-800">
+                      {entry.errorMessage}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

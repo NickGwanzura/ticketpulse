@@ -122,6 +122,9 @@ export async function getOrganizerPayouts(userId: string) {
   if (session.user.id !== userId && session.user.role !== "admin") {
     throw new Error("Unauthorized")
   }
+  // Note: This throw is intentional — getOrganizerPayouts is called during
+  // server-component render (app/payouts/page.tsx) which already has its
+  // own session guard + redirect(). The throw is a safety net.
 
   const payoutRows = await db
     .select({
@@ -135,6 +138,7 @@ export async function getOrganizerPayouts(userId: string) {
       bankName: payouts.bankName,
       proofReference: payouts.proofReference,
       notes: payouts.notes,
+      balanceSnapshot: payouts.balanceSnapshot,
       rejectionReason: payouts.rejectionReason,
       createdAt: payouts.createdAt,
       processedAt: payouts.processedAt,
@@ -148,9 +152,9 @@ export async function getOrganizerPayouts(userId: string) {
 
   const stats = await db
     .select({
-      pending: sql<number>`count(case when ${payouts.status} = 'pending' then 1 end)`,
-      paid: sql<number>`count(case when ${payouts.status} = 'paid' then 1 end)`,
-      totalPaid: sql<number>`coalesce(sum(case when ${payouts.status} = 'paid' then ${payouts.amount} else 0 end), 0)`,
+      pending: sql<string>`count(case when ${payouts.status} = 'pending' then 1 end)`.mapWith(Number),
+      paid: sql<string>`count(case when ${payouts.status} = 'paid' then 1 end)`.mapWith(Number),
+      totalPaid: sql<string>`coalesce(sum(case when ${payouts.status} = 'paid' then ${payouts.amount} else 0 end), 0)`.mapWith(Number),
     })
     .from(payouts)
     .where(eq(payouts.userId, userId))
@@ -205,14 +209,19 @@ export async function getOrganizerBalance(userId: string) {
   if (session.user.id !== userId && session.user.role !== "admin") {
     throw new Error("Unauthorized")
   }
+  // Note: This throw is intentional — getOrganizerBalance is called during
+  // server-component render (app/payouts/page.tsx) which has its own session
+  // guard + redirect(). The throw is a safety net.
 
   return fetchBalanceForUser(userId)
 }
 
-export async function requestPayoutAction(formData: FormData) {
+export async function requestPayoutAction(formData: FormData): Promise<void> {
   const session = await auth()
   if (!session?.user) {
-    throw new Error("Unauthorized")
+    log.warn("[request-payout] Unauthorized")
+    revalidatePath("/payouts")
+    return
   }
 
   const userId = session.user.id
@@ -224,52 +233,34 @@ export async function requestPayoutAction(formData: FormData) {
   const accountName = ((formData.get("accountName") as string) ?? "").trim()
   const bankName = ((formData.get("bankName") as string) ?? "").trim()
 
-  if (!isPayoutMethod(method)) {
-    throw new Error("Please choose a valid payout method")
-  }
-
-  if (currency !== "USD") {
-    throw new Error("Payout requests are currently available in USD only")
-  }
-
-  // Validate amount
-  if (!amount || amount <= 0 || isNaN(amount)) {
-    throw new Error("Invalid amount")
-  }
-
-  if (amount > 100000) {
-    throw new Error("Maximum payout amount is $100,000")
-  }
-
-  if (amount < 1) {
-    throw new Error("Minimum payout amount is $1.00")
-  }
+  if (!isPayoutMethod(method)) { log.warn("[request-payout] Invalid method"); revalidatePath("/payouts"); return }
+  if (currency !== "USD") { log.warn("[request-payout] Non-USD currency"); revalidatePath("/payouts"); return }
+  if (!amount || amount <= 0 || isNaN(amount)) { log.warn("[request-payout] Invalid amount"); revalidatePath("/payouts"); return }
+  if (amount > 100000) { log.warn("[request-payout] Amount exceeds max"); revalidatePath("/payouts"); return }
+  if (amount < 1) { log.warn("[request-payout] Amount below min"); revalidatePath("/payouts"); return }
 
   if (method === "ecocash") {
     if (!ecocashNumber || !/^(\+?263|0)?7[1789]\d{7}$/.test(ecocashNumber.replace(/\s/g, ""))) {
-      throw new Error("Please enter a valid EcoCash number (e.g. 0771 234 567)")
+      log.warn("[request-payout] Invalid EcoCash number"); revalidatePath("/payouts"); return
     }
   } else {
-    if (!accountNumber || accountNumber.length < 5) {
-      throw new Error("Please enter a valid account number")
-    }
-    if (!accountName || accountName.trim().length < 2) {
-      throw new Error("Please enter the full account holder name")
-    }
-    if (!bankName || bankName.trim().length < 2) {
-      throw new Error("Please enter the bank name")
-    }
+    if (!accountNumber || accountNumber.length < 5) { log.warn("[request-payout] Invalid account number"); revalidatePath("/payouts"); return }
+    if (!accountName || accountName.trim().length < 2) { log.warn("[request-payout] Missing account name"); revalidatePath("/payouts"); return }
+    if (!bankName || bankName.trim().length < 2) { log.warn("[request-payout] Missing bank name"); revalidatePath("/payouts"); return }
   }
 
-  // Check available balance — avoids a second auth() call vs getOrganizerBalance
-  const balance = await fetchBalanceForUser(userId)
+  // Check available balance
+  let balance: Awaited<ReturnType<typeof fetchBalanceForUser>>
+  try {
+    balance = await fetchBalanceForUser(userId)
+  } catch (err) {
+    log.error("[request-payout] Balance fetch failed", { error: String(err) })
+    revalidatePath("/payouts")
+    return
+  }
   const { availableBalance } = balance
-  if (availableBalance <= 0) {
-    throw new Error("No funds available for payout")
-  }
-  if (amount > availableBalance) {
-    throw new Error("Insufficient balance")
-  }
+  if (availableBalance <= 0) { log.warn("[request-payout] No funds available"); revalidatePath("/payouts"); return }
+  if (amount > availableBalance) { log.warn("[request-payout] Insufficient balance"); revalidatePath("/payouts"); return }
 
   const [organizer] = await db
     .select({ name: users.name, email: users.email })
@@ -289,58 +280,79 @@ export async function requestPayoutAction(formData: FormData) {
 
   // Insert the payout and audit log atomically. The duplicate check runs inside
   // the transaction to close the TOCTOU window between the balance read and insert.
-  const inserted = await db.transaction(async (tx) => {
-    const [existingPending] = await tx
-      .select({ id: payouts.id })
-      .from(payouts)
-      .where(
-        and(
-          eq(payouts.userId, userId),
-          inArray(payouts.status, ACTIVE_PAYOUT_STATUSES)
+  // A partial unique index (payouts_one_active_per_user) also catches the race
+  // at READ COMMITTED; the unique-violation check below covers that path too.
+  let inserted: { id: string } | undefined
+  try {
+    inserted = await db.transaction(async (tx) => {
+      const [existingPending] = await tx
+        .select({ id: payouts.id })
+        .from(payouts)
+        .where(
+          and(
+            eq(payouts.userId, userId),
+            inArray(payouts.status, ACTIVE_PAYOUT_STATUSES)
+          )
         )
-      )
-      .limit(1)
+        .limit(1)
 
-    if (existingPending) {
-      throw new Error("You already have a pending payout request. Please wait for it to be processed before requesting another.")
-    }
+      if (existingPending) {
+        throw new Error("ALREADY_PENDING")
+      }
 
-    const [result] = await tx
-      .insert(payouts)
-      .values({
-        userId,
-        amount: cleanAmount.toFixed(2),
-        currency,
-        method,
-        status: "pending",
-        accountNumber: method === "ecocash" ? ecocashNumber : accountNumber,
-        accountName: method === "ecocash" ? organizer?.name ?? undefined : accountName,
-        bankName: method === "ecocash" ? "EcoCash" : bankName,
-        notes: JSON.stringify({
-          grossRevenue: Number(balance.grossRevenue.toFixed(2)),
-          platformFeePercent: PLATFORM_FEE_PERCENT,
-          platformFee: balance.platformFee,
-          netRevenue: balance.totalEarned,
-          paidOut: balance.totalPaidOut,
-          activePending: balance.pendingTotal,
-          availableBeforeRequest: availableBalance,
-          confirmedOrderCount: balance.confirmedOrderCount,
-          confirmedTicketCount: balance.confirmedTicketCount,
-          destination,
-        }),
+      const [result] = await tx
+        .insert(payouts)
+        .values({
+          userId,
+          amount: cleanAmount.toFixed(2),
+          currency,
+          method,
+          status: "pending",
+          accountNumber: method === "ecocash" ? ecocashNumber : accountNumber,
+          accountName: method === "ecocash" ? organizer?.name ?? undefined : accountName,
+          bankName: method === "ecocash" ? "EcoCash" : bankName,
+          balanceSnapshot: {
+            grossRevenue: Number(balance.grossRevenue.toFixed(2)),
+            platformFeePercent: PLATFORM_FEE_PERCENT,
+            platformFee: balance.platformFee,
+            netRevenue: balance.totalEarned,
+            paidOut: balance.totalPaidOut,
+            activePending: balance.pendingTotal,
+            availableBeforeRequest: availableBalance,
+            confirmedOrderCount: balance.confirmedOrderCount,
+            confirmedTicketCount: balance.confirmedTicketCount,
+            destination,
+          },
+        })
+        .returning({ id: payouts.id })
+
+      await tx.insert(payoutAuditLog).values({
+        payoutId: result.id,
+        action: "requested",
+        toStatus: "pending",
+        performedBy: session.user.email ?? userId,
+        notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested via ${methodName}. Gross tickets ${balance.grossRevenue.toFixed(2)} less ${PLATFORM_FEE_PERCENT}% fee.`,
       })
-      .returning({ id: payouts.id })
 
-    await tx.insert(payoutAuditLog).values({
-      payoutId: result.id,
-      action: "requested",
-      toStatus: "pending",
-      performedBy: session.user.email ?? userId,
-      notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested via ${methodName}. Gross tickets ${balance.grossRevenue.toFixed(2)} less ${PLATFORM_FEE_PERCENT}% fee.`,
+      return result
     })
+  } catch (txErr) {
+    const message = String(txErr)
+    if (message === "ALREADY_PENDING" || message.includes("unique") || message.includes("duplicate")) {
+      log.warn("[request-payout] Already pending", { userId })
+      revalidatePath("/payouts")
+      return
+    }
+    log.error("[request-payout] Transaction failed", { error: String(txErr) })
+    revalidatePath("/payouts")
+    return
+  }
 
-    return result
-  })
+  if (!inserted) {
+    log.warn("[request-payout] Insert returned no id")
+    revalidatePath("/payouts")
+    return
+  }
 
   const baseUrl = getBaseUrl()
   const emailArgs = {
@@ -385,5 +397,4 @@ export async function requestPayoutAction(formData: FormData) {
   log.info("Payout requested", { userId, amount: cleanAmount, currency, method, payoutId: inserted.id })
   revalidatePath("/payouts")
   revalidatePath("/admin/payouts")
-  return { ok: true, payoutId: inserted.id }
 }

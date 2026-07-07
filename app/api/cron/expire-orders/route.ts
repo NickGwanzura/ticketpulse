@@ -6,7 +6,7 @@ import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 import { sendEmail } from "@/lib/email"
 import { pollTransaction, normalizeVelocityPollResponse } from "@/services/velocity"
-import type { VelocityOrderMetadata } from "@/types/velocity"
+import type { NormalizedPollResponse, VelocityOrderMetadata } from "@/types/velocity"
 
 export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
@@ -72,16 +72,19 @@ export async function POST(request: Request) {
     // confirmed yet. This acts as a last-resort safety net in case
     // recheck-velocity missed it. On poll failure we skip (safer than expiring
     // a potentially paid order).
+    let livePoll: NormalizedPollResponse | null = null
+    let livePollError: string | null = null
+
     if (velocityMeta?.transactionTrace) {
       try {
         const pollResult = await pollTransaction(velocityMeta.transactionTrace)
-        const normalized = normalizeVelocityPollResponse(pollResult)
+        livePoll = normalizeVelocityPollResponse(pollResult)
 
-        if (normalized.localStatus === "PAID") {
+        if (livePoll.localStatus === "PAID") {
           log.warn("cron/expire-orders — live poll shows PAID, skipping expiry (recheck-velocity will finalize)", {
             orderId: order.id,
             transactionTrace: velocityMeta.transactionTrace,
-            pollStatus: normalized.velocityPollStatus,
+            pollStatus: livePoll.velocityPollStatus,
           })
           skippedVelocity.push(order.id)
           continue
@@ -89,8 +92,8 @@ export async function POST(request: Request) {
 
         log.info("cron/expire-orders — live poll confirmed not paid, proceeding with expiry", {
           orderId: order.id,
-          localStatus: normalized.localStatus,
-          pollStatus: normalized.velocityPollStatus,
+          localStatus: livePoll.localStatus,
+          pollStatus: livePoll.velocityPollStatus,
         })
       } catch (pollErr) {
         log.warn("cron/expire-orders — live poll failed, skipping expiry to be safe", {
@@ -101,6 +104,8 @@ export async function POST(request: Request) {
         skippedVelocity.push(order.id)
         continue
       }
+    } else {
+      livePollError = "No Velocity transaction trace recorded — buyer likely never reached the gateway."
     }
 
     // Determine whether inventory was reserved for this order.
@@ -147,6 +152,15 @@ export async function POST(request: Request) {
       )
     }
 
+    const reasonParts = ["Order expired by cron"]
+    if (livePoll) {
+      reasonParts.push(
+        `— live poll: pollStatus=${livePoll.velocityPollStatus ?? "missing"}, paymentStatus=${livePoll.velocityPaymentStatus ?? "missing"}`,
+      )
+    } else if (livePollError) {
+      reasonParts.push(`— ${livePollError}`)
+    }
+
     await db.insert(paymentLedger).values({
       orderId: order.id,
       eventId: order.eventId,
@@ -155,10 +169,11 @@ export async function POST(request: Request) {
       amount: order.totalAmount,
       currency: order.currency ?? "USD",
       processor: "velocity",
-      velocityPollStatus: velocityMeta?.pollStatus ?? "UNKNOWN",
+      velocityPollStatus: livePoll?.velocityPollStatus ?? velocityMeta?.pollStatus ?? "UNKNOWN",
       localStatus: "expired",
       source: "cron",
-      errorMessage: "Order expired by cron",
+      rawPayload: livePoll?.rawResponse ?? undefined,
+      errorMessage: reasonParts.join(" "),
     })
   }
 

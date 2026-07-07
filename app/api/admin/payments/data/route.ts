@@ -20,6 +20,7 @@ export type PaymentsApiResponse = {
   methods: Array<{
     method: string | null
     paid: number
+    failed: number
     total: number
     revenue: number
   }>
@@ -34,6 +35,7 @@ export type PaymentsApiResponse = {
     source: string | null
     createdAt: string | null
     invoiceId: string | null
+    errorMessage: string | null
   }>
   sparkPoints: number[]
 }
@@ -91,6 +93,7 @@ export async function GET(request: Request) {
     db.select({
       method: orders.paymentMethod,
       paid: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} IN ('paid', 'completed'))::int`,
+      failed: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} IN ('cancelled', 'expired'))::int`,
       total: sql<number>`COUNT(*)::int`,
       revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}) FILTER (WHERE ${orders.status} IN ('paid', 'completed')), 0)`,
     }).from(orders)
@@ -117,6 +120,7 @@ export async function GET(request: Request) {
       source: paymentLedger.source,
       createdAt: paymentLedger.createdAt,
       invoiceId: paymentLedger.invoiceId,
+      errorMessage: paymentLedger.errorMessage,
     }).from(paymentLedger)
       .orderBy(desc(paymentLedger.createdAt))
       .limit(50),
@@ -160,6 +164,7 @@ export async function GET(request: Request) {
     methods: methodRows.map((m) => ({
       method: m.method,
       paid: m.paid,
+      failed: m.failed,
       total: m.total,
       revenue: Number(m.revenue),
     })),

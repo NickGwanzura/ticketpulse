@@ -44,6 +44,7 @@ type LedgerRow = {
   velocityPollStatus: string | null
   localStatus: string
   source: string
+  errorMessage: string | null
   createdAt: Date | null
 }
 
@@ -103,6 +104,8 @@ export type VelocityReconciliationOrder = {
   processor: string | null
   localStatus: string | null
   velocityPollStatus: string | null
+  failureReason: string | null
+  failureCategory: string | null
   createdAt: Date | null
   issues: VelocityReconciliationIssue[]
 }
@@ -130,6 +133,7 @@ export type VelocityReconciliationReport = {
   events: VelocityReconciliationEvent[]
   orders: VelocityReconciliationOrder[]
   settlements: VelocitySettlementReport[]
+  failureBreakdown: Array<{ category: string; label: string; count: number }>
 }
 
 export type VelocitySettlementReport = {
@@ -188,6 +192,24 @@ function issue(
   return { severity, code, title, detail }
 }
 
+const FAILURE_CATEGORY_LABELS: Record<string, string> = {
+  no_gateway_attempt: "Never reached Velocity gateway",
+  poll_pending: "Velocity poll still pending",
+  poll_failed: "Velocity poll failed",
+  poll_unknown: "Velocity poll status unknown",
+  order_pending: "Order pending, no error recorded",
+  other: "Other / unlabeled",
+}
+
+function categorizeFailure(entry: LedgerRow | null): string {
+  if (!entry) return "no_gateway_attempt"
+  if (entry.velocityPollStatus === "PENDING") return "poll_pending"
+  if (entry.velocityPollStatus === "FAILED") return "poll_failed"
+  if (entry.velocityPollStatus === "UNKNOWN") return "poll_unknown"
+  if (entry.localStatus === "pending") return "order_pending"
+  return "other"
+}
+
 function csvCell(value: unknown): string {
   const raw = value instanceof Date ? value.toISOString() : String(value ?? "")
   return /[",\n]/.test(raw) ? `"${raw.replaceAll('"', '""')}"` : raw
@@ -242,6 +264,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
             velocityPollStatus: paymentLedger.velocityPollStatus,
             localStatus: paymentLedger.localStatus,
             source: paymentLedger.source,
+            errorMessage: paymentLedger.errorMessage,
             createdAt: paymentLedger.createdAt,
           })
           .from(paymentLedger)
@@ -413,9 +436,20 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       ))
     }
 
+    const allOrderLedger = ledgerByOrder.get(order.id) ?? []
+    const latestLedgerEntry = [...allOrderLedger].sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))[0] ?? null
     const mainLedger = settledLedger[0] ?? ledger[0] ?? null
     const eventTitle = order.eventTitle ?? "Unknown event"
     const paidOrderRevenue = paid ? orderTotal : 0
+    const failureReason = paid
+      ? null
+      : latestLedgerEntry?.errorMessage
+        ?? (latestLedgerEntry?.localStatus === "pending"
+          ? "Payment still pending confirmation from Velocity."
+          : latestLedgerEntry
+          ? `Last ledger entry is "${latestLedgerEntry.localStatus}" with no error message recorded.`
+          : "No payment ledger entry — buyer likely never reached the Velocity gateway.")
+    const failureCategory = paid ? null : categorizeFailure(latestLedgerEntry)
 
     const eventReport = eventMap.get(order.eventId) ?? {
       eventId: order.eventId,
@@ -464,6 +498,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       processor: mainLedger?.processor ?? null,
       localStatus: mainLedger?.localStatus ?? null,
       velocityPollStatus: mainLedger?.velocityPollStatus ?? velocity?.pollStatus ?? null,
+      failureReason,
+      failureCategory,
       createdAt: order.paidAt ?? order.completedAt ?? order.createdAt,
       issues,
     })
@@ -563,6 +599,15 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     velocityUnsettled: money(totalsBase.velocityReceived - velocityPaidToTicketPulse),
   }
 
+  const failureCounts = new Map<string, number>()
+  for (const order of orderReports) {
+    if (!order.failureCategory) continue
+    failureCounts.set(order.failureCategory, (failureCounts.get(order.failureCategory) ?? 0) + 1)
+  }
+  const failureBreakdown = [...failureCounts.entries()]
+    .map(([category, count]) => ({ category, label: FAILURE_CATEGORY_LABELS[category] ?? category, count }))
+    .sort((a, b) => b.count - a.count)
+
   return {
     generatedAt: new Date(),
     feeRate: PLATFORM_FEE_RATE,
@@ -570,6 +615,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     events: eventsReport,
     orders: orderReports,
     settlements,
+    failureBreakdown,
   }
 }
 
@@ -590,6 +636,7 @@ export function velocityReconciliationToCsv(report: VelocityReconciliationReport
       "invoice_id",
       "local_status",
       "velocity_poll_status",
+      "failure_reason",
       "issues",
       "checked_at",
     ],
@@ -608,6 +655,7 @@ export function velocityReconciliationToCsv(report: VelocityReconciliationReport
       order.invoiceId ?? "",
       order.localStatus ?? "",
       order.velocityPollStatus ?? "",
+      order.failureReason ?? "",
       order.issues.map((item) => `${item.severity}:${item.code}`).join("; "),
       report.generatedAt,
     ]),

@@ -38,19 +38,8 @@ const STATUS_LABEL: Record<PayoutStatus, string> = {
   cancelled: "Cancelled",
 }
 
-type PayoutDisplay = {
-  method: string
-  bankName?: string | null
-  notes?: string | null
-}
-
-function isManualCashPayout(payout: PayoutDisplay) {
-  return payout.bankName?.toLowerCase() === "manual cash payment"
-    || payout.notes?.toLowerCase().includes("manual cash")
-}
-
-function payoutMethodLabel(payout: PayoutDisplay) {
-  if (isManualCashPayout(payout)) return "Manual cash"
+function payoutMethodLabel(payout: { method: string }) {
+  if (payout.method === "cash") return "Manual cash"
   if (payout.method === "ecocash") return "EcoCash"
   return "USD Bank"
 }
@@ -233,7 +222,7 @@ export default async function PayoutsDashboardPage() {
                         </td>
                         <td className="px-3 py-4">
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                            {isManualCashPayout(p) ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                            {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                             {payoutMethodLabel(p)}
                           </span>
                         </td>
@@ -269,7 +258,7 @@ export default async function PayoutsDashboardPage() {
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
-                        {isManualCashPayout(p) ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+                        {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
                         {payoutMethodLabel(p)}
                       </span>
                       <span className="text-[14px] font-bold tracking-tight text-ink">

@@ -211,7 +211,7 @@ function EventsTable({ events }: { events: VelocityReconciliationEvent[] }) {
 }
 
 function OrdersTable({ orders }: { orders: VelocityReconciliationOrder[] }) {
-  const widths = [14, 15, 7, 7, 7, 7, 21, 22]
+  const widths = [12, 13, 7, 6, 6, 6, 15, 17, 18]
   return (
     <View style={styles.table}>
       <Row
@@ -225,6 +225,7 @@ function OrdersTable({ orders }: { orders: VelocityReconciliationOrder[] }) {
           { text: "Velocity total", num: true },
           { text: "Variance", num: true },
           { text: "Transaction trace" },
+          { text: "Failure reason" },
           { text: "Issues" },
         ]}
       />
@@ -243,6 +244,7 @@ function OrdersTable({ orders }: { orders: VelocityReconciliationOrder[] }) {
               { text: fmt(order.velocityLedgerTotal), num: true },
               { text: fmt(order.variance), num: true, tone: order.variance === 0 ? "ok" : "critical" },
               { text: order.transactionTrace ?? "—", mono: true },
+              { text: order.failureReason ?? "—", tone: order.failureReason ? "warning" : undefined },
               {
                 text: order.issues.length === 0 ? "OK" : order.issues.map((issue) => issue.code).join(", "),
                 mono: order.issues.length > 0,

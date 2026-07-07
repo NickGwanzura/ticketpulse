@@ -17,11 +17,11 @@ import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
 import OrderActionsDropdown from "@/app/admin/_components/OrderActionsDropdown"
-import { desc, eq, or, like, and, sql } from "drizzle-orm"
+import { desc, eq, or, like, and, sql, inArray } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events } from "@/db/schema"
+import { orders, events, paymentLedger } from "@/db/schema"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 import PageHeader from "@/components/dashboard/PageHeader"
@@ -250,6 +250,30 @@ export default async function AdminOrdersPage({
   const customerName = (row: (typeof orderRows)[number]) =>
     row.guestName ?? row.guestEmail?.split("@")[0] ?? "—"
 
+  // ── Failure reason for unpaid orders (latest ledger row per order) ──────
+  const unpaidOrderIds = orderRows
+    .filter((o) => o.status !== "paid" && o.status !== "completed")
+    .map((o) => o.id)
+
+  const ledgerRows = unpaidOrderIds.length > 0
+    ? await db
+        .select({
+          orderId: paymentLedger.orderId,
+          errorMessage: paymentLedger.errorMessage,
+          localStatus: paymentLedger.localStatus,
+          createdAt: paymentLedger.createdAt,
+        })
+        .from(paymentLedger)
+        .where(inArray(paymentLedger.orderId, unpaidOrderIds))
+        .orderBy(desc(paymentLedger.createdAt))
+    : []
+
+  const reasonByOrder = new Map<string, string>()
+  for (const row of ledgerRows) {
+    if (reasonByOrder.has(row.orderId)) continue
+    reasonByOrder.set(row.orderId, row.errorMessage ?? `Last ledger status: ${row.localStatus}`)
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="tp-fade-up">
@@ -403,6 +427,14 @@ export default async function AdminOrdersPage({
                           <span className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}>
                             {STATUS_LABEL[o.status ?? ""] ?? o.status}
                           </span>
+                          {reasonByOrder.has(o.id) && (
+                            <p
+                              className="mt-1 max-w-[160px] truncate text-[10px] text-rose-600"
+                              title={reasonByOrder.get(o.id)}
+                            >
+                              {reasonByOrder.get(o.id)}
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           <PaymentBadge status={o.status} />
@@ -511,6 +543,9 @@ export default async function AdminOrdersPage({
                         </span>
                       </div>
                     </div>
+                    {reasonByOrder.has(o.id) && (
+                      <p className="text-[11px] text-rose-600 truncate">{reasonByOrder.get(o.id)}</p>
+                    )}
                     {o.guestEmail && (
                       <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                     )}

@@ -503,6 +503,28 @@ export default async function AdminReconciliationPage({
             </div>
           </div>
 
+          {velocityReport.failureBreakdown.length > 0 && (
+            <div className="rounded-2xl border border-line bg-paper p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50">
+                  <AlertTriangle size={15} className="text-rose-700" />
+                </span>
+                <div>
+                  <p className="text-[14px] font-bold tracking-tight text-ink">Why Velocity orders never completed</p>
+                  <p className="text-[12px] text-ink-3">Breakdown of unpaid Velocity orders by failure cause — spot systemic gateway issues at a glance.</p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {velocityReport.failureBreakdown.map((item) => (
+                  <div key={item.category} className="rounded-xl border border-line bg-paper-2 px-4 py-3">
+                    <p className="text-[20px] font-bold tabular-nums text-ink">{item.count}</p>
+                    <p className="mt-0.5 text-[12px] text-ink-2">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="overflow-hidden rounded-2xl border border-line bg-paper">
             <div className="flex items-center justify-between border-b border-line bg-paper-2 px-5 py-3">
               <div>

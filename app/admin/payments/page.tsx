@@ -60,6 +60,7 @@ export default async function AdminPaymentsPage() {
     db.select({
       method: orders.paymentMethod,
       paid: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} IN ('paid', 'completed'))::int`,
+      failed: sql<number>`COUNT(*) FILTER (WHERE ${orders.status} IN ('cancelled', 'expired'))::int`,
       total: sql<number>`COUNT(*)::int`,
       revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}) FILTER (WHERE ${orders.status} IN ('paid', 'completed')), 0)`,
     }).from(orders)
@@ -86,6 +87,7 @@ export default async function AdminPaymentsPage() {
       source: paymentLedger.source,
       createdAt: paymentLedger.createdAt,
       invoiceId: paymentLedger.invoiceId,
+      errorMessage: paymentLedger.errorMessage,
     }).from(paymentLedger)
       .orderBy(desc(paymentLedger.createdAt))
       .limit(50),
@@ -127,6 +129,7 @@ export default async function AdminPaymentsPage() {
     methods: methodRows.map((m) => ({
       method: m.method,
       paid: m.paid,
+      failed: m.failed,
       total: m.total,
       revenue: Number(m.revenue),
     })),

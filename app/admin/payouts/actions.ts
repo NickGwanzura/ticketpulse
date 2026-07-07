@@ -51,6 +51,9 @@ export async function getPayouts(status?: string) {
   if (!session?.user || session.user.role !== "admin") {
     throw new Error("Unauthorized")
   }
+  // Session auth is intentionally still a throw here because this is a
+  // server-data function called *during* render. The page now guards with
+  // its own redirect() before calling this, so the throw is a safety net.
 
   const conditions: ReturnType<typeof eq>[] = []
   if (status && status !== "all" && VALID_STATUSES.includes(status as any)) {
@@ -88,18 +91,19 @@ export async function getPayouts(status?: string) {
     .orderBy(desc(payouts.createdAt))
     .limit(200)
 
-  // Stats
+  // Stats — count() returns bigint which the driver hands back as a string;
+  // mapWith(Number) ensures correct numeric comparisons and arithmetic.
   const statsResult = await db
     .select({
-      pending: sql<number>`count(case when ${payouts.status} = 'pending' then 1 end)`,
-      approved: sql<number>`count(case when ${payouts.status} = 'approved' then 1 end)`,
-      processing: sql<number>`count(case when ${payouts.status} = 'processing' then 1 end)`,
-      paid: sql<number>`count(case when ${payouts.status} = 'paid' then 1 end)`,
-      held: sql<number>`count(case when ${payouts.status} = 'held' then 1 end)`,
-      rejected: sql<number>`count(case when ${payouts.status} = 'rejected' then 1 end)`,
-      failed: sql<number>`count(case when ${payouts.status} = 'failed' then 1 end)`,
-      cancelled: sql<number>`count(case when ${payouts.status} = 'cancelled' then 1 end)`,
-      pendingTotal: sql<number>`coalesce(sum(case when ${payouts.status} = 'pending' then ${payouts.amount} else 0 end), 0)`,
+      pending: sql<string>`count(case when ${payouts.status} = 'pending' then 1 end)`.mapWith(Number),
+      approved: sql<string>`count(case when ${payouts.status} = 'approved' then 1 end)`.mapWith(Number),
+      processing: sql<string>`count(case when ${payouts.status} = 'processing' then 1 end)`.mapWith(Number),
+      paid: sql<string>`count(case when ${payouts.status} = 'paid' then 1 end)`.mapWith(Number),
+      held: sql<string>`count(case when ${payouts.status} = 'held' then 1 end)`.mapWith(Number),
+      rejected: sql<string>`count(case when ${payouts.status} = 'rejected' then 1 end)`.mapWith(Number),
+      failed: sql<string>`count(case when ${payouts.status} = 'failed' then 1 end)`.mapWith(Number),
+      cancelled: sql<string>`count(case when ${payouts.status} = 'cancelled' then 1 end)`.mapWith(Number),
+      pendingTotal: sql<string>`coalesce(sum(case when ${payouts.status} = 'pending' then ${payouts.amount} else 0 end), 0)`.mapWith(Number),
     })
     .from(payouts)
 
@@ -118,10 +122,12 @@ export async function getPayouts(status?: string) {
  * immediately "paid" so balances and reconciliation reflect the money that
  * has actually left TicketPulse.
  */
-export async function recordManualPayoutAction(formData: FormData) {
+export async function recordManualPayoutAction(formData: FormData): Promise<void> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
+    log.warn("[manual-payout] Unauthorized attempt")
+    revalidatePath("/admin/payouts")
+    return
   }
 
   const userId = ((formData.get("userId") as string) ?? "").trim()
@@ -133,21 +139,21 @@ export async function recordManualPayoutAction(formData: FormData) {
   const proofReference = ((formData.get("proofReference") as string) ?? "").trim()
   const notes = ((formData.get("notes") as string) ?? "").trim()
 
-  if (!userId) throw new Error("Select the organiser who was paid")
-  if (!amount || Number.isNaN(amount) || amount <= 0) throw new Error("Amount must be greater than zero")
-  if (amount > 100000) throw new Error("Maximum payout amount is $100,000")
-  if (!["ecocash", "bank_usd", "cash"].includes(method)) throw new Error("Choose a valid payment method")
-  if (!proofReference || proofReference.length < 3) throw new Error("Enter a reference for the manual payment (receipt, transfer ref, or note)")
+  if (!userId) { log.warn("[manual-payout] Missing userId"); revalidatePath("/admin/payouts"); return }
+  if (!amount || Number.isNaN(amount) || amount <= 0) { log.warn("[manual-payout] Invalid amount"); revalidatePath("/admin/payouts"); return }
+  if (amount > 100000) { log.warn("[manual-payout] Amount exceeds max"); revalidatePath("/admin/payouts"); return }
+  if (!["ecocash", "bank_usd", "cash"].includes(method)) { log.warn("[manual-payout] Invalid method"); revalidatePath("/admin/payouts"); return }
+  if (!proofReference || proofReference.length < 3) { log.warn("[manual-payout] Missing reference"); revalidatePath("/admin/payouts"); return }
 
   const paidDate = paidDateRaw ? new Date(paidDateRaw) : new Date()
-  if (Number.isNaN(paidDate.getTime())) throw new Error("Invalid payment date")
+  if (Number.isNaN(paidDate.getTime())) { log.warn("[manual-payout] Invalid date"); revalidatePath("/admin/payouts"); return }
 
   const [organizer] = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
-  if (!organizer) throw new Error("Organiser not found")
+  if (!organizer) { log.warn("[manual-payout] Organiser not found"); revalidatePath("/admin/payouts"); return }
 
   if (eventId) {
     const [event] = await db
@@ -155,320 +161,398 @@ export async function recordManualPayoutAction(formData: FormData) {
       .from(events)
       .where(eq(events.id, eventId))
       .limit(1)
-    if (!event) throw new Error("Event not found")
-    if (event.organizerId !== userId) throw new Error("That event does not belong to the selected organiser")
+    if (!event) { log.warn("[manual-payout] Event not found"); revalidatePath("/admin/payouts"); return }
+    if (event.organizerId !== userId) { log.warn("[manual-payout] Event doesn't belong to organizer"); revalidatePath("/admin/payouts"); return }
   }
 
   const admin = session.user.email ?? session.user.id
   const cleanAmount = Number(amount.toFixed(2))
-  const isCash = method === "cash"
 
-  const inserted = await db.transaction(async (tx) => {
-    const [result] = await tx
-      .insert(payouts)
-      .values({
-        userId,
-        eventId: eventId || null,
-        amount: cleanAmount.toFixed(2),
-        currency,
-        method: isCash ? "bank_usd" : (method as "ecocash" | "bank_usd"),
-        status: "paid",
-        accountName: organizer.name ?? undefined,
-        bankName: isCash ? "Manual cash payment" : undefined,
-        proofReference,
-        reviewedBy: admin,
-        processedAt: paidDate,
-        processedBy: admin,
-        notes: ["Manual payout recorded by admin", notes].filter(Boolean).join(" — "),
-      })
-      .returning({ id: payouts.id })
+  try {
+    const inserted = await db.transaction(async (tx) => {
+      const [result] = await tx
+        .insert(payouts)
+        .values({
+          userId,
+          eventId: eventId || null,
+          amount: cleanAmount.toFixed(2),
+          currency,
+          method: method as "ecocash" | "bank_usd" | "cash",
+          status: "paid",
+          accountName: organizer.name ?? undefined,
+          proofReference,
+          reviewedBy: admin,
+          processedAt: paidDate,
+          processedBy: admin,
+          notes: ["Manual payout recorded by admin", notes].filter(Boolean).join(" — "),
+        })
+        .returning({ id: payouts.id })
 
-    await createAuditLog({
-      payoutId: result.id,
-      action: "recorded_manual",
-      toStatus: "paid",
-      performedBy: admin,
-      notes: `Manual payout of ${cleanAmount.toFixed(2)} ${currency} recorded (paid ${paidDate.toISOString().slice(0, 10)}). Ref: ${proofReference}`,
-    }, tx)
+      await createAuditLog({
+        payoutId: result.id,
+        action: "recorded_manual",
+        toStatus: "paid",
+        performedBy: admin,
+        notes: `Manual payout of ${cleanAmount.toFixed(2)} ${currency} recorded (paid ${paidDate.toISOString().slice(0, 10)}). Ref: ${proofReference}`,
+      }, tx)
 
-    return result
-  })
+      return result
+    })
 
-  log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
+    log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
+  } catch (err) {
+    log.error("[manual-payout] Failed to record", { error: String(err) })
+  }
+
   revalidatePath("/admin/payouts")
   revalidatePath("/admin/reconciliation")
   revalidatePath("/payouts")
 }
 
-export async function approvePayoutAction(payoutId: string) {
+export async function approvePayoutAction(payoutId: string): Promise<void> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
+    log.warn("[approve-payout] Unauthorized", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
   }
 
-  const [payout] = await db
-    .select({ id: payouts.id, status: payouts.status, amount: payouts.amount, currency: payouts.currency, userId: payouts.userId })
-    .from(payouts)
-    .where(eq(payouts.id, payoutId))
-    .limit(1)
-
-  if (!payout) throw new Error("Payout not found")
-  if (payout.status !== "pending") {
-    throw new Error(`Cannot approve payout in "${payout.status}" status`)
-  }
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payouts)
-      .set({
-        status: "approved",
-        reviewedBy: session.user.email ?? session.user.id,
-      })
+  let payout: { id: string; status: string; amount: string; currency: string | null; userId: string } | undefined
+  try {
+    const [row] = await db
+      .select({ id: payouts.id, status: payouts.status, amount: payouts.amount, currency: payouts.currency, userId: payouts.userId })
+      .from(payouts)
       .where(eq(payouts.id, payoutId))
+      .limit(1)
+    payout = row
+  } catch (err) {
+    log.error("[approve-payout] DB error", { payoutId, error: String(err) })
+    revalidatePath("/admin/payouts")
+    return
+  }
 
-    await createAuditLog({
-      payoutId,
-      action: "approved",
-      fromStatus: payout.status,
-      toStatus: "approved",
-      performedBy: session.user.email ?? session.user.id,
-      notes: "Payout approved by admin",
-    }, tx)
+  if (!payout) { log.warn("[approve-payout] Not found", { payoutId }); revalidatePath("/admin/payouts"); return }
+  if (payout.status !== "pending") { log.warn("[approve-payout] Wrong status", { payoutId, status: payout.status }); revalidatePath("/admin/payouts"); return }
 
-    await createPayoutNotification({
-      userId: payout.userId,
-      type: "payout_approved",
-      title: "Payout approved",
-      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been approved and is being processed.`,
-    }, tx)
-  })
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payouts)
+        .set({
+          status: "approved",
+          reviewedBy: session.user.email ?? session.user.id,
+        })
+        .where(eq(payouts.id, payoutId))
 
-  log.info("Payout approved", { payoutId, by: session.user.email })
+      await createAuditLog({
+        payoutId,
+        action: "approved",
+        fromStatus: payout.status,
+        toStatus: "approved",
+        performedBy: session.user.email ?? session.user.id,
+        notes: "Payout approved by admin",
+      }, tx)
+
+      await createPayoutNotification({
+        userId: payout.userId,
+        type: "payout_approved",
+        title: "Payout approved",
+        body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been approved and is being processed.`,
+      }, tx)
+    })
+
+    log.info("Payout approved", { payoutId, by: session.user.email })
+  } catch (err) {
+    log.error("[approve-payout] Transaction failed", { payoutId, error: String(err) })
+  }
+
   revalidatePath("/admin/payouts")
-  return { ok: true }
 }
 
-export async function rejectPayoutAction(payoutId: string, reason: string) {
+export async function rejectPayoutAction(payoutId: string, reason: string): Promise<void> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
+    log.warn("[reject-payout] Unauthorized", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
   }
 
   if (!reason || reason.trim().length < 5) {
-    throw new Error("Please provide a rejection reason (at least 5 characters)")
+    log.warn("[reject-payout] Reason too short", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
   }
 
-  const [payout] = await db
-    .select({ id: payouts.id, status: payouts.status, amount: payouts.amount, currency: payouts.currency, userId: payouts.userId })
-    .from(payouts)
-    .where(eq(payouts.id, payoutId))
-    .limit(1)
-
-  if (!payout) throw new Error("Payout not found")
-  if (payout.status !== "pending") {
-    throw new Error(`Cannot reject payout in "${payout.status}" status`)
-  }
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payouts)
-      .set({
-        status: "rejected",
-        rejectionReason: reason.trim(),
-        reviewedBy: session.user.email ?? session.user.id,
-      })
-      .where(eq(payouts.id, payoutId))
-
-    await createAuditLog({
-      payoutId,
-      action: "rejected",
-      fromStatus: payout.status,
-      toStatus: "rejected",
-      performedBy: session.user.email ?? session.user.id,
-      notes: `Rejected: ${reason.trim()}`,
-    }, tx)
-
-    await createPayoutNotification({
-      userId: payout.userId,
-      type: "payout_rejected",
-      title: "Payout rejected",
-      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} was rejected. Reason: ${reason.trim()}`,
-    }, tx)
-  })
-
-  log.info("Payout rejected", { payoutId, reason, by: session.user.email })
-  revalidatePath("/admin/payouts")
-  return { ok: true }
-}
-
-export async function markPayoutProcessingAction(payoutId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
-
-  const [payout] = await db
-    .select({ id: payouts.id, status: payouts.status })
-    .from(payouts)
-    .where(eq(payouts.id, payoutId))
-    .limit(1)
-
-  if (!payout) throw new Error("Payout not found")
-  if (payout.status !== "approved") {
-    throw new Error(`Cannot mark payout as processing in "${payout.status}" status`)
-  }
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payouts)
-      .set({ status: "processing" })
-      .where(eq(payouts.id, payoutId))
-
-    await createAuditLog({
-      payoutId,
-      action: "processing",
-      fromStatus: payout.status,
-      toStatus: "processing",
-      performedBy: session.user.email ?? session.user.id,
-    }, tx)
-  })
-
-  log.info("Payout marked processing", { payoutId, by: session.user.email })
-  revalidatePath("/admin/payouts")
-  return { ok: true }
-}
-
-export async function markPayoutPaidAction(payoutId: string, proofReference?: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
-
-  const [payout] = await db
-    .select({
-      id: payouts.id,
-      status: payouts.status,
-      amount: payouts.amount,
-      currency: payouts.currency,
-      method: payouts.method,
-      accountNumber: payouts.accountNumber,
-      accountName: payouts.accountName,
-      userId: payouts.userId,
-      eventTitle: events.title,
-    })
-    .from(payouts)
-    .leftJoin(events, eq(events.id, payouts.eventId))
-    .where(eq(payouts.id, payoutId))
-    .limit(1)
-
-  if (!payout) throw new Error("Payout not found")
-  if (payout.status !== "approved" && payout.status !== "processing") {
-    throw new Error(`Cannot mark payout as paid in "${payout.status}" status. Must be approved or processing first.`)
-  }
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payouts)
-      .set({
-        status: "paid",
-        proofReference: proofReference?.trim() || undefined,
-        processedAt: new Date(),
-        processedBy: session.user.email ?? session.user.id,
-      })
-      .where(eq(payouts.id, payoutId))
-
-    await createAuditLog({
-      payoutId,
-      action: "paid",
-      fromStatus: payout.status,
-      toStatus: "paid",
-      performedBy: session.user.email ?? session.user.id,
-      notes: proofReference ? `Proof reference: ${proofReference}` : null,
-    }, tx)
-
-    await createPayoutNotification({
-      userId: payout.userId,
-      type: "payout_paid",
-      title: "Payout sent",
-      body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been sent to your ${payout.method === "ecocash" ? "EcoCash wallet" : "bank account"}.`,
-    }, tx)
-  })
-
-  // Email notification (non-DB — fire-and-forget even if it fails)
+  let payout: { id: string; status: string; amount: string; currency: string | null; userId: string } | undefined
   try {
-    const [user] = await db
-      .select({ name: users.name, email: users.email })
-      .from(users)
-      .where(eq(users.id, payout.userId))
+    const [row] = await db
+      .select({ id: payouts.id, status: payouts.status, amount: payouts.amount, currency: payouts.currency, userId: payouts.userId })
+      .from(payouts)
+      .where(eq(payouts.id, payoutId))
       .limit(1)
-
-    if (user?.email) {
-      await sendPayoutNotificationEmail({
-        to: user.email,
-        organizerName: user.name,
-        payoutId,
-        amount: String(payout.amount),
-        currency: payout.currency ?? "USD",
-        method: payout.method === "ecocash" ? "EcoCash" : "USD Bank",
-        destination: payout.accountName ?? payout.accountNumber ?? "nominated account",
-        eventTitle: payout.eventTitle ?? "Event",
-      })
-    }
-  } catch (emailErr) {
-    log.warn("Failed to send payout notification email", { payoutId, error: String(emailErr) })
+    payout = row
+  } catch (err) {
+    log.error("[reject-payout] DB error", { payoutId, error: String(err) })
+    revalidatePath("/admin/payouts")
+    return
   }
 
-  log.info("Payout marked paid", { payoutId, by: session.user.email })
+  if (!payout) { log.warn("[reject-payout] Not found", { payoutId }); revalidatePath("/admin/payouts"); return }
+  if (payout.status !== "pending") { log.warn("[reject-payout] Wrong status", { payoutId, status: payout.status }); revalidatePath("/admin/payouts"); return }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payouts)
+        .set({
+          status: "rejected",
+          rejectionReason: reason.trim(),
+          reviewedBy: session.user.email ?? session.user.id,
+        })
+        .where(eq(payouts.id, payoutId))
+
+      await createAuditLog({
+        payoutId,
+        action: "rejected",
+        fromStatus: payout.status,
+        toStatus: "rejected",
+        performedBy: session.user.email ?? session.user.id,
+        notes: `Rejected: ${reason.trim()}`,
+      }, tx)
+
+      await createPayoutNotification({
+        userId: payout.userId,
+        type: "payout_rejected",
+        title: "Payout rejected",
+        body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} was rejected. Reason: ${reason.trim()}`,
+      }, tx)
+    })
+
+    log.info("Payout rejected", { payoutId, reason, by: session.user.email })
+  } catch (err) {
+    log.error("[reject-payout] Transaction failed", { payoutId, error: String(err) })
+  }
+
   revalidatePath("/admin/payouts")
-  return { ok: true }
 }
 
-export async function updatePayoutStatusAction(payoutId: string, status: string) {
+export async function markPayoutProcessingAction(payoutId: string): Promise<void> {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
+    log.warn("[process-payout] Unauthorized", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
+  }
+
+  let payout: { id: string; status: string } | undefined
+  try {
+    const [row] = await db
+      .select({ id: payouts.id, status: payouts.status })
+      .from(payouts)
+      .where(eq(payouts.id, payoutId))
+      .limit(1)
+    payout = row
+  } catch (err) {
+    log.error("[process-payout] DB error", { payoutId, error: String(err) })
+    revalidatePath("/admin/payouts")
+    return
+  }
+
+  if (!payout) { log.warn("[process-payout] Not found", { payoutId }); revalidatePath("/admin/payouts"); return }
+  if (payout.status !== "approved") { log.warn("[process-payout] Wrong status", { payoutId, status: payout.status }); revalidatePath("/admin/payouts"); return }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payouts)
+        .set({ status: "processing" })
+        .where(eq(payouts.id, payoutId))
+
+      await createAuditLog({
+        payoutId,
+        action: "processing",
+        fromStatus: payout.status,
+        toStatus: "processing",
+        performedBy: session.user.email ?? session.user.id,
+      }, tx)
+    })
+
+    log.info("Payout marked processing", { payoutId, by: session.user.email })
+  } catch (err) {
+    log.error("[process-payout] Transaction failed", { payoutId, error: String(err) })
+  }
+
+  revalidatePath("/admin/payouts")
+}
+
+export async function markPayoutPaidAction(payoutId: string, proofReference?: string): Promise<void> {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    log.warn("[mark-paid] Unauthorized", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
+  }
+
+  let payout: {
+    id: string; status: string; amount: string; currency: string | null;
+    method: string; accountNumber: string | null; accountName: string | null;
+    userId: string; eventTitle: string | null;
+  } | undefined
+
+  try {
+    const [row] = await db
+      .select({
+        id: payouts.id,
+        status: payouts.status,
+        amount: payouts.amount,
+        currency: payouts.currency,
+        method: payouts.method,
+        accountNumber: payouts.accountNumber,
+        accountName: payouts.accountName,
+        userId: payouts.userId,
+        eventTitle: events.title,
+      })
+      .from(payouts)
+      .leftJoin(events, eq(events.id, payouts.eventId))
+      .where(eq(payouts.id, payoutId))
+      .limit(1)
+    payout = row
+  } catch (err) {
+    log.error("[mark-paid] DB error", { payoutId, error: String(err) })
+    revalidatePath("/admin/payouts")
+    return
+  }
+
+  if (!payout) { log.warn("[mark-paid] Not found", { payoutId }); revalidatePath("/admin/payouts"); return }
+  if (payout.status !== "approved" && payout.status !== "processing") {
+    log.warn("[mark-paid] Wrong status", { payoutId, status: payout.status })
+    revalidatePath("/admin/payouts")
+    return
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payouts)
+        .set({
+          status: "paid",
+          proofReference: proofReference?.trim() || undefined,
+          processedAt: new Date(),
+          processedBy: session.user.email ?? session.user.id,
+        })
+        .where(eq(payouts.id, payoutId))
+
+      await createAuditLog({
+        payoutId,
+        action: "paid",
+        fromStatus: payout.status,
+        toStatus: "paid",
+        performedBy: session.user.email ?? session.user.id,
+        notes: proofReference ? `Proof reference: ${proofReference}` : null,
+      }, tx)
+
+      await createPayoutNotification({
+        userId: payout.userId,
+        type: "payout_paid",
+        title: "Payout sent",
+        body: `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} has been sent to your ${payout.method === "ecocash" ? "EcoCash wallet" : "bank account"}.`,
+      }, tx)
+    })
+
+    // Email notification (non-DB — fire-and-forget even if it fails)
+    try {
+      const [user] = await db
+        .select({ name: users.name, email: users.email })
+        .from(users)
+        .where(eq(users.id, payout.userId))
+        .limit(1)
+
+      if (user?.email) {
+        await sendPayoutNotificationEmail({
+          to: user.email,
+          organizerName: user.name,
+          payoutId,
+          amount: String(payout.amount),
+          currency: payout.currency ?? "USD",
+          method: payout.method === "ecocash" ? "EcoCash" : "USD Bank",
+          destination: payout.accountName ?? payout.accountNumber ?? "nominated account",
+          eventTitle: payout.eventTitle ?? "Event",
+        })
+      }
+    } catch (emailErr) {
+      log.warn("Failed to send payout notification email", { payoutId, error: String(emailErr) })
+    }
+
+    log.info("Payout marked paid", { payoutId, by: session.user.email })
+  } catch (err) {
+    log.error("[mark-paid] Transaction failed", { payoutId, error: String(err) })
+  }
+
+  revalidatePath("/admin/payouts")
+}
+
+export async function updatePayoutStatusAction(payoutId: string, status: string): Promise<void> {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    log.warn("[update-status] Unauthorized", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
   }
 
   if (!VALID_STATUSES.includes(status as any)) {
-    throw new Error("Invalid status")
+    log.warn("[update-status] Invalid status", { payoutId, status })
+    revalidatePath("/admin/payouts")
+    return
   }
 
-  const [existing] = await db
-    .select({ id: payouts.id, status: payouts.status })
-    .from(payouts)
-    .where(eq(payouts.id, payoutId))
-    .limit(1)
-
-  if (!existing) throw new Error("Payout not found")
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payouts)
-      .set({
-        status: status as any,
-        processedAt: status === "paid" ? new Date() : undefined,
-        processedBy: status === "paid" ? (session.user.email ?? session.user.id) : undefined,
-      })
+  let existing: { id: string; status: string } | undefined
+  try {
+    const [row] = await db
+      .select({ id: payouts.id, status: payouts.status })
+      .from(payouts)
       .where(eq(payouts.id, payoutId))
+      .limit(1)
+    existing = row
+  } catch (err) {
+    log.error("[update-status] DB error", { payoutId, error: String(err) })
+    revalidatePath("/admin/payouts")
+    return
+  }
 
-    await createAuditLog({
-      payoutId,
-      action: "status_updated",
-      fromStatus: existing.status,
-      toStatus: status,
-      performedBy: session.user.email ?? session.user.id,
-    }, tx)
-  })
+  if (!existing) { log.warn("[update-status] Not found", { payoutId }); revalidatePath("/admin/payouts"); return }
 
-  log.info("Payout status updated", { payoutId, status, by: session.user.email })
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payouts)
+        .set({
+          status: status as any,
+          processedAt: status === "paid" ? new Date() : undefined,
+          processedBy: status === "paid" ? (session.user.email ?? session.user.id) : undefined,
+        })
+        .where(eq(payouts.id, payoutId))
+
+      await createAuditLog({
+        payoutId,
+        action: "status_updated",
+        fromStatus: existing.status,
+        toStatus: status,
+        performedBy: session.user.email ?? session.user.id,
+      }, tx)
+    })
+
+    log.info("Payout status updated", { payoutId, status, by: session.user.email })
+  } catch (err) {
+    log.error("[update-status] Transaction failed", { payoutId, error: String(err) })
+  }
+
   revalidatePath("/admin/payouts")
-  return { ok: true }
 }
 
 export async function getPayoutAuditLog(payoutId: string) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
+    return []
   }
 
   const rows = await db

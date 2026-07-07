@@ -229,7 +229,8 @@ export default function PaymentsViewer({ initialData }: Props) {
           <div className="grid gap-3">
             {methods.map((row) => {
               const method = row.method ?? "unknown"
-              const rate = row.total > 0 ? Math.round((row.paid / row.total) * 100) : 0
+              const resolved = row.paid + row.failed
+              const rate = resolved > 0 ? Math.round((row.paid / resolved) * 100) : 0
               return (
                 <div key={method} className="rounded-xl border border-line bg-paper p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -238,7 +239,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                     </span>
                     <div>
                       <p className="text-[14px] font-semibold text-ink capitalize">{method.replace("velocity-", "")}</p>
-                      <p className="text-[12px] text-ink-3">{row.paid} paid · {row.total - row.paid} failed</p>
+                      <p className="text-[12px] text-ink-3">{row.paid} paid · {row.failed} failed</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -272,6 +273,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                   <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Status</th>
                   <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Processor</th>
                   <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Source</th>
+                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Reason</th>
                   <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Action</th>
                 </tr>
               </thead>
@@ -297,6 +299,15 @@ export default function PaymentsViewer({ initialData }: Props) {
                       </td>
                       <td className="px-4 py-3 text-[13px] text-ink-2 capitalize">{entry.processor}</td>
                       <td className="px-4 py-3 text-[13px] text-ink-2">{entry.source}</td>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        {entry.errorMessage ? (
+                          <span className="text-[12px] text-rose-600 line-clamp-2" title={entry.errorMessage}>
+                            {entry.errorMessage}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-ink-3">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/admin/orders/${entry.orderId}`}
