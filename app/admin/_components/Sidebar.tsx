@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, Bus, CreditCard,
+  PieChart,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
@@ -31,6 +32,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Data",
     items: [
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
       { label: "Users",     href: "/admin/users",     icon: Users },
       { label: "Events",    href: "/admin/events",    icon: Calendar },
       { label: "Orders",    href: "/admin/orders",    icon: Receipt },
