@@ -21,6 +21,8 @@ import {
   Music, Trophy, Film, Building2, Mountain, Footprints,
   Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
   BarChart3, Megaphone, PhoneCall, ReceiptText, TicketCheck, Users,
+  PartyPopper, Briefcase, GraduationCap, HeartHandshake, Landmark,
+  Mic2, Wrench, Medal,
 } from "lucide-react"
 import SplitCTA from "@/components/ui/SplitCTA"
 import EventCard from "@/components/events/EventCard"
@@ -33,6 +35,17 @@ import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
 import { db } from "@/db"
 import { events as eventsTable, reviews, ticketTiers } from "@/db/schema"
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
+
+const EVENT_TYPES = [
+  { icon: PartyPopper,    title: "Festivals",       body: "Music, food, and cultural festivals with high-volume gate scanning and multi-tier pricing." },
+  { icon: Mic2,           title: "Live Shows",      body: "Concerts, comedy nights, and performances with fast checkout and instant ticket delivery." },
+  { icon: Briefcase,      title: "Conferences",     body: "Business events, expos, and summits with structured registration and attendee reports." },
+  { icon: Medal,          title: "Marathons & Sports", body: "Races and tournaments with staff passes, check-in tracking, and start-line-ready manifests." },
+  { icon: GraduationCap,  title: "Education",       body: "Training sessions, seminars, and learning programs with simple sign-ups and reminders." },
+  { icon: HeartHandshake, title: "Charity Events",  body: "Fundraisers and community initiatives with transparent sales and full payout visibility." },
+  { icon: Landmark,       title: "Government",      body: "Public forums and civic events with reliable attendance records and controlled access." },
+  { icon: Wrench,         title: "Workshops & Classes", body: "Hands-on sessions and recurring classes with low-cost tickets and repeat scheduling." },
+] as const
 
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Your account is auto-created — no password required." },
@@ -695,6 +708,33 @@ export default async function Home() {
 
           <div className="tp-reveal">
             <FAQSection items={FAQ} />
+          </div>
+        </div>
+      </section>
+
+      {/* EVERY EVENT TYPE */}
+      <section className="bg-brand text-white">
+        <div className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
+          <div className="tp-reveal max-w-2xl">
+            <p className="text-[13px] font-medium text-white/60 mb-4">Built for Every Organiser</p>
+            <h2 className="font-bold tracking-tight text-[36px] md:text-[56px] leading-[1.05]">Every Event Type</h2>
+            <p className="mt-5 text-[16px] md:text-[18px] leading-relaxed text-white/70 max-w-xl">
+              From intimate workshops to large festivals, TicketPulse adapts to your format and scale.
+            </p>
+          </div>
+
+          <div className="mt-12 md:mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 md:gap-y-14 tp-reveal">
+            {EVENT_TYPES.map(({ icon: Icon, title, body }, i) => (
+              <div key={title} className="tp-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
+                <div className="flex items-center gap-4">
+                  <span className="inline-flex w-12 h-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
+                    <Icon size={20} className="text-white" />
+                  </span>
+                  <h3 className="text-[17px] font-semibold tracking-tight">{title}</h3>
+                </div>
+                <p className="mt-4 text-[14px] leading-relaxed text-white/60">{body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
