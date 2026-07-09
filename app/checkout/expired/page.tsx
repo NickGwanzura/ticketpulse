@@ -45,7 +45,7 @@ function ExpiredInner() {
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/events"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0a2540] px-5 py-3 text-[14px] font-semibold text-white shadow-sm hover:bg-[#0d2f4f] transition"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
           >
             Try again <ArrowRight size={14} />
           </Link>

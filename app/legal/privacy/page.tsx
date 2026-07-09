@@ -38,7 +38,7 @@ export default function PrivacyPage() {
             <ul>
               <li><strong>Organizers</strong> see attendee names and emails for the events you buy tickets to.</li>
               <li><strong>Vendors</strong> see contact details only after a booking is confirmed.</li>
-              <li><strong>Payment processors</strong> (EcoCash, Paynow, Stripe-hosted card processing) handle the financial leg.</li>
+              <li><strong>Payment processors</strong> (EcoCash and secure card processing) handle the financial leg.</li>
               <li><strong>Authorities</strong>, where required by Zimbabwean law (e.g, fraud, terrorism investigations).</li>
             </ul>
             <p>We never sell your data to third parties.</p>

@@ -142,10 +142,11 @@ export default function EventCard({
   return (
     <Link
       href={`/events/${slug}`}
-      className="tp-premium-card group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-paper transition-all duration-300 hover:-translate-y-1.5 hover:border-line-2 hover:shadow-[0_30px_80px_-26px_rgba(10,37,64,0.32)]"
+      className="tp-premium-card group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 hover:-translate-y-1.5 hover:border-orange-200 hover:shadow-[0_34px_90px_-28px_rgba(201,82,42,0.34)]"
     >
+      <span className="pointer-events-none absolute inset-x-5 top-0 z-20 h-px bg-gradient-to-r from-transparent via-orange-300/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
       {/* Category header */}
-      <div className={`relative h-44 overflow-hidden ${coverImage ? "bg-navy" : `bg-gradient-to-br ${visual.gradient}`}`}>
+      <div className={`relative h-48 overflow-hidden ${coverImage ? "bg-navy" : `bg-gradient-to-br ${visual.gradient}`}`}>
         {coverImage ? (
           <>
             {/* Cover image */}
@@ -153,10 +154,11 @@ export default function EventCard({
               src={coverImage}
               alt={`${title} — ${venue}, ${city}`}
               loading="lazy"
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
             />
             {/* Dark overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/24 to-black/5" />
+            <div className="absolute inset-0 bg-[radial-gradient(420px_circle_at_18%_12%,rgba(249,115,22,0.24),transparent_45%)] opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
             {/* Hover shine */}
             <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             {/* Category label */}
@@ -197,8 +199,8 @@ export default function EventCard({
             <span className="w-1 h-1 rounded-full bg-white" /> SPONSORED
           </span>
         ) : sellingFast && !soldOut && status === "published" ? (
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-rose-600/25 ring-1 ring-white/20">
-            <Flame size={11} className="animate-pulse fill-white/25" /> Tickets selling fast
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-600 to-rose-600 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm shadow-orange-900/25 ring-1 ring-white/20">
+            <Flame size={11} className="tp-flame-pulse fill-white/25" /> Tickets selling fast
           </span>
         ) : featured && !soldOut && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-navy text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full shadow-sm shadow-brand-600/20">
@@ -211,7 +213,7 @@ export default function EventCard({
           </span>
         )}
         {!isPast && !featured && !soldOut && status === "published" && (
-          <span className="absolute top-3 left-3 bg-brand-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+          <span className="absolute top-3 left-3 bg-orange-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm shadow-orange-900/20">
             ON SALE
           </span>
         )}
@@ -273,8 +275,8 @@ export default function EventCard({
               <span className="text-[13px] font-semibold text-green-700">Free entry</span>
             )}
           </div>
-          <span className="inline-flex items-center gap-1 rounded-lg bg-paper-2 ring-1 ring-line px-2.5 py-1.5 text-[12px] font-semibold text-navy group-hover:bg-navy group-hover:text-white group-hover:ring-navy transition-all">
-            {isPast ? "Summary" : "View"} <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          <span className="inline-flex items-center gap-1 rounded-lg bg-paper-2 ring-1 ring-line px-2.5 py-1.5 text-[12px] font-semibold text-navy transition-all group-hover:bg-orange-600 group-hover:text-white group-hover:ring-orange-600">
+            {isPast ? "Summary" : "Buy tickets"} <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </div>
       </div>

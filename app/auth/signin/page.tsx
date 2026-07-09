@@ -57,7 +57,6 @@ export default async function SignInPage({
                 alt="TicketPulse"
                 className="h-10 w-10"
               />
-              <span className="text-[26px] font-bold tracking-tight text-ink">TicketPulse</span>
             </Link>
             <h1 className="mt-8 text-[28px] font-bold tracking-tight text-ink">Welcome back</h1>
             <p className="text-[14px] text-ink-2 mt-2">
@@ -166,14 +165,6 @@ export default async function SignInPage({
               </Link>
             </div>
           </details>
-
-          <p className="text-center text-[14px] text-ink-2 mt-6">
-            Host events? Try{" "}
-            <Link href="/auth/signup" className="font-semibold text-accent hover:underline">
-              TicketPulse for free now!
-            </Link>{" "}
-            🚀
-          </p>
         </div>
       </div>
 

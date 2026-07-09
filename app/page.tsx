@@ -25,13 +25,12 @@ import SplitCTA from "@/components/ui/SplitCTA"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
 import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
-import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
 import { db } from "@/db"
-import { events as eventsTable, reviews } from "@/db/schema"
-import { and, desc, eq, inArray, sql } from "drizzle-orm"
+import { events as eventsTable } from "@/db/schema"
+import { and, desc, inArray, sql } from "drizzle-orm"
 
 const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Your account is auto-created — no password required." },
@@ -58,33 +57,14 @@ const STEPS = [
 
 const HERO_TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure checkout", tone: "bg-emerald-50", accent: "text-emerald-700", ring: "ring-emerald-200/70" },
+  { icon: Wallet, label: "EcoCash + Visa", tone: "bg-orange-50", accent: "text-orange-700", ring: "ring-orange-200/80" },
   { icon: Smartphone, label: "Instant QR delivery", tone: "bg-sky-50", accent: "text-sky-700", ring: "ring-sky-200/70" },
-  { icon: FileText, label: "Order lookup", tone: "bg-amber-50", accent: "text-amber-700", ring: "ring-amber-200/70" },
-  { icon: Wallet, label: "Verified payouts", tone: "bg-violet-50", accent: "text-violet-700", ring: "ring-violet-200/70" },
+  { icon: FileText, label: "Payout tracking", tone: "bg-amber-50", accent: "text-amber-700", ring: "ring-amber-200/70" },
 ]
 
 export default async function Home() {
   const featuredEvents = await getFeaturedEvents(6)
   const eventsOnSale = featuredEvents.length
-
-  const reviewRows = await db
-    .select({
-      id: reviews.id,
-      reviewerName: reviews.reviewerName,
-      rating: reviews.rating,
-      title: reviews.title,
-      body: reviews.body,
-      createdAt: reviews.createdAt,
-      eventTitle: eventsTable.title,
-    })
-    .from(reviews)
-    .leftJoin(eventsTable, eq(eventsTable.id, reviews.eventId))
-    .where(and(
-      eq(reviews.status, "approved"),
-      eq(reviews.publicConsent, true),
-    ))
-    .orderBy(desc(reviews.featured), desc(reviews.createdAt))
-    .limit(3)
 
   const pastEvents = await db
     .select({
@@ -178,21 +158,28 @@ export default async function Home() {
         </svg>
         </div>
 
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+          <div className="tp-live-glow absolute left-[8%] top-20 h-44 w-44 rounded-full bg-orange-500/28 blur-3xl" />
+          <div className="tp-live-glow tp-live-glow-delay absolute right-[10%] top-32 h-52 w-52 rounded-full bg-[#b8e448]/16 blur-3xl" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-orange-950/35 to-transparent" />
+          <div className="absolute left-1/2 top-16 h-px w-[78vw] -translate-x-1/2 bg-gradient-to-r from-transparent via-orange-300/60 to-transparent" />
+        </div>
+
         <div className="max-w-7xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-12 md:pb-20">
           <div className="mx-auto max-w-5xl text-center">
-            <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-navy/55 px-3.5 py-1.5 shadow-sm shadow-black/10 backdrop-blur-md">
+            <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-orange-300/35 bg-navy/55 px-3.5 py-1.5 shadow-sm shadow-orange-950/20 backdrop-blur-md">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
-                <span className="relative block h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="absolute inset-0 rounded-full bg-orange-400 animate-ping opacity-75" />
+                <span className="relative block h-2 w-2 rounded-full bg-orange-400" />
               </span>
-              <span className="text-[12px] font-semibold tracking-[0.04em] text-white">
-                Organizer ticketing, payments, scanning, and payouts
+              <span className="text-[12px] font-semibold tracking-[0.04em] text-orange-50">
+                Built for Zimbabwe events, gates, and payouts
               </span>
             </div>
 
             <h1 className="tp-fade-up-1 mx-auto mt-8 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94]">
               Sell tickets.<br />
-              <span className="text-[#b8e448]">Scan guests.</span><br />
+              <span className="text-orange-300">Scan guests.</span><br />
               Get paid.
             </h1>
 
@@ -203,20 +190,21 @@ export default async function Home() {
             <div className="tp-fade-up-3 mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               <SplitCTA href="/auth/signup?role=organizer" label="Start selling" size="lg" />
               <Link
-                href="/contact"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-white/40 hover:bg-white/16 active:scale-[0.99]"
-              >
-                <PhoneCall size={15} /> Book a call
-              </Link>
-              <Link
                 href="/events"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl px-3 text-[15px] font-semibold text-white transition hover:text-[#b8e448] active:scale-[0.99]"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-orange-300/55 hover:bg-orange-400/15 hover:text-orange-100 active:scale-[0.99]"
               >
                 Browse events <ArrowUpRight size={15} />
               </Link>
             </div>
 
-            <div className="tp-fade-up-4 mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
+            <Link
+              href="/contact"
+              className="tp-fade-up-4 mt-4 inline-flex items-center justify-center gap-2 text-[13px] font-semibold text-white/65 transition hover:text-orange-200"
+            >
+              <PhoneCall size={13} /> Prefer help? Book a setup call
+            </Link>
+
+            <div className="tp-fade-up-5 mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
               {HERO_TRUST_ITEMS.map(({ icon: Icon, label, tone, accent, ring }) => (
                 <span key={label} className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-navy/55 px-3 py-2 text-[12px] font-semibold text-white/90 ring-1 ${ring} backdrop-blur-md`}>
                   <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${tone}`}>
@@ -342,9 +330,6 @@ export default async function Home() {
           </div>
         </section>
       )}
-
-      <ReviewHighlights reviews={reviewRows} />
-
       {/* HOW IT WORKS */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24 border-t border-line">
         <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">

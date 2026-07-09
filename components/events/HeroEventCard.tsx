@@ -64,16 +64,18 @@ export default function HeroEventCard({
   const sellingFast = tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy"
 
   return (
-    <section className="tp-premium-card relative overflow-hidden rounded-3xl border border-line bg-navy shadow-xl shadow-ink/10">
+    <section className="tp-premium-card group relative overflow-hidden rounded-3xl border border-orange-200/35 bg-navy shadow-xl shadow-orange-950/12 transition-all duration-300 hover:-translate-y-1 hover:border-orange-300/70 hover:shadow-[0_34px_90px_-30px_rgba(201,82,42,0.42)]">
+      <span className="pointer-events-none absolute inset-x-8 top-0 z-20 h-px bg-gradient-to-r from-transparent via-orange-300/90 to-transparent" aria-hidden />
       {/* Background */}
       {coverImage ? (
         <>
           <img
             src={coverImage}
             alt={`${title} — ${venue}, ${city}`}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/74 via-black/38 to-black/24" />
+          <div className="absolute inset-0 bg-[radial-gradient(560px_circle_at_18%_12%,rgba(249,115,22,0.32),transparent_45%),radial-gradient(520px_circle_at_88%_84%,rgba(184,228,72,0.12),transparent_48%)]" />
         </>
       ) : (
         <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
@@ -90,8 +92,8 @@ export default function HeroEventCard({
       </div>
 
       {/* Soft accent glow */}
-      <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-white/10 blur-[100px] pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-white/5 blur-[100px] pointer-events-none" />
+      <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-orange-400/18 blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-white/7 blur-[100px] pointer-events-none" />
 
       {/* Content */}
       <div className="relative z-10 p-6 md:p-10 lg:p-14 flex flex-col md:flex-row md:items-end md:justify-between gap-6 min-h-[360px] md:min-h-[400px]">
@@ -129,8 +131,8 @@ export default function HeroEventCard({
           {/* Countdown + CTA row */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {sellingFast && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/22 px-3.5 py-2 text-[13px] font-bold text-rose-100 ring-1 ring-rose-300/45 backdrop-blur-sm">
-                <Flame size={14} className="animate-pulse fill-rose-200/30 text-rose-200" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/24 px-3.5 py-2 text-[13px] font-bold text-orange-100 ring-1 ring-orange-300/45 backdrop-blur-sm">
+                <Flame size={14} className="tp-flame-pulse fill-orange-200/30 text-orange-200" />
                 Tickets selling fast
               </span>
             )}

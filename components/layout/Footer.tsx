@@ -1,7 +1,7 @@
 import Link from "next/link"
 import {
-  ArrowRight, Mail, MapPin, Globe, Apple, Smartphone,
-  ShieldCheck, FileText, ScanLine, Wallet, MessageCircle,
+  ArrowRight, Globe, Mail, MapPin, MessageCircle,
+  ScanLine, ShieldCheck, Smartphone, Ticket, Wallet,
 } from "lucide-react"
 
 function IconInstagram(props: React.SVGProps<SVGSVGElement>) {
@@ -16,301 +16,198 @@ function IconInstagram(props: React.SVGProps<SVGSVGElement>) {
 
 const COLUMNS: { title: string; links: [string, string][] }[] = [
   {
-    title: "Discover",
+    title: "Buyers",
     links: [
-      ["All events",     "/events"],
-      ["Concerts",       "/events?category=concert"],
-      ["Marathons",      "/events?category=marathon"],
-      ["Film",           "/events?category=film"],
-      ["Photo gallery",  "/media"],
+      ["Browse events", "/events"],
+      ["Find my order", "/orders/lookup"],
+      ["Help center", "/help"],
+      ["Reviews", "/reviews/new"],
     ],
   },
   {
     title: "Organizers",
     links: [
-      ["How it works",   "/how-it-works"],
-      ["Sell tickets",   "/auth/signup?role=organizer"],
-      ["Pricing",        "/pricing"],
-      ["Payouts",        "/payouts"],
-      ["Help center",    "/help"],
+      ["Start selling", "/auth/signup?role=organizer"],
+      ["How it works", "/how-it-works"],
+      ["Pricing", "/pricing"],
+      ["Payouts", "/payouts"],
+      ["Organizer help", "/help/organizers"],
     ],
   },
   {
-    title: "Vendors",
+    title: "Marketplace",
     links: [
-      ["Marketplace",    "/vendors"],
-      ["Apply to list",  "/vendors/apply"],
-      ["Vendor FAQ",     "/help/vendors"],
-      ["Payouts",        "/payouts"],
+      ["Vendors", "/vendors"],
+      ["Apply as vendor", "/vendors/apply"],
+      ["Media galleries", "/media"],
+      ["Transport", "/transport"],
     ],
   },
   {
     title: "Company",
     links: [
-      ["Contact",        "/contact"],
-      ["Terms",          "/legal/terms"],
-      ["Privacy",        "/legal/privacy"],
+      ["Contact", "/contact"],
+      ["Terms", "/legal/terms"],
+      ["Privacy", "/legal/privacy"],
+      ["Cookies", "/legal/cookies"],
     ],
   },
 ]
 
-const SOCIALS: { label: string; href: string; Icon: (p: React.SVGProps<SVGSVGElement>) => React.ReactElement }[] = [
-  { label: "Instagram", href: "https://www.instagram.com/ticketpulsezw", Icon: IconInstagram },
-]
-
 const TRUST = [
-  { icon: ShieldCheck, k: "Verified by default", v: "Every organizer & vendor checked" },
-  { icon: FileText,    k: "Printable PDF + QR",   v: "Same code, paper or phone" },
-  { icon: MessageCircle, k: "WhatsApp delivery",  v: "Tickets land in your chat" },
-  { icon: ScanLine,    k: "Our gate scanner",     v: "End-to-end on TicketPulse" },
-  { icon: Wallet,      k: "Pay-as-you-sell",      v: "Flat 7%, never up front" },
+  { icon: Ticket, label: "EcoCash + Visa checkout" },
+  { icon: Smartphone, label: "Instant QR delivery" },
+  { icon: ScanLine, label: "Gate scanner included" },
+  { icon: Wallet, label: "5% organizer fee" },
 ]
 
 export default function Footer() {
   return (
-    <footer className="mt-24 relative overflow-hidden text-white">
-      {/* Background — deep navy with multi-layer atmospherics */}
-      <div
-        className="absolute inset-0 -z-20"
-        style={{
-          background:
-            "linear-gradient(180deg, #08203a 0%, #0a2540 38%, #07182b 100%)",
-        }}
-        aria-hidden
-      />
-      {/* Glow orbs */}
-      <div
-        className="absolute -top-32 right-[8%] -z-10 w-[520px] h-[520px] rounded-full blur-3xl pointer-events-none opacity-60"
-        style={{ background: "radial-gradient(closest-side, rgba(5,112,222,0.45), transparent)" }}
-        aria-hidden
-      />
-      <div
-        className="absolute bottom-[-160px] left-[-120px] -z-10 w-[480px] h-[480px] rounded-full blur-3xl pointer-events-none opacity-40"
-        style={{ background: "radial-gradient(closest-side, rgba(45,184,160,0.30), transparent)" }}
-        aria-hidden
-      />
-      {/* Grid texture */}
-      <div
-        className="absolute inset-0 -z-10 opacity-[0.05] pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent, black 30%, black 70%, transparent)",
-        }}
-        aria-hidden
-      />
-      {/* Top hairline */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/15 to-transparent" aria-hidden />
+    <footer className="mt-24 overflow-hidden bg-[#081a2e] text-white">
+      <div className="h-px bg-gradient-to-r from-transparent via-orange-300/55 to-transparent" aria-hidden />
 
-      {/* Newsletter band */}
-      <div className="relative border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 py-14 md:py-20">
-          <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 md:gap-16 items-center">
+      <div className="relative">
+        <div
+          className="absolute inset-0 opacity-[0.08]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+            backgroundSize: "54px 54px",
+            maskImage: "linear-gradient(to bottom, black, transparent 80%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black, transparent 80%)",
+          }}
+          aria-hidden
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(780px_circle_at_12%_8%,rgba(201,82,42,0.22),transparent_44%),linear-gradient(180deg,rgba(8,26,46,0)_0%,#081a2e_100%)]" aria-hidden />
+
+        <div className="relative mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-18">
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] backdrop-blur px-3 py-1.5 mb-5">
-                <span className="relative flex w-1.5 h-1.5">
-                  <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-70" />
-                  <span className="relative block w-1.5 h-1.5 rounded-full bg-green-400" />
-                </span>
-                <span className="text-[11px] font-semibold tracking-[0.18em] text-white/85 uppercase">Newsletter · Weekly</span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-orange-300/25 bg-orange-400/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-100">
+                <ShieldCheck size={13} /> Built for live events
               </span>
-              <h2 className="font-bold tracking-[-0.025em] leading-[1.05] text-[36px] md:text-[52px]">
-                Get tickets <span className="text-blue-300">before they sell out.</span>
+              <h2 className="mt-5 max-w-3xl text-[34px] font-bold leading-[1.02] tracking-tight md:text-[56px]">
+                Sell tickets, scan guests, and settle payouts from one place.
               </h2>
-              <p className="mt-4 text-[15px] md:text-[16px] text-white/70 max-w-md leading-relaxed">
-                A curated digest of what&apos;s on near you, plus pre-sale codes from the organizers we work with. No spam, unsubscribe in one click.
+              <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-white/68 md:text-[16px]">
+                TicketPulse gives organizers a clean checkout, instant ticket delivery, order recovery, attendee tools, and payout tracking without stitching together separate systems.
               </p>
             </div>
 
-            <div className="space-y-3 relative">
-              <div className="absolute -top-2 right-0 z-10 rounded-md bg-green-500/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase text-green-200">
-                Coming soon
-              </div>
-              <div className="pointer-events-none opacity-50">
-                <div className="relative">
-                  <Mail size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
-                  <input
-                    type="email"
-                    aria-label="Email address"
-                    placeholder="you@example.com"
-                    disabled
-                    className="w-full h-14 rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur pl-11 pr-4 text-[15px] text-white placeholder:text-white/40 focus:outline-none focus:border-green-500/60 focus:ring-4 focus:ring-brand-500/20 transition"
-                  />
-                </div>
-                <div
-                  className="w-full h-14 inline-flex items-center justify-center gap-2 rounded-xl bg-white text-navy font-semibold text-[15px] shadow-[0_18px_50px_-20px_rgba(255,255,255,0.45)] opacity-50 mt-3"
-                >
-                  Subscribe to the digest
-                  <ArrowRight size={15} />
-                </div>
-              </div>
-              <p className="text-[12px] text-white/45 leading-relaxed">
-                By subscribing you agree to our{" "}
-                <Link href="/legal/privacy" className="underline decoration-white/30 underline-offset-2 hover:text-white/70">privacy policy</Link>.
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+              <Link
+                href="/auth/signup?role=organizer"
+                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 text-[14px] font-bold text-white shadow-[0_18px_50px_-24px_rgba(201,82,42,0.75)] transition hover:bg-brand-700 active:scale-[0.99]"
+              >
+                Start selling <ArrowRight size={15} />
+              </Link>
+              <Link
+                href="/events"
+                className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/8 px-6 text-[14px] font-bold text-white transition hover:border-orange-300/50 hover:bg-orange-400/12"
+              >
+                Browse events
+              </Link>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Trust strip */}
-      <div className="relative border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 py-7">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-5 md:gap-6">
-            {TRUST.map(({ icon: Icon, k, v }) => (
-              <div key={k} className="flex items-start gap-3">
-                <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-white/[0.06] ring-1 ring-white/15 shrink-0">
-                  <Icon size={15} className="text-green-300" />
+          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {TRUST.map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-400/12 text-orange-200 ring-1 ring-orange-300/25">
+                  <Icon size={17} />
                 </span>
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold tracking-tight text-white">{k}</p>
-                  <p className="text-[12px] text-white/55 leading-snug">{v}</p>
-                </div>
+                <p className="text-[13px] font-semibold leading-snug text-white/82">{label}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Main */}
-      <div className="relative max-w-7xl mx-auto px-6 md:px-8 py-14 md:py-20">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-6 md:gap-12">
-          {/* Brand */}
-          <div className="col-span-2 md:col-span-2">
+      <div className="border-y border-white/10 bg-black/10">
+        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 md:px-8 lg:grid-cols-[1.25fr_2fr]">
+          <div>
             <Link href="/" className="inline-flex items-center" aria-label="TicketPulse home">
-              <span className="relative inline-flex items-center justify-center transition-transform hover:scale-105">
-                <img src="/ticketpulse-logo-white.svg" alt="TicketPulse" loading="lazy" className="h-16 w-auto" />
-              </span>
+              <img src="/ticketpulse-logo-white.svg" alt="TicketPulse" loading="lazy" className="h-16 w-auto" />
             </Link>
-            <p className="mt-5 text-[14px] leading-relaxed text-white/65 max-w-xs">
-              Zimbabwe&apos;s ticketing platform. Sell, deliver, scan: one stack, built in Harare and live since May 2026.
+            <p className="mt-5 max-w-sm text-[14px] leading-relaxed text-white/62">
+              Zimbabwe&apos;s event ticketing platform. Built in Harare for online sales, QR validation, support, reconciliation, and payouts.
             </p>
 
-            <div className="mt-5 inline-flex items-start gap-2 text-[13px] text-white/55">
-              <MapPin size={13} className="text-white/45 mt-0.5 shrink-0" />
-              <span className="leading-relaxed">Harare CBD, Zimbabwe</span>
+            <div className="mt-6 space-y-3 text-[13px] text-white/58">
+              <p className="flex items-center gap-2">
+                <MapPin size={14} className="text-orange-200" /> Harare, Zimbabwe
+              </p>
+              <Link href="/contact" className="flex items-center gap-2 transition hover:text-white">
+                <Mail size={14} className="text-orange-200" /> support@ticketpulse.tech
+              </Link>
+              <a
+                href="https://www.instagram.com/ticketpulsezw"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 transition hover:text-white"
+              >
+                <IconInstagram className="text-orange-200" /> @ticketpulsezw
+              </a>
             </div>
 
-            {/* Socials */}
-            <div className="mt-6 flex gap-1.5">
-              {SOCIALS.map(({ label, href, Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  className="inline-flex w-9 h-9 items-center justify-center rounded-lg border border-white/15 bg-white/[0.04] text-white/75 hover:text-white hover:border-white/30 hover:bg-white/[0.08] transition-all"
-                >
-                  <Icon />
-                </a>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {["EcoCash", "Visa", "USD"].map((item) => (
+                <span key={item} className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white/70">
+                  {item}
+                </span>
               ))}
-            </div>
-
-            {/* Payments */}
-            <div className="mt-7">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">We accept</p>
-              <div className="flex flex-wrap gap-1.5">
-                {["EcoCash", "Visa", "USD"].map((m) => (
-                  <span
-                    key={m}
-                    className="text-[11px] font-medium rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/75"
-                  >
-                    {m}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile apps */}
-            <div className="mt-6">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-2.5">Mobile apps</p>
-              <div className="flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/75">
-                  <Apple size={11} className="text-white/55" />
-                  iOS
-                  <span className="ml-1 rounded bg-green-500/30 px-1 py-px text-[10px] font-semibold tracking-wide uppercase text-green-200">Soon</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/75">
-                  <Smartphone size={11} className="text-white/55" />
-                  Android
-                  <span className="ml-1 rounded bg-green-500/30 px-1 py-px text-[10px] font-semibold tracking-wide uppercase text-green-200">Soon</span>
-                </span>
-              </div>
             </div>
           </div>
 
-          {COLUMNS.map((col) => (
-            <div key={col.title}>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-white/45 uppercase mb-4">
-                {col.title}
-              </p>
-              <ul className="space-y-2.5">
-                {col.links.map(([label, href]) => (
-                  <li key={label}>
-                    <Link
-                      href={href}
-                      className="text-[14px] text-white/70 hover:text-white transition-colors inline-flex items-center group"
-                    >
-                      {label}
-                      <ArrowRight
-                        size={11}
-                        className="ml-1 opacity-0 -translate-x-1 group-hover:opacity-80 group-hover:translate-x-0 transition-all"
-                      />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div className="grid grid-cols-2 gap-x-6 gap-y-9 md:grid-cols-4">
+            {COLUMNS.map((column) => (
+              <div key={column.title}>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-200/85">{column.title}</p>
+                <ul className="mt-4 space-y-3">
+                  {column.links.map(([label, href]) => (
+                    <li key={label}>
+                      <Link href={href} className="group inline-flex items-center text-[14px] font-medium text-white/62 transition hover:text-white">
+                        {label}
+                        <ArrowRight size={11} className="ml-1 opacity-0 -translate-x-1 transition-all group-hover:translate-x-0 group-hover:opacity-70" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Mega wordmark */}
-      <div
-        aria-hidden
-        className="relative max-w-7xl mx-auto px-6 md:px-8 select-none pointer-events-none"
-      >
-        <div className="overflow-hidden">
-          <p className="font-bold tracking-[-0.045em] leading-none text-[clamp(48px,14vw,220px)] bg-gradient-to-b from-white/[0.10] to-white/[0.02] bg-clip-text text-transparent text-center">
-            TicketPulse
-          </p>
-        </div>
-      </div>
-
-      {/* Bottom strip */}
-      <div className="relative border-t border-white/10 bg-black/20 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-5">
-            <Link href="/help" className="inline-flex items-center gap-2 text-[12px] text-white/55 hover:text-white/85 transition-colors">
-              <span className="relative flex w-2 h-2">
-                <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-60" />
-                <span className="relative block w-2 h-2 rounded-full bg-green-400" />
+      <div className="bg-[#061321]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 text-[12px] text-white/46 md:flex-row md:items-center md:justify-between md:px-8">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link href="/help" className="inline-flex items-center gap-2 text-white/58 transition hover:text-white">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
+                <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
               </span>
-              <span className="text-green-300 font-medium">All systems operational</span>
+              All systems operational
             </Link>
-            <span className="hidden md:inline text-white/15">·</span>
-            <p className="text-[12px] text-white/45">© {new Date().getFullYear()} TicketPulse. Built in Harare.</p>
-            <span className="hidden md:inline text-white/15">·</span>
+            <span className="hidden text-white/15 md:inline">/</span>
+            <span>© {new Date().getFullYear()} TicketPulse. Built in Harare.</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="inline-flex items-center gap-1.5">
+              <Globe size={12} /> English · USD
+            </span>
+            <Link href="/legal/terms" className="transition hover:text-white">Terms</Link>
+            <Link href="/legal/privacy" className="transition hover:text-white">Privacy</Link>
+            <Link href="/legal/cookies" className="transition hover:text-white">Cookies</Link>
             <a
               href="https://velocity.qantra.co.zw/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] text-white/45 hover:text-white/75 transition-colors"
+              className="inline-flex items-center gap-1.5 transition hover:text-white"
             >
-              Powered by <span className="font-medium text-white/60">Velocity Payments</span>
+              <MessageCircle size={12} /> Velocity Payments
             </a>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-5">
-            <button className="inline-flex items-center gap-1.5 text-[12px] text-white/55 hover:text-white/85 transition-colors">
-              <Globe size={12} /> English (Zimbabwe) · USD
-            </button>
-            <span className="hidden md:inline text-white/15">·</span>
-            <Link href="/legal/terms"   className="text-[12px] text-white/55 hover:text-white/85 transition-colors">Terms</Link>
-            <Link href="/legal/privacy" className="text-[12px] text-white/55 hover:text-white/85 transition-colors">Privacy</Link>
-            <Link href="/legal/cookies" className="text-[12px] text-white/55 hover:text-white/85 transition-colors">Cookies</Link>
           </div>
         </div>
       </div>

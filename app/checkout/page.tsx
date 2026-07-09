@@ -470,12 +470,13 @@ export default function CheckoutPage() {
             <div className="space-y-2">
               {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
                 const checked = form.payment === value
+                const isEcoCash = value === "velocity-ecocash"
                 return (
                   <label
                     key={value}
                     className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                       checked
-                        ? "border-[#0a2540] bg-[#0a2540]/[0.04] ring-1 ring-[#0a2540]/10"
+                        ? "border-brand-600 bg-brand-50 ring-1 ring-brand-500/15"
                         : "border-line bg-paper hover:border-line-2 hover:bg-paper-2"
                     }`}
                   >
@@ -488,15 +489,22 @@ export default function CheckoutPage() {
                       className="sr-only"
                     />
                     <span className={`inline-flex w-9 h-9 items-center justify-center rounded-lg shrink-0 ${
-                      checked ? "bg-[#0a2540] text-white" : "bg-paper-2 text-ink-2"
+                      checked ? "bg-brand-600 text-white" : "bg-paper-2 text-ink-2"
                     }`}>
                       <Icon size={15} />
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-ink">{label}</p>
+                      <p className="flex flex-wrap items-center gap-2 text-[13px] font-semibold text-ink">
+                        {label}
+                        {isEcoCash && (
+                          <span className="tp-fast-badge inline-flex items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-orange-700 ring-1 ring-orange-200">
+                            Fast
+                          </span>
+                        )}
+                      </p>
                       <p className="text-[12px] text-ink-3">{body}</p>
                     </div>
-                    {checked && <Check size={14} className="text-[#0a2540] shrink-0" />}
+                    {checked && <Check size={14} className="text-brand-600 shrink-0" />}
                   </label>
                 )
               })}
@@ -522,7 +530,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0a2540] px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm hover:bg-[#0d2f4f] active:scale-[0.99] transition disabled:opacity-80"
+            className="lg:hidden w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-80"
           >
             {submitting ? (
               <><Loader2 size={14} className="animate-spin" /> Processing…</>
@@ -660,7 +668,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="hidden lg:inline-flex mt-4 w-full items-center justify-center gap-2 rounded-xl bg-[#0a2540] px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm hover:bg-[#0d2f4f] active:scale-[0.99] transition disabled:opacity-80"
+              className="hidden lg:inline-flex mt-4 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition disabled:opacity-80"
             >
               {submitting ? (
                 <><Loader2 size={14} className="animate-spin" /> Processing…</>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Calendar, CheckCircle2, DollarSign, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
+import { Calendar, CheckCircle2, Clock, DollarSign, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
 // Cuts DB load by ~95% for the most-hit public pages while
@@ -310,6 +310,26 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     return `${formatDate(start, { timeZone })} – ${formatDate(end, { timeZone })}`
   })()
 
+  const timeZone = "Africa/Harare"
+  const dateDisplay = new Intl.DateTimeFormat("en-ZW", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone,
+  }).format(row.startsAt)
+  const monthDisplay = new Intl.DateTimeFormat("en-ZW", { month: "short", timeZone }).format(row.startsAt)
+  const dayDisplay = new Intl.DateTimeFormat("en-ZW", { day: "2-digit", timeZone }).format(row.startsAt)
+  const timeRangeDisplay = (() => {
+    const timeFormatter = new Intl.DateTimeFormat("en-ZW", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone,
+    })
+    const startTime = timeFormatter.format(row.startsAt)
+    return row.endsAt ? `${startTime} - ${timeFormatter.format(row.endsAt)}` : startTime
+  })()
+
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -370,57 +390,97 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       )}
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 pb-28 lg:pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="relative -mt-8 grid grid-cols-1 gap-10 md:-mt-12 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-12">
-            {/* ── Category & title ── */}
-            <div className="pt-6 md:pt-8">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">{row.category}</p>
-              <h1 className="text-[28px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">{row.title}</h1>
-            </div>
+            {/* ── Overview header ── */}
+            <section className="overflow-hidden rounded-[28px] border border-line bg-white/95 p-5 shadow-[0_24px_80px_-44px_rgba(10,37,64,0.45)] backdrop-blur-md md:p-7">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700 ring-1 ring-orange-200/80">
+                  <span aria-hidden>{emoji}</span> {row.category}
+                </span>
+                {row.status === "published" && !isPastEvent && (
+                  <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700 ring-1 ring-emerald-200/80">
+                    On sale
+                  </span>
+                )}
+                {isPastEvent && (
+                  <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+                    Past event
+                  </span>
+                )}
+              </div>
 
-            {/* ── Meta & actions ── */}
-            <div>
-              <div className="grid max-w-2xl gap-3 text-ink-2 mb-6">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue ring-1 ring-blue/10">
-                    <Calendar size={14} />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Date &amp; time</p>
-                    <p className="mt-0.5 text-[14px] font-medium text-ink-2">{timeDisplay}</p>
+              <h1 className="mt-5 max-w-4xl text-[34px] font-bold leading-[0.98] tracking-tight text-ink md:text-[56px]">
+                {row.title}
+              </h1>
+
+              <div className="mt-7 grid gap-4 md:grid-cols-2">
+                <div className="group relative overflow-hidden rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-5 shadow-sm shadow-orange-950/[0.04]">
+                  <div className="absolute right-4 top-4 text-[72px] font-bold leading-none tracking-tighter text-orange-100 transition-transform duration-300 group-hover:scale-110" aria-hidden>
+                    {dayDisplay}
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
-                    <MapPin size={14} />
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-sm shadow-orange-900/20">
+                    <Calendar size={22} />
                   </span>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Venue</p>
-                    <p className="mt-0.5 text-[14px] font-medium text-ink-2">
-                      {row.venue.trim().toLowerCase() === "tba" || row.city.trim().toLowerCase() === "tba"
-                        ? "Location TBA"
-                        : `${row.venue}, ${row.city}`}
-                    </p>
-                  </div>
+                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700">Date</p>
+                  <p className="mt-1 max-w-[16rem] text-[22px] font-bold leading-tight tracking-tight text-ink">{dateDisplay}</p>
+                  <p className="mt-3 inline-flex rounded-full bg-white/75 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-orange-700 ring-1 ring-orange-200/70">{monthDisplay}</p>
                 </div>
-                {row.organizerName && !row.hideOrganizerName && (
+
+                <div className="group relative overflow-hidden rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-sm shadow-sky-950/[0.04]">
+                  <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-200/35 blur-2xl transition-transform duration-300 group-hover:scale-125" aria-hidden />
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-navy text-white shadow-sm shadow-navy/20">
+                    <Clock size={22} />
+                  </span>
+                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-sky-700">Time</p>
+                  <p className="mt-1 text-[28px] font-bold leading-tight tracking-tight text-ink">{timeRangeDisplay}</p>
+                  <p className="mt-3 text-[12px] font-semibold text-ink-3">Africa/Harare time</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-line bg-paper-2/70 p-4">
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-700 ring-1 ring-green-200/60">
-                      <Users size={14} />
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-violet-700 ring-1 ring-violet-200/70">
+                      <MapPin size={18} />
                     </span>
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">Organizer</p>
-                      <p className="mt-0.5 text-[14px] font-medium text-ink-2">{row.organizerName}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Venue</p>
+                      <p className="mt-1 text-[15px] font-semibold leading-snug text-ink">
+                        {row.venue.trim().toLowerCase() === "tba" || row.city.trim().toLowerCase() === "tba"
+                          ? "Location TBA"
+                          : `${row.venue}, ${row.city}`}
+                      </p>
+                      {row.address && <p className="mt-1 text-[12px] text-ink-3">{row.address}</p>}
                     </div>
+                  </div>
+                </div>
+
+                {row.organizerName && !row.hideOrganizerName ? (
+                  <div className="rounded-2xl border border-line bg-paper-2/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 ring-1 ring-emerald-200/70">
+                        <Users size={18} />
+                      </span>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Organizer</p>
+                        <p className="mt-1 text-[15px] font-semibold leading-snug text-ink">{row.organizerName}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-line bg-paper-2/70 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Full schedule</p>
+                    <p className="mt-1 text-[14px] font-semibold leading-snug text-ink">{timeDisplay}</p>
                   </div>
                 )}
               </div>
-              {/* Share / Save */}
-              <div className="flex gap-2">
+
+              <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-5">
                 <ShareEventButton eventTitle={row.title} eventDescription={row.description} />
                 <SaveFavoriteButton eventId={row.id} />
               </div>
-            </div>
+            </section>
 
             {/* ── Description & tags ── */}
             <div>
