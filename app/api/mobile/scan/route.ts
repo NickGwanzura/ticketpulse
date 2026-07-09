@@ -32,6 +32,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Invalid scan payload" }, { status: 400 })
   }
 
-  const result = await markTicketScanned(parsed.data.code)
+  const result = await markTicketScanned(parsed.data.code, {
+    scannerUserId: session.user.id,
+    source: "mobile_api",
+    userAgent: req.headers.get("user-agent"),
+    ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip"),
+  })
   return NextResponse.json(result, { status: result.ok ? 200 : 400 })
 }

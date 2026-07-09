@@ -168,7 +168,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       const res = await fetch("/api/whatsapp/send-ticket", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ orderId: id }),
+        body: JSON.stringify({ orderId: id, mode: "manual_resend" }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) setResendWANote(body.error ?? "Couldn't send. Try again shortly.")

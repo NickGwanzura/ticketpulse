@@ -706,6 +706,27 @@ export const analyticsEvents = pgTable("analytics_events", {
   index("analytics_events_event_type_idx").on(table.event, table.createdAt),
 ])
 
+export const ticketScanLogs = pgTable("ticket_scan_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketId: uuid("ticket_id").references(() => tickets.id, { onDelete: "set null" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  scannerUserId: text("scanner_user_id").references(() => users.id, { onDelete: "set null" }),
+  rawCode: text("raw_code").notNull(),
+  outcome: text("outcome").notNull(),
+  reason: text("reason"),
+  source: text("source").default("organizer_web"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("ticket_scan_logs_ticket_id_idx").on(table.ticketId),
+  index("ticket_scan_logs_event_id_idx").on(table.eventId),
+  index("ticket_scan_logs_order_id_idx").on(table.orderId),
+  index("ticket_scan_logs_scanner_user_id_idx").on(table.scannerUserId),
+  index("ticket_scan_logs_created_at_idx").on(table.createdAt),
+])
+
 export const paymentLedger = pgTable("payment_ledger", {
   id: uuid("id").primaryKey().defaultRandom(),
   orderId: uuid("order_id").notNull().references(() => orders.id),

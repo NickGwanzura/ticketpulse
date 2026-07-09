@@ -104,16 +104,15 @@ export async function POST(request: Request) {
       if (order.guestPhone) {
         try {
           const { sendText } = await import("@/lib/whatsapp")
-          const { ticketConfirmationMessage } = await import("@/lib/whatsapp-templates")
-          const message = ticketConfirmationMessage(
-            ev.title,
-            buyerName ?? "there",
-            eventDate,
-            ev.venue,
-            order.id,
-            "", // no item summary — this is a reminder
-            ticketUrl,
-          )
+          const message = [
+            `Reminder: ${ev.title} is coming up.`,
+            "",
+            `Hi ${buyerName ?? "there"}, your event starts on ${eventDate}.`,
+            ev.venue ? `Venue: ${ev.venue}` : null,
+            `Your tickets are here: ${ticketUrl}`,
+            "",
+            "Show your QR code at the gate.",
+          ].filter(Boolean).join("\n")
           await sendText(formatChatId(order.guestPhone), message)
           orderSent++
         } catch (err) {

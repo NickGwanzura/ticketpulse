@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { and, eq, inArray, notInArray } from "drizzle-orm"
+import { z } from "zod"
+import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers, tickets } from "@/db/schema"
 import { sendText, sendDocument, formatChatId, isSessionReady } from "@/lib/whatsapp"
@@ -7,6 +9,14 @@ import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
 import { generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { formatDate } from "@/lib/utils"
 import { log } from "@/lib/logger"
+import { rateLimit } from "@/lib/rate-limit"
+
+const SendTicketSchema = z.object({
+  orderId: z.string().uuid(),
+  mode: z.enum(["initial", "manual_resend"]).default("initial"),
+})
+
+const whatsappTicketLimiter = rateLimit({ windowMs: 60_000 * 10, max: 2 })
 
 /**
  * POST /api/whatsapp/send-ticket
@@ -22,9 +32,31 @@ import { log } from "@/lib/logger"
  */
 export async function POST(req: Request) {
   try {
-    const { orderId } = await req.json()
-    if (!orderId || typeof orderId !== "string") {
-      return NextResponse.json({ error: "orderId is required" }, { status: 400 })
+    const parsed = SendTicketSchema.safeParse(await req.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid WhatsApp ticket request" }, { status: 400 })
+    }
+
+    const { orderId, mode } = parsed.data
+    const session = await auth()
+    const internalKey = process.env.INTERNAL_API_KEY
+    const isInternal = Boolean(internalKey && req.headers.get("x-internal-key") === internalKey)
+    const isAdmin = session?.user?.role === "admin"
+
+    if (mode === "initial" && !isInternal && !isAdmin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const limiterKey =
+      mode === "manual_resend"
+        ? `${orderId}:${req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown"}`
+        : `initial:${orderId}`
+    const rl = whatsappTicketLimiter.check(limiterKey)
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many WhatsApp send requests. Please wait before trying again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      )
     }
 
     // ── Look up the order ─────────────────────────────────────────────────
@@ -43,6 +75,18 @@ export async function POST(req: Request) {
         { error: "Order has no guest phone number" },
         { status: 400 },
       )
+    }
+
+    const meta = (order.metadata ?? {}) as Record<string, unknown>
+    const delivery = (meta.delivery ?? {}) as Record<string, unknown>
+    if (mode === "initial" && delivery.whatsappSent === true) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "WhatsApp ticket already sent for this order",
+        sentTo: order.guestPhone,
+        pdfSent: false,
+      })
     }
 
     // ── Check WhatsApp session is ready ────────────────────────────────────
@@ -178,18 +222,62 @@ export async function POST(req: Request) {
         : Promise.resolve(null),
     ])
 
+    const textSent = textResult.status === "fulfilled"
+    const pdfSent = pdfResult.status === "fulfilled" && pdfResult.value !== null
+    if (!textSent && !pdfSent) {
+      const textError = textResult.status === "rejected" ? String(textResult.reason) : null
+      const pdfError = pdfResult.status === "rejected" ? String(pdfResult.reason) : null
+      await db
+        .update(orders)
+        .set({
+          metadata: {
+            ...meta,
+            delivery: {
+              ...delivery,
+              whatsappError: textError ?? pdfError ?? "WhatsApp send failed",
+              whatsappLastAttemptAt: new Date().toISOString(),
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+      return NextResponse.json({ error: "WhatsApp send failed" }, { status: 502 })
+    }
+
+    const now = new Date().toISOString()
+    await db
+      .update(orders)
+      .set({
+        metadata: {
+          ...meta,
+          delivery: {
+            ...delivery,
+            whatsappSent: true,
+            whatsappSentAt: delivery.whatsappSentAt ?? now,
+            whatsappLastSentAt: now,
+            whatsappLastMode: mode,
+            whatsappLastTextMessageId: textResult.status === "fulfilled" ? textResult.value.messageId : null,
+            whatsappPdfSent: pdfSent,
+            whatsappError: null,
+          },
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+
     log.info("send-ticket — WhatsApp sent", {
       orderId,
       phone: order.guestPhone,
-      textSent: textResult.status === "fulfilled",
-      pdfSent: pdfResult.status === "fulfilled" && pdfResult.value !== null,
+      mode,
+      textSent,
+      pdfSent,
       messageId: textResult.status === "fulfilled" ? textResult.value.messageId : null,
     })
 
     return NextResponse.json({
       ok: true,
       sentTo: order.guestPhone,
-      pdfSent: pdfResult.status === "fulfilled" && pdfResult.value !== null,
+      pdfSent,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

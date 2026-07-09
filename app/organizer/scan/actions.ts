@@ -2,12 +2,19 @@
 
 import { auth } from "@/auth"
 import { markTicketScanned, type ScanResult } from "@/lib/ticket-scan"
+import { headers } from "next/headers"
 
 export type { ScanResult }
 
 export async function markTicketScannedAction(rawCode: string): Promise<ScanResult> {
   const session = await auth()
-  if (!session) return { ok: false, error: "Not authenticated" }
+  if (!session?.user?.id) return { ok: false, error: "Not authenticated" }
 
-  return markTicketScanned(rawCode)
+  const requestHeaders = await headers()
+  return markTicketScanned(rawCode, {
+    scannerUserId: session.user.id,
+    source: "organizer_web",
+    userAgent: requestHeaders.get("user-agent"),
+    ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? requestHeaders.get("x-real-ip"),
+  })
 }

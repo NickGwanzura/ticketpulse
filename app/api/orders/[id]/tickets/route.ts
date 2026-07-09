@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { and, eq, notInArray } from "drizzle-orm"
+import { and, asc, eq, notInArray } from "drizzle-orm"
 import { db } from "@/db"
 import { tickets, ticketTiers } from "@/db/schema"
 
@@ -24,5 +24,6 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
     .from(tickets)
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
     .where(and(eq(tickets.orderId, id), notInArray(tickets.status, ["cancelled", "refunded"])))
+    .orderBy(asc(tickets.createdAt), asc(tickets.id))
   return NextResponse.json(rows)
 }

@@ -30,6 +30,7 @@ async function openwaFetch<T = unknown>(
 
   const res = await fetch(url, {
     ...options,
+    signal: options.signal ?? AbortSignal.timeout(20_000),
     headers: {
       "Content-Type": "application/json",
       "X-API-Key": apiKey,
@@ -55,7 +56,9 @@ async function openwaFetch<T = unknown>(
 export function formatChatId(phone: string): string {
   let digits = phone.replace(/\D/g, "")
   if (digits.startsWith("0")) {
-    digits = digits.slice(1)
+    digits = `263${digits.slice(1)}`
+  } else if (digits.length === 9 && digits.startsWith("7")) {
+    digits = `263${digits}`
   }
   return `${digits}@c.us`
 }

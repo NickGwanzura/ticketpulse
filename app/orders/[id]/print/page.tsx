@@ -10,14 +10,15 @@ import {
 } from "lucide-react"
 import QRCode from "qrcode"
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function ticketCode(orderId: string, lineKey: string, idx: number) {
-  return `${orderId}-${lineKey}-${idx + 1}`
-}
-
 function shortCode(orderId: string, idx: number) {
   return `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`
+}
+
+type CanonicalTicket = {
+  id: string
+  qrCode: string | null
+  tierId: string
+  tierName: string | null
 }
 
 // ─── QR code SVG generator ───────────────────────────────────────────────────
@@ -42,6 +43,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({})
+  const [canonicalTickets, setCanonicalTickets] = useState<CanonicalTicket[]>([])
   const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
@@ -65,21 +67,24 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
       .catch(() => setFetching(false))
   }, [ready, id, getOrder])
 
-  // Generate real QR code data URLs for each ticket
   useEffect(() => {
-    if (!order) return
-    const tickets = order.items.filter((i) => i.kind === "ticket")
-    const flat = tickets.flatMap((line) =>
-      line.kind === "ticket"
-        ? Array.from({ length: line.qty }).map((_, i) => ({ line, i }))
-        : []
-    )
+    if (!ready) return
+
+    fetch(`/api/orders/${id}/tickets`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: CanonicalTicket[]) => setCanonicalTickets(Array.isArray(rows) ? rows : []))
+      .catch(() => setCanonicalTickets([]))
+  }, [ready, id])
+
+  // Generate scanner-compatible QR code data URLs from canonical DB tickets.
+  useEffect(() => {
+    if (!order || canonicalTickets.length === 0) return
     Promise.all(
-      flat.map(({ line, i }, idx) =>
-        qrDataUrl(ticketCode(order.id, line.key, i)).then((url) => [String(idx), url] as const),
+      canonicalTickets.map((ticket, idx) =>
+        qrDataUrl(ticket.qrCode ?? `${window.location.origin}/tickets/${ticket.id}/verify?order=${order.id}`).then((url) => [String(idx), url] as const),
       ),
     ).then((entries) => setQrUrls(Object.fromEntries(entries)))
-  }, [order])
+  }, [order, canonicalTickets])
 
   // ── Download all tickets as PDF (server-side) ──────────────────────────────
 
@@ -133,7 +138,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
       : []
   )
 
-  const allQrReady = flat.length > 0 && flat.every((_, i) => qrUrls[`${i}`])
+  const allQrReady = flat.length > 0 && flat.every((_, i) => canonicalTickets[i] && qrUrls[`${i}`])
 
   return (
     <main className="bg-[#f4f7fa] min-h-screen">
@@ -193,6 +198,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
             </button>
             <button
               onClick={() => window.print()}
+              disabled={!allQrReady}
               className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-medium text-[#0a2540] hover:border-[#cbd5e1] transition-colors"
             >
               <Download size={14} /> Print
@@ -211,7 +217,8 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
         {flat.map(({ line, i }, idx) => {
           if (line.kind !== "ticket") return null
-          const code = ticketCode(order.id, line.key, i)
+          const canonicalTicket = canonicalTickets[idx]
+          const code = canonicalTicket?.qrCode ?? canonicalTicket?.id ?? "Loading ticket code"
           const human = shortCode(order.id, idx)
           const qr = qrUrls[`${idx}`]
 

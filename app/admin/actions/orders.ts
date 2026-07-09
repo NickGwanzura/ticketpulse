@@ -649,11 +649,15 @@ export async function sendWhatsAppTicketAction(orderId: string): Promise<{ ok: b
   if (!session?.user || session.user.role !== "admin") throw new Error("Unauthorized")
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+  const internalKey = process.env.INTERNAL_API_KEY
   try {
     const res = await fetch(`${appUrl}/api/whatsapp/send-ticket`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ orderId }),
+      headers: {
+        "content-type": "application/json",
+        ...(internalKey ? { "x-internal-key": internalKey } : {}),
+      },
+      body: JSON.stringify({ orderId, mode: "manual_resend" }),
     })
     const data = await res.json() as { ok?: boolean; error?: string }
     if (!res.ok) return { ok: false, error: data.error ?? "WhatsApp send failed" }
@@ -663,4 +667,3 @@ export async function sendWhatsAppTicketAction(orderId: string): Promise<{ ok: b
     return { ok: false, error: err instanceof Error ? err.message : "Failed" }
   }
 }
-

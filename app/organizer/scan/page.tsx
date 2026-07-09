@@ -151,10 +151,9 @@ export default function OrganizerScanPage() {
 
     // Test ticket codes (SampleTicket generates `TEST-{tierId.slice(-6)}`)
     if (/^TEST-/i.test(code)) {
-      const dup = recentRef.current.find((r) => r.code === code && r.status === "valid")
-      status = dup ? "duplicate" : "valid"
-      eventTitle = "🧪 Sample ticket"
-      tierName = "Test QR code — not valid for entry"
+      status = "unknown"
+      eventTitle = "Demo ticket"
+      tierName = "Test QR code only - do not admit"
     } else {
       // Server-first validation — always hit the database for authoritative ticket status
       if (navigator.onLine) {
@@ -378,7 +377,7 @@ export default function OrganizerScanPage() {
           <span className="inline-flex items-center gap-2"><Ticket size={14} className="text-ink-3" /> Reads PDF, mobile QR, and Apple/Google Wallet.</span>
           <span className={`inline-flex items-center gap-2 ${online ? "text-green-700" : "text-amber-700"}`}>
             {online ? <Wifi size={14} /> : <WifiOff size={14} />}
-            {online ? "Online · live sync" : "Offline · queued, syncs on reconnect"}
+            {online ? "Online · live sync" : "Offline · scans require connection"}
           </span>
         </div>
 
