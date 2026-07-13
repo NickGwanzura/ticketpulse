@@ -360,6 +360,10 @@ export async function POST(req: Request) {
   const baseMeta = {
     ...(appliedPromo ? { promo: appliedPromo } : {}),
     ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
+    // Phase 2 rewrites order metadata from baseMeta, so the reservation flag
+    // must live here — otherwise it's wiped after order creation, delivery
+    // double-increments soldQuantity, and expiry never releases the seats.
+    inventoryReserved: true,
   }
 
   // ── Idempotency: resume an existing in-progress order if one exists ──────────
