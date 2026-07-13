@@ -41,7 +41,7 @@ export default async function EventOverviewPage({
   searchParams,
 }: {
   params: Promise<RouteParams>
-  searchParams: Promise<{ published?: string; publishError?: string }>
+  searchParams: Promise<{ published?: "1" | "already" | "pending"; publishError?: string }>
 }) {
   const { id } = await params
   const sp = await searchParams
@@ -199,6 +199,7 @@ export default async function EventOverviewPage({
 
   const daysRemaining = Math.max(0, Math.ceil((new Date(event.startsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
   const isPublished = event.status === "published"
+  const isPendingReview = event.status === "pending_review"
   const publishAction = publishOrganizerEventAction.bind(null, id)
   const healthItems = [
     { label: "Event is published", ok: isPublished, href: `/organizer/events/${id}`, action: "Publish" },
@@ -235,7 +236,12 @@ export default async function EventOverviewPage({
             >
               <ScanLine size={14} /> Scan tickets
             </Link>
-            {!isPublished && (
+            {isPendingReview && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
+                Pending review
+              </span>
+            )}
+            {!isPublished && !isPendingReview && (
               <>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
                   Draft
@@ -264,6 +270,12 @@ export default async function EventOverviewPage({
           </div>
         )}
 
+        {sp.published === "pending" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-800">
+            Submitted for review. It will go live once an admin approves it.
+          </div>
+        )}
+
         {sp.published === "already" && (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] font-medium text-green-800">
             This event is already published.
@@ -287,7 +299,7 @@ export default async function EventOverviewPage({
                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${
                   isPublished ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"
                 }`}>
-                  {isPublished ? "Published" : "Draft"}
+                  {isPublished ? "Published" : isPendingReview ? "Pending review" : "Draft"}
                 </span>
               </div>
               <p className="text-[20px] font-bold tracking-tight text-ink">Event command center</p>

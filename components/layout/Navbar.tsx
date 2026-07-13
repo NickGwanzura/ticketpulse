@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import { ArrowRight, LayoutDashboard, LogOut, Menu, ShoppingBag, X } from "lucide-react"
+import { ArrowRight, LayoutDashboard, LogOut, Menu, Plus, ShoppingBag, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useCart } from "@/lib/cart-context"
 import { getDashboardPathForRole } from "@/lib/role-routes"
@@ -40,6 +40,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   }, [pathname])
 
   const dashboardHref = getDashboardPathForRole(session?.user?.role)
+  const canCreateEvent = session?.user?.role === "organizer" || session?.user?.role === "admin"
 
   return (
     <header
@@ -55,7 +56,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
 
       <nav className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-5 md:h-[72px] md:px-8">
         <Link href="/" className="mr-auto inline-flex items-center" aria-label="TicketPulse home">
-          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-9 w-9" />
+          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 w-12 md:h-14 md:w-14" />
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
@@ -91,6 +92,14 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
 
           {session ? (
             <>
+              {canCreateEvent && (
+                <Link
+                  href="/organizer/events/new"
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-[14px] font-bold text-white shadow-sm shadow-accent/20 transition hover:bg-accent-hover active:scale-[0.99]"
+                >
+                  <Plus size={15} /> Create Event
+                </Link>
+              )}
               <Link
                 href={dashboardHref}
                 className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-paper px-4 text-[14px] font-semibold text-ink transition hover:border-accent/30 hover:text-accent"
@@ -154,6 +163,11 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
             <div className="grid grid-cols-2 gap-2 pt-2">
               {session ? (
                 <>
+                  {canCreateEvent && (
+                    <Link href="/organizer/events/new" className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-bold text-white">
+                      <Plus size={15} /> Create Event
+                    </Link>
+                  )}
                   <Link href={dashboardHref} className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-[14px] font-semibold text-ink">
                     <LayoutDashboard size={15} /> Dashboard
                   </Link>

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   CalendarCheck, FileText, XCircle, PackageCheck,
-  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle, TrendingUp,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle, TrendingUp, Check, Undo2, Clock,
 } from "lucide-react"
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
@@ -13,29 +13,32 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
-import { publishEventAction } from "@/app/admin/actions/events"
+import { publishEventAction, approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import DeleteEventForm from "@/app/organizer/events/DeleteEventForm"
 
-type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
+type EventStatus = "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed"
 
 const STATUS_STYLE: Record<EventStatus, string> = {
-  published: "bg-green-50 text-green-700",
-  draft:     "bg-paper-2 text-ink-2 ring-1 ring-line",
-  sold_out:  "bg-green-50 text-navy",
-  cancelled: "bg-rose-50 text-rose-700",
-  completed: "bg-paper-2 text-ink-3 ring-1 ring-line",
+  published:       "bg-green-50 text-green-700",
+  pending_review:  "bg-amber-50 text-amber-700",
+  draft:           "bg-paper-2 text-ink-2 ring-1 ring-line",
+  sold_out:        "bg-green-50 text-navy",
+  cancelled:       "bg-rose-50 text-rose-700",
+  completed:       "bg-paper-2 text-ink-3 ring-1 ring-line",
 }
 
 const STATUS_LABEL: Record<EventStatus, string> = {
-  published: "Live",
-  draft:     "Draft",
-  sold_out:  "Sold out",
-  cancelled: "Cancelled",
-  completed: "Completed",
+  published:      "Live",
+  pending_review: "Pending review",
+  draft:          "Draft",
+  sold_out:       "Sold out",
+  cancelled:      "Cancelled",
+  completed:      "Completed",
 }
 
 const TABS: { label: string; value: string }[] = [
   { label: "All",       value: "all" },
+  { label: "Pending",   value: "pending_review" },
   { label: "Live",      value: "published" },
   { label: "Drafts",    value: "draft" },
   { label: "Sold out",  value: "sold_out" },
@@ -144,10 +147,11 @@ export default async function AdminEventsPage({
 
   const statsMap = new Map(allEventStats.map((s) => [s.status, s.count]))
   const stats = [
-    { label: "Live",      value: statsMap.get("published") ?? 0, icon: CalendarCheck, tone: "text-brand-700", bg: "bg-brand-50" },
-    { label: "Drafts",    value: statsMap.get("draft") ?? 0,     icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
-    { label: "Sold out",  value: statsMap.get("sold_out") ?? 0,  icon: PackageCheck,  tone: "text-navy",        bg: "bg-brand-50" },
-    { label: "Cancelled", value: statsMap.get("cancelled") ?? 0, icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
+    { label: "Pending",   value: statsMap.get("pending_review") ?? 0, icon: Clock,         tone: "text-amber-700",   bg: "bg-amber-50" },
+    { label: "Live",      value: statsMap.get("published") ?? 0,      icon: CalendarCheck, tone: "text-brand-700",   bg: "bg-brand-50" },
+    { label: "Drafts",    value: statsMap.get("draft") ?? 0,           icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
+    { label: "Sold out",  value: statsMap.get("sold_out") ?? 0,        icon: PackageCheck,  tone: "text-navy",        bg: "bg-brand-50" },
+    { label: "Cancelled", value: statsMap.get("cancelled") ?? 0,       icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
   ]
 
   return (
@@ -168,7 +172,7 @@ export default async function AdminEventsPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 tp-fade-up-1">
           {stats.map(({ label, value, icon: Icon, tone, bg }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">
               <span className={`inline-flex w-10 h-10 items-center justify-center rounded-xl ${bg}`}>
@@ -271,21 +275,44 @@ export default async function AdminEventsPage({
                               >
                                 <Settings size={14} />
                               </Link>
-                              <form
-                                action={publishEventAction.bind(null, e.id)}
-                              >
-                                <button
-                                  type="submit"
-                                  aria-label={status === "published" ? "Unpublish" : "Publish"}
-                                  className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
-                                    status === "published"
-                                      ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                                      : "text-brand-600 hover:text-green-800 hover:bg-brand-50"
-                                  }`}
+                              {status === "pending_review" ? (
+                                <>
+                                  <form action={approveEventAction.bind(null, e.id)}>
+                                    <button
+                                      type="submit"
+                                      aria-label="Approve"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-brand-600 hover:text-green-800 hover:bg-brand-50 transition-colors"
+                                    >
+                                      <Check size={14} />
+                                    </button>
+                                  </form>
+                                  <form action={rejectEventAction.bind(null, e.id, undefined)}>
+                                    <button
+                                      type="submit"
+                                      aria-label="Reject"
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-colors"
+                                    >
+                                      <Undo2 size={14} />
+                                    </button>
+                                  </form>
+                                </>
+                              ) : (
+                                <form
+                                  action={publishEventAction.bind(null, e.id)}
                                 >
-                                  {status === "published" ? <EyeOff size={14} /> : <Send size={14} />}
-                                </button>
-                              </form>
+                                  <button
+                                    type="submit"
+                                    aria-label={status === "published" ? "Unpublish" : "Publish"}
+                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                                      status === "published"
+                                        ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                        : "text-brand-600 hover:text-green-800 hover:bg-brand-50"
+                                    }`}
+                                  >
+                                    {status === "published" ? <EyeOff size={14} /> : <Send size={14} />}
+                                  </button>
+                                </form>
+                              )}
                               <Link
                                 href={`/events/${e.slug}`}
                                 aria-label="View public page"
@@ -383,19 +410,34 @@ export default async function AdminEventsPage({
                         >
                           <Settings size={12} /> Manage
                         </Link>
-                        <form action={publishEventAction.bind(null, e.id)}>
-                          <button
-                            type="submit"
-                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors ${
-                              status === "published"
-                                ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
-                                : "bg-green-50 text-green-700 hover:bg-green-100"
-                            }`}
-                          >
-                            {status === "published" ? <EyeOff size={12} /> : <Send size={12} />}
-                            {status === "published" ? "Unpublish" : "Publish"}
-                          </button>
-                        </form>
+                        {status === "pending_review" ? (
+                          <>
+                            <form action={approveEventAction.bind(null, e.id)}>
+                              <button type="submit" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+                                <Check size={12} /> Approve
+                              </button>
+                            </form>
+                            <form action={rejectEventAction.bind(null, e.id, undefined)}>
+                              <button type="submit" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors">
+                                <Undo2 size={12} /> Reject
+                              </button>
+                            </form>
+                          </>
+                        ) : (
+                          <form action={publishEventAction.bind(null, e.id)}>
+                            <button
+                              type="submit"
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-colors ${
+                                status === "published"
+                                  ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                  : "bg-green-50 text-green-700 hover:bg-green-100"
+                              }`}
+                            >
+                              {status === "published" ? <EyeOff size={12} /> : <Send size={12} />}
+                              {status === "published" ? "Unpublish" : "Publish"}
+                            </button>
+                          </form>
+                        )}
                         <Link href={`/organizer/events/${e.id}/edit`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-paper-2 text-ink-2 hover:text-ink transition-colors">
                           <Pencil size={12} /> Edit
                         </Link>

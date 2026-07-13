@@ -5,8 +5,11 @@ import { redirect } from "next/navigation"
 import { eq, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { events, orders, paymentLedger, tickets, ticketTiers } from "@/db/schema"
+import { events, orders, paymentLedger, tickets, ticketTiers, users } from "@/db/schema"
 import { requireOwnerAccess } from "@/lib/event-access"
+import { sendEmail, adminEmail } from "@/lib/email"
+import { eventSubmittedForReviewAdminEmail } from "@/lib/email-templates"
+import { log } from "@/lib/logger"
 
 export async function publishOrganizerEventAction(eventId: string) {
   const access = await requireOwnerAccess(eventId)
@@ -15,8 +18,9 @@ export async function publishOrganizerEventAction(eventId: string) {
   const [event] = await db
     .select({
       id: events.id,
-      slug: events.slug,
+      title: events.title,
       status: events.status,
+      organizerId: events.organizerId,
     })
     .from(events)
     .where(eq(events.id, eventId))
@@ -24,6 +28,7 @@ export async function publishOrganizerEventAction(eventId: string) {
 
   if (!event) redirect("/organizer")
   if (event.status === "published") redirect(`/organizer/events/${eventId}?published=already`)
+  if (event.status === "pending_review") redirect(`/organizer/events/${eventId}?published=pending`)
   if (event.status === "cancelled" || event.status === "completed") {
     redirect(`/organizer/events/${eventId}?publishError=locked`)
   }
@@ -39,17 +44,38 @@ export async function publishOrganizerEventAction(eventId: string) {
 
   await db
     .update(events)
-    .set({ status: "published", updatedAt: new Date() })
+    .set({ status: "pending_review", updatedAt: new Date() })
     .where(eq(events.id, eventId))
 
-  revalidatePath("/events")
   revalidatePath("/organizer")
+  revalidatePath("/admin/events")
   revalidatePath(`/organizer/events/${eventId}`)
   revalidatePath(`/organizer/events/${eventId}/edit`)
   revalidatePath(`/organizer/events/${eventId}/tiers`)
-  revalidatePath(`/events/${event.slug}`)
 
-  redirect(`/organizer/events/${eventId}?published=1`)
+  try {
+    const [organizer] = await db
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, event.organizerId))
+      .limit(1)
+
+    const { html, text } = eventSubmittedForReviewAdminEmail({
+      eventTitle: event.title,
+      organizerName: organizer?.name,
+    })
+    await sendEmail({
+      to: adminEmail,
+      subject: `Event pending review: ${event.title}`,
+      html,
+      text,
+    })
+  } catch (err) {
+    console.error("[publishOrganizerEvent] failed to notify admin:", err)
+    log.error("publishOrganizerEvent — failed to notify admin", { eventId, error: String(err) })
+  }
+
+  redirect(`/organizer/events/${eventId}?published=pending`)
 }
 
 export async function deleteOrganizerEventAction(formData: FormData): Promise<void> {

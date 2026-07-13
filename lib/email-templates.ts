@@ -723,6 +723,92 @@ export function eventPublishedNotificationEmail(opts: {
   return { html, text }
 }
 
+// ─── Event submitted for review (admin notification) ────────────────────────
+
+export function eventSubmittedForReviewAdminEmail(opts: {
+  eventTitle: string
+  organizerName?: string | null
+}): { html: string; text: string } {
+  const { eventTitle, organizerName } = opts
+  const adminUrl = `${APP_URL}/admin/events?status=pending_review`
+  const heading = "Event pending review"
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      <strong style="color:${BRAND.ink};">${escape(organizerName ?? "An organizer")}</strong>
+      submitted <strong style="color:${BRAND.ink};">${escape(eventTitle)}</strong> for review.
+      It will not be visible to attendees until it is approved.
+    </p>`
+
+  const html = layout({
+    preheader: `${eventTitle} is waiting for approval.`,
+    heading,
+    body,
+    cta: { label: "Review event", href: adminUrl },
+  })
+
+  const text = [
+    heading,
+    "",
+    `${organizerName ?? "An organizer"} submitted ${eventTitle} for review.`,
+    "It will not be visible to attendees until it is approved.",
+    "",
+    `Review: ${adminUrl}`,
+  ].join("\n")
+
+  return { html, text }
+}
+
+// ─── Event rejected (organizer notification) ─────────────────────────────────
+
+export function eventRejectedEmail(opts: {
+  eventTitle: string
+  organizerName?: string | null
+  reason?: string | null
+}): { html: string; text: string } {
+  const { eventTitle, organizerName, reason } = opts
+  const first = organizerName?.split(" ")[0]?.trim()
+  const heading = "Your event needs changes"
+  const editUrl = `${APP_URL}/organizer`
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${first ? `Hey ${escape(first)},` : "Hi there,"}
+      your event <strong style="color:${BRAND.ink};">${escape(eventTitle)}</strong>
+      was reviewed and sent back to draft${reason ? " with the following note" : ""}.
+    </p>
+    ${reason ? `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%"
+           style="margin:0 0 14px;padding:18px;border:1px solid ${BRAND.line};border-radius:14px;background:${BRAND.paper2};">
+      <tr>
+        <td style="font-size:14px;color:${BRAND.ink};">${escape(reason)}</td>
+      </tr>
+    </table>` : ""}
+    <p style="margin:0;">
+      Make the requested changes and resubmit it for review whenever you're ready.
+    </p>`
+
+  const html = layout({
+    preheader: `${eventTitle} was sent back to draft.`,
+    heading,
+    body,
+    cta: { label: "Go to dashboard", href: editUrl },
+  })
+
+  const text = [
+    heading,
+    "",
+    `${first ? `Hey ${first},` : "Hi there,"} your event ${eventTitle} was reviewed and sent back to draft.`,
+    reason ? `Note: ${reason}` : "",
+    "",
+    "Make the requested changes and resubmit it for review whenever you're ready.",
+    "",
+    `Dashboard: ${editUrl}`,
+  ].filter(Boolean).join("\n")
+
+  return { html, text }
+}
+
 // ─── Product announcement ──────────────────────────────────────────────────────
 
 export function announcementEmail(opts: {

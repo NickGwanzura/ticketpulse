@@ -19,6 +19,7 @@ import { relations } from "drizzle-orm"
 
 export const eventStatusEnum = pgEnum("event_status", [
   "draft",
+  "pending_review",
   "published",
   "sold_out",
   "cancelled",

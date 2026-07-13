@@ -76,6 +76,7 @@ function EventHealthBadges({
   const badges: { label: string; className: string }[] = []
 
   if (status === "published") badges.push({ label: "Published", className: "bg-emerald-50 text-emerald-700 ring-emerald-200" })
+  if (status === "pending_review") badges.push({ label: "Pending review", className: "bg-amber-50 text-amber-700 ring-amber-200" })
   if (status === "draft") badges.push({ label: "Draft", className: "bg-amber-50 text-amber-700 ring-amber-200" })
   if (!hasTiers) badges.push({ label: "Needs tiers", className: "bg-rose-50 text-rose-700 ring-rose-200" })
   if (salesEnded) badges.push({ label: "Sales closed", className: "bg-rose-50 text-rose-700 ring-rose-200" })

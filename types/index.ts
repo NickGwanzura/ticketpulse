@@ -7,7 +7,7 @@ export type UserRole =
   | "dispatcher"
   | "driver"
   | "conductor"
-export type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "completed"
+export type EventStatus = "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed"
 export type OrderStatus = "pending" | "paid" | "cancelled" | "refunded"
 export type VehicleType = "kombi" | "bus" | "sedan" | "suv"
 export type VendorCategory =

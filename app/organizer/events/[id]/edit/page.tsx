@@ -3,6 +3,7 @@ import { eq, asc } from "drizzle-orm"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
+import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
@@ -27,6 +28,9 @@ export default async function EditEventPage({
 
   const access = await requireEventAccess(id)
   if (!access.allowed) redirect(access.redirectTo)
+
+  const session = await auth()
+  const isAdmin = session?.user?.role === "admin"
 
   const [row] = await db
     .select()
@@ -79,7 +83,7 @@ export default async function EditEventPage({
               title: row.title,
               description: row.description,
               category: row.category,
-              status: (row.status ?? "draft") as "draft" | "published" | "sold_out" | "cancelled" | "completed",
+              status: (row.status ?? "draft") as "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed",
               venue: row.venue,
               city: row.city,
               country: row.country,
@@ -97,6 +101,7 @@ export default async function EditEventPage({
             }}
             tiers={tiers}
             showCreatedToast={sp.created === "1"}
+            isAdmin={isAdmin}
           />
         </div>
       </div>

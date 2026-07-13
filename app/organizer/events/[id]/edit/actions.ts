@@ -61,7 +61,7 @@ async function requireOwnership(eventId: string) {
     return { ok: false as const, redirectTo: "/auth/signin" }
   }
   const [row] = await db
-    .select({ id: events.id, organizerId: events.organizerId, slug: events.slug, title: events.title })
+    .select({ id: events.id, organizerId: events.organizerId, slug: events.slug, title: events.title, status: events.status })
     .from(events)
     .where(eq(events.id, eventId))
     .limit(1)
@@ -115,11 +115,9 @@ export async function updateEventAction(
     return { ok: false, error: "Not allowed." }
   }
 
-  // Organizers can only toggle between draft and published.
-  // cancelled and sold_out are admin-only transitions.
-  if (guard.session.user.role !== "admin" && !["draft", "published"].includes(data.status)) {
-    return { ok: false, error: "Not allowed.", fieldErrors: { status: "Not allowed" } }
-  }
+  // Status changes go through the submit-for-review / admin-approve flow, not this form.
+  // Non-admins can't move an event into or out of "published" here — keep whatever it already is.
+  const status = guard.session.user.role === "admin" ? data.status : guard.event.status
 
   const startsAt = parseDateTimeLocal(data.startsAt)
   if (!startsAt) {
@@ -180,7 +178,7 @@ export async function updateEventAction(
       title:         data.title,
       slug,
       category:      data.category,
-      status:        data.status,
+      status,
       venue:         data.venue,
       city:          data.city,
       country:       data.country,

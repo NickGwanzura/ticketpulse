@@ -11,7 +11,7 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
-import { publishEventAction } from "@/app/admin/actions/events"
+import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import { verifyUserEmailAction, approveOrganizerAction } from "@/app/admin/actions/users"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
@@ -115,7 +115,7 @@ export default async function AdminOverviewPage() {
 
     db.select({ id: events.id, title: events.title, description: events.description, category: events.category, organizerName: users.name, organizerEmail: users.email })
       .from(events).leftJoin(users, eq(events.organizerId, users.id))
-      .where(eq(events.status, "draft")).orderBy(desc(events.createdAt)).limit(10),
+      .where(eq(events.status, "pending_review")).orderBy(desc(events.createdAt)).limit(10),
 
     db.select({ id: users.id, name: users.name, email: users.email, phone: users.phone, createdAt: users.createdAt })
       .from(users).where(and(eq(users.role, "organizer"), isNull(users.approvedAt)))
@@ -218,7 +218,7 @@ export default async function AdminOverviewPage() {
     { label: "Velocity pending", value: velocityPending, href: "/admin/velocity?status=pending", icon: Zap, tone: "amber", detail: "Gateway confirmations still unresolved" },
     { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "green", detail: `${formatCurrency(pendingPayoutTotal, "USD")} waiting for review` },
     { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue", detail: "Customer reviews awaiting moderation" },
-    { label: "Draft events", value: draftEvents.length, href: "#review", icon: CalendarCheck, tone: "amber", detail: "Organizer events not published yet" },
+    { label: "Pending events", value: draftEvents.length, href: "#review", icon: CalendarCheck, tone: "amber", detail: "Submitted for review, not yet approved" },
     { label: "Unverified users", value: unverifiedUsers.length, href: "#review", icon: Users, tone: "amber", detail: "Accounts awaiting email verification" },
     { label: "Pending organizers", value: pendingOrganizers.length, href: "#review", icon: Users, tone: "blue", detail: "Organizer accounts awaiting approval" },
   ].filter((item) => item.value > 0)
@@ -461,7 +461,7 @@ export default async function AdminOverviewPage() {
                 <li key={e.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[10px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Draft event</span>
+                      <span className="text-[10px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Pending review</span>
                     </div>
                     <p className="text-[14px] font-semibold text-ink">{e.title}</p>
                     <p className="text-[12px] text-ink-2">by {e.organizerName ?? e.organizerEmail ?? "—"}</p>
@@ -471,11 +471,18 @@ export default async function AdminOverviewPage() {
                       </div>
                     )}
                   </div>
-                  <form action={publishEventAction.bind(null, e.id)} className="shrink-0">
-                    <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
-                      Publish
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <form action={rejectEventAction.bind(null, e.id, undefined)}>
+                      <button type="submit" className="rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors">
+                        Reject
+                      </button>
+                    </form>
+                    <form action={approveEventAction.bind(null, e.id)}>
+                      <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
+                        Approve
+                      </button>
+                    </form>
+                  </div>
                 </li>
               ))}
               {unverifiedUsers.map((u) => (

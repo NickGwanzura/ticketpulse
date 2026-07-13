@@ -37,11 +37,12 @@ const CATEGORIES = [
 ]
 
 const STATUSES = [
-  { value: "draft",     label: "Draft" },
-  { value: "published", label: "Published" },
-  { value: "sold_out",  label: "Sold out" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "completed", label: "Completed" },
+  { value: "draft",           label: "Draft" },
+  { value: "pending_review",  label: "Pending review" },
+  { value: "published",      label: "Published" },
+  { value: "sold_out",       label: "Sold out" },
+  { value: "cancelled",      label: "Cancelled" },
+  { value: "completed",      label: "Completed" },
 ] as const
 
 function FieldError({ message }: { message?: string }) {
@@ -89,7 +90,7 @@ type Props = {
     title: string
     description: string | null
     category: string
-    status: "draft" | "published" | "sold_out" | "cancelled" | "completed"
+    status: "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed"
     venue: string
     city: string
     country: string | null
@@ -107,6 +108,7 @@ type Props = {
   }
   tiers: TierSummary[]
   showCreatedToast?: boolean
+  isAdmin?: boolean
 }
 
 function toLocalInputValue(d: Date | null): string {
@@ -120,7 +122,7 @@ function ReqMark() {
   return <span className="text-rose-500 ml-0.5" aria-label="required">*</span>
 }
 
-export default function EditEventForm({ event, tiers, showCreatedToast }: Props) {
+export default function EditEventForm({ event, tiers, showCreatedToast, isAdmin }: Props) {
   const [state, formAction] = useActionState(updateEventAction, INITIAL)
   const [coverImage, setCoverImage] = useState<string | null>(event.coverImage)
   const [promoImages, setPromoImages] = useState<string[]>(event.promoImages ?? [])
@@ -326,11 +328,25 @@ export default function EditEventForm({ event, tiers, showCreatedToast }: Props)
 
           <div>
             <label htmlFor="status" className="block text-[13px] font-medium text-ink mb-1.5">Status</label>
-            <select id="status" name="status" required defaultValue={event.status} onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)} className={inputCls(!!errs.status)}>
-              {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
+            {isAdmin ? (
+              <select id="status" name="status" required defaultValue={event.status} onChange={(e) => setSelectedStatus(e.target.value as typeof selectedStatus)} className={inputCls(!!errs.status)}>
+                {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            ) : (
+              <>
+                <input type="hidden" name="status" value={event.status} />
+                <div className={inputCls(false) + " bg-paper-2 text-ink-2"}>
+                  {STATUSES.find((s) => s.value === event.status)?.label ?? event.status}
+                </div>
+                <p className="mt-2 text-[12px] text-ink-3">
+                  {event.status === "draft"
+                    ? "Use “Submit for review” on the event page to publish."
+                    : "Status changes go through TicketPulse review — contact support to make changes."}
+                </p>
+              </>
+            )}
             <FieldError message={errs.status} />
-            {(selectedStatus === "cancelled" || selectedStatus === "completed") && (
+            {isAdmin && (selectedStatus === "cancelled" || selectedStatus === "completed") && (
               <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
                 Setting status to <strong>{selectedStatus}</strong> will hide this event from public listings. Buyers will still be able to view their tickets.
               </p>

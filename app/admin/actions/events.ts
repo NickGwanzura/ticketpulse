@@ -117,5 +117,143 @@ export async function publishEventAction(eventId: string) {
 }
 
 /**
+ * Approve an event pending review, making it live.
+ */
+export async function approveEventAction(eventId: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [ev] = await db
+    .select({
+      id: events.id,
+      status: events.status,
+      title: events.title,
+      startsAt: events.startsAt,
+      slug: events.slug,
+      organizerId: events.organizerId,
+    })
+    .from(events)
+    .where(eq(events.id, eventId))
+    .limit(1)
+
+  if (!ev) throw new Error("Event not found")
+  if (ev.status !== "pending_review") throw new Error("Event is not pending review")
+
+  await db
+    .update(events)
+    .set({ status: "published", updatedAt: new Date() })
+    .where(eq(events.id, eventId))
+
+  const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/events/${ev.slug}`
+  const eventDate = ev.startsAt
+    ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : "TBA"
+
+  try {
+    const [org] = await db
+      .select({ name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, ev.organizerId))
+      .limit(1)
+
+    if (org?.email) {
+      const { html, text } = eventPublishedNotificationEmail({
+        eventTitle: ev.title,
+        eventDate,
+        eventUrl,
+        organizerName: org.name,
+      })
+      await sendEmail({
+        to: org.email,
+        subject: `🎉 ${ev.title} is now live`,
+        html,
+        text,
+      })
+    }
+  } catch (err) {
+    console.error("[approveEvent] failed to notify organiser:", err)
+    log.error("approveEvent — failed to notify organiser", { eventId: ev.id, error: String(err) })
+  }
+
+  try {
+    const { sendAdminAlert } = await import("@/lib/whatsapp")
+    const { eventPublishedAlert } = await import("@/lib/whatsapp-templates")
+    await sendAdminAlert(eventPublishedAlert(ev.title, eventDate, eventUrl))
+  } catch (err) {
+    console.error("[approveEvent] failed to send admin WhatsApp alert:", err)
+    log.error("approveEvent — failed to send admin WhatsApp alert", { eventId: ev.id, error: String(err) })
+  }
+
+  revalidatePath("/admin/events")
+  revalidatePath("/admin")
+  revalidatePath("/organizer")
+  revalidatePath(`/organizer/events/${eventId}`)
+  revalidatePath("/events")
+  revalidatePath(`/events/${ev.slug}`)
+}
+
+/**
+ * Reject an event pending review, sending it back to draft.
+ */
+export async function rejectEventAction(eventId: string, reason?: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [ev] = await db
+    .select({
+      id: events.id,
+      status: events.status,
+      title: events.title,
+      organizerId: events.organizerId,
+    })
+    .from(events)
+    .where(eq(events.id, eventId))
+    .limit(1)
+
+  if (!ev) throw new Error("Event not found")
+  if (ev.status !== "pending_review") throw new Error("Event is not pending review")
+
+  await db
+    .update(events)
+    .set({ status: "draft", updatedAt: new Date() })
+    .where(eq(events.id, eventId))
+
+  try {
+    const [org] = await db
+      .select({ name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, ev.organizerId))
+      .limit(1)
+
+    if (org?.email) {
+      const { eventRejectedEmail } = await import("@/lib/email-templates")
+      const { html, text } = eventRejectedEmail({
+        eventTitle: ev.title,
+        organizerName: org.name,
+        reason,
+      })
+      await sendEmail({
+        to: org.email,
+        subject: `Update needed: ${ev.title}`,
+        html,
+        text,
+      })
+    }
+  } catch (err) {
+    console.error("[rejectEvent] failed to notify organiser:", err)
+    log.error("rejectEvent — failed to notify organiser", { eventId: ev.id, error: String(err) })
+  }
+
+  revalidatePath("/admin/events")
+  revalidatePath("/admin")
+  revalidatePath("/organizer")
+  revalidatePath(`/organizer/events/${eventId}`)
+}
+
+/**
  * Verify a user's email (set emailVerified to now).
  */

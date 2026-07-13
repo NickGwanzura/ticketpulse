@@ -83,6 +83,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
   const groups = NAV_GROUPS(eventId)
   const flat = NAV_FLAT(eventId)
   const isPublished = eventStatus === "published"
+  const isPendingReview = eventStatus === "pending_review"
 
   const isActive = (href: string) => {
     if (pathname === href) return true
@@ -111,7 +112,7 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
               ? "bg-emerald-500/20 text-emerald-300"
               : "bg-amber-400/15 text-amber-300"
           }`}>
-            {isPublished ? "Published" : "Draft"}
+            {isPublished ? "Published" : isPendingReview ? "Pending review" : "Draft"}
           </span>
         </div>
 
