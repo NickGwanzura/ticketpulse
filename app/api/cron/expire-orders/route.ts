@@ -11,7 +11,11 @@ import type { NormalizedPollResponse, VelocityOrderMetadata } from "@/types/velo
 export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
   if (authError) return authError
-  const pendingCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  // Pending orders reserve inventory at checkout start, so a stale pending
+  // order is a locked seat. The payment window is ~5 min (poll timeout) and
+  // card-recovery emails fire at 15 min, so 30 min is a generous ceiling —
+  // the live Velocity poll below protects any payment that landed late.
+  const pendingCutoff = new Date(Date.now() - 30 * 60 * 1000)
   const awaitingCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
 
   const pendingStale = await db

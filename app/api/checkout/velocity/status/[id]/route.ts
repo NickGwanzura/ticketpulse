@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { orders, paymentLedger, events } from "@/db/schema"
 import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
+import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
 import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
@@ -69,6 +70,27 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
   const createdAt = order.createdAt ? new Date(order.createdAt).getTime() : Date.now()
   if (Date.now() - createdAt > POLL_TIMEOUT_MS) {
+    // Payment window is over. Do one final poll so a payment that landed at
+    // the buzzer still gets finalized; otherwise expire the order and release
+    // the inventory reservation NOW instead of leaving the seats locked until
+    // the expire-orders cron picks it up.
+    try {
+      const pollResult = await pollTransaction(velocityMeta.transactionTrace)
+      const normalized = normalizeVelocityPollResponse(pollResult)
+      if (normalized.localStatus === "PAID") {
+        return await handlePollSuccess(order, meta, velocityMeta, id)
+      }
+      // A network error means the poll is inconclusive — leave the order
+      // pending so the cron's live-poll safety net decides.
+      if (pollResult.state !== "network_error") {
+        await expireOrderAndReleaseInventory(id)
+      }
+    } catch (err) {
+      log.warn("velocity status - final poll before expiry failed, leaving order for cron", {
+        localOrderId: id,
+        error: String(err),
+      })
+    }
     return NextResponse.json({
       orderId: id,
       status: "expired",

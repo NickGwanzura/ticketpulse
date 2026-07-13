@@ -8,7 +8,8 @@ import { log } from "@/lib/logger"
 
 /**
  * Sends a recovery email to buyers whose card-redirect payment has been pending
- * for 15 min – 23 h. Marks orders so the email is only sent once.
+ * for 15+ min. Marks orders so the email is only sent once. In practice the
+ * window is 15–30 min, since expire-orders expires pending orders after 30 min.
  */
 export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
