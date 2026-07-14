@@ -290,6 +290,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const filtered = EVENTS.filter(e =>
     filter === "live" ? e.status === "published" && !e.isPast :
     filter === "drafts" ? e.status === "draft" :
+    filter === "pending" ? e.status === "pending_review" :
     filter === "past" ? e.isPast :
     true
   )
@@ -297,6 +298,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const liveCount = EVENTS.filter(e => e.status === "published" && !e.isPast).length
   const pastCount = EVENTS.filter(e => e.isPast).length
   const draftCount = EVENTS.filter(e => e.status === "draft").length
+  const pendingReviewCount = EVENTS.filter(e => e.status === "pending_review").length
   const visibleSummary = Array.from(revenueSummaries.values()).reduce(
     (acc, summary) => ({
       grossRevenue: acc.grossRevenue + summary.grossRevenue,
@@ -473,10 +475,11 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <h2 className="text-[15px] font-semibold text-ink">Your events</h2>
               <div className="flex items-center gap-1">
                 {[
-                { v: "all",    l: "All" },
-                { v: "live",   l: liveCount  > 0 ? `Live ${liveCount}`   : "Live"   },
-                { v: "drafts", l: draftCount > 0 ? `Drafts ${draftCount}` : "Drafts" },
-                { v: "past",   l: pastCount  > 0 ? `Past ${pastCount}`   : "Past"   },
+                { v: "all",     l: "All" },
+                { v: "live",    l: liveCount          > 0 ? `Live ${liveCount}`             : "Live"    },
+                { v: "pending", l: pendingReviewCount > 0 ? `Pending ${pendingReviewCount}` : "Pending" },
+                { v: "drafts",  l: draftCount         > 0 ? `Drafts ${draftCount}`          : "Drafts"  },
+                { v: "past",    l: pastCount          > 0 ? `Past ${pastCount}`             : "Past"    },
               ].map(f => (
                   <Link key={f.v} href={`/organizer?filter=${f.v}`}
                     className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${filter === f.v ? "bg-paper-2 text-ink ring-1 ring-line" : "text-ink-2 hover:text-ink"}`}>

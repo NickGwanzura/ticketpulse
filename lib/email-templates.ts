@@ -759,6 +759,46 @@ export function eventSubmittedForReviewAdminEmail(opts: {
   return { html, text }
 }
 
+// ─── Event submitted for review (organizer confirmation) ────────────────────
+
+export function eventSubmittedForReviewOrganizerEmail(opts: {
+  eventTitle: string
+  organizerName?: string | null
+}): { html: string; text: string } {
+  const { eventTitle, organizerName } = opts
+  const first = organizerName?.split(" ")[0]?.trim()
+  const heading = "Your event is under review"
+  const dashboardUrl = `${APP_URL}/organizer`
+
+  const body = `
+    <p style="margin:0 0 14px;">
+      ${first ? `Hey ${escape(first)},` : "Hi there,"}
+      we've received <strong style="color:${BRAND.ink};">${escape(eventTitle)}</strong>
+      and it's now with the TicketPulse team for review.
+    </p>
+    <p style="margin:0;">
+      We'll email you as soon as it's approved and live, usually within one business day.
+    </p>`
+
+  const html = layout({
+    preheader: `${eventTitle} was submitted and is awaiting approval.`,
+    heading,
+    body,
+    cta: { label: "Go to dashboard", href: dashboardUrl },
+  })
+
+  const text = [
+    heading,
+    "",
+    `${first ? `Hey ${first},` : "Hi there,"} we've received ${eventTitle} and it's now with the TicketPulse team for review.`,
+    "We'll email you as soon as it's approved and live, usually within one business day.",
+    "",
+    `Dashboard: ${dashboardUrl}`,
+  ].join("\n")
+
+  return { html, text }
+}
+
 // ─── Event rejected (organizer notification) ─────────────────────────────────
 
 export function eventRejectedEmail(opts: {

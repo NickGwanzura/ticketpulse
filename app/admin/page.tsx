@@ -13,6 +13,7 @@ import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import { verifyUserEmailAction, approveOrganizerAction } from "@/app/admin/actions/users"
+import RejectEventButton from "@/app/admin/actions/RejectEventButton"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
@@ -472,11 +473,7 @@ export default async function AdminOverviewPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <form action={rejectEventAction.bind(null, e.id, undefined)}>
-                      <button type="submit" className="rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors">
-                        Reject
-                      </button>
-                    </form>
+                    <RejectEventButton eventId={e.id} action={rejectEventAction} compact />
                     <form action={approveEventAction.bind(null, e.id)}>
                       <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
                         Approve

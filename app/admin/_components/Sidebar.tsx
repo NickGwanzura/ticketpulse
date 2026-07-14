@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
-type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
+type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; badgeKey?: string }
 type NavGroup = { label?: string; items: NavItem[] }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -34,7 +34,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
       { label: "Users",     href: "/admin/users",     icon: Users },
-      { label: "Events",    href: "/admin/events",    icon: Calendar },
+      { label: "Events",    href: "/admin/events",    icon: Calendar, badgeKey: "pendingEvents" },
       { label: "Orders",    href: "/admin/orders",    icon: Receipt },
       { label: "Reviews",   href: "/admin/reviews",   icon: Star },
       { label: "Transport", href: "/admin/transport", icon: Bus },
@@ -56,10 +56,13 @@ const NAV_GROUPS: NavGroup[] = [
 
 const NAV_FLAT: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
 
-export default function Sidebar({ name, email }: { name: string; email: string }) {
+export default function Sidebar({ name, email, pendingEventCount = 0 }: { name: string; email: string; pendingEventCount?: number }) {
   const pathname = usePathname()
   const isActive = (href: string) =>
     href === "/admin" ? pathname === href : pathname === href || pathname.startsWith(href + "/")
+
+  const badgeValue = (key?: string): number | undefined =>
+    key === "pendingEvents" ? pendingEventCount : undefined
 
   const initials = name
     .split(" ")
@@ -100,8 +103,9 @@ export default function Sidebar({ name, email }: { name: string; email: string }
                 </p>
               )}
               <div className="space-y-0.5">
-                {group.items.map(({ label, href, icon: Icon }) => {
+                {group.items.map(({ label, href, icon: Icon, badgeKey }) => {
                   const active = isActive(href)
+                  const badge = badgeValue(badgeKey)
                   return (
                     <Link
                       key={href}
@@ -114,7 +118,12 @@ export default function Sidebar({ name, email }: { name: string; email: string }
                     >
                       <Icon size={14} className={active ? "text-white" : "text-white/40"} />
                       {label}
-                      {active && <span className="ml-auto w-1 h-1 rounded-full bg-white/60" />}
+                      {!!badge && (
+                        <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-[10px] font-bold text-[#0a2540]">
+                          {badge}
+                        </span>
+                      )}
+                      {active && !badge && <span className="ml-auto w-1 h-1 rounded-full bg-white/60" />}
                     </Link>
                   )
                 })}
@@ -157,8 +166,9 @@ export default function Sidebar({ name, email }: { name: string; email: string }
           </div>
         </div>
         <nav className="flex items-center gap-1 px-2 py-1.5 overflow-x-auto no-scrollbar">
-          {NAV_FLAT.map(({ label, href, icon: Icon }) => {
+          {NAV_FLAT.map(({ label, href, icon: Icon, badgeKey }) => {
             const active = isActive(href)
+            const badge = badgeValue(badgeKey)
             return (
               <Link
                 key={href}
@@ -171,6 +181,11 @@ export default function Sidebar({ name, email }: { name: string; email: string }
               >
                 <Icon size={13} className={active ? "text-white" : "text-white/40"} />
                 {label}
+                {!!badge && (
+                  <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-[9px] font-bold text-[#0a2540]">
+                    {badge}
+                  </span>
+                )}
               </Link>
             )
           })}

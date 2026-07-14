@@ -229,6 +229,17 @@ export const events = pgTable("events", {
   index("events_status_idx").on(table.status),
 ])
 
+export const eventModerationLog = pgTable("event_moderation_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  adminId: text("admin_id").references(() => users.id, { onDelete: "set null" }),
+  action: text("action").notNull(), // "approved" | "rejected"
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("event_moderation_log_event_id_idx").on(table.eventId),
+])
+
 export const eventLineup = pgTable("event_lineup", {
   id: uuid("id").primaryKey().defaultRandom(),
   eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),

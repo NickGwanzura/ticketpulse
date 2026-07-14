@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   CalendarCheck, FileText, XCircle, PackageCheck,
-  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle, TrendingUp, Check, Undo2, Clock,
+  Star, Calendar, Pencil, Image as ImageIcon, ShoppingBag, ExternalLink, Plus, Ticket, Send, EyeOff, Settings, HelpCircle, TrendingUp, Check, Clock,
 } from "lucide-react"
 import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
@@ -15,6 +15,7 @@ import Pagination from "@/components/ui/Pagination"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { publishEventAction, approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import DeleteEventForm from "@/app/organizer/events/DeleteEventForm"
+import RejectEventButton from "@/app/admin/actions/RejectEventButton"
 
 type EventStatus = "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed"
 
@@ -286,15 +287,7 @@ export default async function AdminEventsPage({
                                       <Check size={14} />
                                     </button>
                                   </form>
-                                  <form action={rejectEventAction.bind(null, e.id, undefined)}>
-                                    <button
-                                      type="submit"
-                                      aria-label="Reject"
-                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-colors"
-                                    >
-                                      <Undo2 size={14} />
-                                    </button>
-                                  </form>
+                                  <RejectEventButton eventId={e.id} action={rejectEventAction} />
                                 </>
                               ) : (
                                 <form
@@ -417,11 +410,7 @@ export default async function AdminEventsPage({
                                 <Check size={12} /> Approve
                               </button>
                             </form>
-                            <form action={rejectEventAction.bind(null, e.id, undefined)}>
-                              <button type="submit" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors">
-                                <Undo2 size={12} /> Reject
-                              </button>
-                            </form>
+                            <RejectEventButton eventId={e.id} action={rejectEventAction} compact />
                           </>
                         ) : (
                           <form action={publishEventAction.bind(null, e.id)}>

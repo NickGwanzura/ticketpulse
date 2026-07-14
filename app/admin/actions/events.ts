@@ -5,7 +5,7 @@ import { eq, and, inArray, or, sql } from "drizzle-orm"
 
 import { auth, signIn } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
+import { events, eventModerationLog, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
   sendEmail,
   adminEmail,
@@ -146,6 +146,12 @@ export async function approveEventAction(eventId: string) {
     .set({ status: "published", updatedAt: new Date() })
     .where(eq(events.id, eventId))
 
+  await db.insert(eventModerationLog).values({
+    eventId,
+    adminId: session.user.id,
+    action: "approved",
+  })
+
   const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/events/${ev.slug}`
   const eventDate = ev.startsAt
     ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
@@ -196,12 +202,16 @@ export async function approveEventAction(eventId: string) {
 
 /**
  * Reject an event pending review, sending it back to draft.
+ * Bound with the event id as the first arg; the reason comes from the
+ * "reason" field of the form that submits this action.
  */
-export async function rejectEventAction(eventId: string, reason?: string) {
+export async function rejectEventAction(eventId: string, formData: FormData) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     throw new Error("Unauthorized")
   }
+
+  const reason = formData.get("reason")?.toString().trim() || undefined
 
   const [ev] = await db
     .select({
@@ -221,6 +231,13 @@ export async function rejectEventAction(eventId: string, reason?: string) {
     .update(events)
     .set({ status: "draft", updatedAt: new Date() })
     .where(eq(events.id, eventId))
+
+  await db.insert(eventModerationLog).values({
+    eventId,
+    adminId: session.user.id,
+    action: "rejected",
+    reason,
+  })
 
   try {
     const [org] = await db

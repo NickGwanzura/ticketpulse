@@ -8,7 +8,7 @@ import { db } from "@/db"
 import { events, orders, paymentLedger, tickets, ticketTiers, users } from "@/db/schema"
 import { requireOwnerAccess } from "@/lib/event-access"
 import { sendEmail, adminEmail } from "@/lib/email"
-import { eventSubmittedForReviewAdminEmail } from "@/lib/email-templates"
+import { eventSubmittedForReviewAdminEmail, eventSubmittedForReviewOrganizerEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
 
 export async function publishOrganizerEventAction(eventId: string) {
@@ -53,13 +53,13 @@ export async function publishOrganizerEventAction(eventId: string) {
   revalidatePath(`/organizer/events/${eventId}/edit`)
   revalidatePath(`/organizer/events/${eventId}/tiers`)
 
-  try {
-    const [organizer] = await db
-      .select({ name: users.name })
-      .from(users)
-      .where(eq(users.id, event.organizerId))
-      .limit(1)
+  const [organizer] = await db
+    .select({ name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.id, event.organizerId))
+    .limit(1)
 
+  try {
     const { html, text } = eventSubmittedForReviewAdminEmail({
       eventTitle: event.title,
       organizerName: organizer?.name,
@@ -73,6 +73,24 @@ export async function publishOrganizerEventAction(eventId: string) {
   } catch (err) {
     console.error("[publishOrganizerEvent] failed to notify admin:", err)
     log.error("publishOrganizerEvent — failed to notify admin", { eventId, error: String(err) })
+  }
+
+  try {
+    if (organizer?.email) {
+      const { html, text } = eventSubmittedForReviewOrganizerEmail({
+        eventTitle: event.title,
+        organizerName: organizer.name,
+      })
+      await sendEmail({
+        to: organizer.email,
+        subject: `${event.title} is under review`,
+        html,
+        text,
+      })
+    }
+  } catch (err) {
+    console.error("[publishOrganizerEvent] failed to notify organiser:", err)
+    log.error("publishOrganizerEvent — failed to notify organiser", { eventId, error: String(err) })
   }
 
   redirect(`/organizer/events/${eventId}?published=pending`)
