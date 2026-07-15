@@ -9,7 +9,7 @@ import type {
 import type { SmsTemplateName } from "./templates"
 import { SmsError } from "./types"
 import { getSmsBaseUrl, getSmsTimeout, getSmsHeaders } from "./env"
-import { resolveTemplateId, SMS_TEMPLATES } from "./templates"
+import { resolveTemplateBody } from "./templates"
 import { normaliseMsisdn } from "./validation"
 import { log } from "@/lib/logger"
 
@@ -38,8 +38,6 @@ function parseBody(text: string, statusCode: number) {
     return {
       status: json.status ?? statusCode,
       result: json.result ?? json.message ?? text.slice(0, 500),
-      batchReference: json.batchReference,
-      messages: json.messages,
     }
   } catch {
     return { status: statusCode, result: text.slice(0, 500) }
@@ -48,29 +46,17 @@ function parseBody(text: string, statusCode: number) {
 
 // ─── Core send (single recipient) ────────────────────────────────────────
 
-async function sendSingle(
-  msisdn: string,
-  templateId: number,
-  variables: Record<string, string>,
-): Promise<SmsSendResult> {
-  const batchReference = randomUUID()
+async function sendSingle(msisdn: string, message: string): Promise<SmsSendResult> {
   const messageReference = randomUUID()
   const timeoutMs = getSmsTimeout()
-  const url = `${getSmsBaseUrl()}/sms/send`
+  const url = `${getSmsBaseUrl()}/customers/send-sms`
   const headers = getSmsHeaders()
 
   const start = Date.now()
 
   const body: VelocitySmsRequest = {
-    batchReference,
-    smsList: [
-      {
-        reference: messageReference,
-        templateId,
-        variables,
-        msisdn,
-      },
-    ],
+    recipient: msisdn,
+    message,
   }
 
   let lastError: Error | null = null
@@ -93,10 +79,8 @@ async function sendSingle(
       const durationMs = Date.now() - start
 
       log.info("velocity/sms — provider response", {
-        batchReference,
         messageReference,
         msisdn,
-        templateId,
         attempt,
         statusCode: res.status,
         providerStatus: parsed.status,
@@ -107,10 +91,8 @@ async function sendSingle(
       if (category === "SUCCESS") {
         return {
           ok: true,
-          batchReference,
           messageReference,
           recipient: msisdn,
-          templateId,
           providerStatus: parsed.status,
           providerResult: parsed.result,
           durationMs,
@@ -147,7 +129,6 @@ async function sendSingle(
       }
 
       log.warn("velocity/sms — attempt failed", {
-        batchReference,
         messageReference,
         msisdn,
         attempt,
@@ -163,7 +144,6 @@ async function sendSingle(
 
   const durationMs = Date.now() - start
   log.error("velocity/sms — all retries exhausted", {
-    batchReference,
     messageReference,
     msisdn,
     maxRetries: MAX_RETRIES,
@@ -181,7 +161,7 @@ async function sendSingle(
  *
  * @param template - Template name (e.g. "TICKET_CONFIRMATION")
  * @param recipient - Phone number (077..., +263..., 263...)
- * @param variables - Optional template variables (default: {})
+ * @param variables - Optional {{placeholder}} values for the template body
  *
  * Returns a structured batch result.
  */
@@ -190,28 +170,22 @@ export async function sendSms(
   recipient: string,
   variables: Record<string, string> = {},
 ): Promise<SmsBatchResult> {
-  const templateId = resolveTemplateId(template)
   const msisdn = normaliseMsisdn(recipient)
+  const message = resolveTemplateBody(template, variables)
 
-  const result = await sendSingle(msisdn, templateId, variables)
+  const result = await sendSingle(msisdn, message)
 
   log.info("velocity/sms — sent", {
     template,
-    templateId,
-    batchReference: result.batchReference,
     messageReference: result.messageReference,
     msisdn,
     ok: result.ok,
     durationMs: result.durationMs,
   })
 
-  const success = result.ok
-
   return {
-    success,
+    success: result.ok,
     template,
-    templateId,
-    batchReference: result.batchReference,
     messageReference: result.messageReference,
     providerResponse: {
       status: result.providerStatus,

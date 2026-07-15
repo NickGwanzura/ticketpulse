@@ -8,7 +8,7 @@
  *   @/lib/velocity/templates (template registry)
  */
 export { sendSms } from "@/lib/velocity/sms"
-export { resolveTemplateId, SMS_TEMPLATES } from "@/lib/velocity/templates"
+export { resolveTemplateBody, SMS_TEMPLATES } from "@/lib/velocity/templates"
 export type { SmsTemplateName } from "@/lib/velocity/templates"
 export type { SmsBatchResult, SmsSendResult } from "@/lib/velocity/types"
 export { SmsError } from "@/lib/velocity/types"

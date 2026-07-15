@@ -1,14 +1,16 @@
 /**
  * Velocity Africa SMS — environment variable configuration.
  *
- * Supports two auth modes:
- *   1. Basic auth: VELOCITY_SMS_USERNAME + VELOCITY_SMS_PASSWORD
- *   2. API key:    VELOCITY_SMS_API_KEY
- *   3. Bearer:     VELOCITY_AFRICA_SMS_TOKEN  (legacy fallback)
+ * Hits POST {base}/customers/send-sms with { recipient, message }.
+ *
+ * Supports three auth modes:
+ *   1. API key:    VELOCITY_SMS_API_KEY        (sent as X-API-Key)
+ *   2. Basic auth: VELOCITY_SMS_USERNAME + VELOCITY_SMS_PASSWORD
+ *   3. Bearer:     VELOCITY_AFRICA_SMS_TOKEN    (legacy fallback)
  */
 
 export function getSmsBaseUrl(): string {
-  return process.env.VELOCITY_SMS_BASE_URL ?? "https://sms.velocityafrica.net/api/v1"
+  return process.env.VELOCITY_SMS_BASE_URL ?? "https://sms.velocityafrica.net/api"
 }
 
 export function getSmsTimeout(): number {
@@ -26,10 +28,10 @@ export function getSmsHeaders(): Record<string, string> {
   const apiKey = process.env.VELOCITY_SMS_API_KEY
   const bearer = process.env.VELOCITY_AFRICA_SMS_TOKEN
 
-  if (user && pass) {
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey
+  } else if (user && pass) {
     headers["Authorization"] = `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`
-  } else if (apiKey) {
-    headers["x-api-key"] = apiKey
   } else if (bearer) {
     headers["Authorization"] = `Bearer ${bearer}`
   } else {

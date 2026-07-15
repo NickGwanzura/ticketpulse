@@ -1,34 +1,21 @@
 import "server-only"
 
-export interface VelocitySmsRecipient {
-  msisdn: string
-  reference: string
-  templateId: number
-  variables: Record<string, string>
-}
-
 export interface VelocitySmsRequest {
-  batchReference: string
-  smsList: VelocitySmsRecipient[]
+  recipient: string
+  message: string
 }
 
 export interface VelocitySmsResponse {
-  status: number
-  result: string
-  batchReference?: string
-  messages?: Array<{
-    reference: string
-    status: number
-    result: string
-  }>
+  status?: number
+  result?: string
+  message?: string
+  [key: string]: unknown
 }
 
 export interface SmsSendResult {
   ok: boolean
-  batchReference: string
   messageReference: string
   recipient: string
-  templateId: number
   providerStatus: number
   providerResult: string
   durationMs: number
@@ -37,8 +24,6 @@ export interface SmsSendResult {
 export interface SmsBatchResult {
   success: boolean
   template: string
-  templateId: number
-  batchReference: string
   messageReference: string
   providerResponse: Record<string, unknown>
   results: SmsSendResult[]
