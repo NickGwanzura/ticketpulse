@@ -194,3 +194,71 @@ export async function sendSms(
     results: [result],
   }
 }
+
+/**
+ * Send free-text SMS to a single recipient (bulk broadcasts, one-off sends).
+ * Unlike sendSms(), this doesn't go through the fixed template registry.
+ *
+ * @param recipient - Phone number (077..., +263..., 263...)
+ * @param message - Raw message text
+ */
+export async function sendCustomSms(recipient: string, message: string): Promise<SmsSendResult> {
+  const msisdn = normaliseMsisdn(recipient)
+  const result = await sendSingle(msisdn, message)
+
+  log.info("velocity/sms — custom sent", {
+    messageReference: result.messageReference,
+    msisdn,
+    ok: result.ok,
+    durationMs: result.durationMs,
+  })
+
+  return result
+}
+
+// ─── Account balance ─────────────────────────────────────────────────────
+
+export interface SmsBalance {
+  balance: number
+  totalCredits: number
+  totalUsed: number
+}
+
+/**
+ * Fetch the current SMS credit balance for the configured VelocityAfrica account.
+ */
+export async function getSmsBalance(): Promise<SmsBalance> {
+  const url = `${getSmsBaseUrl()}/customers/balance`
+  const headers = getSmsHeaders()
+  const timeoutMs = getSmsTimeout()
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const res = await fetch(url, { method: "GET", headers, signal: controller.signal })
+    clearTimeout(timer)
+    const text = await res.text()
+
+    if (!res.ok) {
+      throw new SmsError(`VelocityAfrica balance check returned ${res.status}: ${text.slice(0, 300)}`, "PROVIDER", res.status, false)
+    }
+
+    const json = JSON.parse(text) as Partial<SmsBalance>
+    return {
+      balance: Number(json.balance ?? 0),
+      totalCredits: Number(json.totalCredits ?? 0),
+      totalUsed: Number(json.totalUsed ?? 0),
+    }
+  } catch (err) {
+    clearTimeout(timer)
+    if (err instanceof SmsError) throw err
+    const isTimeout = err instanceof DOMException && err.name === "AbortError"
+    throw new SmsError(
+      isTimeout ? `Timeout after ${timeoutMs}ms` : `Network error: ${err instanceof Error ? err.message : String(err)}`,
+      isTimeout ? "TIMEOUT" : "NETWORK",
+      undefined,
+      true,
+    )
+  }
+}

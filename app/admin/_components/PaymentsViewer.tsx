@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import {
   DollarSign, TrendingUp, Activity, CheckCircle2, AlertTriangle,
-  Smartphone, CreditCard, ArrowUpRight, RefreshCw, Pause, Play,
+  Smartphone, CreditCard, ArrowUpRight, Pause, Play, PartyPopper,
 } from "lucide-react"
+import EmptyState from "@/components/dashboard/EmptyState"
+import Pagination from "@/components/ui/Pagination"
 
 import type { PaymentsApiResponse } from "@/app/api/admin/payments/data/route"
 import { formatCurrency } from "@/lib/utils"
@@ -87,16 +89,19 @@ type ToastItem = {
 }
 
 export default function PaymentsViewer({ initialData }: Props) {
+  const onFirstPage = initialData.page === 1
   const [data, setData] = useState<PaymentsApiResponse>(initialData)
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
-  const [isLive, setIsLive] = useState(true)
+  // Live polling only makes sense while viewing the newest page — pause it
+  // automatically on historical pages so it doesn't clobber what's on screen.
+  const [isLive, setIsLive] = useState(onFirstPage)
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const prevTxCountRef = useRef<number>(initialData.transactions.length)
+  const lastSeenIdRef = useRef<string | null>(initialData.transactions[0]?.id ?? null)
 
-  // ── Poll every 15s ─────────────────────────────────────────────────────
+  // ── Poll every 15s (page 1 only) ──────────────────────────────────────
   useEffect(() => {
-    if (!isLive) {
+    if (!isLive || !onFirstPage) {
       if (pollRef.current) {
         clearInterval(pollRef.current)
         pollRef.current = null
@@ -106,27 +111,29 @@ export default function PaymentsViewer({ initialData }: Props) {
 
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/admin/payments/data")
+        const res = await fetch("/api/admin/payments/data?page=1")
         if (res.ok) {
           const fresh: PaymentsApiResponse = await res.json()
 
-          // Detect new transactions
-          if (fresh.transactions.length > prevTxCountRef.current) {
-            const newCount = fresh.transactions.length - prevTxCountRef.current
-            const newest = fresh.transactions.slice(0, newCount)
-            for (const tx of newest) {
-              setToasts((prev) => [
-                ...prev,
-                {
-                  id: tx.id,
-                  message: `${tx.currency ?? "USD"} ${tx.amount} — ${tx.localStatus === "paid" ? "Paid" : tx.localStatus}`,
-                  amount: `${tx.currency ?? "USD"} ${tx.amount}`,
-                  method: tx.processor ?? "unknown",
-                },
-              ].slice(-5))
-            }
+          // Detect new transactions by walking from the top until we hit
+          // the last transaction id we'd already seen.
+          const newest: PaymentsApiResponse["transactions"] = []
+          for (const tx of fresh.transactions) {
+            if (tx.id === lastSeenIdRef.current) break
+            newest.push(tx)
           }
-          prevTxCountRef.current = fresh.transactions.length
+          if (newest.length > 0) {
+            setToasts((prev) => [
+              ...prev,
+              ...newest.map((tx) => ({
+                id: tx.id,
+                message: `${tx.currency ?? "USD"} ${tx.amount} — ${tx.localStatus === "paid" ? "Paid" : tx.localStatus}`,
+                amount: `${tx.currency ?? "USD"} ${tx.amount}`,
+                method: tx.processor ?? "unknown",
+              })),
+            ].slice(-5))
+          }
+          lastSeenIdRef.current = fresh.transactions[0]?.id ?? lastSeenIdRef.current
           setData(fresh)
           setLastRefreshed(new Date())
         }
@@ -140,7 +147,7 @@ export default function PaymentsViewer({ initialData }: Props) {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [isLive])
+  }, [isLive, onFirstPage])
 
   const { stats, methods, transactions } = data
 
@@ -154,31 +161,38 @@ export default function PaymentsViewer({ initialData }: Props) {
           </span>
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold ${isLive ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
-            {isLive ? "Live" : "Paused"}
+            {onFirstPage ? (isLive ? "Live" : "Paused") : "Historical view"}
           </span>
         </div>
-        <button
-          onClick={() => setIsLive(!isLive)}
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-ink transition-colors"
-        >
-          {isLive ? <Pause size={14} /> : <Play size={14} />}
-          {isLive ? "Pause" : "Resume"}
-        </button>
+        {onFirstPage ? (
+          <button
+            onClick={() => setIsLive(!isLive)}
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-ink transition-colors"
+          >
+            {isLive ? <Pause size={14} /> : <Play size={14} />}
+            {isLive ? "Pause" : "Resume"}
+          </button>
+        ) : (
+          <span className="text-[12px] text-ink-3">Live updates resume on page 1</span>
+        )}
       </div>
 
       {/* Toasts */}
       {toasts.length > 0 && (
         <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm">
           {toasts.map((t) => (
-            <div key={t.id} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-lg animate-in slide-in-from-right">
-              <p className="text-[13px] font-semibold text-emerald-800">💰 New payment</p>
-              <p className="text-[12px] text-emerald-700">{t.message}</p>
+            <div key={t.id} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-lg animate-in slide-in-from-right flex items-start gap-2.5">
+              <PartyPopper size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[13px] font-semibold text-emerald-800">New payment</p>
+                <p className="text-[12px] text-emerald-700">{t.message}</p>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Stat cards */}
+      {/* Stat cards — one grid so columns stay aligned across rows */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={DollarSign} label="Today" value={formatCurrency(stats.todayRevenue, "USD")} />
         <StatCard
@@ -196,9 +210,6 @@ export default function PaymentsViewer({ initialData }: Props) {
           sub={`${stats.successRate}% success rate`}
           positive={stats.successRate >= 80}
         />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard icon={CheckCircle2} label="Paid Transactions" value={String(stats.paidCount)} />
         <StatCard
           icon={AlertTriangle}
@@ -207,7 +218,7 @@ export default function PaymentsViewer({ initialData }: Props) {
           sub={stats.successRate >= 80 ? "Healthy" : "Needs attention"}
           positive={stats.successRate >= 80}
         />
-        <div className="rounded-xl border border-line bg-paper p-5 space-y-1.5">
+        <div className="rounded-xl border border-line bg-paper p-5 space-y-1.5 col-span-2 lg:col-span-2">
           <div className="flex items-center justify-between">
             <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-3">14d Revenue</span>
             <TrendingUp size={16} className="text-ink-2" />
@@ -221,10 +232,7 @@ export default function PaymentsViewer({ initialData }: Props) {
       <section>
         <h2 className="text-[16px] font-bold tracking-tight text-ink mb-4">Payment Methods</h2>
         {methods.length === 0 ? (
-          <div className="rounded-xl border border-line bg-paper p-8 text-center">
-            <CreditCard size={24} className="mx-auto mb-2 text-ink-3" />
-            <p className="text-[13px] text-ink-3">No payment data yet</p>
-          </div>
+          <EmptyState icon={CreditCard} title="No payment data yet" variant="inline" />
         ) : (
           <div className="grid gap-3">
             {methods.map((row) => {
@@ -257,71 +265,122 @@ export default function PaymentsViewer({ initialData }: Props) {
 
       {/* Recent transactions */}
       <section>
-        <h2 className="text-[16px] font-bold tracking-tight text-ink mb-4">Recent Transactions</h2>
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="text-[16px] font-bold tracking-tight text-ink">Recent Transactions</h2>
+          <span className="text-[12px] text-ink-3">
+            Page {data.page} of {data.totalPages} · {data.totalTransactions.toLocaleString()} total
+          </span>
+        </div>
         {transactions.length === 0 ? (
-          <div className="rounded-xl border border-line bg-paper p-8 text-center">
-            <Activity size={24} className="mx-auto mb-2 text-ink-3" />
-            <p className="text-[13px] text-ink-3">No recent transactions</p>
-          </div>
+          <EmptyState icon={Activity} title="No recent transactions" variant="inline" />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-paper-2 border-b border-line">
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Date</th>
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Amount</th>
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Status</th>
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Processor</th>
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Source</th>
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Reason</th>
-                  <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((entry) => {
-                  const st = entry.localStatus ?? "unknown"
-                  return (
-                    <tr key={entry.id} className="border-b border-line last:border-0 hover:bg-paper-2 transition-colors">
-                      <td className="px-4 py-3 text-[13px] text-ink-2 tabular-nums">
-                        {entry.createdAt
-                          ? new Date(entry.createdAt).toLocaleDateString("en-GB", {
-                              day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                            })
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-[14px] font-semibold text-ink tabular-nums">
-                        {entry.currency ?? "USD"} {entry.amount}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md ${STATUS_STYLES[st] ?? "bg-gray-50 text-gray-600"}`}>
-                          {STATUS_LABEL[st] ?? st}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[13px] text-ink-2 capitalize">{entry.processor}</td>
-                      <td className="px-4 py-3 text-[13px] text-ink-2">{entry.source}</td>
-                      <td className="px-4 py-3 max-w-[220px]">
-                        {entry.errorMessage ? (
-                          <span className="text-[12px] text-rose-600 line-clamp-2" title={entry.errorMessage}>
-                            {entry.errorMessage}
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-line">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-paper-2 border-b border-line">
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Date</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Amount</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Status</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Processor</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Source</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Reason</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((entry) => {
+                    const st = entry.localStatus ?? "unknown"
+                    return (
+                      <tr key={entry.id} className="border-b border-line last:border-0 hover:bg-paper-2 transition-colors">
+                        <td className="px-4 py-3 text-[13px] text-ink-2 tabular-nums whitespace-nowrap">
+                          {entry.createdAt
+                            ? new Date(entry.createdAt).toLocaleDateString("en-GB", {
+                                day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                              })
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-[14px] font-semibold text-ink tabular-nums whitespace-nowrap">
+                          {entry.currency ?? "USD"} {entry.amount}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md ${STATUS_STYLES[st] ?? "bg-gray-50 text-gray-600"}`}>
+                            {STATUS_LABEL[st] ?? st}
                           </span>
-                        ) : (
-                          <span className="text-[12px] text-ink-3">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/admin/orders/${entry.orderId}`}
-                          className="inline-flex items-center gap-1 text-[12px] font-medium text-navy hover:underline"
-                        >
-                          View order <ArrowUpRight size={12} />
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-4 py-3 text-[13px] text-ink-2 capitalize whitespace-nowrap">{entry.processor}</td>
+                        <td className="px-4 py-3 text-[13px] text-ink-2 whitespace-nowrap">{entry.source}</td>
+                        <td className="px-4 py-3 max-w-[240px]">
+                          {entry.errorMessage ? (
+                            <span className="text-[12px] text-rose-600 leading-snug break-words">
+                              {entry.errorMessage}
+                            </span>
+                          ) : (
+                            <span className="text-[12px] text-ink-3">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/admin/orders/${entry.orderId}`}
+                            className="inline-flex items-center gap-1 text-[12px] font-medium text-navy hover:underline whitespace-nowrap"
+                          >
+                            View order <ArrowUpRight size={12} />
+                          </Link>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <ul className="md:hidden divide-y divide-line rounded-xl border border-line overflow-hidden">
+              {transactions.map((entry) => {
+                const st = entry.localStatus ?? "unknown"
+                return (
+                  <li key={entry.id} className="p-4 bg-paper space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[14px] font-semibold text-ink tabular-nums">
+                          {entry.currency ?? "USD"} {entry.amount}
+                        </p>
+                        <p className="text-[12px] text-ink-3 mt-0.5 tabular-nums">
+                          {entry.createdAt
+                            ? new Date(entry.createdAt).toLocaleDateString("en-GB", {
+                                day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                              })
+                            : "—"}
+                        </p>
+                      </div>
+                      <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md shrink-0 ${STATUS_STYLES[st] ?? "bg-gray-50 text-gray-600"}`}>
+                        {STATUS_LABEL[st] ?? st}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-ink-2 capitalize">{entry.processor} · {entry.source}</p>
+                    {entry.errorMessage && (
+                      <p className="text-[12px] text-rose-600 leading-snug">{entry.errorMessage}</p>
+                    )}
+                    <Link
+                      href={`/admin/orders/${entry.orderId}`}
+                      className="inline-flex items-center gap-1 text-[12px] font-medium text-navy hover:underline pt-1"
+                    >
+                      View order <ArrowUpRight size={12} />
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
+        {data.totalPages > 1 && (
+          <Pagination
+            currentPage={data.page}
+            totalPages={data.totalPages}
+            baseUrl="/admin/payments"
+            className="border-t-0 px-0"
+          />
         )}
       </section>
     </div>

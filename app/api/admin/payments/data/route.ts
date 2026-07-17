@@ -38,13 +38,22 @@ export type PaymentsApiResponse = {
     errorMessage: string | null
   }>
   sparkPoints: number[]
+  page: number
+  totalPages: number
+  totalTransactions: number
 }
+
+const PAGE_SIZE = 25
 
 export async function GET(request: Request) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
   }
+
+  const url = new URL(request.url)
+  const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -68,6 +77,7 @@ export async function GET(request: Request) {
     methodRows,
     dailyRevenue,
     recentLedger,
+    [ledgerCount],
   ] = await Promise.all([
     db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
       .from(orders).where(confirmedOrderStatus),
@@ -123,7 +133,11 @@ export async function GET(request: Request) {
       errorMessage: paymentLedger.errorMessage,
     }).from(paymentLedger)
       .orderBy(desc(paymentLedger.createdAt))
-      .limit(50),
+      .limit(PAGE_SIZE)
+      .offset(offset),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(paymentLedger),
   ])
 
   // ── Derived stats ─────────────────────────────────────────────────────────
@@ -174,5 +188,8 @@ export async function GET(request: Request) {
       createdAt: t.createdAt ? t.createdAt.toISOString() : null,
     })),
     sparkPoints,
+    page,
+    totalPages: Math.max(1, Math.ceil((ledgerCount?.count ?? 0) / PAGE_SIZE)),
+    totalTransactions: ledgerCount?.count ?? 0,
   } as PaymentsApiResponse)
 }

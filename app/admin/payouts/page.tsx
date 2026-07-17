@@ -268,6 +268,14 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                                     </button>
                                   </div>
                                 </form>
+                                <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                                  <div className="flex items-center gap-1">
+                                    <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                                      <CheckCircle2 size={10} /> Already paid
+                                    </button>
+                                  </div>
+                                </form>
                               </>
                             )}
 
@@ -353,13 +361,17 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
 
                     {/* Mobile action buttons */}
                     {p.status === "pending" && (
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
                         <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
                           <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700">Approve</button>
                         </form>
                         <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
                           <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
                           <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Reject</button>
+                        </form>
+                        <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                          <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
+                          <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Already paid</button>
                         </form>
                       </div>
                     )}

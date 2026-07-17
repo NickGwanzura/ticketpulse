@@ -4,14 +4,25 @@ import { eq, sql, and, gte, or, desc } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
+import PageHeader from "@/components/dashboard/PageHeader"
 import PaymentsViewer from "@/app/admin/_components/PaymentsViewer"
 import type { PaymentsApiResponse } from "@/app/api/admin/payments/data/route"
 
-export default async function AdminPaymentsPage() {
+const PAGE_SIZE = 25
+
+export default async function AdminPaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
     redirect("/auth/signin?callbackUrl=/admin/payments")
   }
+
+  const sp = await searchParams
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -35,6 +46,7 @@ export default async function AdminPaymentsPage() {
     methodRows,
     dailyRevenue,
     recentLedger,
+    [ledgerCount],
   ] = await Promise.all([
     db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
       .from(orders).where(confirmedOrderStatus),
@@ -90,7 +102,11 @@ export default async function AdminPaymentsPage() {
       errorMessage: paymentLedger.errorMessage,
     }).from(paymentLedger)
       .orderBy(desc(paymentLedger.createdAt))
-      .limit(50),
+      .limit(PAGE_SIZE)
+      .offset(offset),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(paymentLedger),
   ])
 
   const weekRev = Number(weekRevenue?.total ?? 0)
@@ -139,17 +155,22 @@ export default async function AdminPaymentsPage() {
       createdAt: t.createdAt ? t.createdAt.toISOString() : null,
     })),
     sparkPoints,
+    page,
+    totalPages: Math.max(1, Math.ceil((ledgerCount?.count ?? 0) / PAGE_SIZE)),
+    totalTransactions: ledgerCount?.count ?? 0,
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[20px] font-bold tracking-tight text-ink">Payments</h1>
-          <p className="text-[13px] text-ink-3 mt-1">Real-time payment dashboard with live updates</p>
-        </div>
+    <div className="tp-fade-up">
+      <PageHeader
+        eyebrow="Payments"
+        title="Payments"
+        subtitle="Real-time payment dashboard with live updates."
+        width="full"
+      />
+      <div className="px-5 md:px-8 py-8 md:py-10">
+        <PaymentsViewer initialData={initialData} />
       </div>
-      <PaymentsViewer initialData={initialData} />
     </div>
   )
 }

@@ -435,7 +435,7 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
   }
 
   if (!payout) { log.warn("[mark-paid] Not found", { payoutId }); revalidatePath("/admin/payouts"); return }
-  if (payout.status !== "approved" && payout.status !== "processing") {
+  if (payout.status !== "pending" && payout.status !== "approved" && payout.status !== "processing") {
     log.warn("[mark-paid] Wrong status", { payoutId, status: payout.status })
     revalidatePath("/admin/payouts")
     return

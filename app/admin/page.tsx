@@ -18,6 +18,7 @@ import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
 import AiModerateButton from "@/components/ai/AiModerateButton"
+import { getSmsBalance } from "@/lib/velocity/sms"
 
 function MiniSparkline({ points, positive }: { points: number[]; positive: boolean }) {
   if (points.length < 2) return <span className="text-[11px] text-ink-3">—</span>
@@ -189,6 +190,8 @@ export default async function AdminOverviewPage() {
   const deliveryAttention = Number(moneyPathIssues.delivery_attention ?? 0)
   const duplicateLedgers = Number(moneyPathIssues.duplicate_ledgers ?? 0)
 
+  const smsBalance = await getSmsBalance().then((b) => b.balance).catch(() => null)
+
   const spark7 = dailyRevenue7d.map(d => Number(d.total))
   const spark14 = dailyRevenue14d.map(d => Number(d.total))
   const sum7 = spark7.reduce((a, b) => a + b, 0)
@@ -308,12 +311,22 @@ export default async function AdminOverviewPage() {
 
         {/* Primary metrics — horizontal rule, not cards */}
         <div className="tp-fade-up-1">
-          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line border border-line rounded-2xl bg-paper overflow-hidden">
+          <div className="grid grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-line border border-line rounded-2xl bg-paper overflow-hidden">
             {[
               { label: "Velocity revenue (7d)", value: formatCurrency(sum7, "USD"), sub: <DeltaBadge delta={revDelta} />, spark: spark7 },
               { label: "Active events", value: activeEvents.toLocaleString(), sub: <span className="text-[11px] text-ink-3">published</span>, spark: [] },
               { label: "New users (month)", value: newUsers.toLocaleString(), sub: <span className="text-[11px] text-ink-3">this month</span>, spark: [] },
               { label: "Velocity paid", value: velocityPaid.toLocaleString(), sub: <span className="text-[11px] text-ink-3">orders confirmed</span>, spark: [] },
+              {
+                label: "SMS credits",
+                value: smsBalance !== null ? smsBalance.toLocaleString() : "—",
+                sub: smsBalance !== null
+                  ? <span className={`text-[11px] ${smsBalance < 100 ? "text-rose-600 font-semibold" : "text-ink-3"}`}>
+                      {smsBalance < 100 ? "low — top up" : "VelocityAfrica"}
+                    </span>
+                  : <span className="text-[11px] text-rose-600">unreachable</span>,
+                spark: [],
+              },
             ].map(({ label, value, sub, spark }, i) => (
               <div key={i} className="px-5 py-5 flex items-start justify-between gap-3">
                 <div>

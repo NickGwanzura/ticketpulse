@@ -7,6 +7,7 @@ import {
   Tag, UserPlus, QrCode, Users, ExternalLink, Settings,
   HelpCircle, Wallet, ScanLine, LayoutDashboard, ChevronLeft,
   BarChart2, Search, Music2, Percent, CalendarDays, Share2, MailOpen,
+  MessageSquare,
 } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
@@ -36,6 +37,7 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
       { label: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
       { label: "Email",     href: `/organizer/events/${eventId}/email`, icon: Mail },
       { label: "WhatsApp",  href: `/organizer/events/${eventId}/whatsapp`, icon: MessageCircle },
+      { label: "SMS",       href: `/organizer/events/${eventId}/sms`, icon: MessageSquare },
       { label: "Promos",    href: `/organizer/events/${eventId}/promos`, icon: Tag },
     ],
   },
