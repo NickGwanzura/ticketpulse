@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { neon } from "@neondatabase/serverless"
-import { drizzle } from "drizzle-orm/neon-http"
 import { inArray } from "drizzle-orm"
+import { db } from "@/db"
 import { users } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
 import { groqAiAnnouncementEmail } from "@/lib/email-templates"
@@ -10,16 +9,11 @@ import { rateLimit } from "@/lib/rate-limit"
 const announceLimiter = rateLimit({ windowMs: 3600_000, max: 2 }) // 2 per hour — this sends real emails
 
 export async function POST() {
-  const databaseUrl = process.env.DATABASE_URL
-  if (!databaseUrl) {
+  if (!process.env.DATABASE_URL) {
     return NextResponse.json({ ok: false, error: "DATABASE_URL not set" }, { status: 500 })
   }
 
   try {
-    // Use HTTP-based neon() instead of Pool (which requires WebSocket)
-    const sql = neon(databaseUrl)
-    const db = drizzle(sql)
-
     const recipients = await db
       .select({ id: users.id, name: users.name, email: users.email })
       .from(users)

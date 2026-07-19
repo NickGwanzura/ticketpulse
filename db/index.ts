@@ -1,11 +1,8 @@
-import { Pool, neonConfig } from "@neondatabase/serverless"
-import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless"
+import { Pool } from "pg"
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import * as schema from "./schema"
 
-type DBType = NeonDatabase<typeof schema>
-
-// Configure WebSocket for Neon. Node 18+ has global WebSocket.
-neonConfig.webSocketConstructor = WebSocket
+type DBType = NodePgDatabase<typeof schema>
 
 // Eager init when DATABASE_URL is present so libraries like
 // @auth/drizzle-adapter that introspect the db at construction
@@ -14,15 +11,12 @@ neonConfig.webSocketConstructor = WebSocket
 // back to a Proxy that throws on first real use.
 const url = process.env.DATABASE_URL
 
-// Allow a modest pool of connections. The Neon serverless driver
-// defaults to 1, which serialises all DB queries — bumping to 10
-// lets concurrent page renders and API calls run in parallel.
 const pool = url
   ? new Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30000 })
   : null
 
-// Neon aggressively closes idle WebSocket connections. An unhandled `error`
-// event on the Pool crashes the Node process, producing the 500→503 pattern.
+// An unhandled `error` event on an idle pooled connection crashes the
+// Node process, producing the 500→503 pattern.
 pool?.on("error", (err: Error) => {
   console.error("[db] idle pool connection error", err)
 })
