@@ -39,7 +39,10 @@ USER nextjs
 
 EXPOSE 3000
 
+# busybox wget, not a node -e probe: spawning a full Node process per probe
+# costs ~100MB+ and seconds of cold start, which on a loaded shared host blew
+# past even a 15s timeout and got healthy containers killed as "unhealthy".
 HEALTHCHECK --interval=30s --timeout=15s --start-period=30s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD wget -q -O /dev/null "http://127.0.0.1:$PORT/api/health" || exit 1
 
 CMD ["node", "server.js"]
