@@ -484,6 +484,7 @@ export const transportOperators = pgTable("transport_operators", {
   phone: text("phone").notNull(),
   licenseNumber: text("license_number"),
   verified: boolean("verified").default(false),
+  rejectedAt: timestamp("rejected_at"),
   rating: decimal("rating", { precision: 3, scale: 2 }),
   totalTrips: integer("total_trips").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -538,6 +539,7 @@ export const vendors = pgTable("vendors", {
   email: text("email"),
   city: text("city"),
   verified: boolean("verified").default(false),
+  rejectedAt: timestamp("rejected_at"),
   rating: decimal("rating", { precision: 3, scale: 2 }),
   totalEvents: integer("total_events").default(0),
   portfolio: json("portfolio").$type<string[]>().default([]),
@@ -872,6 +874,45 @@ export const payoutAuditLog = pgTable("payout_audit_log", {
   index("payout_audit_log_payout_id_idx").on(table.payoutId),
   index("payout_audit_log_created_idx").on(table.createdAt),
 ])
+
+// ─── Organiser Fee Dues ──────────────────────────────────────────────────────
+// Tracks platform fees owed to us when an organiser is paid directly by the
+// buyer (cash/bank transfer at the door, etc.) and we only issue the ticket —
+// no money passes through us, so there's nothing to pay the organiser, but we
+// still earned our commission on the sale and need to collect it separately.
+
+export const organizerFeeDueStatusEnum = pgEnum("organizer_fee_due_status", [
+  "outstanding",
+  "settled",
+  "waived",
+])
+
+export const organizerFeeDues = pgTable("organizer_fee_dues", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  organizerId: text("organizer_id").notNull().references(() => users.id),
+  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }).notNull(),
+  feeRate: decimal("fee_rate", { precision: 5, scale: 4 }).notNull(),
+  feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD").notNull(),
+  status: organizerFeeDueStatusEnum("status").default("outstanding").notNull(),
+  settledAt: timestamp("settled_at"),
+  settledBy: text("settled_by"),
+  note: text("note"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("organizer_fee_dues_organizer_idx").on(table.organizerId),
+  index("organizer_fee_dues_event_idx").on(table.eventId),
+  index("organizer_fee_dues_status_idx").on(table.status),
+])
+
+export const organizerFeeDuesRelations = relations(organizerFeeDues, ({ one }) => ({
+  organizer: one(users, { fields: [organizerFeeDues.organizerId], references: [users.id] }),
+  event: one(events, { fields: [organizerFeeDues.eventId], references: [events.id] }),
+  order: one(orders, { fields: [organizerFeeDues.orderId], references: [orders.id] }),
+}))
 
 // ─── Organiser add-on packages (Sponsored Post, Graphic Design) ─────────────
 export const organizerPackages = pgTable("organizer_packages", {

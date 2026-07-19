@@ -111,6 +111,10 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
         AND o.status IN ('paid', 'completed')
         AND oi.type = 'ticket'
         AND oi.quantity > 0
+        -- Organiser-direct sales: the buyer paid the organiser directly, we only
+        -- issued the ticket, so no money passed through us to owe the organiser
+        -- for. Excluded here; tracked instead in organizer_fee_dues.
+        AND o.payment_method IS DISTINCT FROM 'organizer_direct'
       GROUP BY oi.id, oi.order_id, o.event_id, oi.quantity, oi.total
     )
     SELECT

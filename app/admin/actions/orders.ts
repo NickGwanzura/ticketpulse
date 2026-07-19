@@ -5,7 +5,7 @@ import { eq, and, inArray, or, sql } from "drizzle-orm"
 
 import { auth, signIn } from "@/auth"
 import { db } from "@/db"
-import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
+import { events, orders, orderItems, organizerFeeDues, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
   sendEmail,
   adminEmail,
@@ -360,28 +360,29 @@ export type OfflineOrderInput = {
   guestName: string
   guestEmail: string
   guestPhone?: string
-  paymentMethod: string
+  // Required by createOfflineOrderAction; ignored by createDirectPayOrderAction
+  // (which always records payment method as "organizer_direct").
+  paymentMethod?: string
   paymentRef?: string
 }
 
 /**
- * Create an order for a payment collected outside the app (cash, bank transfer,
- * etc.) and immediately complete it + email the ticket, reusing the same
- * completeAndSendAction pipeline paid checkout orders go through.
+ * Shared groundwork for both manual-ticket flows below: validates input,
+ * checks tier capacity, creates the order + order item, and returns the
+ * created order and tier for the caller to finish (fee accounting differs
+ * between the two flows, so that part is NOT shared).
  */
-export async function createOfflineOrderAction(input: OfflineOrderInput) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
-
+async function createManualTicketOrder(
+  input: OfflineOrderInput,
+  session: { user: { id: string; email?: string | null } },
+  opts: { paymentMethod: string; paymentRef?: string; source: string },
+) {
   const quantity = Math.floor(input.quantity)
   if (!Number.isFinite(quantity) || quantity < 1) {
     throw new Error("Quantity must be at least 1")
   }
   if (!input.guestEmail?.trim()) throw new Error("Guest email is required")
   if (!input.guestName?.trim()) throw new Error("Guest name is required")
-  if (!input.paymentMethod?.trim()) throw new Error("Payment method is required")
 
   const [tier] = await db
     .select()
@@ -405,12 +406,12 @@ export async function createOfflineOrderAction(input: OfflineOrderInput) {
       status: "pending",
       totalAmount: total,
       currency: tier.currency ?? "USD",
-      paymentMethod: input.paymentMethod,
-      paymentRef: input.paymentRef || `offline-${Date.now()}`,
+      paymentMethod: opts.paymentMethod,
+      paymentRef: opts.paymentRef || `manual-${Date.now()}`,
       guestEmail: input.guestEmail.trim(),
       guestName: input.guestName.trim(),
       guestPhone: input.guestPhone?.trim() || null,
-      metadata: { source: "offline_manual_issue", issuedBy: session.user.email ?? "admin" },
+      metadata: { source: opts.source, issuedBy: session.user.email ?? "admin" },
     })
     .returning()
 
@@ -423,6 +424,28 @@ export async function createOfflineOrderAction(input: OfflineOrderInput) {
     total,
   })
 
+  return { order, tier, total: Number(total), quantity }
+}
+
+/**
+ * Create an order for a payment collected outside the app (cash, bank transfer,
+ * etc.) and immediately complete it + email the ticket, reusing the same
+ * completeAndSendAction pipeline paid checkout orders go through.
+ */
+export async function createOfflineOrderAction(input: OfflineOrderInput) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+  const paymentMethod = input.paymentMethod?.trim()
+  if (!paymentMethod) throw new Error("Payment method is required")
+
+  const { order } = await createManualTicketOrder(input, session, {
+    paymentMethod,
+    paymentRef: input.paymentRef,
+    source: "offline_manual_issue",
+  })
+
   const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
   const result = await combinedAction(order.id, session.user.id, session.user.email ?? "admin")
 
@@ -431,6 +454,84 @@ export async function createOfflineOrderAction(input: OfflineOrderInput) {
   revalidatePath("/admin")
 
   return { ...result, orderId: order.id }
+}
+
+/**
+ * Issue a ticket for a sale where the ORGANIZER was paid directly by the
+ * buyer (cash at the door, their own bank transfer, etc.) — no money passes
+ * through the platform. We still issue the ticket like any other order, but
+ * instead of owing the organizer a payout, they owe US our platform fee on
+ * the sale. That fee is recorded in organizer_fee_dues for later collection,
+ * and the sale is excluded from the organizer's payout balance
+ * (see lib/revenue-summary.ts) since we never held the money.
+ */
+export async function createDirectPayOrderAction(input: OfflineOrderInput) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const [event] = await db
+    .select({ organizerId: events.organizerId })
+    .from(events)
+    .where(eq(events.id, input.eventId))
+    .limit(1)
+  if (!event) throw new Error("Event not found")
+
+  const { order, total } = await createManualTicketOrder(input, session, {
+    paymentMethod: "organizer_direct",
+    paymentRef: input.paymentRef,
+    source: "organizer_direct_payment",
+  })
+
+  const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
+  const result = await combinedAction(order.id, session.user.id, session.user.email ?? "admin")
+
+  const { PLATFORM_FEE_RATE, calculatePlatformFee } = await import("@/lib/platform-fee")
+  const feeAmount = calculatePlatformFee(total)
+
+  const [feeDue] = await db
+    .insert(organizerFeeDues)
+    .values({
+      orderId: order.id,
+      eventId: input.eventId,
+      organizerId: event.organizerId,
+      grossAmount: total.toFixed(2),
+      feeRate: PLATFORM_FEE_RATE.toFixed(4),
+      feeAmount: feeAmount.toFixed(2),
+      currency: order.currency ?? "USD",
+      createdBy: session.user.email ?? "admin",
+    })
+    .returning()
+
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin/tickets")
+  revalidatePath("/admin/organizer-fees")
+  revalidatePath("/admin")
+
+  return { ...result, orderId: order.id, feeDueId: feeDue.id, feeAmount, grossAmount: total }
+}
+
+export async function markFeeDueSettledAction(feeDueId: string, note?: string) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  await db
+    .update(organizerFeeDues)
+    .set({
+      status: "settled",
+      settledAt: new Date(),
+      settledBy: session.user.email ?? "admin",
+      note: note?.trim() || undefined,
+    })
+    .where(eq(organizerFeeDues.id, feeDueId))
+
+  revalidatePath("/admin/organizer-fees")
+  revalidatePath("/admin")
+
+  return { success: true }
 }
 
 export async function refundOrderAction(orderId: string) {

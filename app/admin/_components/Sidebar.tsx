@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, Bus, CreditCard,
-  PieChart,
+  PieChart, Store,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
@@ -37,13 +37,15 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Events",    href: "/admin/events",    icon: Calendar, badgeKey: "pendingEvents" },
       { label: "Orders",    href: "/admin/orders",    icon: Receipt },
       { label: "Reviews",   href: "/admin/reviews",   icon: Star },
-      { label: "Transport", href: "/admin/transport", icon: Bus },
+      { label: "Vendors",   href: "/admin/vendors",   icon: Store, badgeKey: "pendingVendors" },
+      { label: "Transport", href: "/admin/transport", icon: Bus, badgeKey: "pendingOperators" },
     ],
   },
   {
     label: "Finance",
     items: [
       { label: "Payouts", href: "/admin/payouts", icon: Wallet },
+      { label: "Organizer fees", href: "/admin/organizer-fees", icon: CreditCard },
     ],
   },
   {
@@ -56,13 +58,29 @@ const NAV_GROUPS: NavGroup[] = [
 
 const NAV_FLAT: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
 
-export default function Sidebar({ name, email, pendingEventCount = 0 }: { name: string; email: string; pendingEventCount?: number }) {
+export default function Sidebar({
+  name,
+  email,
+  pendingEventCount = 0,
+  pendingVendorCount = 0,
+  pendingOperatorCount = 0,
+}: {
+  name: string
+  email: string
+  pendingEventCount?: number
+  pendingVendorCount?: number
+  pendingOperatorCount?: number
+}) {
   const pathname = usePathname()
   const isActive = (href: string) =>
     href === "/admin" ? pathname === href : pathname === href || pathname.startsWith(href + "/")
 
-  const badgeValue = (key?: string): number | undefined =>
-    key === "pendingEvents" ? pendingEventCount : undefined
+  const badgeValue = (key?: string): number | undefined => {
+    if (key === "pendingEvents") return pendingEventCount
+    if (key === "pendingVendors") return pendingVendorCount
+    if (key === "pendingOperators") return pendingOperatorCount
+    return undefined
+  }
 
   const initials = name
     .split(" ")
