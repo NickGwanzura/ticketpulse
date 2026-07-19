@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   // Enable compression for API responses and static assets
   compress: true,
 
+  // Produce a minimal, self-contained server bundle (server.js + only the
+  // node_modules it actually needs) for Docker deployments (Dokploy).
+  output: "standalone",
+
   // Optimize bundle — tree-shake dev warnings from heavy libraries in prod
   serverExternalPackages: ["@react-pdf/renderer", "passkit-generator"],
 
