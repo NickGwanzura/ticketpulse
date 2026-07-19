@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
   Search, DollarSign, Receipt, TrendingUp,
-  Smartphone, ShoppingCart, Download, ExternalLink,
+  Smartphone, ShoppingCart, Download, ExternalLink, Plus,
 } from "lucide-react"
 import Pagination from "@/components/ui/Pagination"
 
@@ -282,6 +282,14 @@ export default async function AdminOrdersPage({
         title="All transactions"
         subtitle="Every order placed across the platform. Search by order ID, email, or name."
         width="full"
+        actions={
+          <Link
+            href="/admin/orders/new"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
+          >
+            <Plus size={14} /> New offline order
+          </Link>
+        }
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">

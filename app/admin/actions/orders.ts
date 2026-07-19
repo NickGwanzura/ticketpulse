@@ -353,6 +353,86 @@ export async function completeAndSendAction(orderId: string) {
   return combinedAction(orderId, session.user.id, session.user.email ?? "admin")
 }
 
+export type OfflineOrderInput = {
+  eventId: string
+  tierId: string
+  quantity: number
+  guestName: string
+  guestEmail: string
+  guestPhone?: string
+  paymentMethod: string
+  paymentRef?: string
+}
+
+/**
+ * Create an order for a payment collected outside the app (cash, bank transfer,
+ * etc.) and immediately complete it + email the ticket, reusing the same
+ * completeAndSendAction pipeline paid checkout orders go through.
+ */
+export async function createOfflineOrderAction(input: OfflineOrderInput) {
+  const session = await auth()
+  if (!session?.user || session.user.role !== "admin") {
+    throw new Error("Unauthorized")
+  }
+
+  const quantity = Math.floor(input.quantity)
+  if (!Number.isFinite(quantity) || quantity < 1) {
+    throw new Error("Quantity must be at least 1")
+  }
+  if (!input.guestEmail?.trim()) throw new Error("Guest email is required")
+  if (!input.guestName?.trim()) throw new Error("Guest name is required")
+  if (!input.paymentMethod?.trim()) throw new Error("Payment method is required")
+
+  const [tier] = await db
+    .select()
+    .from(ticketTiers)
+    .where(and(eq(ticketTiers.id, input.tierId), eq(ticketTiers.eventId, input.eventId)))
+    .limit(1)
+
+  if (!tier) throw new Error("Ticket tier not found for this event")
+
+  const remaining = tier.totalQuantity - (tier.soldQuantity ?? 0)
+  if (remaining < quantity) {
+    throw new Error(`Only ${remaining} left in "${tier.name}"`)
+  }
+
+  const total = (Number(tier.price) * quantity).toFixed(2)
+
+  const [order] = await db
+    .insert(orders)
+    .values({
+      eventId: input.eventId,
+      status: "pending",
+      totalAmount: total,
+      currency: tier.currency ?? "USD",
+      paymentMethod: input.paymentMethod,
+      paymentRef: input.paymentRef || `offline-${Date.now()}`,
+      guestEmail: input.guestEmail.trim(),
+      guestName: input.guestName.trim(),
+      guestPhone: input.guestPhone?.trim() || null,
+      metadata: { source: "offline_manual_issue", issuedBy: session.user.email ?? "admin" },
+    })
+    .returning()
+
+  await db.insert(orderItems).values({
+    orderId: order.id,
+    tierId: tier.id,
+    type: "ticket",
+    quantity,
+    unitPrice: tier.price,
+    total,
+  })
+
+  const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
+  const result = await combinedAction(order.id, session.user.id, session.user.email ?? "admin")
+
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin/tickets")
+  revalidatePath("/admin")
+
+  return { ...result, orderId: order.id }
+}
+
 export async function refundOrderAction(orderId: string) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
