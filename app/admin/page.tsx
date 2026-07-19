@@ -12,7 +12,7 @@ import { db } from "@/db"
 import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
-import { verifyUserEmailAction, approveOrganizerAction } from "@/app/admin/actions/users"
+import { verifyUserEmailAction, approveOrganizerAction, rejectOrganizerAction } from "@/app/admin/actions/users"
 import RejectEventButton from "@/app/admin/actions/RejectEventButton"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
@@ -74,6 +74,8 @@ export default async function AdminOverviewPage() {
     [topCityRow],
     recentOrders,
     topEventRows,
+    endedEventRows,
+    recentPaidPayouts,
     draftEvents,
     pendingOrganizers,
     unverifiedUsers,
@@ -86,7 +88,7 @@ export default async function AdminOverviewPage() {
     db.select({ gross: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
       .from(orders).where(and(eq(orders.status, "paid"), hasVelocity)),
 
-    db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(eq(events.status, "published")),
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(and(eq(events.status, "published"), gte(events.endsAt, now))),
 
     db.select({ count: sql<number>`COUNT(*)::int` }).from(users).where(gte(users.createdAt, thisMonthStart)),
 
@@ -113,7 +115,21 @@ export default async function AdminOverviewPage() {
 
     db.select({ id: events.id, title: events.title, organizerName: users.name, organizerEmail: users.email })
       .from(events).leftJoin(users, eq(events.organizerId, users.id))
-      .where(eq(events.status, "published")).orderBy(desc(events.createdAt)).limit(8),
+      .where(and(eq(events.status, "published"), gte(events.endsAt, now))).orderBy(desc(events.createdAt)).limit(8),
+
+    db.select({ id: events.id, title: events.title, endsAt: events.endsAt, organizerName: users.name, organizerEmail: users.email })
+      .from(events).leftJoin(users, eq(events.organizerId, users.id))
+      .where(and(eq(events.status, "published"), lt(events.endsAt, now))).orderBy(desc(events.endsAt)).limit(8),
+
+    db.select({
+      id: payouts.id, amount: payouts.amount, currency: payouts.currency, status: payouts.status,
+      processedAt: payouts.processedAt, organizerName: users.name, organizerEmail: users.email, eventTitle: events.title,
+    })
+      .from(payouts)
+      .leftJoin(users, eq(payouts.userId, users.id))
+      .leftJoin(events, eq(payouts.eventId, events.id))
+      .where(eq(payouts.status, "paid"))
+      .orderBy(desc(payouts.processedAt)).limit(8),
 
     db.select({ id: events.id, title: events.title, description: events.description, category: events.category, organizerName: users.name, organizerEmail: users.email })
       .from(events).leftJoin(users, eq(events.organizerId, users.id))
@@ -198,13 +214,26 @@ export default async function AdminOverviewPage() {
   const sum14 = spark14.reduce((a, b) => a + b, 0)
   const revDelta = sum14 > 0 ? ((sum7 - sum14) / sum14) * 100 : 0
 
-  // Event revenue map
-  const eventIds = topEventRows.map(e => e.id)
+  // Event revenue map — live and ended events
+  const eventIds = [...topEventRows.map(e => e.id), ...endedEventRows.map(e => e.id)]
   const eventRevenue = eventIds.length > 0
     ? await db.select({ eventId: orders.eventId, revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`, currency: orders.currency })
-        .from(orders).where(and(eq(orders.status, "paid"), hasVelocity, inArray(orders.eventId, eventIds)))
+        .from(orders).where(and(inArray(orders.status, ["paid", "completed"]), inArray(orders.eventId, eventIds)))
         .groupBy(orders.eventId, orders.currency)
     : []
+
+  // Total paid out per ended event, to show settlement state
+  const endedIds = endedEventRows.map(e => e.id)
+  const paidOutRows = endedIds.length > 0
+    ? await db.select({ eventId: payouts.eventId, total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)` })
+        .from(payouts)
+        .where(and(eq(payouts.status, "paid"), inArray(payouts.eventId, endedIds)))
+        .groupBy(payouts.eventId)
+    : []
+  const paidOutMap = new Map<string, number>()
+  for (const r of paidOutRows) {
+    if (r.eventId) paidOutMap.set(r.eventId, Number(r.total ?? 0))
+  }
   const revMap = new Map<string, { revenue: number; currency: string }>()
   for (const r of eventRevenue) {
     if (!r.eventId) continue
@@ -314,7 +343,7 @@ export default async function AdminOverviewPage() {
           <div className="grid grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-line border border-line rounded-2xl bg-paper overflow-hidden">
             {[
               { label: "Velocity revenue (7d)", value: formatCurrency(sum7, "USD"), sub: <DeltaBadge delta={revDelta} />, spark: spark7 },
-              { label: "Active events", value: activeEvents.toLocaleString(), sub: <span className="text-[11px] text-ink-3">published</span>, spark: [] },
+              { label: "Active events", value: activeEvents.toLocaleString(), sub: <span className="text-[11px] text-ink-3">live / upcoming</span>, spark: [] },
               { label: "New users (month)", value: newUsers.toLocaleString(), sub: <span className="text-[11px] text-ink-3">this month</span>, spark: [] },
               { label: "Velocity paid", value: velocityPaid.toLocaleString(), sub: <span className="text-[11px] text-ink-3">orders confirmed</span>, spark: [] },
               {
@@ -405,19 +434,19 @@ export default async function AdminOverviewPage() {
           </div>
         </div>
 
-        {/* Published events */}
+        {/* Live & upcoming events */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="px-5 py-4 border-b border-line flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CalendarCheck size={14} className="text-ink-3" />
-              <h2 className="text-[14px] font-semibold text-ink">Published events</h2>
+              <h2 className="text-[14px] font-semibold text-ink">Live &amp; upcoming events</h2>
             </div>
             <Link href="/admin/events" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
               Manage all <ArrowUpRight size={11} />
             </Link>
           </div>
           {topEventRows.length === 0 ? (
-            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No published events</p>
+            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No live or upcoming events</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px]">
@@ -448,6 +477,95 @@ export default async function AdminOverviewPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+
+        {/* Ended events — settlement view */}
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
+          <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-ink-3" />
+              <h2 className="text-[14px] font-semibold text-ink">Ended events</h2>
+            </div>
+            <Link href="/admin/payouts?status=paid" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              Paid payouts <ArrowUpRight size={11} />
+            </Link>
+          </div>
+          {endedEventRows.length === 0 ? (
+            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No ended events yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px]">
+                <thead>
+                  <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <th className="text-left px-5 py-3">Event</th>
+                    <th className="text-left px-3 py-3">Organizer</th>
+                    <th className="text-left px-3 py-3">Ended</th>
+                    <th className="text-right px-3 py-3">Revenue</th>
+                    <th className="text-right px-5 py-3">Paid out</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {endedEventRows.map((e) => {
+                    const rev = revMap.get(e.id)
+                    const paidOut = paidOutMap.get(e.id)
+                    return (
+                      <tr key={e.id} className="hover:bg-paper-2 transition-colors">
+                        <td className="px-5 py-3 max-w-xs">
+                          <Link href="/admin/events" className="text-[14px] font-semibold text-ink hover:text-navy transition-colors line-clamp-1">
+                            {e.title}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3 text-[13px] text-ink-2">{e.organizerName ?? e.organizerEmail ?? "—"}</td>
+                        <td className="px-3 py-3 text-[12px] text-ink-3 whitespace-nowrap">
+                          {e.endsAt ? new Date(e.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right text-[13px] font-bold text-ink tabular-nums">
+                          {rev ? formatCurrency(rev.revenue, rev.currency) : <span className="text-ink-3 font-normal">—</span>}
+                        </td>
+                        <td className="px-5 py-3 text-right text-[13px] font-semibold tabular-nums">
+                          {paidOut !== undefined
+                            ? <span className="text-emerald-700">{formatCurrency(paidOut, rev?.currency ?? "USD")}</span>
+                            : <span className="text-ink-3 font-normal">—</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Recent payouts */}
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
+          <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard size={14} className="text-ink-3" />
+              <h2 className="text-[14px] font-semibold text-ink">Recent payouts</h2>
+            </div>
+            <Link href="/admin/payouts?status=paid" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+              All <ArrowUpRight size={11} />
+            </Link>
+          </div>
+          {recentPaidPayouts.length === 0 ? (
+            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No payouts made yet</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {recentPaidPayouts.map((p) => (
+                <li key={p.id} className="px-5 py-3 flex items-center gap-3 hover:bg-paper-2 transition-colors">
+                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-medium text-ink truncate">{p.organizerName ?? p.organizerEmail ?? "—"}</p>
+                    <p className="text-[11px] text-ink-3 truncate">{p.eventTitle ?? "General payout"}</p>
+                  </div>
+                  <span className="text-[13px] font-bold text-emerald-700 tabular-nums">{formatCurrency(Number(p.amount ?? 0), p.currency ?? "USD")}</span>
+                  <span className="text-[11px] text-ink-3 whitespace-nowrap hidden md:block">
+                    {p.processedAt ? new Date(p.processedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
@@ -524,11 +642,18 @@ export default async function AdminOverviewPage() {
                     <p className="text-[12px] text-ink-2">{u.email}</p>
                     <p className="text-[12px] text-ink-3">WhatsApp: {u.phone ?? "Not provided"}</p>
                   </div>
-                  <form action={approveOrganizerAction.bind(null, u.id)} className="shrink-0">
-                    <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
-                      Approve
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <form action={rejectOrganizerAction.bind(null, u.id)}>
+                      <button type="submit" className="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-2 text-[13px] font-semibold hover:bg-rose-100 transition-colors">
+                        Reject
+                      </button>
+                    </form>
+                    <form action={approveOrganizerAction.bind(null, u.id)}>
+                      <button type="submit" className="rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">
+                        Approve
+                      </button>
+                    </form>
+                  </div>
                 </li>
               ))}
             </ul>

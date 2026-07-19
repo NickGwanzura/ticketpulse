@@ -41,6 +41,7 @@ const TABS: { label: string; value: string }[] = [
   { label: "All",       value: "all" },
   { label: "Pending",   value: "pending_review" },
   { label: "Live",      value: "published" },
+  { label: "Ended",     value: "ended" },
   { label: "Drafts",    value: "draft" },
   { label: "Sold out",  value: "sold_out" },
   { label: "Cancelled", value: "cancelled" },
@@ -70,6 +71,7 @@ export default async function AdminEventsPage({
       title:        events.title,
       city:         events.city,
       startsAt:     events.startsAt,
+      endsAt:       events.endsAt,
       status:       events.status,
       featured:     events.featured,
       organizerId:  events.organizerId,
@@ -133,9 +135,17 @@ export default async function AdminEventsPage({
   const totalCount = countRow?.count ?? 0
   const totalPages = Math.ceil(totalCount / LIMIT)
 
+  const now = new Date()
+  const isEnded = (e: { status: string | null; endsAt: Date | null }) =>
+    e.status === "published" && !!e.endsAt && e.endsAt < now
+
   const filtered = activeTab === "all"
     ? eventRows
-    : eventRows.filter((e) => e.status === activeTab)
+    : activeTab === "ended"
+      ? eventRows.filter(isEnded)
+      : activeTab === "published"
+        ? eventRows.filter((e) => e.status === "published" && !isEnded(e))
+        : eventRows.filter((e) => e.status === activeTab)
 
   // Stats from all events in DB, not just current page
   const allEventStats = await db
@@ -147,11 +157,19 @@ export default async function AdminEventsPage({
     .groupBy(events.status)
 
   const statsMap = new Map(allEventStats.map((s) => [s.status, s.count]))
+
+  const [endedCountRow] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(events)
+    .where(and(eq(events.status, "published"), sql`${events.endsAt} < NOW()`))
+  const endedCount = endedCountRow?.count ?? 0
+  const liveCount = (statsMap.get("published") ?? 0) - endedCount
+
   const stats = [
     { label: "Pending",   value: statsMap.get("pending_review") ?? 0, icon: Clock,         tone: "text-amber-700",   bg: "bg-amber-50" },
-    { label: "Live",      value: statsMap.get("published") ?? 0,      icon: CalendarCheck, tone: "text-brand-700",   bg: "bg-brand-50" },
+    { label: "Live",      value: liveCount,                            icon: CalendarCheck, tone: "text-brand-700",   bg: "bg-brand-50" },
+    { label: "Ended",     value: endedCount,                           icon: PackageCheck,  tone: "text-ink-2",       bg: "bg-paper-2" },
     { label: "Drafts",    value: statsMap.get("draft") ?? 0,           icon: FileText,      tone: "text-ink-2",       bg: "bg-paper-2" },
-    { label: "Sold out",  value: statsMap.get("sold_out") ?? 0,        icon: PackageCheck,  tone: "text-navy",        bg: "bg-brand-50" },
     { label: "Cancelled", value: statsMap.get("cancelled") ?? 0,       icon: XCircle,       tone: "text-rose-700",    bg: "bg-rose-50" },
   ]
 
@@ -241,9 +259,15 @@ export default async function AdminEventsPage({
                           <td className="px-3 py-3.5 text-[13px] text-ink-2 max-w-[180px] truncate">{organizer}</td>
                           <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">{formatDateShort(e.startsAt)}</td>
                           <td className="px-3 py-3.5">
-                            <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[status]}`}>
-                              {STATUS_LABEL[status]}
-                            </span>
+                            {isEnded(e) ? (
+                              <span className="text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full bg-paper-2 text-ink-3 ring-1 ring-line">
+                                Ended
+                              </span>
+                            ) : (
+                              <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[status]}`}>
+                                {STATUS_LABEL[status]}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-3.5">
                             <div className="flex items-center justify-center">
@@ -378,7 +402,11 @@ export default async function AdminEventsPage({
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-1">
-                            <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[status]}`}>{STATUS_LABEL[status]}</span>
+                            {isEnded(e) ? (
+                              <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-paper-2 text-ink-3 ring-1 ring-line">Ended</span>
+                            ) : (
+                              <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[status]}`}>{STATUS_LABEL[status]}</span>
+                            )}
                             {e.featured && <Star size={11} className="text-amber-500 fill-amber-400" />}
                           </div>
                           <Link href={`/events/${e.slug}`} className="block">
