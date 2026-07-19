@@ -914,6 +914,38 @@ export const organizerFeeDuesRelations = relations(organizerFeeDues, ({ one }) =
   order: one(orders, { fields: [organizerFeeDues.orderId], references: [orders.id] }),
 }))
 
+// ─── WhatsApp Checkout Sessions ──────────────────────────────────────────────
+// Conversation state for the "text EARLYBIRD to buy" WhatsApp checkout flow.
+// One row per chat; the bot walks the buyer through event/quantity/name/email
+// then hands off to the existing Velocity EcoCash checkout.
+
+export const whatsappCheckoutStepEnum = pgEnum("whatsapp_checkout_step", [
+  "choose_event",
+  "quantity",
+  "name",
+  "email",
+  "done",
+  "cancelled",
+])
+
+export const whatsappCheckoutSessions = pgTable("whatsapp_checkout_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  chatId: text("chat_id").notNull().unique(),
+  step: whatsappCheckoutStepEnum("step").notNull().default("choose_event"),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  tierId: uuid("tier_id").references(() => ticketTiers.id, { onDelete: "set null" }),
+  quantity: integer("quantity"),
+  guestName: text("guest_name"),
+  guestEmail: text("guest_email"),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  // Event ids offered when multiple events have an active early-bird tier at
+  // once, in display order, so a numeric reply ("2") can be resolved back to
+  // the event/tier it referred to.
+  candidateEventIds: jsonb("candidate_event_ids"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
 // ─── Organiser add-on packages (Sponsored Post, Graphic Design) ─────────────
 export const organizerPackages = pgTable("organizer_packages", {
   id: uuid("id").primaryKey().defaultRandom(),
