@@ -396,7 +396,10 @@ async function _deliver(orderId: string): Promise<{
     // ── 6. Send WhatsApp ticket (non-blocking, idempotent) ─────────────────
     if (order.guestPhone && !delivery.whatsappSent) {
       const internalKey = process.env.INTERNAL_API_KEY
-      fetch(`${baseUrl}/api/whatsapp/send-ticket`, {
+      // Self-call via loopback, not the public URL: container-to-own-host-IP
+      // traffic (hairpin NAT) hangs on this deployment.
+      const selfUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}`
+      fetch(`${selfUrl}/api/whatsapp/send-ticket`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

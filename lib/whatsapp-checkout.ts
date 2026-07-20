@@ -3,7 +3,6 @@ import { and, eq, gte, isNull, or, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, ticketTiers, whatsappCheckoutSessions } from "@/db/schema"
 import { sendText } from "@/lib/whatsapp"
-import { getBaseUrl } from "@/lib/url-config"
 import { log } from "@/lib/logger"
 
 const TRIGGER_PATTERN = /early\s*bird/i
@@ -272,8 +271,12 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
 
   const phone = session.guestPhone ?? chatId.replace(/@c\.us$/, "")
 
+  // Self-call via loopback, not the public URL: container-to-own-host-IP
+  // traffic (hairpin NAT) hangs on this deployment.
+  const selfUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}`
+
   try {
-    const res = await fetch(`${getBaseUrl()}/api/checkout/velocity`, {
+    const res = await fetch(`${selfUrl}/api/checkout/velocity`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
