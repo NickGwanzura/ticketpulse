@@ -924,6 +924,9 @@ export const whatsappCheckoutStepEnum = pgEnum("whatsapp_checkout_step", [
   "quantity",
   "name",
   "email",
+  // Asked only when the sender's chat id is a WhatsApp @lid privacy id, so
+  // their EcoCash number can't be derived from the chat id itself.
+  "phone",
   "done",
   "cancelled",
 ])
@@ -937,6 +940,7 @@ export const whatsappCheckoutSessions = pgTable("whatsapp_checkout_sessions", {
   quantity: integer("quantity"),
   guestName: text("guest_name"),
   guestEmail: text("guest_email"),
+  guestPhone: text("guest_phone"),
   orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
   // Event ids offered when multiple events have an active early-bird tier at
   // once, in display order, so a numeric reply ("2") can be resolved back to

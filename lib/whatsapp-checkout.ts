@@ -232,8 +232,28 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
         await sendText(chatId, "That doesn't look like a valid email — please try again.")
         return
       }
-      await upsertSession(chatId, { guestEmail: email })
-      await completeCheckout(chatId, { ...session!, guestEmail: email })
+      // When the sender's chat id is a plain phone id we can charge that
+      // number directly; @lid privacy ids carry no phone, so ask for one.
+      const phoneFromChat = chatId.match(/^(\d+)@c\.us$/)?.[1] ?? null
+      if (phoneFromChat) {
+        await upsertSession(chatId, { guestEmail: email, guestPhone: phoneFromChat })
+        await completeCheckout(chatId, { ...session!, guestEmail: email, guestPhone: phoneFromChat })
+      } else {
+        await upsertSession(chatId, { guestEmail: email, step: "phone" })
+        await sendText(chatId, "Last step — what's your *EcoCash number*? (the payment prompt goes there, e.g. 0771234567)")
+      }
+      return
+    }
+
+    case "phone": {
+      const digits = body.replace(/\D/g, "")
+      const msisdn = digits.startsWith("0") ? `263${digits.slice(1)}` : digits
+      if (!/^263\d{9}$/.test(msisdn)) {
+        await sendText(chatId, "That doesn't look like a valid number — reply like 0771234567.")
+        return
+      }
+      await upsertSession(chatId, { guestPhone: msisdn })
+      await completeCheckout(chatId, { ...session!, guestPhone: msisdn })
       return
     }
 
@@ -250,7 +270,7 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
     return
   }
 
-  const phone = chatId.replace(/@c\.us$/, "")
+  const phone = session.guestPhone ?? chatId.replace(/@c\.us$/, "")
 
   try {
     const res = await fetch(`${getBaseUrl()}/api/checkout/velocity`, {
