@@ -233,7 +233,8 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
       }
       // When the sender's chat id is a plain phone id we can charge that
       // number directly; @lid privacy ids carry no phone, so ask for one.
-      const phoneFromChat = chatId.match(/^(\d+)@c\.us$/)?.[1] ?? null
+      const phoneDigits = chatId.match(/^(\d+)@c\.us$/)?.[1] ?? null
+      const phoneFromChat = phoneDigits ? `+${phoneDigits}` : null
       if (phoneFromChat) {
         await upsertSession(chatId, { guestEmail: email, guestPhone: phoneFromChat })
         await completeCheckout(chatId, { ...session!, guestEmail: email, guestPhone: phoneFromChat })
@@ -251,8 +252,9 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
         await sendText(chatId, "That doesn't look like a valid number — reply like 0771234567.")
         return
       }
-      await upsertSession(chatId, { guestPhone: msisdn })
-      await completeCheckout(chatId, { ...session!, guestPhone: msisdn })
+      // Velocity's validator requires the leading + on international numbers.
+      await upsertSession(chatId, { guestPhone: `+${msisdn}` })
+      await completeCheckout(chatId, { ...session!, guestPhone: `+${msisdn}` })
       return
     }
 
