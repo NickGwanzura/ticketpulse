@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse, after } from "next/server"
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { handleInboundWhatsAppMessage } from "@/lib/whatsapp-checkout"
 import { log } from "@/lib/logger"
@@ -62,11 +62,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true })
   }
 
-  try {
-    await handleInboundWhatsAppMessage(chatId, body)
-  } catch (err) {
-    log.error("webhooks/whatsapp — handler failed", { chatId, error: err instanceof Error ? err.message : String(err) })
-  }
+  // Process after responding: OpenWA's delivery timeout is ~10s, and the
+  // handler's own replies call back into OpenWA — holding the response open
+  // while doing that risks timing the delivery out (and burning its retries).
+  after(async () => {
+    try {
+      await handleInboundWhatsAppMessage(chatId, body)
+    } catch (err) {
+      log.error("webhooks/whatsapp — handler failed", { chatId, error: err instanceof Error ? err.message : String(err) })
+    }
+  })
 
   return NextResponse.json({ ok: true })
 }
