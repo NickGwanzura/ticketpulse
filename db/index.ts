@@ -11,8 +11,11 @@ type DBType = NodePgDatabase<typeof schema>
 // back to a Proxy that throws on first real use.
 const url = process.env.DATABASE_URL
 
+// connectionTimeoutMillis matters: pg's default is 0 (wait forever), so if the
+// DB is unreachable a health check or page render hangs indefinitely instead
+// of failing fast with a readable error.
 const pool = url
-  ? new Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30000 })
+  ? new Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 })
   : null
 
 // An unhandled `error` event on an idle pooled connection crashes the

@@ -42,7 +42,9 @@ EXPOSE 3000
 # busybox wget, not a node -e probe: spawning a full Node process per probe
 # costs ~100MB+ and seconds of cold start, which on a loaded shared host blew
 # past even a 15s timeout and got healthy containers killed as "unhealthy".
+# -O - prints the response body into Docker's health log, so `docker inspect`
+# shows the /api/health error payload instead of a blind pass/fail.
 HEALTHCHECK --interval=30s --timeout=15s --start-period=30s --retries=3 \
-  CMD wget -q -O /dev/null "http://127.0.0.1:$PORT/api/health" || exit 1
+  CMD wget -q -O - "http://127.0.0.1:$PORT/api/health" || exit 1
 
 CMD ["node", "server.js"]
