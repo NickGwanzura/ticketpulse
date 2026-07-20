@@ -303,9 +303,45 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
       chatId,
       `✅ Almost there! Check your phone for an *EcoCash* payment prompt for ${money(Number(data.amount ?? 0), data.currency ?? "USD")} and enter your PIN to approve it.\n\nOnce it goes through, your ticket lands right here and by email.`,
     )
+
+    // On the website the buyer's browser polls the status endpoint, which
+    // confirms the payment with Velocity, finalizes the order, and triggers
+    // ticket delivery. There's no browser here, so poll it ourselves.
+    await pollPaymentUntilSettled(chatId, data.orderId, selfUrl)
   } catch (err) {
     log.error("whatsapp-checkout — completeCheckout failed", { chatId, error: err instanceof Error ? err.message : String(err) })
     await upsertSession(chatId, { step: "cancelled" })
     await sendText(chatId, "Sorry, something went wrong starting your payment. Text *EARLYBIRD* to try again.")
   }
+}
+
+async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl: string): Promise<void> {
+  const POLL_INTERVAL_MS = 6_000
+  const MAX_POLLS = 20 // ~2 minutes
+
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+    try {
+      const res = await fetch(`${selfUrl}/api/checkout/velocity/status/${orderId}`, {
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!res.ok) continue
+      const status = await res.json()
+      if (status.paid) {
+        await sendText(chatId, "💚 Payment confirmed! Your ticket is on its way — you'll get the PDF right here in a moment.")
+        return
+      }
+      if (status.status === "expired" || status.status === "failed") {
+        await sendText(chatId, "❌ The payment didn't go through. Text *EARLYBIRD* to try again.")
+        return
+      }
+    } catch (err) {
+      log.warn("whatsapp-checkout — payment poll error", { orderId, error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+
+  await sendText(
+    chatId,
+    "⏳ Still waiting on your payment confirmation. If you approved the EcoCash prompt, your ticket will arrive automatically once it clears — no need to do anything.",
+  )
 }
