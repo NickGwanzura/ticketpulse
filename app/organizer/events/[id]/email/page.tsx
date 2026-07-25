@@ -147,6 +147,8 @@ export default function EmailPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
             {/* Send to all */}
             <form action={bulkAction} className="flex-1">
+              <input type="hidden" name="subject" value={subject} />
+              <input type="hidden" name="message" value={message} />
               <button
                 type="submit"
                 disabled={!canSend}
@@ -159,6 +161,8 @@ export default function EmailPage() {
 
             {/* Send test */}
             <form action={testAction}>
+              <input type="hidden" name="subject" value={subject} />
+              <input type="hidden" name="message" value={message} />
               <button
                 type="submit"
                 disabled={!canSend}

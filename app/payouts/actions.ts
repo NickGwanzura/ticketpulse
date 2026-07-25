@@ -15,15 +15,20 @@ const VALID_METHODS = ["ecocash", "bank_usd"] as const
 
 const ecocashPattern = /^(\+?263|0)?7[1789]\d{7}$/
 
+// ecocashNumber vs accountNumber/accountName/bankName are conditionally
+// rendered in the form (only one group exists in the DOM at a time), so the
+// unrendered group is always *absent* from FormData — .get() returns null,
+// not undefined. z.string().optional()/.default() only rescue undefined, so
+// .nullish() is required here or every submission fails on the hidden group.
 const RequestPayoutSchema = z
   .object({
     amount: z.coerce.number({ error: "Enter a valid payout amount." }),
-    currency: z.string().default("USD"),
+    currency: z.string().nullish().transform((c) => c ?? "USD"),
     method: z.enum(VALID_METHODS, { error: "Choose a valid payout method." }),
-    ecocashNumber: z.string().trim().optional().default(""),
-    accountNumber: z.string().trim().optional().default(""),
-    accountName: z.string().trim().optional().default(""),
-    bankName: z.string().trim().optional().default(""),
+    ecocashNumber: z.string().trim().nullish().transform((v) => v ?? ""),
+    accountNumber: z.string().trim().nullish().transform((v) => v ?? ""),
+    accountName: z.string().trim().nullish().transform((v) => v ?? ""),
+    bankName: z.string().trim().nullish().transform((v) => v ?? ""),
   })
   .superRefine((data, ctx) => {
     if (data.currency !== "USD") {

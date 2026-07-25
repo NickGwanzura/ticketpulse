@@ -12,18 +12,23 @@ import { defaultNotificationPriority } from "@/lib/notification-priority"
 
 const VALID_STATUSES = ["pending", "approved", "processing", "paid", "held", "rejected", "failed", "cancelled"] as const
 
+// FormData.get() returns null (not undefined) for any field that's absent —
+// an unchecked checkbox, a field the form doesn't render at all, etc.
+// z.string().optional()/.default() only rescue undefined, so they still
+// reject null — .nullish() (or preprocessing null -> undefined) is required
+// for every field that isn't guaranteed to be present in the actual <form>.
 const ManualPayoutSchema = z.object({
   userId: z.string().trim().min(1, "Select the organizer who was paid."),
-  eventId: z.string().trim().optional().default(""),
+  eventId: z.string().trim().nullish().default(""),
   amount: z.coerce.number({ error: "Enter a valid payout amount." })
     .positive("Enter a valid payout amount.")
     .max(100000, "This payout amount is above the allowed limit."),
-  currency: z.string().trim().min(1).default("USD").transform((c) => c.toUpperCase()),
+  currency: z.string().trim().min(1).nullish().default("USD").transform((c) => (c ?? "USD").toUpperCase()),
   method: z.enum(["ecocash", "bank_usd", "cash"], { error: "Choose a valid payout method." }),
-  paidDate: z.string().trim().optional().default(""),
+  paidDate: z.string().trim().nullish().default(""),
   proofReference: z.string().trim().min(3, "Add a receipt, transfer, or cash reference."),
-  notes: z.string().trim().optional().default(""),
-  confirmOverage: z.string().optional().transform((v) => v === "true"),
+  notes: z.string().trim().nullish().default(""),
+  confirmOverage: z.string().nullish().transform((v) => v === "true"),
 })
 
 export type AdminPayoutActionResult = {

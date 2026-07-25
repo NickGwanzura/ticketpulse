@@ -164,6 +164,7 @@ export default function SmsPage() {
           {/* Actions */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
             <form action={bulkAction} className="flex-1">
+              <input type="hidden" name="message" value={message} />
               <button
                 type="submit"
                 disabled={!canSend || insufficientBalance}
@@ -179,6 +180,7 @@ export default function SmsPage() {
             </form>
 
             <form action={testAction}>
+              <input type="hidden" name="message" value={message} />
               <button
                 type="submit"
                 disabled={!canSend}
