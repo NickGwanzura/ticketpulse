@@ -1,6 +1,6 @@
 import "server-only"
 
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { randomUUID } from "node:crypto"
 import { log } from "@/lib/logger"
@@ -132,6 +132,33 @@ export async function presignUpload({
   const uploadUrl = await getSignedUrl(r2, command, { expiresIn })
   const publicUrl = `${R2_PUBLIC_BASE}/${key}`
   return { uploadUrl, publicUrl }
+}
+
+/**
+ * Re-verify an uploaded object's actual size server-side after the client's
+ * direct PUT completes. The presigned PUT includes ContentLength, but that's
+ * a client-declared value — this closes the gap by checking what R2 actually
+ * received before the app treats the upload as accepted. Deletes and rejects
+ * anything over the limit rather than trusting the client's number twice.
+ */
+export async function verifyUploadedObjectSize(
+  key: string,
+  maxBytes: number,
+): Promise<{ ok: boolean; actualBytes?: number }> {
+  if (!R2_BUCKET_NAME) return { ok: false }
+  try {
+    const head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }))
+    const actualBytes = head.ContentLength ?? 0
+    if (actualBytes > maxBytes) {
+      await r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key })).catch(() => {})
+      log.warn("r2 — uploaded object exceeded declared size cap, deleted", { key, actualBytes, maxBytes })
+      return { ok: false, actualBytes }
+    }
+    return { ok: true, actualBytes }
+  } catch (err) {
+    log.error("r2 — verifyUploadedObjectSize failed", { key, error: err instanceof Error ? err.message : String(err) })
+    return { ok: false }
+  }
 }
 
 /**

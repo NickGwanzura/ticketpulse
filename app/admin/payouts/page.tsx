@@ -16,18 +16,21 @@ import {
   markPayoutPaidAction, markPayoutProcessingAction,
 } from "./actions"
 import ManualPayoutForm from "./ManualPayoutForm"
+import DataTable, { type DataTableColumn } from "@/components/ui/DataTable"
+import PayoutsBulkActions from "./PayoutsBulkActions"
+import Badge, { type BadgeTone } from "@/components/ui/Badge"
 
 type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
-const STATUS_STYLE: Record<PayoutStatus, string> = {
-  pending:    "bg-amber-50 text-amber-700",
-  approved:   "bg-violet-50 text-violet-700",
-  processing: "bg-sky-50 text-sky-700",
-  paid:       "bg-emerald-50 text-emerald-700",
-  held:       "bg-rose-50 text-rose-700",
-  rejected:   "bg-red-50 text-red-700",
-  failed:     "bg-orange-50 text-orange-700",
-  cancelled:  "bg-gray-50 text-gray-600",
+const STATUS_TONE: Record<PayoutStatus, BadgeTone> = {
+  pending:    "warning",
+  approved:   "violet",
+  processing: "info",
+  paid:       "success",
+  held:       "danger",
+  rejected:   "danger",
+  failed:     "warning",
+  cancelled:  "neutral",
 }
 
 const STATUS_LABEL: Record<PayoutStatus, string> = {
@@ -55,6 +58,157 @@ function payoutMethodLabel(payout: { method: string }) {
   if (payout.method === "ecocash") return "EcoCash"
   return "USD Bank"
 }
+
+type PayoutRow = Awaited<ReturnType<typeof getPayouts>>["payouts"][number]
+
+function payoutActionsCell(p: PayoutRow) {
+  return (
+    <div className="flex items-center gap-1.5 justify-end">
+      {p.status === "pending" && (
+        <>
+          <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
+            <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700 transition-colors">
+              <CheckCircle2 size={11} /> Approve
+            </button>
+          </form>
+          <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
+            <div className="flex items-center gap-1">
+              <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+              <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-700 transition-colors">
+                <XCircle size={10} /> Reject
+              </button>
+            </div>
+          </form>
+          <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+            <div className="flex items-center gap-1">
+              <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+              <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                <CheckCircle2 size={10} /> Already paid
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+
+      {p.status === "approved" && (
+        <>
+          <form action={async () => { "use server"; await markPayoutProcessingAction(p.id) }}>
+            <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-sky-700 transition-colors">
+              <Send size={11} /> Process
+            </button>
+          </form>
+          <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+            <div className="flex items-center gap-1">
+              <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+              <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+                <CheckCircle2 size={10} /> Pay
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+
+      {p.status === "processing" && (
+        <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+          <div className="flex items-center gap-1">
+            <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
+            <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
+              <CheckCircle2 size={10} /> Pay
+            </button>
+          </div>
+        </form>
+      )}
+
+      {p.status === "paid" && p.proofReference && (
+        <span className="text-[11px] text-ink-3 font-medium">Ref: {p.proofReference}</span>
+      )}
+
+      {p.status === "rejected" && p.rejectionReason && (
+        <span className="text-[11px] text-red-600 max-w-[120px] truncate" title={p.rejectionReason}>
+          {p.rejectionReason}
+        </span>
+      )}
+    </div>
+  )
+}
+
+const PAYOUT_COLUMNS: DataTableColumn<PayoutRow>[] = [
+  {
+    key: "organizer",
+    label: "Organizer / Event",
+    sortable: true,
+    sortValue: (p) => p.organizerName ?? "",
+    exportValue: (p) => p.organizerName ?? "",
+    hideable: false,
+    render: (p) => (
+      <>
+        <p className="text-[14px] font-semibold tracking-tight text-ink">{p.organizerName ?? "—"}</p>
+        <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">
+          {p.eventTitle ?? "General"} · {p.id.slice(0, 8)}
+          {p.rejectionReason && <span className="text-red-500 ml-2">Rejected: {p.rejectionReason}</span>}
+        </p>
+      </>
+    ),
+  },
+  {
+    key: "method",
+    label: "Method",
+    sortable: true,
+    sortValue: (p) => payoutMethodLabel(p),
+    exportValue: (p) => payoutMethodLabel(p),
+    render: (p) => (
+      <div className="space-y-1">
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+          {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
+          {payoutMethodLabel(p)}
+        </span>
+        <p className="text-[11px] text-ink-3 leading-4">
+          {p.method === "cash" ? p.proofReference : p.method === "ecocash" ? p.accountNumber : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: "requested",
+    label: "Requested",
+    sortable: true,
+    sortValue: (p) => (p.createdAt ? new Date(p.createdAt).getTime() : 0),
+    exportValue: (p) => (p.createdAt ? new Date(p.createdAt).toISOString() : ""),
+    render: (p) => <span className="whitespace-nowrap text-[13px] text-ink-2">{p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}</span>,
+  },
+  {
+    key: "status",
+    label: "Status",
+    sortable: true,
+    sortValue: (p) => p.status,
+    exportValue: (p) => p.status,
+    render: (p) => (
+      <Badge tone={STATUS_TONE[p.status as PayoutStatus]}>{STATUS_LABEL[p.status as PayoutStatus]}</Badge>
+    ),
+  },
+  {
+    key: "amount",
+    label: "Amount",
+    align: "right",
+    sortable: true,
+    hideable: false,
+    sortValue: (p) => Number(p.amount),
+    exportValue: (p) => Number(p.amount).toFixed(2),
+    render: (p) => (
+      <span className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap tabular-nums">
+        {formatCurrency(Number(p.amount), p.currency)}
+      </span>
+    ),
+  },
+  {
+    key: "actions",
+    label: "Actions",
+    align: "right",
+    hideable: false,
+    exportValue: () => "",
+    render: payoutActionsCell,
+  },
+]
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const session = await auth()
@@ -202,131 +356,21 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           {payoutRows.length > 0 ? (
             <>
-              <div className="hidden md:block">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
-                      <th className="text-left px-5 py-3 font-semibold">Organizer / Event</th>
-                      <th className="text-left px-3 py-3 font-semibold">Method</th>
-                      <th className="text-left px-3 py-3 font-semibold">Requested</th>
-                      <th className="text-left px-3 py-3 font-semibold">Status</th>
-                      <th className="text-right px-3 py-3 font-semibold">Amount</th>
-                      <th className="px-5 py-3 text-right" colSpan={2}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {payoutRows.map((p) => (
-                      <tr key={p.id} className="hover:bg-paper-2 transition-colors">
-                        <td className="px-5 py-4">
-                          <p className="text-[14px] font-semibold tracking-tight text-ink">{p.organizerName ?? "—"}</p>
-                          <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">
-                            {p.eventTitle ?? "General"} · {p.id.slice(0, 8)}
-                            {p.rejectionReason && (
-                              <span className="text-red-500 ml-2">Rejected: {p.rejectionReason}</span>
-                            )}
-                          </p>
-                        </td>
-                        <td className="px-3 py-4">
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-                              {p.method === "cash" ? <Banknote size={12} className="text-emerald-700" /> : p.method === "ecocash" ? <Smartphone size={12} className="text-emerald-700" /> : <Building2 size={12} className="text-sky-700" />}
-                              {payoutMethodLabel(p)}
-                            </span>
-                            <p className="text-[11px] text-ink-3 leading-4">
-                              {p.method === "cash"
-                                ? p.proofReference
-                                : p.method === "ecocash"
-                                ? p.accountNumber
-                                : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{p.createdAt ? formatDateShort(new Date(p.createdAt)) : "—"}</td>
-                        <td className="px-3 py-4">
-                          <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
-                            {STATUS_LABEL[p.status as PayoutStatus]}
-                          </span>
-                        </td>
-                        <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
-                          {formatCurrency(Number(p.amount), p.currency)}
-                        </td>
-                        <td className="px-3 py-4 text-right">
-                          <div className="flex items-center gap-1.5 justify-end">
-                            {/* Pending → Approve / Reject */}
-                            {p.status === "pending" && (
-                              <>
-                                <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
-                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700 transition-colors">
-                                    <CheckCircle2 size={11} /> Approve
-                                  </button>
-                                </form>
-                                <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
-                                  <div className="flex items-center gap-1">
-                                    <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-700 transition-colors">
-                                      <XCircle size={10} /> Reject
-                                    </button>
-                                  </div>
-                                </form>
-                                <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
-                                  <div className="flex items-center gap-1">
-                                    <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
-                                      <CheckCircle2 size={10} /> Already paid
-                                    </button>
-                                  </div>
-                                </form>
-                              </>
-                            )}
-
-                            {/* Approved → Process / Pay */}
-                            {p.status === "approved" && (
-                              <>
-                                <form action={async () => { "use server"; await markPayoutProcessingAction(p.id) }}>
-                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-sky-700 transition-colors">
-                                    <Send size={11} /> Process
-                                  </button>
-                                </form>
-                                <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
-                                  <div className="flex items-center gap-1">
-                                    <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                    <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
-                                      <CheckCircle2 size={10} /> Pay
-                                    </button>
-                                  </div>
-                                </form>
-                              </>
-                            )}
-
-                            {/* Processing → Pay */}
-                            {p.status === "processing" && (
-                              <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
-                                <div className="flex items-center gap-1">
-                                  <input name="proofRef" type="text" placeholder="Ref..." className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-1 focus:ring-brand-600/20 focus:border-brand-600" />
-                                  <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-700 transition-colors">
-                                    <CheckCircle2 size={10} /> Pay
-                                  </button>
-                                </div>
-                              </form>
-                            )}
-
-                            {/* Paid — show proof reference */}
-                            {p.status === "paid" && p.proofReference && (
-                              <span className="text-[11px] text-ink-3 font-medium">Ref: {p.proofReference}</span>
-                            )}
-
-                            {/* Rejected — show reason */}
-                            {p.status === "rejected" && p.rejectionReason && (
-                              <span className="text-[11px] text-red-600 max-w-[120px] truncate" title={p.rejectionReason}>
-                                {p.rejectionReason}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="hidden md:block p-3">
+                <DataTable
+                  tableId="admin-payouts"
+                  columns={PAYOUT_COLUMNS}
+                  rows={payoutRows}
+                  getRowId={(p) => p.id}
+                  exportFilename={`payouts-${active}`}
+                  renderBulkActions={(selectedIds, clearSelection) => (
+                    <PayoutsBulkActions
+                      selectedIds={selectedIds}
+                      clearSelection={clearSelection}
+                      allPending={selectedIds.every((id) => payoutRows.find((p) => p.id === id)?.status === "pending")}
+                    />
+                  )}
+                />
               </div>
 
               {/* Mobile cards */}
@@ -338,9 +382,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         <p className="text-[14px] font-semibold tracking-tight text-ink truncate">{p.organizerName ?? "—"}</p>
                         <p className="text-[12px] text-ink-3 mt-0.5 line-clamp-1">{p.eventTitle ?? "General"}</p>
                       </div>
-                      <span className={`text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_STYLE[p.status as PayoutStatus]}`}>
-                        {STATUS_LABEL[p.status as PayoutStatus]}
-                      </span>
+                      <Badge tone={STATUS_TONE[p.status as PayoutStatus]} className="text-[10px] px-2 py-0.5">{STATUS_LABEL[p.status as PayoutStatus]}</Badge>
                     </div>
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="inline-flex items-center gap-1.5 text-ink-2">

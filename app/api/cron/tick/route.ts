@@ -80,6 +80,15 @@ export async function POST(request: Request) {
     results.whatsappWatchdog = { error: String(err) }
   }
 
+  // 7. reconciliation-digest — daily anomaly summary (internally gated to 08:00 UTC)
+  try {
+    const r = await fetch(`${base}/api/cron/reconciliation-digest`, { method: "POST", headers })
+    results.reconciliationDigest = await r.json()
+  } catch (err) {
+    log.error("cron/tick — reconciliation-digest failed", { error: String(err) })
+    results.reconciliationDigest = { error: String(err) }
+  }
+
   log.info("cron/tick — complete", results)
   return NextResponse.json({ ok: true, ...results })
 }

@@ -5,204 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1778429356650,
-      "tag": "0000_striped_molecule_man",
+      "when": 1784473036761,
+      "tag": "0000_baseline",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1778431805404,
-      "tag": "0001_thick_quasar",
+      "when": 1784963637094,
+      "tag": "0001_add_payout_clawbacks",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1778435975850,
-      "tag": "0002_public_silver_sable",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1779329425614,
-      "tag": "0003_nebulous_richard_fisk",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1779340304922,
-      "tag": "0004_abandoned_shotgun",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1779385488538,
-      "tag": "0005_organiser_collaboration",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1779385607330,
-      "tag": "0006_add_cancelled_status",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1779391375530,
-      "tag": "0007_add_google_maps_url",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1779465476840,
-      "tag": "0008_huge_loki",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1779774199545,
-      "tag": "0009_true_bloodstorm",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1779775904870,
-      "tag": "0010_hesitant_dormammu",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1779967908139,
-      "tag": "0011_funny_vulture",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1780080850589,
-      "tag": "0012_add_payment_ledger",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1780080850589,
-      "tag": "0013_clever_harrier",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1780118898606,
-      "tag": "0014_notifications",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1780119300000,
-      "tag": "0015_payout_audit",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1780127748837,
-      "tag": "0016_illegal_mindworm",
-      "breakpoints": true
-    },
-    {
-      "idx": 17,
-      "version": "7",
-      "when": 1780131700000,
-      "tag": "0017_orders_indexes",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1780132000000,
-      "tag": "0018_ticket_transfer",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1780133000000,
-      "tag": "0019_early_bird",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1780134000000,
-      "tag": "0020_reviews",
-      "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1780135000000,
-      "tag": "0021_transport_roles",
-      "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "7",
-      "when": 1780136000000,
-      "tag": "0022_velocity_settlements",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "7",
-      "when": 1780137000000,
-      "tag": "0023_velocity_settlement_event",
-      "breakpoints": true
-    },
-    {
-      "idx": 24,
-      "version": "7",
-      "when": 1780138000000,
-      "tag": "0024_marketing_addons",
-      "breakpoints": true
-    },
-    {
-      "idx": 25,
-      "version": "7",
-      "when": 1780139000000,
-      "tag": "0025_enforce_seven_percent_fee",
-      "breakpoints": true
-    },
-    {
-      "idx": 26,
-      "version": "7",
-      "when": 1780140000000,
-      "tag": "0026_event_promo_images",
-      "breakpoints": true
-    },
-    {
-      "idx": 27,
-      "version": "7",
-      "when": 1780141000000,
-      "tag": "0027_past_announce_log",
-      "breakpoints": true
-    },
-    {
-      "idx": 28,
-      "version": "7",
-      "when": 1780650030000,
-      "tag": "0028_email_verification_tokens",
+      "when": 1784969110464,
+      "tag": "0002_add_notification_priority",
       "breakpoints": true
     }
   ]

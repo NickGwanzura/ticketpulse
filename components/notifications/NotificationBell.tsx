@@ -7,6 +7,7 @@ import { Bell, Check, CheckCheck, Loader2 } from "lucide-react"
 export type NotificationItem = {
   id: string
   type: string
+  priority?: "low" | "normal" | "high"
   title: string
   body: string
   link: string | null
@@ -270,7 +271,15 @@ export default function NotificationBell() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-base shrink-0">{typeIcon(n.type)}</span>
+                    <span className="relative text-base shrink-0">
+                      {typeIcon(n.type)}
+                      {n.priority === "high" && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-paper"
+                          title="High priority"
+                        />
+                      )}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-[13px] font-semibold text-ink leading-snug">

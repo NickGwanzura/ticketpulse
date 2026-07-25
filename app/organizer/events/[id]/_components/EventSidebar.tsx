@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  Ticket, ImageIcon, ShoppingBag, Store, Activity, Mail, MessageCircle,
+  Ticket, ImageIcon, ShoppingBag, Store, Activity, Mail,
   Tag, UserPlus, QrCode, Users, ExternalLink, Settings,
   HelpCircle, Wallet, ScanLine, LayoutDashboard, ChevronLeft,
   BarChart2, Search, Music2, Percent, CalendarDays, Share2, MailOpen,
@@ -36,7 +36,6 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
     items: [
       { label: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
       { label: "Email",     href: `/organizer/events/${eventId}/email`, icon: Mail },
-      { label: "WhatsApp",  href: `/organizer/events/${eventId}/whatsapp`, icon: MessageCircle },
       { label: "SMS",       href: `/organizer/events/${eventId}/sms`, icon: MessageSquare },
       { label: "Promos",    href: `/organizer/events/${eventId}/promos`, icon: Tag },
     ],

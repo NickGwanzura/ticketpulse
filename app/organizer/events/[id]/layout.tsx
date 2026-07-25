@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm"
 import { db } from "@/db"
 import { events, eventOrganisers } from "@/db/schema"
 import EventSidebar from "./_components/EventSidebar"
+import Breadcrumbs from "@/components/dashboard/Breadcrumbs"
 
 export default async function EventLayout({
   children,
@@ -51,6 +52,12 @@ export default async function EventLayout({
         eventStatus={event.status}
       />
       <main className="flex-1 min-w-0 bg-paper-2 min-h-[calc(100vh-6rem)]">
+        <Breadcrumbs
+          items={[
+            { label: "My events", href: "/organizer" },
+            { label: event.title },
+          ]}
+        />
         {children}
       </main>
     </div>

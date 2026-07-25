@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events, users, tickets } from "@/db/schema"
+import { orders, events, users, tickets, vendors } from "@/db/schema"
 import { or, ilike, and, eq, desc } from "drizzle-orm"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -138,6 +138,25 @@ export async function GET(req: Request) {
         title: `Ticket ${t.id.slice(0, 8)}`,
         subtitle: `${t.status} · ${t.eventTitle ?? "Event"}`,
         href: `/admin/tickets?q=${encodeURIComponent(q)}`,
+      })
+    }
+  }
+
+  // Search vendors (admin only)
+  if (isAdmin) {
+    const vendorResults = await db
+      .select({ id: vendors.id, businessName: vendors.businessName, category: vendors.category, city: vendors.city, verified: vendors.verified })
+      .from(vendors)
+      .where(or(ilike(vendors.businessName, `%${q}%`), ilike(vendors.email, `%${q}%`), ilike(vendors.city, `%${q}%`)))
+      .limit(5)
+
+    for (const v of vendorResults) {
+      results.push({
+        id: v.id,
+        type: "vendor",
+        title: v.businessName,
+        subtitle: `${v.category} · ${v.city ?? "—"} · ${v.verified ? "Verified" : "Unverified"}`,
+        href: `/admin/vendors?q=${encodeURIComponent(q)}`,
       })
     }
   }

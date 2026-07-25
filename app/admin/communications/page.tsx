@@ -38,7 +38,7 @@ export default function AdminCommunicationsPage() {
   // ── Form state ──────────────────────────────────────────────────────────
   const [audience, setAudience] = useState<Audience>("attendees")
   const [email, setEmail] = useState(true)
-  const [whatsapp, setWhatsapp] = useState(false)
+  const [sms, setSms] = useState(false)
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
   const [topic, setTopic] = useState("")
@@ -51,7 +51,7 @@ export default function AdminCommunicationsPage() {
   const [results, setResults] = useState<{ channel: string; target: string; success: boolean; error?: string }[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const channels = [email && "email", whatsapp && "whatsapp"].filter(Boolean)
+  const channels = [email && "email", sms && "sms"].filter(Boolean)
 
   // ── GROQ AI draft ───────────────────────────────────────────────────────
   const generateDraft = useCallback(async () => {
@@ -126,7 +126,7 @@ export default function AdminCommunicationsPage() {
           Send platform announcement
         </h1>
         <p className="text-[14px] text-ink-2 mt-1">
-          Compose and send a broadcast message via email, WhatsApp, or both.
+          Compose and send a broadcast message via email, SMS, or both.
         </p>
       </div>
 
@@ -149,8 +149,8 @@ export default function AdminCommunicationsPage() {
               {(() => {
                 const emailSent = results.filter((r) => r.channel === "email" && r.success).length
                 const emailFail = results.filter((r) => r.channel === "email" && !r.success).length
-                const waSent = results.filter((r) => r.channel === "whatsapp" && r.success).length
-                const waFail = results.filter((r) => r.channel === "whatsapp" && !r.success).length
+                const smsSent = results.filter((r) => r.channel === "sms" && r.success).length
+                const smsFail = results.filter((r) => r.channel === "sms" && !r.success).length
                 return (
                   <>
                     <div className="bg-white rounded-lg p-3 border border-green-100">
@@ -159,9 +159,9 @@ export default function AdminCommunicationsPage() {
                       {emailFail > 0 && <p className="text-[11px] text-rose-600">{emailFail} failed</p>}
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-green-100">
-                      <p className="text-[11px] text-ink-3 font-medium uppercase tracking-wide">WhatsApp</p>
-                      <p className="text-[18px] font-bold text-ink mt-1">{waSent}</p>
-                      {waFail > 0 && <p className="text-[11px] text-rose-600">{waFail} failed</p>}
+                      <p className="text-[11px] text-ink-3 font-medium uppercase tracking-wide">SMS</p>
+                      <p className="text-[18px] font-bold text-ink mt-1">{smsSent}</p>
+                      {smsFail > 0 && <p className="text-[11px] text-rose-600">{smsFail} failed</p>}
                     </div>
                   </>
                 )
@@ -219,15 +219,15 @@ export default function AdminCommunicationsPage() {
                   </label>
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <div
-                      onClick={() => setWhatsapp(!whatsapp)}
+                      onClick={() => setSms(!sms)}
                       className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
-                        whatsapp
+                        sms
                           ? "border-green-400 bg-green-50 text-green-700"
                           : "border-line text-ink-2 hover:bg-paper-2"
                       }`}
                     >
                       <MessageSquare size={13} />
-                      WhatsApp
+                      SMS
                     </div>
                   </label>
                 </div>

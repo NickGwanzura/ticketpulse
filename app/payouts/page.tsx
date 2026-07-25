@@ -69,6 +69,7 @@ export default async function PayoutsDashboardPage() {
     totalEarned,
     totalPaidOut,
     pendingTotal,
+    outstandingClawbacks,
     commissionRate,
     grossRevenue,
     platformFee,
@@ -105,11 +106,31 @@ export default async function PayoutsDashboardPage() {
         title="Your payouts"
         subtitle="Track revenue, request withdrawals, and view payment history."
         width="xl"
+        actions={
+          <a
+            href="/api/payouts/statement"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15 transition-colors"
+          >
+            <ReceiptText size={14} /> Download statement
+          </a>
+        }
       />
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-8">
         {/* Trust journey */}
         <TrustJourney status={trustStatus} totalPaidPayouts={totalPaidPayouts} />
+
+        {outstandingClawbacks > 0 && (
+          <div className="rounded-2xl border border-red-500/25 bg-red-50/60 px-5 md:px-6 py-5 tp-fade-up-1">
+            <p className="text-[14px] font-semibold tracking-tight text-red-900">
+              {formatCurrency(outstandingClawbacks, "USD")} owed back to TicketPulse
+            </p>
+            <p className="mt-1 text-[13px] text-red-800/80">
+              A refund on a ticket reduced your net earnings below what's already been paid out.
+              This amount will be deducted from your next payout.
+            </p>
+          </div>
+        )}
 
         {/* Balance cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 tp-fade-up-1">

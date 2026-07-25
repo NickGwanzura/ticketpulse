@@ -6,9 +6,10 @@ import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, Bus, CreditCard,
-  PieChart, Store,
+  PieChart, Store, Contact, History,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
+import ThemeToggle from "@/components/ui/ThemeToggle"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; badgeKey?: string }
 type NavGroup = { label?: string; items: NavItem[] }
@@ -34,6 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
       { label: "Users",     href: "/admin/users",     icon: Users },
+      { label: "Customers", href: "/admin/customers", icon: Contact },
       { label: "Events",    href: "/admin/events",    icon: Calendar, badgeKey: "pendingEvents" },
       { label: "Orders",    href: "/admin/orders",    icon: Receipt },
       { label: "Reviews",   href: "/admin/reviews",   icon: Star },
@@ -52,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "System",
     items: [
       { label: "Settings", href: "/admin/settings", icon: Settings },
+      { label: "Audit log", href: "/admin/audit-log", icon: History },
     ],
   },
 ]
@@ -151,13 +154,14 @@ export default function Sidebar({
         </nav>
 
         {/* Sign out */}
-        <div className="px-3 pb-4 pt-2 border-t border-white/10">
+        <div className="px-3 pb-4 pt-2 border-t border-white/10 flex items-center gap-1">
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="flex-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
           >
             <LogOut size={14} className="text-white/30" /> Sign out
           </button>
+          <ThemeToggle />
         </div>
       </aside>
 

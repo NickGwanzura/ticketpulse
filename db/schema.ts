@@ -914,6 +914,43 @@ export const organizerFeeDuesRelations = relations(organizerFeeDues, ({ one }) =
   order: one(orders, { fields: [organizerFeeDues.orderId], references: [orders.id] }),
 }))
 
+// ─── Payout Clawbacks ────────────────────────────────────────────────────────
+// When a refund is issued on an order whose payout has already been paid to
+// the organiser, revenue-summary.ts's availableBalance would otherwise clamp
+// the shortfall to zero and the money owed back would silently disappear.
+// This table makes that shortfall an explicit, trackable amount instead.
+
+export const payoutClawbackStatusEnum = pgEnum("payout_clawback_status", [
+  "outstanding",
+  "recovered",
+  "waived",
+])
+
+export const payoutClawbacks = pgTable("payout_clawbacks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  organizerId: text("organizer_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD").notNull(),
+  reason: text("reason").notNull(),
+  status: payoutClawbackStatusEnum("status").default("outstanding").notNull(),
+  recoveredAt: timestamp("recovered_at"),
+  recoveredBy: text("recovered_by"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("payout_clawbacks_organizer_idx").on(table.organizerId),
+  index("payout_clawbacks_event_idx").on(table.eventId),
+  index("payout_clawbacks_status_idx").on(table.status),
+])
+
+export const payoutClawbacksRelations = relations(payoutClawbacks, ({ one }) => ({
+  organizer: one(users, { fields: [payoutClawbacks.organizerId], references: [users.id] }),
+  event: one(events, { fields: [payoutClawbacks.eventId], references: [events.id] }),
+  order: one(orders, { fields: [payoutClawbacks.orderId], references: [orders.id] }),
+}))
+
 // ─── WhatsApp Checkout Sessions ──────────────────────────────────────────────
 // Conversation state for the "text EARLYBIRD to buy" WhatsApp checkout flow.
 // One row per chat; the bot walks the buyer through event/quantity/name/email
@@ -982,10 +1019,13 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "system",
 ])
 
+export const notificationPriorityEnum = pgEnum("notification_priority", ["low", "normal", "high"])
+
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   type: notificationTypeEnum("type").notNull(),
+  priority: notificationPriorityEnum("priority").default("normal").notNull(),
   title: text("title").notNull(),
   body: text("body").notNull(),
   link: text("link"),
@@ -996,6 +1036,7 @@ export const notifications = pgTable("notifications", {
   index("notifications_user_id_idx").on(table.userId),
   index("notifications_read_idx").on(table.read),
   index("notifications_created_idx").on(table.createdAt),
+  index("notifications_priority_idx").on(table.priority),
 ])
 
 // ─── Past-attendee announcement log ──────────────────────────────────────────

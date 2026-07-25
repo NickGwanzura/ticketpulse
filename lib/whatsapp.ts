@@ -234,18 +234,34 @@ export async function isSessionReady(): Promise<boolean> {
  * Falls back to the admin email's local part (for development).
  */
 export function getAdminPhone(): string | null {
-  return process.env.ADMIN_PHONE ?? null
+  return getAdminPhones()[0] ?? null
 }
 
 /**
- * Send a WhatsApp alert to the platform admin.
+ * Get all admin WhatsApp phone numbers from environment config.
+ * ADMIN_PHONE may be a single number or a comma-separated list — every
+ * number in the list receives every admin alert (new sales, payment
+ * anomalies, event/admin events, contact form, etc).
+ */
+export function getAdminPhones(): string[] {
+  const raw = process.env.ADMIN_PHONE
+  if (!raw) return []
+  return raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+}
+
+/**
+ * Send a WhatsApp alert to every configured platform admin number.
  *
- * Safe to call from anywhere — silently skips if admin phone isn't configured
- * or the session isn't ready.
+ * Safe to call from anywhere — silently skips if no admin phones are
+ * configured or the session isn't ready. One admin's failed send doesn't
+ * block delivery to the others.
  */
 export async function sendAdminAlert(text: string): Promise<void> {
-  const phone = getAdminPhone()
-  if (!phone) {
+  const phones = getAdminPhones()
+  if (phones.length === 0) {
     console.warn("[whatsapp] ADMIN_PHONE not set — skipping admin alert")
     log.warn("whatsapp — ADMIN_PHONE not set, skipping admin alert")
     return
@@ -258,10 +274,20 @@ export async function sendAdminAlert(text: string): Promise<void> {
       log.warn("whatsapp — session not ready, skipping admin alert")
       return
     }
-
-    await sendText(formatChatId(phone), text)
   } catch (err) {
-    console.error("[whatsapp] failed to send admin alert:", err)
-    log.error("whatsapp — failed to send admin alert", { error: err instanceof Error ? err.message : String(err) })
+    console.error("[whatsapp] failed to check session status:", err)
+    log.error("whatsapp — failed to check session status", { error: err instanceof Error ? err.message : String(err) })
+    return
   }
+
+  await Promise.all(
+    phones.map(async (phone) => {
+      try {
+        await sendText(formatChatId(phone), text)
+      } catch (err) {
+        console.error(`[whatsapp] failed to send admin alert to ${phone}:`, err)
+        log.error("whatsapp — failed to send admin alert", { phone, error: err instanceof Error ? err.message : String(err) })
+      }
+    }),
+  )
 }

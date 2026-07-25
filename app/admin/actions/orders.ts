@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { eq, and, inArray, or, sql } from "drizzle-orm"
 
-import { auth, signIn } from "@/auth"
+import { signIn } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { events, orders, orderItems, organizerFeeDues, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
@@ -18,10 +19,7 @@ import { getBaseUrl } from "@/lib/url-config"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function resendOrderEmailAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
     .select()
@@ -195,10 +193,7 @@ export async function resendOrderEmailAction(orderId: string) {
  */
 
 export async function cancelOrderTicketsAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
     .select({ id: orders.id, status: orders.status })
@@ -259,10 +254,7 @@ export async function cancelOrderTicketsAction(orderId: string) {
  * Only admins can call this. Restores ticket tier inventory.
  */
 export async function cancelTicketsAction(ticketIds: string[]) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   // Fetch the tickets to cancel
   const targetTickets = await db
@@ -318,10 +310,7 @@ export async function cancelTicketsAction(ticketIds: string[]) {
  */
 
 export async function markOrderCompleteAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const { markOrderCompleteAction: completeAction } = await import("@/lib/order-recovery")
   return completeAction(orderId, session.user.id, session.user.email ?? "admin")
@@ -331,10 +320,7 @@ export async function markOrderCompleteAction(orderId: string) {
  * Send tickets for an order — regenerates missing records and delivers via email.
  */
 export async function sendTicketsAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const { sendTicketsAction: sendAction } = await import("@/lib/order-recovery")
   return sendAction(orderId)
@@ -344,10 +330,7 @@ export async function sendTicketsAction(orderId: string) {
  * Complete order and send tickets in one idempotent action.
  */
 export async function completeAndSendAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
   return combinedAction(orderId, session.user.id, session.user.email ?? "admin")
@@ -433,10 +416,7 @@ async function createManualTicketOrder(
  * completeAndSendAction pipeline paid checkout orders go through.
  */
 export async function createOfflineOrderAction(input: OfflineOrderInput) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
   const paymentMethod = input.paymentMethod?.trim()
   if (!paymentMethod) throw new Error("Payment method is required")
 
@@ -466,10 +446,7 @@ export async function createOfflineOrderAction(input: OfflineOrderInput) {
  * (see lib/revenue-summary.ts) since we never held the money.
  */
 export async function createDirectPayOrderAction(input: OfflineOrderInput) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [event] = await db
     .select({ organizerId: events.organizerId })
@@ -487,36 +464,27 @@ export async function createDirectPayOrderAction(input: OfflineOrderInput) {
   const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
   const result = await combinedAction(order.id, session.user.id, session.user.email ?? "admin")
 
-  const { PLATFORM_FEE_RATE, calculatePlatformFee } = await import("@/lib/platform-fee")
+  // markOrderCompleteAction (called inside combinedAction) auto-creates the
+  // organizer_fee_dues row for any direct-sale payment method, including
+  // "organizer_direct" — read it back rather than inserting a second one.
+  const { calculatePlatformFee } = await import("@/lib/platform-fee")
   const feeAmount = calculatePlatformFee(total)
-
   const [feeDue] = await db
-    .insert(organizerFeeDues)
-    .values({
-      orderId: order.id,
-      eventId: input.eventId,
-      organizerId: event.organizerId,
-      grossAmount: total.toFixed(2),
-      feeRate: PLATFORM_FEE_RATE.toFixed(4),
-      feeAmount: feeAmount.toFixed(2),
-      currency: order.currency ?? "USD",
-      createdBy: session.user.email ?? "admin",
-    })
-    .returning()
+    .select({ id: organizerFeeDues.id })
+    .from(organizerFeeDues)
+    .where(eq(organizerFeeDues.orderId, order.id))
+    .limit(1)
 
   revalidatePath("/admin/orders")
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/organizer-fees")
   revalidatePath("/admin")
 
-  return { ...result, orderId: order.id, feeDueId: feeDue.id, feeAmount, grossAmount: total }
+  return { ...result, orderId: order.id, feeDueId: feeDue?.id, feeAmount, grossAmount: total }
 }
 
 export async function markFeeDueSettledAction(feeDueId: string, note?: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   await db
     .update(organizerFeeDues)
@@ -535,13 +503,10 @@ export async function markFeeDueSettledAction(feeDueId: string, note?: string) {
 }
 
 export async function refundOrderAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
-    .select({ id: orders.id, status: orders.status })
+    .select({ id: orders.id, status: orders.status, eventId: orders.eventId, totalAmount: orders.totalAmount })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1)
@@ -583,7 +548,48 @@ export async function refundOrderAction(orderId: string) {
           .where(eq(ticketTiers.id, tierId))
       }
     }
+
+    await tx.insert(paymentLedger).values({
+      orderId,
+      eventId: order.eventId,
+      transactionTrace: `refund-${orderId.slice(0, 8)}-${Date.now()}`,
+      salesOrderTrace: `refund-${orderId.slice(0, 8)}`,
+      invoiceId: `refund-${orderId.slice(0, 8)}`,
+      amount: `-${order.totalAmount}`,
+      currency: "USD",
+      processor: "manual",
+      velocityPollStatus: "MANUAL_REFUND",
+      localStatus: "refunded",
+      source: "admin_refund",
+      rawPayload: { refundedBy: session.user.email ?? session.user.id, refundedAt: new Date().toISOString() },
+    })
   })
+
+  // Refunding can reveal that a payout already sent to the organiser for this
+  // event now exceeds net platform revenue — track that as a clawback rather
+  // than letting availableBalance silently clamp the shortfall to zero.
+  try {
+    const [event] = await db
+      .select({ organizerId: events.organizerId })
+      .from(events)
+      .where(eq(events.id, order.eventId))
+      .limit(1)
+    if (event) {
+      const { recordRefundClawback } = await import("@/lib/revenue-summary")
+      const result = await recordRefundClawback({
+        eventId: order.eventId,
+        organizerId: event.organizerId,
+        orderId,
+        reason: `Refund on order ${orderId.slice(0, 8)} reduced net revenue below amount already paid out.`,
+        performedBy: session.user.email ?? session.user.id,
+      })
+      if (result.created) {
+        log.warn("refund created a payout clawback", { orderId, eventId: order.eventId, amount: result.amount })
+      }
+    }
+  } catch (err) {
+    log.error("refundOrderAction - clawback check failed", { orderId, error: String(err) })
+  }
 
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")
@@ -591,10 +597,7 @@ export async function refundOrderAction(orderId: string) {
 }
 
 export async function deliverTicketAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const { deliverTicketForPaidOrder } = await import("@/lib/delivery")
   const result = await deliverTicketForPaidOrder(orderId)
@@ -609,10 +612,7 @@ export async function deliverTicketAction(orderId: string) {
  * regardless of existing pdfVersion. Updates delivery metadata.
  */
 export async function regeneratePdfAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
     .select()
@@ -779,10 +779,7 @@ export async function regeneratePdfAction(orderId: string) {
  * Only admins can call this. Irreversible.
  */
 export async function deleteOrderAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
     .select({ id: orders.id })
@@ -826,8 +823,7 @@ export async function deleteOrderAction(orderId: string) {
 }
 
 export async function sendWhatsAppTicketAction(orderId: string): Promise<{ ok: boolean; error?: string }> {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") throw new Error("Unauthorized")
+  const session = await requireAdmin()
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
   const internalKey = process.env.INTERNAL_API_KEY

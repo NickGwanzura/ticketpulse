@@ -12,6 +12,7 @@ import {
   verificationTokens,
 } from "@/db/schema"
 import { verifyPassword } from "@/lib/password"
+import { authLimiter, rateLimit } from "@/lib/rate-limit"
 import { log } from "@/lib/logger"
 import { authConfig } from "@/auth.config"
 import {
@@ -20,6 +21,8 @@ import {
   sendWelcomeEmail,
 } from "@/lib/email"
 import { orders, events } from "@/db/schema"
+
+const loginByEmailLimiter = rateLimit({ windowMs: 60_000, max: 5 })
 
 // DrizzleAdapter introspects `db` at construction time, so we only
 // build it when DATABASE_URL is available. With JWT-strategy sessions
@@ -208,11 +211,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email:    { label: "Email",    type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email    = (credentials?.email    as string | undefined)?.toLowerCase().trim()
         const password = (credentials?.password as string | undefined) ?? ""
         if (!email || !password) return null
         if (!process.env.DATABASE_URL) return null
+
+        // Two layers: per-IP (stops one attacker hammering many accounts) and
+        // per-email (stops credential stuffing spread across many IPs).
+        if (request instanceof Request) {
+          const ipResult = authLimiter.checkRequest(request)
+          if (!ipResult.allowed) {
+            log.warn("[auth] login rate limited by IP")
+            return null
+          }
+        }
+        const emailResult = loginByEmailLimiter.check(email)
+        if (!emailResult.allowed) {
+          log.warn("[auth] login rate limited by email", { email })
+          return null
+        }
 
         const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
         if (!user || !user.passwordHash) return null

@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
   ArrowUpRight, AlertTriangle, CalendarCheck, CreditCard,
-  Users, Activity, CheckCircle2, Clock, TrendingUp,
+  Users, Activity, CheckCircle2, Clock, TrendingUp, Inbox, Wallet,
   Zap, FileWarning, Ticket,
 } from "lucide-react"
 import { desc, eq, sql, and, gte, inArray, isNull, lt } from "drizzle-orm"
@@ -18,6 +18,7 @@ import PollNowButton from "@/app/admin/_components/PollNowButton"
 import AiBriefCard from "@/components/ai/AiBriefCard"
 import PurchaseFunnel from "@/components/dashboard/PurchaseFunnel"
 import AiModerateButton from "@/components/ai/AiModerateButton"
+import EmptyState from "@/components/dashboard/EmptyState"
 import { getSmsBalance } from "@/lib/velocity/sms"
 
 function MiniSparkline({ points, positive }: { points: number[]; positive: boolean }) {
@@ -419,7 +420,7 @@ export default async function AdminOverviewPage() {
             </div>
             <ul className="divide-y divide-line">
               {recentOrders.length === 0 ? (
-                <li className="px-5 py-8 text-center text-[13px] text-ink-3">No orders yet</li>
+                <li><EmptyState icon={Inbox} title="No orders yet" variant="inline" /></li>
               ) : recentOrders.slice(0, 8).map((o, i) => (
                 <li key={i} className="px-5 py-3 flex items-center gap-3 hover:bg-paper-2 transition-colors">
                   <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" ? "bg-emerald-500" : "bg-amber-400"}`} />
@@ -446,7 +447,7 @@ export default async function AdminOverviewPage() {
             </Link>
           </div>
           {topEventRows.length === 0 ? (
-            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No live or upcoming events</p>
+            <EmptyState icon={CalendarCheck} title="No live or upcoming events" variant="inline" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px]">
@@ -492,7 +493,7 @@ export default async function AdminOverviewPage() {
             </Link>
           </div>
           {endedEventRows.length === 0 ? (
-            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No ended events yet</p>
+            <EmptyState icon={Clock} title="No ended events yet" variant="inline" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[620px]">
@@ -549,7 +550,7 @@ export default async function AdminOverviewPage() {
             </Link>
           </div>
           {recentPaidPayouts.length === 0 ? (
-            <p className="px-5 py-8 text-center text-[13px] text-ink-3">No payouts made yet</p>
+            <EmptyState icon={Wallet} title="No payouts made yet" variant="inline" />
           ) : (
             <ul className="divide-y divide-line">
               {recentPaidPayouts.map((p) => (

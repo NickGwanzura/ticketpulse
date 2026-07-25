@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { eq, and, inArray, or, sql } from "drizzle-orm"
 
-import { auth, signIn } from "@/auth"
+import { signIn } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
@@ -17,10 +18,7 @@ import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function verifyUserEmailAction(userId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   await db
     .update(users)
@@ -36,10 +34,7 @@ export async function verifyUserEmailAction(userId: string) {
  * (admin accounts must be created via the database directly).
  */
 export async function updateUserRoleAction(userId: string, newRole: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const allowedRoles = ["attendee", "organizer", "vendor", "transport_operator", "dispatcher", "driver", "conductor"] as const
   if (!allowedRoles.includes(newRole as typeof allowedRoles[number])) {
@@ -59,10 +54,7 @@ export async function updateUserRoleAction(userId: string, newRole: string) {
  * Unverify a user's email (set emailVerified to null).
  */
 export async function unverifyUserEmailAction(userId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   await db
     .update(users)
@@ -81,10 +73,7 @@ export async function unverifyUserEmailAction(userId: string) {
  * - Other statuses: throws an error.
  */
 export async function resendOrderEmailAction(orderId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
     .select()
@@ -190,10 +179,7 @@ export async function resendOrderEmailAction(orderId: string) {
  * Only admins can call this.
  */
 export async function updateCommissionRateAction(userId: string, rate: number) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   if (rate !== PLATFORM_FEE_PERCENT) {
     throw new Error(`TicketPulse commission is fixed at ${PLATFORM_FEE_PERCENT}%`)
@@ -213,10 +199,7 @@ export async function updateCommissionRateAction(userId: string, rate: number) {
  * Sets approvedAt to the current time. No-op if already approved.
  */
 export async function approveOrganizerAction(userId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [organizer] = await db
     .select({ email: users.email, name: users.name, approvedAt: users.approvedAt })
@@ -252,15 +235,32 @@ export async function approveOrganizerAction(userId: string) {
  * Reject/unapprove an organizer account (sets approvedAt to null).
  */
 export async function rejectOrganizerAction(userId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
+
+  const [organizer] = await db
+    .select({ email: users.email, name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
 
   await db
     .update(users)
     .set({ approvedAt: null, updatedAt: new Date() })
     .where(eq(users.id, userId))
+
+  if (organizer?.email) {
+    const { sendEmail } = await import("@/lib/email")
+    const { organizerRejectedEmail } = await import("@/lib/email-templates")
+    const tpl = organizerRejectedEmail({ name: organizer.name })
+    sendEmail({
+      to: organizer.email,
+      subject: "Update on your TicketPulse organizer application",
+      html: tpl.html,
+      text: tpl.text,
+    }).catch((e) => {
+      console.error("[admin] organizer rejection email failed", e)
+    })
+  }
 
   revalidatePath("/admin/users")
   revalidatePath("/admin")

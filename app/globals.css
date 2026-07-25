@@ -58,6 +58,45 @@
 
 html { color-scheme: light; }
 
+/*
+ * Dark mode — the dashboard tokens above (--color-paper/ink/line/...) are
+ * referenced by every `bg-paper`/`text-ink`/`border-line` utility class
+ * across the app, so redefining them here is enough to re-theme everything
+ * that already uses the token system, with zero component changes.
+ *
+ * `prefers-color-scheme` follows the OS; `[data-theme]` lets the in-app
+ * toggle (admin sidebar) override it explicitly either direction.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-paper: #0f1620;
+    --color-paper-2: #161d28;
+    --color-paper-3: #1c2430;
+
+    --color-ink: #eef2f6;
+    --color-ink-2: #b7c1cc;
+    --color-ink-3: #8892a0;
+
+    --color-line: #2a3441;
+    --color-line-2: #384252;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-paper: #0f1620;
+  --color-paper-2: #161d28;
+  --color-paper-3: #1c2430;
+
+  --color-ink: #eef2f6;
+  --color-ink-2: #b7c1cc;
+  --color-ink-3: #8892a0;
+
+  --color-line: #2a3441;
+  --color-line-2: #384252;
+  color-scheme: dark;
+}
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);

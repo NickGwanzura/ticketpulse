@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { eq, and, inArray } from "drizzle-orm"
-import { auth } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { platformSettings } from "@/db/schema"
 import { log } from "@/lib/logger"
@@ -38,10 +38,7 @@ const KEY_MAP: Record<string, keyof SettingsMap> = {
 
 
 export async function getPlatformSettings(): Promise<SettingsMap> {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const rows = await db
     .select()
@@ -81,10 +78,7 @@ export async function getPlatformSettings(): Promise<SettingsMap> {
 }
 
 export async function updatePlatformSettings(formData: FormData) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const raw: Record<string, unknown> = {
     platformName: formData.get("platformName"),

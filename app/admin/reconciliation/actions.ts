@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 import { eq } from "drizzle-orm"
 
-import { auth } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { velocitySettlements } from "@/db/schema"
 import { adminEmail, sendEmail } from "@/lib/email"
@@ -31,10 +31,7 @@ function parseOptionalDate(value: string | undefined) {
 }
 
 export async function recordVelocitySettlementAction(formData: FormData) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const parsed = SettlementSchema.safeParse({
     settlementDate: formData.get("settlementDate"),
@@ -88,10 +85,7 @@ const SendReconSchema = z.object({
 })
 
 export async function sendVelocityReconciliationAction(formData: FormData) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const parsed = SendReconSchema.safeParse({
     recipient: formData.get("recipient") || process.env.VELOCITY_RECON_EMAIL,
@@ -138,10 +132,7 @@ export async function sendVelocityReconciliationAction(formData: FormData) {
 }
 
 export async function deleteVelocitySettlementAction(formData: FormData) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const settlementId = String(formData.get("settlementId") ?? "")
   if (!settlementId) {

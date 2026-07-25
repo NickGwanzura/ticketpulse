@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect, useRef } from "react"
 import { useFormStatus } from "react-dom"
 import Link from "next/link"
-import { ArrowLeft, Ticket, Save, Sparkles, Loader2, MapPin } from "lucide-react"
+import { ArrowLeft, ArrowRight, Ticket, Save, Loader2, MapPin, Check } from "lucide-react"
 
 import Button from "@/components/ui/Button"
 import VenueMap from "@/components/events/VenueMap"
@@ -12,6 +12,8 @@ import AiModerateButton from "@/components/ai/AiModerateButton"
 import AiTagSuggest from "@/components/ai/AiTagSuggest"
 import AiSocialButton from "@/components/ai/AiSocialButton"
 import AiPricingButton from "@/components/ai/AiPricingButton"
+import AiDescriptionButton from "@/components/ai/AiDescriptionButton"
+import AiLocationSuggestButton from "@/components/ai/AiLocationSuggestButton"
 
 const INITIAL: CreateEventState = { ok: true }
 
@@ -56,14 +58,54 @@ function SubmitButton() {
   )
 }
 
+const STEPS = ["Basics", "Location", "Schedule", "Review"] as const
+
+function Stepper({ current }: { current: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      {STEPS.map((label, i) => {
+        const done = i < current
+        const active = i === current
+        return (
+          <div key={label} className="flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={`shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${
+                  done ? "bg-navy text-white" : active ? "bg-navy/10 text-navy ring-1 ring-navy" : "bg-paper-2 text-ink-3 ring-1 ring-line"
+                }`}
+              >
+                {done ? <Check size={12} /> : i + 1}
+              </span>
+              <span className={`text-[12.5px] font-medium truncate ${active ? "text-ink" : "text-ink-3"}`}>{label}</span>
+            </div>
+            {i < STEPS.length - 1 && <div className={`h-px flex-1 ${done ? "bg-navy" : "bg-line"}`} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function NewEventForm() {
   const [state, formAction] = useActionState(createEventAction, INITIAL)
   const errs = state.fieldErrors ?? {}
 
-  const [genDesc, setGenDesc] = useState(false)
-  const [genLoc, setGenLoc] = useState(false)
-  const [descError, setDescError] = useState("")
-  const [locError, setLocError] = useState("")
+  const [step, setStep] = useState(0)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Advancing re-validates only the currently-visible step's required fields —
+  // fields on hidden (display:none) steps are excluded from constraint
+  // validation by the browser, so this never blocks on a future step's fields.
+  function goNext() {
+    if (formRef.current && !formRef.current.reportValidity()) return
+    setStep((s) => Math.min(s + 1, STEPS.length - 1))
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+  function goBack() {
+    setStep((s) => Math.max(s - 1, 0))
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const [tags, setTags] = useState<string[]>([])
 
   // Tracked for AI button context
@@ -128,75 +170,11 @@ export default function NewEventForm() {
     }
   }, [venue, city, country, address])
 
-  async function handleGenerateDesc(form: HTMLFormElement) {
-    const fd = new FormData(form)
-    const title = fd.get("title")?.toString() ?? ""
-    const category = fd.get("category")?.toString() ?? ""
-    const venue = fd.get("venue")?.toString() ?? ""
-    const city = fd.get("city")?.toString() ?? ""
-    const tags = fd.get("tags")?.toString()
-
-    if (!title || !category || !venue || !city) {
-      setDescError("Fill in title, category, venue, and city first.")
-      return
-    }
-
-    setDescError("")
-    setGenDesc(true)
-    try {
-      const res = await fetch("/api/ai/description", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, category, venue, city, tags }),
-      })
-      const data = await res.json()
-      if (data.description) {
-        const el = document.getElementById("description") as HTMLTextAreaElement | null
-        if (el) el.value = data.description
-      }
-    } catch {
-      // silently fail
-    } finally {
-      setGenDesc(false)
-    }
-  }
-
-  async function handleSuggestLocation(form: HTMLFormElement) {
-    const fd = new FormData(form)
-    const venue = fd.get("venue")?.toString() ?? ""
-    const city = fd.get("city")?.toString() ?? ""
-
-    if (!venue || !city) {
-      setLocError("Fill in venue and city first.")
-      return
-    }
-
-    setLocError("")
-    setGenLoc(true)
-    try {
-      const res = await fetch("/api/ai/location", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ venue, city }),
-      })
-      const data = await res.json()
-      if (data.country) {
-        const el = document.getElementById("country") as HTMLInputElement | null
-        if (el) el.value = data.country
-      }
-      if (data.address) {
-        const el = document.getElementById("address") as HTMLInputElement | null
-        if (el) el.value = data.address
-      }
-    } catch {
-      // silently fail
-    } finally {
-      setGenLoc(false)
-    }
-  }
 
   return (
-    <form id="new-event-form" action={formAction} className="space-y-6">
+    <form id="new-event-form" ref={formRef} action={formAction} className="space-y-6">
+      <Stepper current={step} />
+
       {state.error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
           {state.error}
@@ -204,6 +182,8 @@ export default function NewEventForm() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* ── Step 1: Basics ── */}
+        <div className={step === 0 ? "contents" : "hidden"}>
         <div className="md:col-span-2">
           <label htmlFor="title" className="block text-[13px] font-medium text-ink mb-1.5">Title</label>
           <input
@@ -254,25 +234,19 @@ export default function NewEventForm() {
             <label htmlFor="description" className="block text-[13px] font-medium text-ink">Description</label>
             <div className="flex items-center gap-3">
               <AiModerateButton title="" description="" category="" />
-              <button
-                type="button"
-                onClick={() => {
-                  const form = document.getElementById("new-event-form") as HTMLFormElement | null
-                  if (form) handleGenerateDesc(form)
+              <AiDescriptionButton
+                title={title}
+                category={category}
+                venue={venue}
+                city={city}
+                tags={tags.join(", ")}
+                onGenerated={(description) => {
+                  const el = document.getElementById("description") as HTMLTextAreaElement | null
+                  if (el) el.value = description
                 }}
-                disabled={genDesc}
-                className="inline-flex items-center gap-1 text-[12px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
-              >
-                {genDesc ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <Sparkles size={12} />
-                )}
-                {genDesc ? "Generating…" : "Generate with AI"}
-              </button>
+              />
             </div>
           </div>
-          {descError && <p className="mb-1.5 text-[12px] text-rose-600">{descError}</p>}
           <textarea
             id="description"
             name="description"
@@ -313,7 +287,9 @@ export default function NewEventForm() {
           <p className="mt-1 text-[12px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
         </div>
 
-        {/* Location */}
+        </div>
+        {/* ── Step 2: Location ── */}
+        <div className={step === 1 ? "contents" : "hidden"}>
         <div className="md:col-span-2 mt-2">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Location</p>
         </div>
@@ -379,23 +355,20 @@ export default function NewEventForm() {
         </div>
 
         <div className="md:col-span-2">
-          <button
-            type="button"
-            onClick={() => {
-              const form = document.getElementById("new-event-form") as HTMLFormElement | null
-              if (form) handleSuggestLocation(form)
+          <AiLocationSuggestButton
+            venue={venue}
+            city={city}
+            onGenerated={(result) => {
+              if (result.country) {
+                const el = document.getElementById("country") as HTMLInputElement | null
+                if (el) el.value = result.country
+              }
+              if (result.address) {
+                const el = document.getElementById("address") as HTMLInputElement | null
+                if (el) el.value = result.address
+              }
             }}
-            disabled={genLoc}
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-blue hover:text-brand-600/80 transition-colors disabled:opacity-50"
-          >
-            {genLoc ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <MapPin size={13} />
-            )}
-            {genLoc ? "Looking up location…" : "Suggest country & address from venue"}
-          </button>
-          {locError && <p className="mt-1 text-[12px] text-rose-600">{locError}</p>}
+          />
         </div>
 
         {/* Hidden lat/lng forwarded to server action */}
@@ -453,6 +426,9 @@ export default function NewEventForm() {
           <p className="mt-1 text-[12px] text-ink-3">Paste a Google Maps URL for this venue. If not provided, one will be auto-generated from coordinates.</p>
         </div>
 
+        </div>
+        {/* ── Step 3: Schedule ── */}
+        <div className={step === 2 ? "contents" : "hidden"}>
         <div>
           <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at</label>
           <input
@@ -504,26 +480,55 @@ export default function NewEventForm() {
             city={city}
           />
         </div>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-dashed border-line bg-paper-2/40 p-4 flex items-start gap-3">
-        <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line shrink-0">
-          <Ticket size={15} className="text-ink-3" />
-        </span>
-        <div className="text-[13px] text-ink-2 leading-relaxed">
-          <p className="font-semibold text-ink">Next: set up your ticket tiers.</p>
-          <p className="mt-0.5">Once the draft is saved we&apos;ll take you straight to the tickets page to add tiers. The cover image, merch, and gallery are one click away.</p>
+      {/* ── Step 4: Review ── */}
+      <div className={step === 3 ? "" : "hidden"}>
+        <div className="rounded-xl border border-line bg-paper-2/60 p-5 space-y-3 mb-4">
+          <p className="text-[13px] font-semibold text-ink">Review before creating</p>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+            <div className="flex justify-between sm:block"><dt className="text-ink-3">Title</dt><dd className="font-medium text-ink truncate sm:mt-0.5">{title || "—"}</dd></div>
+            <div className="flex justify-between sm:block"><dt className="text-ink-3">Category</dt><dd className="font-medium text-ink sm:mt-0.5">{category || "—"}</dd></div>
+            <div className="flex justify-between sm:block"><dt className="text-ink-3">Venue / City</dt><dd className="font-medium text-ink truncate sm:mt-0.5">{[venue, city].filter(Boolean).join(", ") || "—"}</dd></div>
+            <div className="flex justify-between sm:block"><dt className="text-ink-3">Starts</dt><dd className="font-medium text-ink sm:mt-0.5">{startsAt ? new Date(startsAt).toLocaleString("en-GB") : "—"}</dd></div>
+          </dl>
+        </div>
+        <div className="rounded-xl border border-dashed border-line bg-paper-2/40 p-4 flex items-start gap-3">
+          <span className="inline-flex w-9 h-9 items-center justify-center rounded-lg bg-paper ring-1 ring-line shrink-0">
+            <Ticket size={15} className="text-ink-3" />
+          </span>
+          <div className="text-[13px] text-ink-2 leading-relaxed">
+            <p className="font-semibold text-ink">Next: set up your ticket tiers.</p>
+            <p className="mt-0.5">Once the draft is saved we&apos;ll take you straight to the tickets page to add tiers. The cover image, merch, and gallery are one click away.</p>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <Link
-          href="/organizer"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
-        >
-          <ArrowLeft size={13} /> Back
-        </Link>
-        <SubmitButton />
+        {step === 0 ? (
+          <Link
+            href="/organizer"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
+          >
+            <ArrowLeft size={13} /> Back
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink"
+          >
+            <ArrowLeft size={13} /> Back
+          </button>
+        )}
+        {step < STEPS.length - 1 ? (
+          <Button type="button" size="md" onClick={goNext}>
+            Next <ArrowRight size={14} />
+          </Button>
+        ) : (
+          <SubmitButton />
+        )}
       </div>
     </form>
   )

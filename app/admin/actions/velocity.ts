@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { eq, and, inArray, or, sql } from "drizzle-orm"
 
-import { auth, signIn } from "@/auth"
+import { signIn } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
@@ -18,10 +19,7 @@ import type { VelocityOrderMetadata } from "@/types/velocity"
 export async function recheckPaymentAction(
   orderId: string,
 ): Promise<{ fixed: boolean; message: string; details?: Record<string, unknown> }> {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [order] = await db
     .select()
@@ -238,10 +236,7 @@ export async function pollAllVelocityOrdersAction(): Promise<{
   errors: number
   results: Array<{ orderId: string; action: string; message: string }>
 }> {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
 

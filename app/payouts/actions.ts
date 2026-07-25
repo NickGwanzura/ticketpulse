@@ -2,6 +2,7 @@
 
 import { eq, desc, sql, and, inArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { payouts, events, users, payoutAuditLog } from "@/db/schema"
@@ -11,11 +12,44 @@ import { getBaseUrl } from "@/lib/url-config"
 import { getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT } from "@/lib/revenue-summary"
 const ACTIVE_PAYOUT_STATUSES = ["pending", "approved", "processing"] as const
 const VALID_METHODS = ["ecocash", "bank_usd"] as const
-type PayoutMethod = (typeof VALID_METHODS)[number]
 
-function isPayoutMethod(value: string): value is PayoutMethod {
-  return VALID_METHODS.some((method) => method === value)
-}
+const ecocashPattern = /^(\+?263|0)?7[1789]\d{7}$/
+
+const RequestPayoutSchema = z
+  .object({
+    amount: z.coerce.number({ error: "Enter a valid payout amount." }),
+    currency: z.string().default("USD"),
+    method: z.enum(VALID_METHODS, { error: "Choose a valid payout method." }),
+    ecocashNumber: z.string().trim().optional().default(""),
+    accountNumber: z.string().trim().optional().default(""),
+    accountName: z.string().trim().optional().default(""),
+    bankName: z.string().trim().optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (data.currency !== "USD") {
+      ctx.addIssue({ code: "custom", path: ["currency"], message: "Payouts are currently only available in USD." })
+    }
+    if (data.amount < 1) {
+      ctx.addIssue({ code: "custom", path: ["amount"], message: "Minimum payout request is USD 1.00." })
+    } else if (data.amount > 100000) {
+      ctx.addIssue({ code: "custom", path: ["amount"], message: "This payout amount is above the allowed limit." })
+    }
+    if (data.method === "ecocash") {
+      if (!data.ecocashNumber || !ecocashPattern.test(data.ecocashNumber.replace(/\s/g, ""))) {
+        ctx.addIssue({ code: "custom", path: ["ecocashNumber"], message: "Enter a valid Zimbabwe EcoCash number." })
+      }
+    } else {
+      if (!data.accountNumber || data.accountNumber.length < 5) {
+        ctx.addIssue({ code: "custom", path: ["accountNumber"], message: "Enter a valid bank account number." })
+      }
+      if (!data.accountName || data.accountName.length < 2) {
+        ctx.addIssue({ code: "custom", path: ["accountName"], message: "Enter the bank account holder name." })
+      }
+      if (!data.bankName || data.bankName.length < 2) {
+        ctx.addIssue({ code: "custom", path: ["bankName"], message: "Enter the bank name." })
+      }
+    }
+  })
 
 function money(value: number) {
   return value.toLocaleString("en-US", {
@@ -178,6 +212,7 @@ async function fetchBalanceForUser(userId: string) {
       totalEarned: 0,
       totalPaidOut: 0,
       pendingTotal: 0,
+      outstandingClawbacks: 0,
       commissionRate: PLATFORM_FEE_PERCENT,
       grossRevenue: 0,
       platformFee: 0,
@@ -192,6 +227,7 @@ async function fetchBalanceForUser(userId: string) {
     totalEarned: summary.netRevenue,
     totalPaidOut: summary.paidOut,
     pendingTotal: summary.pendingPayouts,
+    outstandingClawbacks: summary.outstandingClawbacks,
     commissionRate: PLATFORM_FEE_PERCENT,
     grossRevenue: summary.grossRevenue,
     platformFee: summary.platformFee,
@@ -235,29 +271,22 @@ export async function requestPayoutAction(formData: FormData): Promise<PayoutAct
   }
 
   const userId = session.user.id
-  const amount = parseFloat(formData.get("amount") as string)
-  const currency = (formData.get("currency") as string) ?? "USD"
-  const method = (formData.get("method") as string) ?? "bank_usd"
-  const ecocashNumber = ((formData.get("ecocashNumber") as string) ?? "").trim()
-  const accountNumber = ((formData.get("accountNumber") as string) ?? "").trim()
-  const accountName = ((formData.get("accountName") as string) ?? "").trim()
-  const bankName = ((formData.get("bankName") as string) ?? "").trim()
 
-  if (!isPayoutMethod(method)) { log.warn("[request-payout] Invalid method"); return payoutActionError("Choose a valid payout method.") }
-  if (currency !== "USD") { log.warn("[request-payout] Non-USD currency"); return payoutActionError("Payouts are currently only available in USD.") }
-  if (!amount || amount <= 0 || isNaN(amount)) { log.warn("[request-payout] Invalid amount"); return payoutActionError("Enter a valid payout amount.") }
-  if (amount > 100000) { log.warn("[request-payout] Amount exceeds max"); return payoutActionError("This payout amount is above the allowed limit.") }
-  if (amount < 1) { log.warn("[request-payout] Amount below min"); return payoutActionError("Minimum payout request is USD 1.00.") }
-
-  if (method === "ecocash") {
-    if (!ecocashNumber || !/^(\+?263|0)?7[1789]\d{7}$/.test(ecocashNumber.replace(/\s/g, ""))) {
-      log.warn("[request-payout] Invalid EcoCash number"); return payoutActionError("Enter a valid Zimbabwe EcoCash number.")
-    }
-  } else {
-    if (!accountNumber || accountNumber.length < 5) { log.warn("[request-payout] Invalid account number"); return payoutActionError("Enter a valid bank account number.") }
-    if (!accountName || accountName.trim().length < 2) { log.warn("[request-payout] Missing account name"); return payoutActionError("Enter the bank account holder name.") }
-    if (!bankName || bankName.trim().length < 2) { log.warn("[request-payout] Missing bank name"); return payoutActionError("Enter the bank name.") }
+  const parsed = RequestPayoutSchema.safeParse({
+    amount: formData.get("amount"),
+    currency: formData.get("currency"),
+    method: formData.get("method"),
+    ecocashNumber: formData.get("ecocashNumber"),
+    accountNumber: formData.get("accountNumber"),
+    accountName: formData.get("accountName"),
+    bankName: formData.get("bankName"),
+  })
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Invalid payout request."
+    log.warn("[request-payout] Validation failed", { issues: parsed.error.issues })
+    return payoutActionError(message)
   }
+  const { amount, currency, method, ecocashNumber, accountNumber, accountName, bankName } = parsed.data
 
   // Check available balance
   let balance: Awaited<ReturnType<typeof fetchBalanceForUser>>

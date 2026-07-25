@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { timingSafeEqual } from "crypto"
 import { z } from "zod"
 import { eq, and, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
@@ -10,7 +11,16 @@ import { log } from "@/lib/logger"
 import {
   alertCallbackOrderNotFound,
   alertFinalizeNonPaid,
+  alertPaymentAnomaly,
 } from "@/lib/payment-alerts"
+
+/** Constant-time string comparison — avoids leaking the secret via response timing. */
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
+}
 
 const CallbackBody = z.object({
   transactionTrace: z.string().min(1),
@@ -26,10 +36,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "webhook not configured" }, { status: 401 })
   }
   const providedSignature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-api-key") ?? ""
-  if (providedSignature !== webhookSecret) {
+  if (!providedSignature || !safeEqual(providedSignature, webhookSecret)) {
     log.warn("velocity callback - invalid webhook signature", {
       provided: providedSignature ? `${providedSignature.slice(0, 8)}...` : "none",
     })
+    alertPaymentAnomaly({
+      type: "CALLBACK_INVALID_SIGNATURE",
+      severity: "critical",
+      title: "Velocity callback received with an invalid signature",
+      detail: "A request to the payment callback endpoint failed webhook signature verification. This could be a misconfigured integration or a forged request — investigate immediately.",
+    }).catch((err) => log.warn("velocity callback - failed to send invalid-signature alert", { error: String(err) }))
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 

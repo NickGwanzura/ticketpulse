@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Search, X, Ticket, Calendar, User, ShoppingCart, CreditCard } from "lucide-react"
+import { Search, X, Ticket, Calendar, User, ShoppingCart, CreditCard, Store, Compass } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type SearchResult = {
@@ -18,6 +18,8 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   event: Calendar,
   user: User,
   ticket: Ticket,
+  vendor: Store,
+  page: Compass,
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -25,7 +27,33 @@ const TYPE_COLORS: Record<string, string> = {
   event: "text-violet-600 bg-violet-50",
   user: "text-emerald-600 bg-emerald-50",
   ticket: "text-amber-600 bg-amber-50",
+  vendor: "text-rose-600 bg-rose-50",
+  page: "text-slate-600 bg-slate-100",
 }
+
+/**
+ * Static navigation shortcuts — before this, Cmd+K only searched 4 DB entity
+ * types (orders/events/users/tickets), so it was a search tool, not a way to
+ * reach any admin screen. These aren't fetched from the API since they're
+ * not records, just destinations; each page still enforces its own auth.
+ */
+const STATIC_PAGES: SearchResult[] = [
+  { id: "settings", type: "page", title: "Settings", subtitle: "Admin · Platform configuration", href: "/admin/settings" },
+  { id: "payouts", type: "page", title: "Payouts", subtitle: "Admin · Organiser payout queue", href: "/admin/payouts" },
+  { id: "customers", type: "page", title: "Customers", subtitle: "Admin · CRM buyer aggregation", href: "/admin/customers" },
+  { id: "vendors", type: "page", title: "Vendors", subtitle: "Admin · Vendor verification", href: "/admin/vendors" },
+  { id: "transport", type: "page", title: "Transport", subtitle: "Admin · Shuttle operators", href: "/admin/transport" },
+  { id: "reconciliation", type: "page", title: "Reconciliation", subtitle: "Admin · Payment/ledger audit", href: "/admin/reconciliation" },
+  { id: "analytics", type: "page", title: "Analytics", subtitle: "Admin · Revenue & order analytics", href: "/admin/analytics" },
+  { id: "key-stats", type: "page", title: "Key Stats", subtitle: "Admin · Platform-wide stat sheet", href: "/admin/key-stats" },
+  { id: "communications", type: "page", title: "Communications", subtitle: "Admin · Bulk comms tool", href: "/admin/communications" },
+  { id: "velocity", type: "page", title: "Velocity", subtitle: "Admin · Payment gateway viewer", href: "/admin/velocity" },
+  { id: "organizer-fees", type: "page", title: "Organizer fees", subtitle: "Admin · Per-organiser fee overrides", href: "/admin/organizer-fees" },
+  { id: "audit-log", type: "page", title: "Audit log", subtitle: "Admin · Payout status change history", href: "/admin/audit-log" },
+  { id: "my-payouts", type: "page", title: "My payouts", subtitle: "Organiser · Balance & payout history", href: "/payouts" },
+  { id: "my-orders", type: "page", title: "My orders", subtitle: "Organiser · Order list", href: "/organizer/orders" },
+  { id: "scan", type: "page", title: "Scan", subtitle: "Organiser · Gate/QR ticket scanner", href: "/organizer/scan" },
+]
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
@@ -68,15 +96,20 @@ export default function CommandPalette() {
       return
     }
 
+    const q = query.trim().toLowerCase()
+    const pageMatches = STATIC_PAGES.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.subtitle.toLowerCase().includes(q),
+    )
+
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
         const data = await res.json()
-        setResults(data.results ?? [])
+        setResults([...pageMatches, ...(data.results ?? [])])
         setSelectedIndex(0)
       } catch {
-        setResults([])
+        setResults(pageMatches)
       } finally {
         setLoading(false)
       }
@@ -128,7 +161,7 @@ export default function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search orders, events, users, tickets…"
+            placeholder="Search orders, events, users, tickets, vendors, or jump to a page…"
             className="flex-1 bg-transparent text-[15px] text-ink placeholder:text-ink-3 focus:outline-none"
           />
           {loading && (

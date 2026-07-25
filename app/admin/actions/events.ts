@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { eq, and, inArray, or, sql } from "drizzle-orm"
 
-import { auth, signIn } from "@/auth"
+import { signIn } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { events, eventModerationLog, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
@@ -16,10 +17,7 @@ import { log } from "@/lib/logger"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function publishEventAction(eventId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [ev] = await db
     .select({
@@ -120,10 +118,7 @@ export async function publishEventAction(eventId: string) {
  * Approve an event pending review, making it live.
  */
 export async function approveEventAction(eventId: string) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const [ev] = await db
     .select({
@@ -206,10 +201,7 @@ export async function approveEventAction(eventId: string) {
  * "reason" field of the form that submits this action.
  */
 export async function rejectEventAction(eventId: string, formData: FormData) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const reason = formData.get("reason")?.toString().trim() || undefined
 

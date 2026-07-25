@@ -186,12 +186,29 @@ export default function ImageUploader(props: Props) {
           throw new Error(msg)
         }
 
-        const { uploadUrl, publicUrl }: SignResponse = await signRes.json()
+        const { uploadUrl, publicUrl, key }: SignResponse = await signRes.json()
 
         // 2) PUT to R2 with progress
         await uploadToR2(uploadUrl, file, (p) => {
           setUploads((u) => u.map((it) => (it.id === id ? { ...it, progress: p } : it)))
         })
+
+        // 2b) Confirm what R2 actually received matches the declared size —
+        // the PUT above only proves *a* file uploaded, not that it respected
+        // the cap the presign step checked against the client's own claim.
+        const confirmRes = await fetch("/api/uploads/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, kind }),
+        })
+        if (!confirmRes.ok) {
+          let msg = "Upload was rejected after review"
+          try {
+            const data = await confirmRes.json()
+            if (typeof data?.error === "string") msg = data.error
+          } catch { /* ignore */ }
+          throw new Error(msg)
+        }
 
         // 3) Mark complete & append to values
         setUploads((u) => u.filter((it) => it.id !== id))

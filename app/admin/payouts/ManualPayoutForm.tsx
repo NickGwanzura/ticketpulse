@@ -1,8 +1,9 @@
 "use client"
 
-import { useActionState, useMemo, useState } from "react"
-import { AlertCircle, Banknote, CheckCircle2 } from "lucide-react"
+import { useActionState, useMemo, useState, useEffect } from "react"
+import { Banknote } from "lucide-react"
 import { recordManualPayoutAction } from "./actions"
+import { useToast } from "@/components/ui/Toast"
 
 type OrganizerOption = {
   id: string
@@ -34,6 +35,8 @@ export default function ManualPayoutForm({
     [events, selectedOrganizer],
   )
 
+  const { toast } = useToast()
+
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     async (_prev, formData) => {
       try {
@@ -51,21 +54,14 @@ export default function ManualPayoutForm({
     { error: null, success: null },
   )
 
+  useEffect(() => {
+    if (state.success) toast({ title: "Payout recorded", description: state.success, variant: "success" })
+    if (state.error) toast({ title: "Could not record payout", description: state.error, variant: "error" })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success, state.error])
+
   return (
     <form action={formAction} className="space-y-3">
-      {state.error && (
-        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
-          <AlertCircle size={14} className="mt-0.5 shrink-0" />
-          <span>{state.error}</span>
-        </div>
-      )}
-      {state.success && (
-        <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700">
-          <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-          <span>{state.success}</span>
-        </div>
-      )}
-
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
           Organiser
@@ -129,6 +125,18 @@ export default function ManualPayoutForm({
           Notes (optional)
           <input name="notes" maxLength={500} placeholder="e.g. Paid at the office after The Sunday Table" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
         </label>
+      </div>
+
+      <label className="flex items-start gap-2 text-[12px] text-ink-2">
+        <input name="confirmOverage" type="checkbox" value="true" className="mt-0.5" />
+        <span>
+          Record this even if it's more than the event's available balance right now.
+          Leave unchecked unless you've already checked reconciliation — this is how
+          duplicate/phantom settlement payouts have happened before.
+        </span>
+      </label>
+
+      <div className="flex justify-end">
         <button
           type="submit"
           disabled={pending}

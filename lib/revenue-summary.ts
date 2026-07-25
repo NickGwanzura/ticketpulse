@@ -1,11 +1,12 @@
 import { eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { payouts } from "@/db/schema"
+import { payouts, payoutClawbacks } from "@/db/schema"
 import {
   calculateOrganizerNet,
   calculatePlatformFee,
 } from "@/lib/platform-fee"
+import { DIRECT_PAYMENT_METHODS } from "@/lib/direct-sale"
 
 export { PLATFORM_FEE_PERCENT, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
 
@@ -22,7 +23,10 @@ export { PLATFORM_FEE_PERCENT, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
  *   net        = gross − fee
  *   paidOut    = payouts with status "paid" (incl. manual payouts)
  *   pending    = payouts in pending/approved/processing
- *   available  = max(0, net − paidOut − pending)
+ *   clawbacks  = outstanding payout_clawbacks — money already paid out that a
+ *                later refund revealed shouldn't have been (see
+ *                recordRefundClawback below)
+ *   available  = max(0, net − paidOut − pending − clawbacks)
  *
  * The fee policy lives in lib/platform-fee.ts and is fixed system-wide.
  */
@@ -35,6 +39,7 @@ export type RevenueSummary = {
   netRevenue: number
   paidOut: number
   pendingPayouts: number
+  outstandingClawbacks: number
   availableBalance: number
   confirmedOrderCount: number
   confirmedTicketCount: number
@@ -51,6 +56,7 @@ function summarize(base: {
   grossRevenue: number
   paidOut: number
   pendingPayouts: number
+  outstandingClawbacks?: number
   confirmedOrderCount: number
   confirmedTicketCount: number
 }): RevenueSummary {
@@ -59,16 +65,73 @@ function summarize(base: {
   const netRevenue = calculateOrganizerNet(grossRevenue)
   const paidOut = money(base.paidOut)
   const pendingPayouts = money(base.pendingPayouts)
+  const outstandingClawbacks = money(base.outstandingClawbacks ?? 0)
   return {
     grossRevenue,
     platformFee,
     netRevenue,
     paidOut,
     pendingPayouts,
-    availableBalance: money(Math.max(0, netRevenue - paidOut - pendingPayouts)),
+    outstandingClawbacks,
+    availableBalance: money(Math.max(0, netRevenue - paidOut - pendingPayouts - outstandingClawbacks)),
     confirmedOrderCount: base.confirmedOrderCount,
     confirmedTicketCount: base.confirmedTicketCount,
   }
+}
+
+/**
+ * Sum of outstanding payout_clawbacks per event.
+ */
+async function getOutstandingClawbacksByEvent(eventIds: string[]): Promise<Map<string, number>> {
+  if (eventIds.length === 0) return new Map()
+  const rows = await db
+    .select({
+      eventId: payoutClawbacks.eventId,
+      amount: sql<string>`COALESCE(SUM(${payoutClawbacks.amount}), 0)`,
+    })
+    .from(payoutClawbacks)
+    .where(sql`${payoutClawbacks.eventId} IN (${sql.join(eventIds.map((id) => sql`${id}`), sql`, `)}) AND ${payoutClawbacks.status} = 'outstanding'`)
+    .groupBy(payoutClawbacks.eventId)
+  return new Map(rows.map((r) => [r.eventId ?? "", Number(r.amount ?? 0)]))
+}
+
+/**
+ * Create (or top up) a payout clawback for an event/organiser when a refund
+ * reveals that money already paid out now exceeds net platform revenue.
+ * Only records the *new* shortfall since the last time this ran, so calling
+ * it after every refund never double-counts an already-tracked shortfall.
+ */
+export async function recordRefundClawback(opts: {
+  eventId: string
+  organizerId: string
+  orderId: string
+  reason: string
+  performedBy: string
+}): Promise<{ created: boolean; amount: number }> {
+  const [summary] = await Promise.all([
+    getEventRevenueSummaries([opts.eventId]).then((m) => m.get(opts.eventId)),
+  ])
+  if (!summary) return { created: false, amount: 0 }
+
+  // netRevenue/paidOut here already reflect the refund (revenue-summary
+  // re-aggregates live off ticket/order status) but availableBalance was
+  // already clamped — recompute the raw shortfall directly.
+  const rawShortfall = summary.paidOut - summary.netRevenue
+  const newShortfall = money(Math.max(0, rawShortfall - summary.outstandingClawbacks))
+
+  if (newShortfall <= 0) return { created: false, amount: 0 }
+
+  await db.insert(payoutClawbacks).values({
+    orderId: opts.orderId,
+    eventId: opts.eventId,
+    organizerId: opts.organizerId,
+    amount: newShortfall.toFixed(2),
+    currency: "USD",
+    reason: opts.reason,
+    createdBy: opts.performedBy,
+  })
+
+  return { created: true, amount: newShortfall }
 }
 
 type GrossRow = {
@@ -113,8 +176,9 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
         AND oi.quantity > 0
         -- Organiser-direct sales: the buyer paid the organiser directly, we only
         -- issued the ticket, so no money passed through us to owe the organiser
-        -- for. Excluded here; tracked instead in organizer_fee_dues.
-        AND o.payment_method IS DISTINCT FROM 'organizer_direct'
+        -- for. Excluded here; tracked instead in organizer_fee_dues. Covers every
+        -- direct-payment method string, not just the literal "organizer_direct".
+        AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join(DIRECT_PAYMENT_METHODS.map((m) => sql`${m}`), sql`, `)}))
       GROUP BY oi.id, oi.order_id, o.event_id, oi.quantity, oi.total
     )
     SELECT
@@ -141,7 +205,7 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
 export async function getEventRevenueSummaries(eventIds: string[]): Promise<Map<string, EventRevenueSummary>> {
   if (eventIds.length === 0) return new Map()
 
-  const [grossRows, payoutRows] = await Promise.all([
+  const [grossRows, payoutRows, clawbacksByEvent] = await Promise.all([
     getGrossByEvent({ eventIds }),
     db
       .select({
@@ -152,6 +216,7 @@ export async function getEventRevenueSummaries(eventIds: string[]): Promise<Map<
       .from(payouts)
       .where(inArray(payouts.eventId, eventIds))
       .groupBy(payouts.eventId),
+    getOutstandingClawbacksByEvent(eventIds),
   ])
 
   const grossByEvent = new Map(grossRows.map((row) => [row.eventId, row]))
@@ -166,6 +231,7 @@ export async function getEventRevenueSummaries(eventIds: string[]): Promise<Map<
         grossRevenue: gross?.grossRevenue ?? 0,
         paidOut: Number(payout?.paid ?? 0),
         pendingPayouts: Number(payout?.pending ?? 0),
+        outstandingClawbacks: clawbacksByEvent.get(eventId) ?? 0,
         confirmedOrderCount: gross?.confirmedOrderCount ?? 0,
         confirmedTicketCount: gross?.confirmedTicketCount ?? 0,
       }),
@@ -179,7 +245,7 @@ export async function getEventRevenueSummaries(eventIds: string[]): Promise<Map<
  * linked to a specific event.
  */
 export async function getOrganizerRevenueSummary(userId: string): Promise<RevenueSummary> {
-  const [grossRows, payoutRows] = await Promise.all([
+  const [grossRows, payoutRows, clawbackRows] = await Promise.all([
     getGrossByEvent({ organizerId: userId }),
     db
       .select({
@@ -188,12 +254,19 @@ export async function getOrganizerRevenueSummary(userId: string): Promise<Revenu
       })
       .from(payouts)
       .where(eq(payouts.userId, userId)),
+    db
+      .select({
+        amount: sql<string>`COALESCE(SUM(${payoutClawbacks.amount}), 0)`,
+      })
+      .from(payoutClawbacks)
+      .where(sql`${payoutClawbacks.organizerId} = ${userId} AND ${payoutClawbacks.status} = 'outstanding'`),
   ])
 
   return summarize({
     grossRevenue: grossRows.reduce((sum, row) => sum + row.grossRevenue, 0),
     paidOut: Number(payoutRows[0]?.paid ?? 0),
     pendingPayouts: Number(payoutRows[0]?.pending ?? 0),
+    outstandingClawbacks: Number(clawbackRows[0]?.amount ?? 0),
     confirmedOrderCount: grossRows.reduce((sum, row) => sum + row.confirmedOrderCount, 0),
     confirmedTicketCount: grossRows.reduce((sum, row) => sum + row.confirmedTicketCount, 0),
   })

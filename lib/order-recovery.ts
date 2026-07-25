@@ -1,7 +1,8 @@
 import "server-only"
 import { eq, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, orderItems, ticketTiers, tickets, events, paymentLedger } from "@/db/schema"
+import { orders, orderItems, ticketTiers, tickets, events, paymentLedger, organizerFeeDues } from "@/db/schema"
+import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
 import { deliverTicketForPaidOrder, readDeliveryStatus } from "@/lib/delivery"
 import {
   deterministicTicketId,
@@ -97,6 +98,49 @@ export async function markOrderCompleteAction(
     return {
       success: false,
       message: `Failed to update order: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+
+  // Direct-sale orders (buyer paid the organiser outside the platform) owe us
+  // our commission separately since no money passed through us — see
+  // lib/direct-sale.ts. Create that fee-due record the first time the order
+  // is confirmed, whichever of the (several) manual-issuance paths got here,
+  // so it can't be missed the way it was before this table existed.
+  if (!wasPaid && isDirectSalePaymentMethod(order.paymentMethod)) {
+    try {
+      const [existingDue] = await db
+        .select({ id: organizerFeeDues.id })
+        .from(organizerFeeDues)
+        .where(eq(organizerFeeDues.orderId, orderId))
+        .limit(1)
+
+      if (!existingDue) {
+        const [event] = await db
+          .select({ organizerId: events.organizerId })
+          .from(events)
+          .where(eq(events.id, order.eventId))
+          .limit(1)
+
+        if (event) {
+          const { PLATFORM_FEE_RATE, calculatePlatformFee } = await import("@/lib/platform-fee")
+          const gross = Number(order.totalAmount ?? 0)
+          const feeAmount = calculatePlatformFee(gross)
+
+          await db.insert(organizerFeeDues).values({
+            orderId,
+            eventId: order.eventId,
+            organizerId: event.organizerId,
+            grossAmount: gross.toFixed(2),
+            feeRate: PLATFORM_FEE_RATE.toFixed(4),
+            feeAmount: feeAmount.toFixed(2),
+            currency: order.currency ?? "USD",
+            createdBy: userEmail,
+            note: `Auto-created for direct sale (payment_method: ${order.paymentMethod})`,
+          })
+        }
+      }
+    } catch (err) {
+      log.error("markOrderComplete - failed to create organizer_fee_dues", { orderId, error: String(err) })
     }
   }
 

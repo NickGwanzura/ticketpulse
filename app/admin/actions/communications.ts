@@ -1,7 +1,7 @@
 "use server"
 
 interface CommunicationResult {
-  channel: "email" | "whatsapp"
+  channel: "email" | "sms"
   target: string
   success: boolean
   error?: string
@@ -10,7 +10,8 @@ interface CommunicationResult {
 import { revalidatePath } from "next/cache"
 import { eq, and, inArray, or, sql } from "drizzle-orm"
 
-import { auth, signIn } from "@/auth"
+import { signIn } from "@/auth"
+import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
@@ -25,10 +26,7 @@ import type { VelocityOrderMetadata } from "@/types/velocity"
 export async function sendCommunicationAction(
   formData: FormData,
 ): Promise<CommunicationResult[]> {
-  const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
-    throw new Error("Unauthorized")
-  }
+  const session = await requireAdmin()
 
   const subject = formData.get("subject") as string
   const body = formData.get("body") as string
@@ -138,33 +136,51 @@ export async function sendCommunicationAction(
     }
   }
 
-  // ── WhatsApp ────────────────────────────────────────────────────────────
-  if (channels.includes("whatsapp")) {
-    const waRecipients = targetUsers.filter((u) => u.phone)
-    const { sendText, formatChatId } = await import("@/lib/whatsapp")
+  // ── SMS ─────────────────────────────────────────────────────────────────
+  // Uses VelocityAfrica SMS (official carrier channel) rather than the
+  // unofficial WhatsApp automation this used to go through — that path
+  // risked getting the connected WhatsApp Business number banned for bulk
+  // non-transactional sends, with no official Business API in between.
+  if (channels.includes("sms")) {
+    const { sendCustomSms, getSmsBalance } = await import("@/lib/velocity/sms")
+    const { normaliseMsisdn, isValidMsisdn } = await import("@/lib/velocity/validation")
 
-    const WA_CHUNK = 5
-    for (let i = 0; i < waRecipients.length; i += WA_CHUNK) {
-      const chunk = waRecipients.slice(i, i + WA_CHUNK)
-      await Promise.all(
-        chunk.map(async (u) => {
+    // Normalize + dedupe by canonical number — the same phone entered as
+    // 077... vs +263... vs 263... across different accounts would otherwise
+    // be counted (and billed, and messaged) twice.
+    const seen = new Map<string, { name: string | null; phone: string }>()
+    for (const u of targetUsers) {
+      if (!u.phone || !isValidMsisdn(u.phone)) continue
+      const key = normaliseMsisdn(u.phone)
+      if (!seen.has(key)) seen.set(key, { name: u.name, phone: u.phone })
+    }
+    const smsRecipients = Array.from(seen.values())
+
+    const { balance } = await getSmsBalance()
+    if (balance < smsRecipients.length) {
+      throw new Error(
+        `Not enough SMS credits. Need ${smsRecipients.length}, have ${balance}. Top up before sending.`,
+      )
+    }
+
+    for (const u of smsRecipients) {
+      const first = u.name?.split(" ")[0]?.trim()
+      const personalised = body
+        .replace(/\{name\}/g, first ?? "there")
+        .replace(/\{audience\}/g, audience)
       try {
-        const first = u.name?.split(" ")[0]?.trim()
-        const personalised = body
-          .replace(/\{name\}/g, first ?? "there")
-          .replace(/\{audience\}/g, audience)
-        await sendText(formatChatId(u.phone!), `${subject}\n\n${personalised}`)
-        results.push({ channel: "whatsapp", target: u.phone!, success: true })
+        await sendCustomSms(u.phone, `${subject}\n\n${personalised}`)
+        results.push({ channel: "sms", target: u.phone, success: true })
       } catch (err) {
         results.push({
-          channel: "whatsapp",
-          target: u.phone ?? "unknown",
+          channel: "sms",
+          target: u.phone,
           success: false,
           error: err instanceof Error ? err.message : "unknown error",
         })
       }
-        }),
-      )
+      // Small spacing between sends so we don't hammer the provider.
+      await new Promise((r) => setTimeout(r, 250))
     }
   }
 

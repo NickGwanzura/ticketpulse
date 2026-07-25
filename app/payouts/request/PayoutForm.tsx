@@ -1,13 +1,14 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useActionState, useState } from "react"
+import { useActionState, useState, useEffect } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Send, Smartphone, Building2, AlertCircle, CheckCircle2,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { requestPayoutAction } from "../actions"
+import { useToast } from "@/components/ui/Toast"
 
 type PayoutMethod = "ecocash" | "bank_usd"
 
@@ -35,6 +36,7 @@ type BalanceData = {
 
 export default function PayoutForm({ balance }: { balance: BalanceData }) {
   const router = useRouter()
+  const { toast } = useToast()
   const [method, setMethod] = useState<PayoutMethod>("bank_usd")
   const [amount, setAmount] = useState("")
   const [ecocashNumber, setEcocashNumber] = useState("")
@@ -55,6 +57,11 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
     },
     { error: null as string | null }
   )
+
+  useEffect(() => {
+    if (state?.error) toast({ title: "Could not submit request", description: state.error, variant: "error" })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.error])
 
   const parsedAmount = parseFloat(amount) || 0
   const exceedsBalance = parsedAmount > balance.availableBalance
