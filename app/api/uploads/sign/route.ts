@@ -26,6 +26,7 @@ const KIND_VALUES = [
   "vendor-logo",
   "vendor-portfolio",
   "event-cover",
+  "event-promo",
   "event-gallery",
   "merch",
 ] as const satisfies readonly UploadKind[]
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
     }
 
     case "event-cover":
+    case "event-promo":
     case "event-gallery":
     case "merch": {
       if (!eventId) return bad("eventId is required for event uploads", 400)
@@ -128,6 +130,8 @@ export async function POST(req: NextRequest) {
       if (event.organizerId !== userId && !isAdmin) return bad("Forbidden", 403)
       prefix = kind === "event-cover"
         ? `events/${eventId}/cover`
+        : kind === "event-promo"
+          ? `events/${eventId}/promo`
         : kind === "event-gallery"
           ? `events/${eventId}/gallery`
           : `events/${eventId}/merch`

@@ -13,6 +13,7 @@ const KIND_VALUES = [
   "vendor-logo",
   "vendor-portfolio",
   "event-cover",
+  "event-promo",
   "event-gallery",
   "merch",
 ] as const satisfies readonly UploadKind[]
