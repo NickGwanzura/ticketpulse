@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 import {
   ArrowRight, ArrowUpRight, Ticket, Smartphone, Wallet,
   Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
-  PhoneCall, ReceiptText,
+  ReceiptText,
 } from "lucide-react"
 import SplitCTA from "@/components/ui/SplitCTA"
 import EventCard from "@/components/events/EventCard"
@@ -27,7 +28,7 @@ import HeroEventCard from "@/components/events/HeroEventCard"
 import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
-import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
+import { getFeaturedEvents } from "@/lib/events"
 import { db } from "@/db"
 import { events as eventsTable } from "@/db/schema"
 import { and, desc, inArray, sql } from "drizzle-orm"
@@ -59,7 +60,12 @@ const HERO_TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure checkout", tone: "bg-emerald-50", accent: "text-emerald-700", ring: "ring-emerald-200/70" },
   { icon: Wallet, label: "EcoCash + Visa", tone: "bg-orange-50", accent: "text-orange-700", ring: "ring-orange-200/80" },
   { icon: Smartphone, label: "Instant QR delivery", tone: "bg-sky-50", accent: "text-sky-700", ring: "ring-sky-200/70" },
-  { icon: FileText, label: "Payout tracking", tone: "bg-amber-50", accent: "text-amber-700", ring: "ring-amber-200/70" },
+]
+
+const HERO_PROOF_ITEMS = [
+  { label: "Online sales", value: "$1,840", note: "Velocity settled", icon: Wallet },
+  { label: "QR tickets", value: "368", note: "PDF, SMS, WhatsApp", icon: Ticket },
+  { label: "Checked in", value: "211", note: "Live gate count", icon: ScanLine },
 ]
 
 export default async function Home() {
@@ -92,71 +98,6 @@ export default async function Home() {
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-navy text-white">
         <HeroBackgroundSlideshow />
-        <div className="hidden" aria-hidden>
-        {/* Base surface: bright, structured, and quiet enough for the product UI to lead. */}
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background: [
-              "linear-gradient(135deg, rgba(246,249,252,0.96) 0%, rgba(255,255,255,0.98) 42%, rgba(238,243,248,0.9) 100%)",
-              "linear-gradient(90deg, rgba(5,112,222,0.06) 0%, transparent 35%, rgba(19,17,50,0.04) 100%)",
-              "linear-gradient(150deg, rgba(16,185,129,0.1) 0%, transparent 34%, rgba(245,158,11,0.1) 100%)",
-              "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(5,112,222,0.045) 100%)",
-            ].join(", "),
-          }}
-          aria-hidden
-        />
-        <div className="absolute inset-y-0 right-0 -z-10 hidden w-[48%] skew-x-[-8deg] bg-gradient-to-b from-sky-50/90 via-paper/55 to-amber-50/60 lg:block" aria-hidden />
-        <div className="absolute left-1/2 top-12 -z-10 hidden h-64 w-[110vw] -translate-x-1/2 -rotate-6 bg-gradient-to-r from-transparent via-sky-100/50 to-transparent lg:block" aria-hidden />
-        <div className="absolute left-1/2 top-44 -z-10 hidden h-40 w-[95vw] -translate-x-1/2 rotate-3 bg-gradient-to-r from-transparent via-emerald-100/38 to-transparent lg:block" aria-hidden />
-        <div className="absolute left-0 right-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-sky-300/80 to-transparent" aria-hidden />
-        <div className="absolute left-0 right-0 top-0 -z-10 h-24 bg-[linear-gradient(180deg,rgba(14,165,233,0.08),transparent)]" aria-hidden />
-
-        {/* Dotted pattern, softly fading */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[560px] opacity-60"
-          style={{
-            backgroundImage: "radial-gradient(rgba(10,37,64,0.13) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-            maskImage: "radial-gradient(80% 70% at 50% 0%, black 0%, transparent 80%)",
-            WebkitMaskImage: "radial-gradient(80% 70% at 50% 0%, black 0%, transparent 80%)",
-          }}
-          aria-hidden
-        />
-
-        {/* Faint grid for structure */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[420px] opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #0a2540 1px, transparent 1px), linear-gradient(to bottom, #0a2540 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-            maskImage: "linear-gradient(to bottom, black, transparent)",
-            WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
-          }}
-          aria-hidden
-        />
-
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[520px] opacity-[0.08]"
-          style={{
-            backgroundImage: "repeating-linear-gradient(115deg, #0a2540 0 1px, transparent 1px 36px)",
-            maskImage: "linear-gradient(to bottom, black, transparent 75%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black, transparent 75%)",
-          }}
-          aria-hidden
-        />
-
-        {/* Bottom curve fade */}
-        <svg
-          className="absolute bottom-0 left-0 right-0 -z-10 w-full h-12 pointer-events-none"
-          viewBox="0 0 1200 60"
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <path d="M0 60 Q 300 0, 600 30 T 1200 60 Z" fill="rgba(5,112,222,0.06)" />
-        </svg>
-        </div>
 
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
           <div className="tp-live-glow absolute left-[8%] top-20 h-44 w-44 rounded-full bg-orange-500/28 blur-3xl" />
@@ -165,7 +106,7 @@ export default async function Home() {
           <div className="absolute left-1/2 top-16 h-px w-[78vw] -translate-x-1/2 bg-gradient-to-r from-transparent via-orange-300/60 to-transparent" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-12 md:pb-20">
+        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-14 pb-10 md:pb-14">
           <div className="mx-auto max-w-5xl text-center">
             <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-orange-300/35 bg-navy/55 px-3.5 py-1.5 shadow-sm shadow-orange-950/20 backdrop-blur-md">
               <span className="relative flex h-2 w-2">
@@ -177,34 +118,27 @@ export default async function Home() {
               </span>
             </div>
 
-            <h1 className="tp-fade-up-1 mx-auto mt-8 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94]">
+            <h1 className="tp-fade-up-1 mx-auto mt-6 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:text-[60px] sm:leading-[0.96] md:text-[76px] md:leading-[0.92]">
               Sell tickets.<br />
               <span className="text-orange-300">Scan guests.</span><br />
               Get paid.
             </h1>
 
-            <p className="tp-fade-up-2 mx-auto mt-7 max-w-2xl text-[16px] leading-relaxed text-white/82 md:text-[18px]">
-              TicketPulse helps organizers sell online, deliver instant QR tickets, manage attendees, reconcile Velocity payments, and request payouts. Buyers get secure checkout and support without needing an account.
+            <p className="tp-fade-up-2 mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-white/82 md:text-[18px]">
+              Create an event, sell tickets online, send instant QR tickets, scan guests at the gate, and request payouts from one dashboard.
             </p>
 
-            <div className="tp-fade-up-3 mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <div className="tp-fade-up-3 mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
               <SplitCTA href="/auth/signup?role=organizer" label="Start selling" size="lg" />
               <Link
                 href="/events"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-orange-300/55 hover:bg-orange-400/15 hover:text-orange-100 active:scale-[0.99]"
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/8 px-7 text-[15px] font-semibold text-white/85 shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-orange-300/55 hover:bg-orange-400/15 hover:text-orange-100 active:scale-[0.99]"
               >
-                Browse events <ArrowUpRight size={15} />
+                Buying tickets? Browse events <ArrowUpRight size={15} />
               </Link>
             </div>
 
-            <Link
-              href="/contact"
-              className="tp-fade-up-4 mt-4 inline-flex items-center justify-center gap-2 text-[13px] font-semibold text-white/65 transition hover:text-orange-200"
-            >
-              <PhoneCall size={13} /> Prefer help? Book a setup call
-            </Link>
-
-            <div className="tp-fade-up-5 mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
+            <div className="tp-fade-up-4 mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
               {HERO_TRUST_ITEMS.map(({ icon: Icon, label, tone, accent, ring }) => (
                 <span key={label} className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-navy/55 px-3 py-2 text-[12px] font-semibold text-white/90 ring-1 ${ring} backdrop-blur-md`}>
                   <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${tone}`}>
@@ -215,9 +149,86 @@ export default async function Home() {
               ))}
             </div>
 
-            <p className="tp-fade-up-5 mx-auto mt-5 max-w-2xl text-[13px] font-medium text-white/65">
-              One platform for ticket sales, QR delivery, gate scanning, reconciliation, and payouts.
+            <p className="tp-fade-up-5 mx-auto mt-4 max-w-2xl text-[13px] font-medium text-white/65">
+              Used for Zimbabwe ticket sales, QR entry, Velocity reconciliation, and organizer payouts.
             </p>
+          </div>
+
+          <div className="tp-fade-up-6 mx-auto mt-8 max-w-5xl rounded-2xl border border-white/14 bg-white/[0.08] p-3 shadow-2xl shadow-black/20 backdrop-blur-xl md:p-4">
+            <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-xl border border-white/10 bg-navy/70 p-4 md:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-200">Organizer dashboard</p>
+                    <h2 className="mt-1 text-[20px] font-bold tracking-tight text-white md:text-[24px]">Mommy Matcha launch night</h2>
+                    <p className="mt-1 text-[13px] text-white/58">Ticket tiers, payments, scans, and payout status stay connected.</p>
+                  </div>
+                  <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/12 px-3 py-1.5 text-[12px] font-semibold text-emerald-100">
+                    <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                    Live sales
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {HERO_PROOF_ITEMS.map(({ label, value, note, icon: Icon }) => (
+                    <div key={label} className="rounded-xl border border-white/10 bg-white/[0.07] p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[12px] font-medium text-white/58">{label}</span>
+                        <Icon size={15} className="text-orange-200" />
+                      </div>
+                      <p className="mt-2 text-[24px] font-bold tracking-tight text-white">{value}</p>
+                      <p className="mt-1 text-[11px] text-white/45">{note}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+                  {[
+                    ["Early bird", "142 sold", "Paid"],
+                    ["General admission", "184 sold", "Selling"],
+                    ["VIP table", "42 sold", "Few left"],
+                  ].map(([tier, sold, status]) => (
+                    <div key={tier} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-white/10 bg-white/[0.04] px-3 py-3 text-[12px] last:border-b-0">
+                      <span className="font-semibold text-white/86">{tier}</span>
+                      <span className="text-white/52">{sold}</span>
+                      <span className="rounded-full bg-white/10 px-2.5 py-1 font-semibold text-orange-100">{status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Gate scanner</p>
+                      <p className="mt-1 text-[18px] font-bold text-white">211 guests checked in</p>
+                    </div>
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-orange-300 text-navy">
+                      <ScanLine size={20} />
+                    </span>
+                  </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/12">
+                    <div className="h-full w-[57%] rounded-full bg-orange-300" />
+                  </div>
+                  <p className="mt-2 text-[12px] text-white/52">Duplicate detection and staff access are included.</p>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Available payout</p>
+                      <p className="mt-1 text-[30px] font-bold tracking-tight text-white">$1,748</p>
+                      <p className="mt-1 text-[12px] text-white/52">Gross sales, TicketPulse fee, paid out, and pending balances are reconciled before withdrawal.</p>
+                    </div>
+                    <ReceiptText size={22} className="mt-1 text-orange-200" />
+                  </div>
+                  <Link href="/pricing" className="mt-4 inline-flex h-10 items-center justify-center rounded-lg border border-white/14 px-4 text-[13px] font-semibold text-white/82 transition hover:border-orange-300/55 hover:text-orange-100">
+                    See 5% pricing
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -310,7 +321,7 @@ export default async function Home() {
                     <div className="relative h-24 bg-gradient-to-br from-violet-100 to-rose-100">
                       {event.coverImage ? (
                         <>
-                          <img src={event.coverImage} alt={`${event.title} event cover`} className="h-full w-full object-cover" />
+                          <Image src={event.coverImage} alt={`${event.title} event cover`} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
                         </>
                       ) : null}

@@ -21,6 +21,7 @@ export default function HeroBackgroundSlideshow() {
             alt={slide.alt}
             fill
             sizes="100vw"
+            loading={index === 0 ? "eager" : "lazy"}
             className="object-cover object-center"
           />
         </div>
