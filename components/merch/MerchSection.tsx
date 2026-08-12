@@ -3,13 +3,18 @@ import { ShoppingBag, Package, Truck } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import type { MerchItem } from "@/types"
 import { useState } from "react"
+import { useCart } from "@/lib/cart-context"
 
 interface MerchSectionProps {
   items: MerchItem[]
+  eventSlug: string
   eventTitle: string
+  eventStartsAt?: string
+  eventVenue?: string
 }
 
-export default function MerchSection({ items, eventTitle }: MerchSectionProps) {
+export default function MerchSection({ items, eventSlug, eventTitle, eventStartsAt, eventVenue }: MerchSectionProps) {
+  const { addItem } = useCart()
   const [selected, setSelected] = useState<string | null>(null)
   const [sizes, setSizes] = useState<Record<string, string>>({})
 
@@ -94,10 +99,26 @@ export default function MerchSection({ items, eventTitle }: MerchSectionProps) {
                       )}
                     </div>
                     <button
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full bg-brand-600 text-white text-xs font-semibold py-2 rounded-lg hover:bg-brand-700 transition-colors"
+                      disabled={soldOut || (item.sizes.length > 0 && !sizes[item.id])}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        addItem({
+                          kind: "merch",
+                          itemId: item.id,
+                          name: item.name,
+                          size: sizes[item.id],
+                          eventSlug,
+                          eventTitle,
+                          eventStartsAt,
+                          eventVenue,
+                          price: item.price,
+                          currency: item.currency,
+                          qty: 1,
+                        })
+                      }}
+                      className="w-full bg-brand-600 text-white text-xs font-semibold py-2 rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Add to order
+                      {soldOut ? "Sold out" : item.sizes.length > 0 && !sizes[item.id] ? "Choose a size" : "Add to order"}
                     </button>
                   </div>
                 )}

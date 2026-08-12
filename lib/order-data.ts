@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, orderItems, events, ticketTiers } from "@/db/schema"
+import { orders, orderItems, events, merchItems, ticketTiers, vendorListings, vendors } from "@/db/schema"
 import type { OrderRecord } from "@/lib/cart-context"
 
 /**
@@ -24,6 +24,8 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
         paymentMethod: orders.paymentMethod,
         currency: orders.currency,
         eventId: orders.eventId,
+        totalAmount: orders.totalAmount,
+        metadata: orders.metadata,
       })
       .from(orders)
       .where(eq(orders.id, orderId))
@@ -34,6 +36,7 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
     // Map DB status to the client-side union.
     const clientStatus = order.status === "paid" ? "paid" as const
       : order.status === "pending" ? "pending" as const
+      : order.status === "expired" ? "expired" as const
       : "refunded" as const
 
     // Fetch event details
@@ -44,6 +47,7 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
         startsAt: events.startsAt,
         venue: events.venue,
         city: events.city,
+        endsAt: events.endsAt,
       })
       .from(events)
       .where(eq(events.id, order.eventId))
@@ -62,14 +66,26 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
         tierName: ticketTiers.name,
         merchItemId: orderItems.merchItemId,
         transportBookingId: orderItems.transportBookingId,
+        itemTotal: orderItems.total,
+        merchName: merchItems.name,
+        merchDescription: merchItems.description,
+        merchSizes: merchItems.sizes,
+        vendorPackageName: vendorListings.packageName,
+        vendorCategory: vendors.category,
+        vendorBusinessName: vendors.businessName,
       })
-      .from(orderItems)
-      .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+    .from(orderItems)
+    .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
+    .leftJoin(merchItems, eq(merchItems.id, orderItems.merchItemId))
+    .leftJoin(vendorListings, eq(vendorListings.id, orderItems.merchItemId))
+    .leftJoin(vendors, eq(vendors.id, vendorListings.vendorId))
       .where(eq(orderItems.orderId, orderId))
 
     const cartLines: OrderRecord["items"] = []
     const totalsByCurrency: Record<string, number> = {}
     const currency = order.currency ?? "USD"
+    const metadata = order.metadata as { merchSelections?: { itemId: string; size: string | null }[] } | null
+    const merchSizes = new Map((metadata?.merchSelections ?? []).map((selection) => [selection.itemId, selection.size]))
 
     for (const item of dbItems) {
       const price = Number(item.unitPrice)
@@ -88,15 +104,45 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
           tierName: item.tierName ?? "Ticket",
           emoji: "",
           eventStartsAt: event?.startsAt?.toISOString(),
+          eventEndsAt: event?.endsAt?.toISOString(),
           eventVenue: [event?.venue, event?.city].filter(Boolean).join(", ") || undefined,
         })
       }
-      // Merch, shuttle, and vendor addon items aren't currently reconstructed
-      // from the DB since we don't store all the display fields on order_items.
-      // They could be expanded in the future by joining to the relevant tables.
-      // For now, ticket items are the primary concern.
+      if (item.type === "merch" && item.merchItemId) {
+        cartLines.push({
+          kind: "merch",
+          key: `merch:${item.merchItemId}:${merchSizes.get(item.merchItemId) ?? ""}`,
+          eventSlug,
+          eventTitle,
+          price,
+          currency,
+          qty,
+          itemId: item.merchItemId,
+          name: item.merchName ?? "Merchandise",
+          size: merchSizes.get(item.merchItemId) ?? undefined,
+          eventStartsAt: event?.startsAt?.toISOString(),
+          eventVenue: [event?.venue, event?.city].filter(Boolean).join(", ") || undefined,
+        })
+      }
+      if (item.type === "vendor_addon" && item.merchItemId) {
+        cartLines.push({
+          kind: "vendor_addon",
+          key: `vendor_addon:${item.merchItemId}`,
+          eventSlug,
+          eventTitle,
+          price,
+          currency,
+          qty,
+          listingId: item.merchItemId,
+          vendorName: item.vendorBusinessName ?? "Vendor",
+          packageName: item.vendorPackageName ?? "Add-on",
+          category: item.vendorCategory ?? "other",
+          eventStartsAt: event?.startsAt?.toISOString(),
+          eventVenue: [event?.venue, event?.city].filter(Boolean).join(", ") || undefined,
+        })
+      }
 
-      totalsByCurrency[currency] = (totalsByCurrency[currency] ?? 0) + price * qty
+      totalsByCurrency[currency] = Number(order.totalAmount ?? 0)
     }
 
     return {

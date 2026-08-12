@@ -112,6 +112,7 @@ export default function NewEventForm() {
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
   const [startsAt, setStartsAt] = useState("")
+  const [description, setDescription] = useState("")
 
   // Location fields (controlled for live geocoding preview)
   const [venue, setVenue] = useState("")
@@ -135,10 +136,12 @@ export default function NewEventForm() {
   useEffect(() => {
     const isTBA = (s: string) => s.trim().toLowerCase() === "tba"
     if (!venue || !city || isTBA(venue) || isTBA(city)) {
-      setLiveLat(null)
-      setLiveLng(null)
-      setGeocodeNotFound(false)
-      return
+      const resetTimer = setTimeout(() => {
+        setLiveLat(null)
+        setLiveLng(null)
+        setGeocodeNotFound(false)
+      }, 0)
+      return () => clearTimeout(resetTimer)
     }
 
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
@@ -176,7 +179,7 @@ export default function NewEventForm() {
       <Stepper current={step} />
 
       {state.error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+        <div role="alert" aria-live="polite" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
           {state.error}
         </div>
       )}
@@ -220,9 +223,9 @@ export default function NewEventForm() {
           <label htmlFor="tags" className="block text-[13px] font-medium text-ink mb-1.5">Tags</label>
           <input id="tags" name="tags" type="hidden" value={tags.join(", ")} />
           <AiTagSuggest
-            title=""
-            description=""
-            category=""
+            title={title}
+            description={description}
+            category={category}
             existingTags={tags}
             onTagsChange={setTags}
           />
@@ -241,8 +244,7 @@ export default function NewEventForm() {
                 city={city}
                 tags={tags.join(", ")}
                 onGenerated={(description) => {
-                  const el = document.getElementById("description") as HTMLTextAreaElement | null
-                  if (el) el.value = description
+                  setDescription(description)
                 }}
               />
             </div>
@@ -254,37 +256,42 @@ export default function NewEventForm() {
             maxLength={4000}
             placeholder="What should attendees expect?"
             className={inputCls()}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        {/* Visibility & FAQ */}
-        <div className="md:col-span-2 mt-2">
-          <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Visibility & Details</p>
-        </div>
-
         <div className="md:col-span-2">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="hideOrganizerName"
-              className="w-4 h-4 rounded border-line text-navy focus:ring-navy/20"
-            />
-            <span className="text-[13px] text-ink">Hide my name from the event page</span>
-          </label>
-          <p className="mt-1 text-[12px] text-ink-3 ml-7">Attendees won&apos;t see &quot;Organized by [your name]&quot; on the public page.</p>
-        </div>
-
-        <div className="md:col-span-2">
-          <label htmlFor="faq" className="block text-[13px] font-medium text-ink mb-1.5">More About This Event <span className="text-ink-3 font-normal">(optional)</span></label>
-          <textarea
-            id="faq"
-            name="faq"
-            rows={6}
-            maxLength={8000}
-            placeholder="FAQ, what to bring, dress code, parking info, refund policy, accessibility details..."
-            className={inputCls()}
-          />
-          <p className="mt-1 text-[12px] text-ink-3">This appears in a dedicated section on the event page. Great for FAQs and extra details.</p>
+          <details className="group rounded-xl border border-line bg-paper-2/40 px-4 py-3">
+            <summary className="cursor-pointer list-none text-[13px] font-semibold text-ink flex items-center justify-between">
+              Additional details <span className="text-ink-3 text-[12px] font-normal group-open:hidden">Optional</span>
+            </summary>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="hideOrganizerName"
+                    className="w-4 h-4 rounded border-line text-navy focus:ring-navy/20"
+                  />
+                  <span className="text-[13px] text-ink">Hide my name from the event page</span>
+                </label>
+                <p className="mt-1 text-[12px] text-ink-3 ml-7">Attendees won&apos;t see who organized the event.</p>
+              </div>
+              <div>
+                <label htmlFor="faq" className="block text-[13px] font-medium text-ink mb-1.5">Event notes <span className="text-ink-3 font-normal">(optional)</span></label>
+                <textarea
+                  id="faq"
+                  name="faq"
+                  rows={4}
+                  maxLength={8000}
+                  placeholder="What to bring, dress code, parking, refund or accessibility details…"
+                  className={inputCls()}
+                />
+                <p className="mt-1 text-[12px] text-ink-3">Shown in a dedicated section on the public event page.</p>
+              </div>
+            </div>
+          </details>
         </div>
 
         </div>
@@ -360,12 +367,10 @@ export default function NewEventForm() {
             city={city}
             onGenerated={(result) => {
               if (result.country) {
-                const el = document.getElementById("country") as HTMLInputElement | null
-                if (el) el.value = result.country
+                setCountry(result.country)
               }
               if (result.address) {
-                const el = document.getElementById("address") as HTMLInputElement | null
-                if (el) el.value = result.address
+                setAddress(result.address)
               }
             }}
           />

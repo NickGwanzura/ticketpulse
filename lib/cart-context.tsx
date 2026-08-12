@@ -9,15 +9,15 @@ interface CartLineBase {
   currency: string
   qty: number
   eventStartsAt?: string
+  eventEndsAt?: string
   eventVenue?: string
 }
 
 export interface TicketLine     extends CartLineBase { kind: "ticket";       tierId: string;  tierName: string; emoji: string }
 export interface MerchLine      extends CartLineBase { kind: "merch";        itemId: string;  name: string;     size?: string }
-export interface ShuttleLine    extends CartLineBase { kind: "shuttle";      routeId: string; description: string }
 export interface VendorAddonLine extends CartLineBase { kind: "vendor_addon"; listingId: string; vendorName: string; packageName: string; category: string }
 
-export type CartLine = TicketLine | MerchLine | ShuttleLine | VendorAddonLine
+export type CartLine = TicketLine | MerchLine | VendorAddonLine
 
 // Per-variant input types. Using a distributive union here (instead of
 // Omit<CartLine, "key">) preserves each variant's required fields, so
@@ -25,13 +25,12 @@ export type CartLine = TicketLine | MerchLine | ShuttleLine | VendorAddonLine
 export type CartLineInput =
   | Omit<TicketLine,     "key">
   | Omit<MerchLine,      "key">
-  | Omit<ShuttleLine,    "key">
   | Omit<VendorAddonLine, "key">
 
 export interface OrderRecord {
   id: string
   createdAt: string
-  status: "paid" | "pending" | "completed" | "refunded"
+  status: "paid" | "pending" | "completed" | "refunded" | "expired"
   items: CartLine[]
   totalsByCurrency: Record<string, number>
   contact: { name: string; email: string; phone: string }
@@ -60,7 +59,7 @@ function keyFor(item: CartLineInput): string {
   if (item.kind === "ticket")       return `ticket:${item.eventSlug}:${item.tierId}`
   if (item.kind === "merch")        return `merch:${item.eventSlug}:${item.itemId}:${item.size ?? ""}`
   if (item.kind === "vendor_addon") return `vendor_addon:${item.eventSlug}:${item.listingId}`
-  return `shuttle:${item.eventSlug}:${item.routeId}`
+  return "item:unknown"
 }
 
 function makeOrderId(): string {
@@ -145,7 +144,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const existing = getOrders()
         localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing]))
-      } catch (err) { console.warn("[cart] placeOrder persist", err); throw err }
+      } catch (err) {
+        // The server order is authoritative. Private browsing, quota limits, or
+        // storage policy must not turn a completed payment into a false failure.
+        console.warn("[cart] placeOrder persist", err)
+      }
       setItems([])
       return order
     },

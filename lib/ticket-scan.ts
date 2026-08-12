@@ -1,14 +1,17 @@
+import { timingSafeEqual } from "node:crypto"
 import { and, eq, isNull } from "drizzle-orm"
 
 import { db } from "@/db"
 import { events, orders, ticketScanLogs, tickets, ticketTiers } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
+import { signTicketPayload } from "@/lib/tickets"
 
 export type ScanResult =
   | { ok: true; status: "new" | "duplicate"; ticket: { eventTitle: string; tierName: string; holder?: string; isStaffTicket?: boolean; staffRole?: string; staffName?: string } }
   | { ok: false; error: string }
 
 export type ScanContext = {
+  eventId?: string | null
   scannerUserId?: string | null
   source?: string | null
   userAgent?: string | null
@@ -22,6 +25,10 @@ type LookupTicket = {
   scannedAt: Date | null
   orderId: string | null
   status: "available" | "reserved" | "sold" | "used" | "refunded" | "cancelled" | null
+  orderStatus: "pending" | "awaiting_verification" | "paid" | "completed" | "cancelled" | "refunded" | "expired" | null
+  eventStatus: "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed" | null
+  eventStartsAt: Date | null
+  eventEndsAt: Date | null
   tierName: string | null
   eventTitle: string | null
   isStaffTicket: boolean | null
@@ -32,6 +39,7 @@ type LookupTicket = {
 export async function markTicketScanned(rawCode: string, context: ScanContext = {}): Promise<ScanResult> {
   const code = rawCode.trim()
   if (!code) return { ok: false, error: "Empty code" }
+  if (code.length > 2000) return { ok: false, error: "Code is too long" }
 
   const logScanAttempt = async ({
     ticket,
@@ -75,6 +83,10 @@ export async function markTicketScanned(rawCode: string, context: ScanContext = 
         scannedAt: tickets.scannedAt,
         orderId: tickets.orderId,
         status: tickets.status,
+        orderStatus: orders.status,
+        eventStatus: events.status,
+        eventStartsAt: events.startsAt,
+        eventEndsAt: events.endsAt,
         tierName: ticketTiers.name,
         eventTitle: events.title,
         isStaffTicket: tickets.isStaffTicket,
@@ -84,6 +96,7 @@ export async function markTicketScanned(rawCode: string, context: ScanContext = 
       .from(tickets)
       .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
       .leftJoin(events, eq(events.id, tickets.eventId))
+      .leftJoin(orders, eq(orders.id, tickets.orderId))
       .where(where)
       .limit(1)
     return ticket
@@ -103,12 +116,41 @@ export async function markTicketScanned(rawCode: string, context: ScanContext = 
     return { ok: false, error: "Ticket not found" }
   }
 
+  if (context.eventId && ticket.eventId !== context.eventId) {
+    await logScanAttempt({ ticket, outcome: "rejected", reason: "Ticket belongs to a different event" })
+    return { ok: false, error: "This ticket belongs to a different event" }
+  }
+
   if (ticket.eventId) {
     const access = await requireEventAccess(ticket.eventId)
     if (!access.allowed) {
       await logScanAttempt({ ticket, outcome: "unauthorized", reason: "Scanner is not authorized for this event" })
       return { ok: false, error: "You are not authorized to scan tickets for this event" }
     }
+  }
+
+  if (ticket.eventStatus === "cancelled") {
+    const reason = "This event has been cancelled."
+    await logScanAttempt({ ticket, outcome: "rejected", reason })
+    return { ok: false, error: reason }
+  }
+  if (ticket.eventStatus === "draft" || ticket.eventStatus === "pending_review") {
+    const reason = "This event is not live yet."
+    await logScanAttempt({ ticket, outcome: "rejected", reason })
+    return { ok: false, error: reason }
+  }
+  if (ticket.eventStatus === "completed" || (ticket.eventEndsAt && ticket.eventEndsAt.getTime() < Date.now())) {
+    const reason = "This event has ended; entry is closed."
+    await logScanAttempt({ ticket, outcome: "rejected", reason })
+    return { ok: false, error: reason }
+  }
+
+  // A customer ticket is only valid after the associated order is paid. Staff
+  // tickets are intentionally order-less and are validated by their ticket row.
+  if (!ticket.isStaffTicket && ticket.orderStatus !== "paid" && ticket.orderStatus !== "completed") {
+    const reason = "The order for this ticket is not paid."
+    await logScanAttempt({ ticket, outcome: "rejected", reason })
+    return { ok: false, error: reason }
   }
 
   if (ticket.status !== "sold" && ticket.status !== "used") {
@@ -200,7 +242,12 @@ function parseVerificationUrl(rawCode: string): { ticketId: string; orderId: str
     const url = new URL(rawCode)
     const match = url.pathname.match(/^\/tickets\/([0-9a-fA-F-]{36})\/verify$/)
     const orderId = url.searchParams.get("order")
-    if (!match || !orderId) return null
+    const signature = url.searchParams.get("sig")
+    if (!match || !orderId || !signature || !/^[a-f0-9]{64}$/i.test(signature)) return null
+    const expected = signTicketPayload(match[1], orderId)
+    const actualBytes = Buffer.from(signature, "hex")
+    const expectedBytes = Buffer.from(expected, "hex")
+    if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) return null
     return { ticketId: match[1], orderId }
   } catch {
     return null

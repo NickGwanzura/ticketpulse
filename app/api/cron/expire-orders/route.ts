@@ -6,6 +6,7 @@ import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 import { sendEmail } from "@/lib/email"
 import { pollTransaction, normalizeVelocityPollResponse } from "@/services/velocity"
+import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
 import type { NormalizedPollResponse, VelocityOrderMetadata } from "@/types/velocity"
 
 export async function POST(request: Request) {
@@ -24,13 +25,26 @@ export async function POST(request: Request) {
     .where(and(eq(orders.status, "pending"), lte(orders.createdAt, pendingCutoff)))
     .limit(50)
 
+  // Event-ended orders are terminal immediately. Do not wait for the normal
+  // payment timeout: buyers must not keep seeing a pollable order after the
+  // event can no longer be attended.
+  const eventEndedPending = await db
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName, createdAt: orders.createdAt })
+    .from(orders)
+    .innerJoin(events, eq(events.id, orders.eventId))
+    .where(and(
+      inArray(orders.status, ["pending", "awaiting_verification"]),
+      sql`COALESCE(${events.endsAt}, ${events.startsAt}) <= now()`,
+    ))
+    .limit(50)
+
   const awaitingStale = await db
     .select({ id: orders.id, status: orders.status, metadata: orders.metadata, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency, guestEmail: orders.guestEmail, guestName: orders.guestName, createdAt: orders.createdAt })
     .from(orders)
     .where(and(eq(orders.status, "awaiting_verification"), lte(orders.createdAt, awaitingCutoff)))
     .limit(50)
 
-  const staleOrders = [...pendingStale, ...awaitingStale]
+  const staleOrders = Array.from(new Map([...eventEndedPending, ...pendingStale, ...awaitingStale].map((order) => [order.id, order])).values())
 
   if (staleOrders.length === 0) {
     log.info("cron/expire-orders — no stale orders to expire")
@@ -44,6 +58,14 @@ export async function POST(request: Request) {
   for (const order of staleOrders) {
     const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
     const velocityMeta = meta.velocity
+
+    const eventEnded = eventEndedPending.some((candidate) => candidate.id === order.id)
+    if (eventEnded) {
+      // Archive event-ended orders without a live gateway poll. They are no
+      // longer actionable for the buyer and must not remain in recovery loops.
+      await expireOrderAndReleaseInventory(order.id, "event_ended")
+      continue
+    }
 
     if (velocityMeta?.pollStatus === "SUCCESS" || velocityMeta?.paymentRef) {
       log.warn("cron/expire-orders — skipping order with confirmed Velocity payment", {
@@ -181,12 +203,17 @@ export async function POST(request: Request) {
     })
   }
 
-  const expireIds = ids.filter((id) => !skippedVelocity.includes(id))
+  const eventEndedIds = new Set(eventEndedPending.map((order) => order.id))
+  const expireIds = ids.filter((id) => !skippedVelocity.includes(id) && !eventEndedIds.has(id))
 
   if (expireIds.length > 0) {
     await db
       .update(orders)
-      .set({ status: "expired", updatedAt: new Date() })
+      .set({
+        status: "expired",
+        updatedAt: new Date(),
+        metadata: sql`jsonb_set(jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{archive,status}', '"archived"'::jsonb), '{archive,reason}', '"payment_timeout"'::jsonb)`,
+      })
       .where(inArray(orders.id, expireIds))
 
     await db

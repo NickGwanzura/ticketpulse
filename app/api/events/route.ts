@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
 import { events, users } from "@/db/schema"
 import { eq, desc, and, gte, like, or } from "drizzle-orm"
-import { auth } from "@/auth"
 import { z } from "zod"
 import { log } from "@/lib/logger"
 import { rateLimit } from "@/lib/rate-limit"
+import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
 
 const eventsLimiter = rateLimit({ windowMs: 60_000, max: 60 })
 
@@ -93,10 +93,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const session = await auth()
-  if (!session?.user || session.user.role !== "organizer") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const eligibility = await requireApprovedOrganizer()
+  if (!eligibility.ok) {
+    const status = eligibility.error === "You must be signed in." ? 401 : 403
+    return NextResponse.json({ error: eligibility.error }, { status })
   }
+  const session = eligibility.session
 
   const parsed = PostSchema.safeParse(await req.json())
   if (!parsed.success) {
@@ -118,6 +120,7 @@ export async function POST(req: NextRequest) {
       startsAt: new Date(startsAt),
       endsAt: endsAt ? new Date(endsAt) : null,
       tags: tags ?? [],
+      status: "draft",
     })
     .returning()
 

@@ -33,8 +33,20 @@ export function generateTicketVerifyUrl(
   orderId: string,
   baseUrl?: string,
 ): string {
-  const origin = baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
-  return `${origin}/tickets/${ticketId}/verify?order=${orderId}`
+  const origin = (baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech").replace(/\/$/, "")
+  const signature = signTicketPayload(ticketId, orderId)
+  return `${origin}/tickets/${ticketId}/verify?order=${encodeURIComponent(orderId)}&sig=${encodeURIComponent(signature)}`
+}
+
+/**
+ * Sign the stable ticket/order pair embedded in newly-issued QR URLs.
+ * The database lookup remains authoritative, but the signature prevents a
+ * scanner from accepting a hand-crafted verification URL for guessed IDs.
+ */
+export function signTicketPayload(ticketId: string, orderId: string): string {
+  const secret = process.env.TICKET_QR_SECRET ?? process.env.AUTH_SECRET
+  if (!secret) throw new Error("TICKET_QR_SECRET or AUTH_SECRET must be configured")
+  return createHash("sha256").update(`${secret}:${ticketId}:${orderId}`).digest("hex")
 }
 
 export async function generateQrDataUrlFromValue(value: string): Promise<string> {

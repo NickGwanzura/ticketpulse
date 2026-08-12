@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
-  LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, Bus, CreditCard,
+  LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, CreditCard,
   PieChart, Store, Contact, History,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
@@ -40,7 +40,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Orders",    href: "/admin/orders",    icon: Receipt },
       { label: "Reviews",   href: "/admin/reviews",   icon: Star },
       { label: "Vendors",   href: "/admin/vendors",   icon: Store, badgeKey: "pendingVendors" },
-      { label: "Transport", href: "/admin/transport", icon: Bus, badgeKey: "pendingOperators" },
     ],
   },
   {
@@ -66,13 +65,11 @@ export default function Sidebar({
   email,
   pendingEventCount = 0,
   pendingVendorCount = 0,
-  pendingOperatorCount = 0,
 }: {
   name: string
   email: string
   pendingEventCount?: number
   pendingVendorCount?: number
-  pendingOperatorCount?: number
 }) {
   const pathname = usePathname()
   const isActive = (href: string) =>
@@ -81,7 +78,6 @@ export default function Sidebar({
   const badgeValue = (key?: string): number | undefined => {
     if (key === "pendingEvents") return pendingEventCount
     if (key === "pendingVendors") return pendingVendorCount
-    if (key === "pendingOperators") return pendingOperatorCount
     return undefined
   }
 

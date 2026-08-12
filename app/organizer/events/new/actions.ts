@@ -4,11 +4,11 @@ import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
-import { auth } from "@/auth"
 import { db } from "@/db"
 import { events } from "@/db/schema"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug } from "@/lib/slug"
+import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
 
 const CreateSchema = z.object({
   title:         z.string().trim().min(1, "Title is required").max(160),
@@ -52,18 +52,9 @@ export async function createEventAction(
   _prev: CreateEventState,
   formData: FormData,
 ): Promise<CreateEventState> {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return { ok: false, error: "You must be signed in." }
-  }
-  if (session.user.role !== "organizer" && session.user.role !== "admin") {
-    return { ok: false, error: "Only organizers can create events." }
-  }
-
-  // Organizers must be approved by an admin before creating events
-  if (session.user.role === "organizer" && !session.user.approvedAt) {
-    return { ok: false, error: "Your organizer account is pending approval. You'll be able to create events once approved." }
-  }
+  const eligibility = await requireApprovedOrganizer()
+  if (!eligibility.ok) return eligibility
+  const session = eligibility.session
 
   const raw = {
     title:         formData.get("title")?.toString() ?? "",

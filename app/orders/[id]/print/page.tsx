@@ -80,8 +80,8 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!order || canonicalTickets.length === 0) return
     Promise.all(
-      canonicalTickets.map((ticket, idx) =>
-        qrDataUrl(ticket.qrCode ?? `${window.location.origin}/tickets/${ticket.id}/verify?order=${order.id}`).then((url) => [String(idx), url] as const),
+        canonicalTickets.map((ticket, idx) =>
+        ticket.qrCode ? qrDataUrl(ticket.qrCode).then((url) => [String(idx), url] as const) : Promise.reject(new Error("Missing ticket QR")),
       ),
     ).then((entries) => setQrUrls(Object.fromEntries(entries)))
   }, [order, canonicalTickets])
@@ -218,7 +218,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
         {flat.map(({ line, i }, idx) => {
           if (line.kind !== "ticket") return null
           const canonicalTicket = canonicalTickets[idx]
-          const code = canonicalTicket?.qrCode ?? canonicalTicket?.id ?? "Loading ticket code"
+          const code = canonicalTicket?.qrCode ?? "QR unavailable — do not admit"
           const human = shortCode(order.id, idx)
           const qr = qrUrls[`${idx}`]
 

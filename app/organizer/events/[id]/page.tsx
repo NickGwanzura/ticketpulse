@@ -231,7 +231,7 @@ export default async function EventOverviewPage({
         actions={
           <div className="flex items-center gap-2">
             <Link
-              href="/organizer/scan"
+                  href={`/organizer/scan?event=${event.id}`}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink/85 transition"
             >
               <ScanLine size={14} /> Scan tickets

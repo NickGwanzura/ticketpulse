@@ -51,7 +51,7 @@ const TIERS = [
       "Email and WhatsApp broadcast to attendees",
       "Event health checklist and payout ledger",
       "Payment reconciliation and duplicate-payment warnings",
-      "Built-in shuttle, merch, photo packs",
+      "Built-in merch and photo packs",
       "Verified EcoCash or bank payouts",
       "Real-time scan analytics & duplicate guard",
       "Verified review collection after events",

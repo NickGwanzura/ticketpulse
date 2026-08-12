@@ -20,7 +20,7 @@ type RecentCheckin = {
   scannedAt: string
 }
 
-const POLL_INTERVAL_MS = 30_000 // 30 seconds (was 5s — causing refresh complaints)
+const POLL_INTERVAL_MS = 10_000 // Keep gate metrics near-real-time without hammering the API.
 
 export default function LiveDashboardClient({
   eventId,

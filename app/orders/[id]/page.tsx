@@ -77,7 +77,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
 
     // Try localStorage first
     const local = getOrder(id)
-    if (local) {
+    if (local && local.status !== "pending") {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the order detail view from persisted checkout state.
       setOrder(local)
       return
@@ -131,6 +131,10 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               "paid",
             )
           }
+        } else if (["expired", "cancelled"].includes(data.status)) {
+          clearInterval(pollRef.current!)
+          setPollingForCard(false)
+          setOrder((current) => current ? { ...current, status: "expired" } : current)
         }
       } catch {
         // silently continue polling
@@ -138,7 +142,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     }, CARD_POLL_INTERVAL_MS)
 
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [welcomeFlag, order?.status, id])
+  }, [welcomeFlag, order?.status, id, getOrder])
 
   async function resendTickets() {
     if (resendingTickets) return
@@ -196,7 +200,8 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
         <p className="mt-2 text-[15px] text-ink-2">No order with id <span className="font-mono">{id}</span>.</p>
-        <p className="mt-1 text-[13px] text-ink-3">If you just purchased, check your email — it may take a moment to appear here.</p>
+        <p className="mt-1 text-[13px] text-ink-3">Use the email address from checkout to recover the order on another device.</p>
+        <Link href="/orders/lookup" className="mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-navy hover:underline">Find tickets by email</Link>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
           <ArrowLeft size={14} /> All orders
         </Link>
@@ -216,6 +221,11 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
           <p className="text-[13px] font-medium text-amber-800">
             Confirming your card payment — this usually takes a few seconds.
           </p>
+        </div>
+      )}
+      {order.status === "expired" && (
+        <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-center text-[13px] font-medium text-amber-800">
+          This pending payment was archived because the payment window or event had ended. No ticket was issued.
         </div>
       )}
       <div className="border-b border-line bg-paper-2">
@@ -263,7 +273,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
             )}
             {tickets.map((line) => (
               line.kind === "ticket" ? Array.from({ length: line.qty }).map((_, i) => {
-                const qrValue = qrByTier.get(line.tierId)?.[i] ?? `${order.id}-${line.key}-${i}`
+                const qrValue = qrByTier.get(line.tierId)?.[i]
                 const hasRealQr = !!qrByTier.get(line.tierId)?.[i]
                 const ticketRecord = recordsByTier.get(line.tierId)?.[i]
                 const ticketId = ticketRecord?.id
@@ -386,7 +396,11 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                     </div>
                     <div className="p-4 md:p-5 bg-paper-2 flex flex-col items-center justify-center gap-2">
                       <div className={isTransferred ? "opacity-30 pointer-events-none" : ""}>
-                        <QrCode value={qrValue} size={120} className="rounded-lg ring-1 ring-line" />
+                        {hasRealQr ? <QrCode value={qrValue!} size={120} className="rounded-lg ring-1 ring-line" /> : (
+                          <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-[11px] font-medium text-amber-800">
+                            {ticketsLoading ? "Generating ticket…" : "Ticket QR unavailable — check your email"}
+                          </div>
+                        )}
                       </div>
                       {isTransferred && (
                         <p className="text-[11px] text-ink-3 text-center font-medium">Transferred</p>
@@ -419,7 +433,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 <li key={line.key} className="flex items-baseline justify-between gap-3 text-[13px]">
                   <div className="min-w-0">
                     <p className="font-medium text-ink line-clamp-1">
-                      {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.kind === "shuttle" ? line.description : line.packageName}
+                      {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.packageName}
                     </p>
                     <p className="text-ink-3 text-[12px]">×{line.qty}</p>
                   </div>

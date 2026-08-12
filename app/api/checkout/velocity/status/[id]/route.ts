@@ -52,6 +52,23 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     })
   }
 
+  const [event] = await db
+    .select({ startsAt: events.startsAt, endsAt: events.endsAt })
+    .from(events)
+    .where(eq(events.id, order.eventId))
+    .limit(1)
+  const eventEndedAt = event?.endsAt ?? event?.startsAt
+  if (eventEndedAt && new Date(eventEndedAt) <= new Date()) {
+    await expireOrderAndReleaseInventory(id, "event_ended")
+    return NextResponse.json({
+      orderId: id,
+      status: "expired",
+      paid: false,
+      pollStatus: "EVENT_ENDED",
+      error: "This event has ended; the pending payment order was archived.",
+    })
+  }
+
   const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
   const velocityMeta = meta.velocity
 

@@ -101,10 +101,12 @@ export async function sendBulkSmsAction(
     }
 
     const { balance } = await getSmsBalance()
-    if (balance < attendees.length) {
+    const segmentsPerRecipient = Math.max(1, Math.ceil(message.length / 153))
+    const requiredCredits = attendees.length * segmentsPerRecipient
+    if (balance < requiredCredits) {
       return {
         ok: false,
-        error: `Not enough SMS credits. Need ${attendees.length}, have ${balance}. Top up before sending.`,
+        error: `Not enough SMS credits. Need ${requiredCredits}, have ${balance}. Top up before sending.`,
       }
     }
 

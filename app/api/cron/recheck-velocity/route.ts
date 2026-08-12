@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         sql`${orders.metadata}->>'velocity' IS NOT NULL`,
         inArray(orders.status, ["pending", "awaiting_verification"]),
         lt(orders.updatedAt, cutoff),
+        sql`COALESCE(${events.endsAt}, ${events.startsAt}) > now()`,
       ),
     )
     .limit(MAX_ORDERS_PER_RUN)

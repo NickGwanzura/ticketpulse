@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
-import { eq, and, inArray, desc, asc, sql } from "drizzle-orm"
+import { eq, and, inArray, desc, asc, sql, count } from "drizzle-orm"
 import Link from "next/link"
 import { ArrowLeft, Download, Users, ChevronLeft, ChevronRight } from "lucide-react"
 
@@ -47,22 +47,18 @@ export default async function AttendeesPage({
     .where(eq(ticketQuestions.eventId, id))
     .orderBy(asc(ticketQuestions.sortOrder))
 
-  // ── Orders that have had tickets issued (delivery complete) ───────────────
-  // Fetch distinct order IDs that have at least one row in tickets for this
-  // event. This is the authoritative "tickets delivered" signal — an order
-  // can be paid but delivery may still be in-flight or failed.
-  const deliveredRows = await db
-    .selectDistinct({ orderId: tickets.orderId })
-    .from(tickets)
-    .where(eq(tickets.eventId, id))
-
-  const deliveredOrderIds = deliveredRows.map(r => r.orderId).filter((id): id is string => id !== null)
-
   // ── Attendee data ──────────────────────────────────────────────────────────
-  // One row per orderItem (buyer × tier). Filtered to orders that have
-  // delivered tickets only. Do NOT join tickets here — that would produce
-  // one row per individual ticket and inflate/duplicate results.
-  const allRows = deliveredOrderIds.length === 0 ? [] : await db
+  // One row per orderItem (buyer × tier). Use an EXISTS predicate so the
+  // database paginates delivered orders directly instead of loading the full
+  // attendee list into server memory.
+  const deliveredTicketExists = sql`EXISTS (SELECT 1 FROM tickets delivered_ticket WHERE delivered_ticket.order_id = ${orders.id} AND delivered_ticket.event_id = ${id})`
+  const attendeeWhere = and(
+    eq(orders.eventId, id),
+    eq(orderItems.type, "ticket"),
+    deliveredTicketExists,
+  )
+  const [rows, [{ totalRows }]] = await Promise.all([
+    db
     .select({
       orderId: orders.id,
       guestName: orders.guestName,
@@ -76,17 +72,15 @@ export default async function AttendeesPage({
     .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
     .leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId))
     .where(
-      and(
-        eq(orders.eventId, id),
-        inArray(orders.id, deliveredOrderIds),
-        eq(orderItems.type, "ticket"),
-      ),
+      attendeeWhere,
     )
     .orderBy(desc(orders.createdAt))
+    .limit(PAGE_SIZE)
+    .offset(offset),
+    db.select({ totalRows: count() }).from(orders).innerJoin(orderItems, eq(orderItems.orderId, orders.id)).where(attendeeWhere),
+  ])
 
-  const totalRows = allRows.length
-  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
-  const rows = allRows.slice(offset, offset + PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(Number(totalRows ?? 0) / PAGE_SIZE))
 
   const orderIds = [...new Set(rows.map((r) => r.orderId))]
 
@@ -133,8 +127,16 @@ export default async function AttendeesPage({
     responseMap.get(r.orderId)!.set(r.questionId, r.response)
   }
 
-  const totalBuyers = new Set(allRows.map((r) => r.guestEmail)).size
-  const totalTickets = allRows.reduce((sum, r) => sum + r.quantity, 0)
+  const [{ totalBuyers }] = await db
+    .select({ totalBuyers: sql<number>`COUNT(DISTINCT ${orders.guestEmail})::int` })
+    .from(orders)
+    .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+    .where(attendeeWhere)
+  const [{ totalTickets }] = await db
+    .select({ totalTickets: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int` })
+    .from(orders)
+    .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+    .where(attendeeWhere)
   const checkedIn = enrichedRows.reduce((sum, r) => sum + r.scannedCount, 0)
 
   return (

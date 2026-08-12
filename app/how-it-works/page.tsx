@@ -53,7 +53,7 @@ const ATTENDEE_STEPS = [
   {
     icon: ScanLine,
     title: "Walk in fast",
-    body: "Our scanner reads your QR in under a second. PDF, screen, or wallet pass: works offline at the gate.",
+    body: "Our scanner reads your QR in under a second. PDF, screen, or wallet pass: it verifies live with the event database.",
   },
 ]
 
@@ -61,7 +61,7 @@ const ORGANIZER_STEPS = [
   {
     icon: Settings2,
     title: "Build your event",
-    body: "Set tiers, capacity, and dates. Add merch, photo packs, or shuttles in the same flow, then use the event health checklist before going live.",
+    body: "Set tiers, capacity, and dates. Add merch or photo packs in the same flow, then use the event health checklist before going live.",
   },
   {
     icon: Megaphone,

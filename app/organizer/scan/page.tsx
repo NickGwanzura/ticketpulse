@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import jsQR from "jsqr"
 import Link from "next/link"
 import {
@@ -50,11 +51,14 @@ function saveCheckins(list: CheckinRecord[]) {
 }
 
 export default function OrganizerScanPage() {
+  const searchParams = useSearchParams()
+  const eventId = searchParams.get("event") ?? undefined
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const detectorRef = useRef<BarcodeDetectorLike | null>(null)
   const rafRef = useRef<number | null>(null)
   const lastSeenRef = useRef<{ code: string; at: number } | null>(null)
+  const processingRef = useRef(false)
   const recentRef = useRef<CheckinRecord[]>([])
   const audioCtxRef = useRef<AudioContext | null>(null)
   const autoStartedRef = useRef(false)
@@ -140,7 +144,9 @@ export default function OrganizerScanPage() {
     const now = Date.now()
     const last = lastSeenRef.current
     if (last && last.code === code && now - last.at < 1500) return
+    if (processingRef.current) return
     lastSeenRef.current = { code, at: now }
+    processingRef.current = true
 
     let status: CheckinStatus = "unknown"
     let eventTitle: string | undefined
@@ -158,7 +164,7 @@ export default function OrganizerScanPage() {
       // Server-first validation — always hit the database for authoritative ticket status
       if (navigator.onLine) {
 	        try {
-	          const result: ScanResult = await markTicketScannedAction(code)
+		          const result: ScanResult = await markTicketScannedAction(code, eventId)
 	          if (result.ok) {
 	            status = result.status === "duplicate" ? "duplicate" : "valid"
 	            eventTitle = result.ticket?.eventTitle
@@ -177,25 +183,29 @@ export default function OrganizerScanPage() {
       }
     }
 
-    const rec: CheckinRecord = {
-      code,
-      at: new Date().toISOString(),
-      status,
-      eventTitle,
-      tierName,
-      holder,
-      isStaffTicket,
-      staffRole,
+    try {
+      const rec: CheckinRecord = {
+        code,
+        at: new Date().toISOString(),
+        status,
+        eventTitle,
+        tierName,
+        holder,
+        isStaffTicket,
+        staffRole,
+      }
+      setLatest(rec)
+      setRecent((prev) => {
+        const next = [rec, ...prev].slice(0, 50)
+        saveCheckins(next)
+        return next
+      })
+      playScanSound(rec.status)
+      vibrateForStatus(rec.status)
+    } finally {
+      processingRef.current = false
     }
-    setLatest(rec)
-    setRecent((prev) => {
-      const next = [rec, ...prev].slice(0, 50)
-      saveCheckins(next)
-      return next
-    })
-    playScanSound(rec.status)
-    vibrateForStatus(rec.status)
-  }, [playScanSound, vibrateForStatus])
+  }, [eventId, playScanSound, vibrateForStatus])
 
   const stopCamera = useCallback(() => {
     if (rafRef.current !== null) {

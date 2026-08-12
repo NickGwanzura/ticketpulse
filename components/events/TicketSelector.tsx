@@ -54,12 +54,13 @@ interface TicketSelectorProps {
   eventSlug: string
   eventTitle: string
   eventStartsAt: Date | string
+  eventEndsAt?: Date | string | null
   eventVenue: string
   emoji: string
   tiers: Tier[]
 }
 
-export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, eventVenue, emoji, tiers }: TicketSelectorProps) {
+export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, eventEndsAt, eventVenue, emoji, tiers }: TicketSelectorProps) {
   const router = useRouter()
   const { addItem } = useCart()
   const [qtys, setQtys] = useState<Record<string, number>>({})
@@ -106,6 +107,7 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
           eventSlug,
           eventTitle,
           eventStartsAt: new Date(eventStartsAt).toISOString(),
+          eventEndsAt: eventEndsAt ? new Date(eventEndsAt).toISOString() : undefined,
           eventVenue,
           tierId: t.id,
           tierName: t.name,
@@ -130,6 +132,7 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
           eventSlug,
           eventTitle,
           eventStartsAt: new Date(eventStartsAt).toISOString(),
+          eventEndsAt: eventEndsAt ? new Date(eventEndsAt).toISOString() : undefined,
           eventVenue,
           tierId: t.id,
           tierName: t.name,

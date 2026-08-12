@@ -42,7 +42,6 @@ const STATIC_PAGES: SearchResult[] = [
   { id: "payouts", type: "page", title: "Payouts", subtitle: "Admin · Organiser payout queue", href: "/admin/payouts" },
   { id: "customers", type: "page", title: "Customers", subtitle: "Admin · CRM buyer aggregation", href: "/admin/customers" },
   { id: "vendors", type: "page", title: "Vendors", subtitle: "Admin · Vendor verification", href: "/admin/vendors" },
-  { id: "transport", type: "page", title: "Transport", subtitle: "Admin · Shuttle operators", href: "/admin/transport" },
   { id: "reconciliation", type: "page", title: "Reconciliation", subtitle: "Admin · Payment/ledger audit", href: "/admin/reconciliation" },
   { id: "analytics", type: "page", title: "Analytics", subtitle: "Admin · Revenue & order analytics", href: "/admin/analytics" },
   { id: "key-stats", type: "page", title: "Key Stats", subtitle: "Admin · Platform-wide stat sheet", href: "/admin/key-stats" },

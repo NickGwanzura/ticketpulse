@@ -6,12 +6,13 @@ import { headers } from "next/headers"
 
 export type { ScanResult }
 
-export async function markTicketScannedAction(rawCode: string): Promise<ScanResult> {
+export async function markTicketScannedAction(rawCode: string, eventId?: string): Promise<ScanResult> {
   const session = await auth()
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" }
 
   const requestHeaders = await headers()
   return markTicketScanned(rawCode, {
+    eventId: eventId ?? null,
     scannerUserId: session.user.id,
     source: "organizer_web",
     userAgent: requestHeaders.get("user-agent"),

@@ -40,7 +40,6 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
       ["Vendors", "/vendors"],
       ["Apply as vendor", "/vendors/apply"],
       ["Media galleries", "/media"],
-      ["Transport", "/transport"],
     ],
   },
   {

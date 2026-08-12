@@ -3,13 +3,8 @@ export type UserRole =
   | "organizer"
   | "vendor"
   | "admin"
-  | "transport_operator"
-  | "dispatcher"
-  | "driver"
-  | "conductor"
 export type EventStatus = "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed"
 export type OrderStatus = "pending" | "paid" | "cancelled" | "refunded"
-export type VehicleType = "kombi" | "bus" | "sedan" | "suv"
 export type VendorCategory =
   | "catering"
   | "bar"
@@ -51,25 +46,6 @@ export interface MerchItem {
   soldQuantity: number
   pickupAtEvent: boolean
   deliveryAvailable: boolean
-}
-
-export interface ShuttleRoute {
-  id: string
-  eventId: string
-  operator: {
-    companyName: string
-    verified: boolean
-    rating: number | null
-  }
-  vehicleType: VehicleType
-  vehicleDescription: string | null
-  departurePoint: string
-  departureTime: Date
-  returnTime: Date | null
-  totalSeats: number
-  bookedSeats: number
-  pricePerSeat: number
-  currency: string
 }
 
 export interface VendorListing {

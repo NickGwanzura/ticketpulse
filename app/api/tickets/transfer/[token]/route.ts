@@ -3,9 +3,8 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { tickets, ticketTiers, events } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
-import { generateQrDataUrlFromValue } from "@/lib/tickets"
+import { generateQrDataUrlFromValue, generateTicketVerifyUrl } from "@/lib/tickets"
 import { log } from "@/lib/logger"
-import { randomBytes } from "crypto"
 
 type Params = { token: string }
 
@@ -85,12 +84,12 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   let newQrCode: string
   let newScanCode: string
   try {
-    newScanCode = `transfer-${ticket.id}-${randomBytes(16).toString("hex")}`
+    if (!ticket.orderId) return NextResponse.json({ error: "Ticket is missing its order reference" }, { status: 409 })
+    newScanCode = generateTicketVerifyUrl(ticket.id, ticket.orderId)
     newQrCode = await generateQrDataUrlFromValue(newScanCode)
   } catch {
-    // Fallback: unique string the scanner won't match the old value
-    newScanCode = `transfer-${ticket.id}-${randomBytes(8).toString("hex")}`
-    newQrCode = newScanCode
+    // Keep the claim atomic and fail closed if QR generation is unavailable.
+    return NextResponse.json({ error: "Unable to issue a secure replacement QR" }, { status: 503 })
   }
 
   await db.update(tickets).set({

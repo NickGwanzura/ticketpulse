@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     default: "TicketPulse. Every event. One ticket.",
     template: "%s | TicketPulse",
   },
-  description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+  description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, with tickets, merch, and photo packs in one place.",
   manifest: "/manifest",
   icons: {
     icon: [{ url: "/favicon.jpg", type: "image/jpeg", sizes: "3000x3000" }],
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
     locale: "en_ZW",
     siteName: "TicketPulse",
     title: "TicketPulse. Every event. One ticket.",
-    description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+    description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, with tickets, merch, and photo packs in one place.",
     url: "/",
     images: [{ url: "/favicon.jpg", width: 3000, height: 3000, alt: "TicketPulse" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "TicketPulse. Every event. One ticket.",
-    description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, tickets, merch, shuttle, and photo packs in one place.",
+    description: "Zimbabwe's premier event ticketing platform. Concerts, marathons, premieres and more, with tickets, merch, and photo packs in one place.",
     images: [{ url: "/favicon.jpg", width: 3000, height: 3000, alt: "TicketPulse" }],
   },
   alternates: {

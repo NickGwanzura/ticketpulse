@@ -36,7 +36,7 @@ export async function verifyUserEmailAction(userId: string) {
 export async function updateUserRoleAction(userId: string, newRole: string) {
   const session = await requireAdmin()
 
-  const allowedRoles = ["attendee", "organizer", "vendor", "transport_operator", "dispatcher", "driver", "conductor"] as const
+  const allowedRoles = ["attendee", "organizer", "vendor"] as const
   if (!allowedRoles.includes(newRole as typeof allowedRoles[number])) {
     throw new Error(`Invalid role: "${newRole}"`)
   }

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation"
 import { getDashboardPathForRole } from "@/lib/role-routes"
 
 const ROLES = [
-  { value: "attendee",  label: "Attendee",  body: "Buy tickets, book shuttles, grab merch and photo packs.",   icon: User },
+  { value: "attendee",  label: "Attendee",  body: "Buy tickets, grab merch and photo packs.",   icon: User },
   { value: "organizer", label: "Organizer", body: "Sell out events. Manage tickets, merch, vendors, and payouts.", icon: CalendarCog },
   { value: "vendor",    label: "Vendor",    body: "List your service, take bookings from event organizers.",    icon: Store },
 ] as const

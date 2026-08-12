@@ -113,7 +113,8 @@ export async function resendOrderEmailAction(orderId: string) {
           try {
             qrMap.set(t.id, await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl))
           } catch {
-            qrMap.set(t.id, t.qrCode ?? `${orderId}-${t.id}`)
+            // Do not put a plain-text placeholder in a QR image slot. The PDF
+            // must fail closed rather than render something the gate cannot verify.
           }
         }
 
@@ -125,7 +126,7 @@ export async function resendOrderEmailAction(orderId: string) {
           buyerName: order.guestName ?? "Valued Guest",
           orderId,
           ticketId: t.id,
-          qrCodeData: qrMap.get(t.id) ?? `${orderId}-${t.id}`,
+          qrCodeData: qrMap.get(t.id) ?? "",
         }))
 
         const pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
@@ -680,7 +681,7 @@ export async function regeneratePdfAction(orderId: string) {
     try {
       qrMap.set(t.id, await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl))
     } catch {
-      qrMap.set(t.id, t.qrCode ?? `${orderId}-${t.id}`)
+      // Keep the slot empty so the PDF renderer shows an unavailable QR.
     }
   }
 
@@ -703,7 +704,7 @@ export async function regeneratePdfAction(orderId: string) {
       buyerName: order.guestName ?? "Valued Guest",
       orderId,
       ticketId: t.id,
-      qrCodeData: qrMap.get(t.id) ?? `${orderId}-${t.id}`,
+      qrCodeData: qrMap.get(t.id) ?? "",
     }))
     const pdfBuffer = await generateCombinedTicketPdf(pdfTickets)
     attachments = [{
@@ -790,7 +791,7 @@ export async function deleteOrderAction(orderId: string) {
   if (!order) throw new Error("Order not found")
 
   // Import additional table references before the transaction
-  const { transportBookings, photoDownloads } = await import("@/db/schema")
+  const { photoDownloads } = await import("@/db/schema")
 
   // Wrap all deletion in a single transaction so a failure mid-way rolls
   // everything back and leaves the database in a consistent state.
@@ -798,10 +799,6 @@ export async function deleteOrderAction(orderId: string) {
     await tx.delete(paymentLedger).where(eq(paymentLedger.orderId, orderId))
 
     // Break FK references that don't have ON DELETE CASCADE / SET NULL
-    await tx
-      .update(transportBookings)
-      .set({ orderId: null })
-      .where(eq(transportBookings.orderId, orderId))
     await tx
       .update(photoDownloads)
       .set({ orderId: null })

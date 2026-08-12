@@ -82,8 +82,10 @@ export default function CheckoutPage() {
         const method = sessionStorage.getItem(`${POLL_SESSION_KEY}:method`)
         if (name && email && phone && method) {
           pollingContact.current = { name, email, phone, method }
-          setPollingOrderId(savedOrderId)
-          setSubmitting(true)
+          queueMicrotask(() => {
+            setPollingOrderId(savedOrderId)
+            setSubmitting(true)
+          })
         }
       }
     } catch { /* sessionStorage may be unavailable */ }
@@ -148,7 +150,7 @@ export default function CheckoutPage() {
           return
         }
 
-        const terminalPollStatuses = ["FAILED", "CANCELLED", "EXPIRED"]
+        const terminalPollStatuses = ["FAILED", "CANCELLED", "EXPIRED", "EVENT_ENDED"]
         const terminalOrderStatuses = ["cancelled", "expired"]
 
         if (
@@ -162,7 +164,7 @@ export default function CheckoutPage() {
           const isExpired = data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
           setPollingOrderId(null)
           setSubmitting(false)
-          if (isExpired) {
+          if (isExpired || data.pollStatus === "EVENT_ENDED") {
             router.replace(`/checkout/expired?ref=${pollingOrderId}`)
           } else {
             clearPollingSession()
@@ -226,7 +228,7 @@ export default function CheckoutPage() {
   }
 
   const lineCount = items.reduce((s, i) => s + i.qty, 0)
-  const firstEventTitle = items.find((i) => i.kind === "ticket")?.eventTitle ?? ""
+  const firstEventTitle = items[0]?.eventTitle ?? ""
 
   // Compute the final total for the CTA label
   const firstCurrency = Object.keys(totalsByCurrency)[0] ?? "USD"
@@ -241,8 +243,9 @@ export default function CheckoutPage() {
     setErrorOrderId(null)
     setSubmitting(true)
 
-    const eventLines = items.filter((i) => i.kind === "ticket" || i.kind === "vendor_addon")
+    const eventLines = items
     const ticketLines = items.filter((i) => i.kind === "ticket")
+    const merchLines = items.filter((i) => i.kind === "merch")
     const vendorAddonLines = items.filter((i) => i.kind === "vendor_addon")
     if (ticketLines.length === 0) {
       setSubmitError("Your cart has no tickets. Add a ticket to continue.")
@@ -273,6 +276,7 @@ export default function CheckoutPage() {
         eventSlug: ticketLines[0].eventSlug,
         items: [
           ...ticketLines.map((l) => ({ kind: "ticket" as const, tierId: l.tierId, quantity: l.qty })),
+          ...merchLines.map((l) => ({ kind: "merch" as const, itemId: l.itemId, quantity: l.qty, size: l.size })),
           ...vendorAddonLines.map((l) => ({ kind: "vendor_addon" as const, listingId: l.listingId, quantity: l.qty })),
         ],
       }
@@ -382,10 +386,11 @@ export default function CheckoutPage() {
 
             <div className="space-y-3.5">
               <div>
-                <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Full name</label>
+                    <label htmlFor="checkout-name" className="block text-[12px] font-medium text-ink-2 mb-1.5">Full name</label>
                 <div className="relative">
                   <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                   <input
+                    id="checkout-name"
                     type="text"
                     required
                     autoFocus
@@ -400,10 +405,11 @@ export default function CheckoutPage() {
 
               <div className={`grid grid-cols-1 gap-3.5 ${!isFree && form.payment === "velocity-ecocash" ? "sm:grid-cols-2" : ""}`}>
                 <div>
-                  <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Email</label>
+                  <label htmlFor="checkout-email" className="block text-[12px] font-medium text-ink-2 mb-1.5">Email</label>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                     <input
+                      id="checkout-email"
                       type="email"
                       required
                       autoComplete="email"
@@ -417,10 +423,11 @@ export default function CheckoutPage() {
                 </div>
                 {!isFree && form.payment === "velocity-ecocash" && (
                   <div>
-                    <label className="block text-[12px] font-medium text-ink-2 mb-1.5">EcoCash number</label>
+                    <label htmlFor="checkout-phone" className="block text-[12px] font-medium text-ink-2 mb-1.5">EcoCash number</label>
                     <div className="relative">
                       <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                       <input
+                        id="checkout-phone"
                         type="tel"
                         required
                         autoComplete="tel"
@@ -446,11 +453,12 @@ export default function CheckoutPage() {
               <div className="space-y-3.5">
                 {eventQuestions.map((q) => (
                   <div key={q.id}>
-                    <label className="block text-[12px] font-medium text-ink-2 mb-1.5">
+                    <label htmlFor={`checkout-question-${q.id}`} className="block text-[12px] font-medium text-ink-2 mb-1.5">
                       {q.question}
                       {q.required && <span className="text-red-500 ml-0.5">*</span>}
                     </label>
                     <input
+                      id={`checkout-question-${q.id}`}
                       type="text"
                       required={q.required}
                       value={questionAnswers[q.id] ?? ""}
@@ -558,8 +566,7 @@ export default function CheckoutPage() {
                     <p className="font-medium tracking-tight text-ink line-clamp-1">
                       {line.kind === "ticket" ? line.tierName
                         : line.kind === "merch" ? line.name
-                        : line.kind === "vendor_addon" ? `${line.vendorName} · ${line.packageName}`
-                        : line.description}
+                        : `${line.vendorName} · ${line.packageName}`}
                     </p>
                     <p className="text-ink-3 text-[12px] line-clamp-1">{line.eventTitle} · ×{line.qty}</p>
                   </div>

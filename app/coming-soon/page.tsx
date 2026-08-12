@@ -148,7 +148,7 @@ export default async function ComingSoonPage({
         <p className="mt-4 text-[15px] sm:text-[16px] text-ink-2 max-w-lg mx-auto leading-relaxed">
           Zimbabwe&apos;s premier event ticketing platform goes live{" "}
           <span className="font-semibold text-ink">{launchLabel} CAT</span>.
-          Tickets, merch, shuttles and photo packs in one place.
+          Tickets, merch and photo packs in one place.
         </p>
 
         {/* Countdown */}

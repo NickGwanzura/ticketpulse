@@ -62,7 +62,7 @@ export default function OrdersPage() {
           <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight leading-tight text-ink">
             Your orders
           </h1>
-          <p className="mt-1.5 text-[15px] text-ink-2">{orders.length} {orders.length === 1 ? "order" : "orders"} total</p>
+          <p className="mt-1.5 text-[15px] text-ink-2">{orders.length} {orders.length === 1 ? "order" : "orders"} saved on this device</p>
         </div>
       </div>
 

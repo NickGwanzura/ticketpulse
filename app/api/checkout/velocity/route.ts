@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { events, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
+import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { checkoutLimiter } from "@/lib/rate-limit"
 import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
@@ -147,6 +147,13 @@ const VendorAddonItem = z.object({
   quantity: z.number().int().positive().max(10),
 })
 
+const MerchItem = z.object({
+  kind: z.literal("merch"),
+  itemId: z.string().uuid(),
+  quantity: z.number().int().positive().max(10),
+  size: z.string().max(40).optional(),
+})
+
 const Body = z.object({
   email: z.string().email().toLowerCase().trim(),
   name: z.string().min(1).max(120).trim(),
@@ -154,7 +161,7 @@ const Body = z.object({
   paymentMethod: z.enum(["velocity-ecocash", "velocity-card"]),
   eventSlug: z.string().min(1).max(160),
   items: z
-    .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))
+    .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem, MerchItem]))
     .min(1)
     .max(30),
   promoCode: z.string().max(40).optional(),
@@ -202,6 +209,7 @@ export async function POST(req: Request) {
 
   const ticketItems = parsed.items.filter((i): i is typeof i & { kind: "ticket" } => i.kind === "ticket")
   const vendorAddonItems = parsed.items.filter((i): i is typeof i & { kind: "vendor_addon" } => i.kind === "vendor_addon")
+  const merchOrderItems = parsed.items.filter((i): i is typeof i & { kind: "merch" } => i.kind === "merch")
 
   // Velocity sales orders need at least one ticket item to compute a valid unit price.
   if (ticketItems.length === 0) {
@@ -209,7 +217,7 @@ export async function POST(req: Request) {
   }
 
   // Fetch tiers and vendor addon prices in parallel — independent queries
-  const [tiers, listingRows] = await Promise.all([
+  const [tiers, listingRows, merchRows] = await Promise.all([
     db.select().from(ticketTiers).where(eq(ticketTiers.eventId, event.id)),
     vendorAddonItems.length > 0
       ? db
@@ -224,6 +232,20 @@ export async function POST(req: Request) {
           .leftJoin(vendors, eq(vendorListings.vendorId, vendors.id))
           .where(inArray(vendorListings.id, vendorAddonItems.map((i) => i.listingId)))
       : Promise.resolve([] as { id: string; price: unknown; currency: string | null; packageName: string; businessName: string | null }[]),
+    merchOrderItems.length > 0
+      ? db
+          .select({
+            id: merchItems.id,
+            name: merchItems.name,
+            price: merchItems.price,
+            currency: merchItems.currency,
+            sizes: merchItems.sizes,
+            stockQuantity: merchItems.stockQuantity,
+            soldQuantity: merchItems.soldQuantity,
+          })
+          .from(merchItems)
+          .where(and(eq(merchItems.eventId, event.id), eq(merchItems.active, true), inArray(merchItems.id, merchOrderItems.map((i) => i.itemId))))
+      : Promise.resolve([] as { id: string; name: string; price: unknown; currency: string | null; sizes: string[] | null; stockQuantity: number | null; soldQuantity: number | null }[]),
   ])
 
   const availabilityByTier = await getTierAvailability(tiers.map((t) => t.id))
@@ -270,6 +292,19 @@ export async function POST(req: Request) {
     }
   }
 
+  const merchById = new Map(merchRows.map((item) => [item.id, item]))
+  for (const item of merchOrderItems) {
+    const merch = merchById.get(item.itemId)
+    if (!merch) return NextResponse.json({ error: "Merch item is no longer available" }, { status: 400 })
+    if (item.size && !(merch.sizes ?? []).includes(item.size)) {
+      return NextResponse.json({ error: `Size ${item.size} is not available for ${merch.name}` }, { status: 400 })
+    }
+    const available = Number(merch.stockQuantity ?? 0) - Number(merch.soldQuantity ?? 0)
+    if (available < item.quantity) {
+      return NextResponse.json({ error: `Only ${Math.max(0, available)} ${merch.name} item(s) left` }, { status: 400 })
+    }
+  }
+
   const allCurrencies = new Set<string>()
   for (const item of ticketItems) {
     const t = tierById.get(item.tierId)!
@@ -278,6 +313,10 @@ export async function POST(req: Request) {
   for (const item of vendorAddonItems) {
     const v = vendorAddonPrices.get(item.listingId)!
     allCurrencies.add(v.currency)
+  }
+  for (const item of merchOrderItems) {
+    const merch = merchById.get(item.itemId)!
+    allCurrencies.add(merch.currency ?? "USD")
   }
 
   if (allCurrencies.size > 1) {
@@ -309,6 +348,10 @@ export async function POST(req: Request) {
     const v = vendorAddonPrices.get(item.listingId)!
     total += v.price * item.quantity
   }
+  for (const item of merchOrderItems) {
+    const merch = merchById.get(item.itemId)!
+    total += Number(merch.price) * item.quantity
+  }
 
   let appliedPromo: { code: string; type: string; value: string; discount: number; id: string } | null = null
   if (parsed.promoCode) {
@@ -338,28 +381,32 @@ export async function POST(req: Request) {
   }
 
   let questionResponseMeta: Record<string, string> | undefined
-  if (parsed.questionResponses && Object.keys(parsed.questionResponses).length > 0) {
-    const eventQuestionsList = await db
-      .select({ id: ticketQuestions.id, required: ticketQuestions.required })
-      .from(ticketQuestions)
-      .where(eq(ticketQuestions.eventId, event.id))
-
-    const questionMap = new Map(eventQuestionsList.map((q) => [q.id, q]))
-    for (const [qid, answer] of Object.entries(parsed.questionResponses)) {
-      const q = questionMap.get(qid)
-      if (!q) {
-        return NextResponse.json({ error: `Invalid question ID: ${qid}` }, { status: 400 })
-      }
-      if (q.required && !answer.trim()) {
-        return NextResponse.json({ error: `Required question missing answer` }, { status: 400 })
-      }
+  const eventQuestionsList = await db
+    .select({ id: ticketQuestions.id, required: ticketQuestions.required })
+    .from(ticketQuestions)
+    .where(eq(ticketQuestions.eventId, event.id))
+  const questionResponses = parsed.questionResponses ?? {}
+  const questionMap = new Map(eventQuestionsList.map((q) => [q.id, q]))
+  for (const [qid, answer] of Object.entries(questionResponses)) {
+    const q = questionMap.get(qid)
+    if (!q) return NextResponse.json({ error: `Invalid question ID: ${qid}` }, { status: 400 })
+    if (q.required && !answer.trim()) {
+      return NextResponse.json({ error: "Required question missing answer" }, { status: 400 })
     }
-    questionResponseMeta = parsed.questionResponses
   }
+  for (const q of eventQuestionsList) {
+    if (q.required && !questionResponses[q.id]?.trim()) {
+      return NextResponse.json({ error: "Required question missing answer" }, { status: 400 })
+    }
+  }
+  if (Object.keys(questionResponses).length > 0) questionResponseMeta = questionResponses
 
   const baseMeta = {
     ...(appliedPromo ? { promo: appliedPromo } : {}),
     ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
+    ...(merchOrderItems.length > 0
+      ? { merchSelections: merchOrderItems.map((item) => ({ itemId: item.itemId, size: item.size ?? null })) }
+      : {}),
     // Phase 2 rewrites order metadata from baseMeta, so the reservation flag
     // must live here — otherwise it's wiped after order creation, delivery
     // double-increments soldQuantity, and expiry never releases the seats.
@@ -482,6 +529,7 @@ export async function POST(req: Request) {
       const orderItemValues: {
         orderId: string
         tierId?: string
+        merchItemId?: string
         type: string
         quantity: number
         unitPrice: string
@@ -505,10 +553,23 @@ export async function POST(req: Request) {
         const v = vendorAddonPrices.get(item.listingId)!
         orderItemValues.push({
           orderId: order.id,
+          merchItemId: item.listingId,
           type: "vendor_addon",
           quantity: item.quantity,
           unitPrice: v.price.toFixed(2),
           total: (v.price * item.quantity).toFixed(2),
+        })
+      }
+
+      for (const item of merchOrderItems) {
+        const merch = merchById.get(item.itemId)!
+        orderItemValues.push({
+          orderId: order.id,
+          merchItemId: merch.id,
+          type: "merch",
+          quantity: item.quantity,
+          unitPrice: Number(merch.price).toFixed(2),
+          total: (Number(merch.price) * item.quantity).toFixed(2),
         })
       }
 
@@ -530,6 +591,19 @@ export async function POST(req: Request) {
         if (!reserved) {
           throw new Error(`"${tier.name}" just sold out — please choose fewer tickets or a different tier`)
         }
+      }
+
+      for (const item of merchOrderItems) {
+        const merch = merchById.get(item.itemId)!
+        const [reserved] = await tx
+          .update(merchItems)
+          .set({ soldQuantity: sql`${merchItems.soldQuantity} + ${item.quantity}` })
+          .where(and(
+            eq(merchItems.id, merch.id),
+            sql`COALESCE(${merchItems.soldQuantity}, 0) + ${item.quantity} <= COALESCE(${merchItems.stockQuantity}, 0)`,
+          ))
+          .returning({ id: merchItems.id })
+        if (!reserved) throw new Error(`"${merch.name}" just sold out — please try again`)
       }
 
       if (appliedPromo) {

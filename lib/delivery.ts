@@ -230,11 +230,7 @@ async function _deliver(orderId: string): Promise<{
           .where(inArray(tickets.id, expectedTicketIds))
 
         const qrResults = await Promise.all(
-          orderTickets.map((t) =>
-            generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl).catch(
-              () => t.qrCode ?? `${orderId}-${t.id}`,
-            ),
-          ),
+          orderTickets.map((t) => generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl)),
         )
 
         // Build PDF ticket data directly — no re-query of the tickets table
@@ -323,7 +319,7 @@ async function _deliver(orderId: string): Promise<{
             existingPdfData.map(async (t) => ({
               id: t.id,
               tierId: t.tierId,
-              qrCode: await generateTicketQrImageDataUrl(t.qrCode ?? `${orderId}-${t.id}`, t.id, orderId, baseUrl),
+              qrCode: await generateTicketQrImageDataUrl(t.qrCode, t.id, orderId, baseUrl),
               tierName: t.tierName ?? "General Admission",
             })),
           )

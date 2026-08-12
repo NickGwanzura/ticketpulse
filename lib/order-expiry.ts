@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, promoCodes } from "@/db/schema"
 import { log } from "@/lib/logger"
@@ -13,11 +13,15 @@ import { log } from "@/lib/logger"
  * Returns true if this call expired the order, false if another process
  * already moved it out of 'pending' (paid, cancelled, or expired).
  */
-export async function expireOrderAndReleaseInventory(orderId: string): Promise<boolean> {
+export async function expireOrderAndReleaseInventory(orderId: string, reason = "payment_timeout"): Promise<boolean> {
   const [claimed] = await db
     .update(orders)
-    .set({ status: "expired", updatedAt: new Date() })
-    .where(and(eq(orders.id, orderId), eq(orders.status, "pending")))
+    .set({
+      status: "expired",
+      updatedAt: new Date(),
+      metadata: sql`jsonb_set(jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{archive,status}', '"archived"'::jsonb), '{archive,reason}', to_jsonb(${reason}::text))`,
+    })
+    .where(and(eq(orders.id, orderId), inArray(orders.status, ["pending", "awaiting_verification"])))
     .returning({ id: orders.id, metadata: orders.metadata })
 
   if (!claimed) return false

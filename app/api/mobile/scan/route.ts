@@ -7,6 +7,7 @@ import { apiLimiter } from "@/lib/rate-limit"
 
 const ScanSchema = z.object({
   code: z.string().min(1).max(2000),
+  eventId: z.string().uuid().optional(),
 })
 
 export async function POST(req: Request) {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
   }
 
   const result = await markTicketScanned(parsed.data.code, {
+    eventId: parsed.data.eventId ?? null,
     scannerUserId: session.user.id,
     source: "mobile_api",
     userAgent: req.headers.get("user-agent"),

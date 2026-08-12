@@ -79,11 +79,10 @@ function CheckoutSuccessInner() {
   const eventTitle = order.items[0]?.eventTitle ?? "TicketPulse event"
 
   const calendarUrl = (() => {
-    const start = new Date(order.createdAt)
-    start.setDate(start.getDate() + 7)
-    const end = new Date(start.getTime() + 3 * 60 * 60 * 1000)
+    const start = new Date(order.items.find((item) => item.eventStartsAt)?.eventStartsAt ?? order.createdAt)
+    const end = new Date(order.items.find((item) => item.eventEndsAt)?.eventEndsAt ?? (start.getTime() + 3 * 60 * 60 * 1000))
     const fmt = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, "")
-    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent("Order " + order.id + " · TicketPulse")}`
+    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${fmt(start)}/${fmt(end)}&location=${encodeURIComponent(order.items[0]?.eventVenue ?? "")}&details=${encodeURIComponent("Order " + order.id + " · TicketPulse")}`
   })()
 
   const shareOrder = async () => {
@@ -122,7 +121,7 @@ function CheckoutSuccessInner() {
             You&apos;re going!
           </h1>
           <p className="tp-pop-in tp-pop-in-3 mt-3 text-[15px] md:text-[16px] text-ink-2 max-w-lg mx-auto leading-relaxed">
-            We sent a confirmation to <span className="font-semibold text-ink">{order.contact.email}</span>. Your tickets are also waiting in your account.
+            We sent a confirmation to <span className="font-semibold text-ink">{order.contact.email}</span>. Save this order link or use email lookup to recover your tickets on another device.
           </p>
           <p className="tp-pop-in tp-pop-in-4 mt-5 inline-flex items-center gap-2 text-[12px] text-ink-3 font-mono">
             <span>Order</span>
@@ -161,7 +160,7 @@ function CheckoutSuccessInner() {
             <div className="space-y-3">
               {tickets.map((line) => (
                 line.kind === "ticket" ? Array.from({ length: line.qty }).map((_, i) => {
-                  const qrValue = qrByTier.get(line.tierId)?.[i] ?? `${order.id}-${line.key}-${i}`
+                  const qrValue = qrByTier.get(line.tierId)?.[i]
                   const hasRealQr = !!qrByTier.get(line.tierId)?.[i]
                   return (
                   <div key={`${line.key}-${i}`} className="relative rounded-2xl border border-line bg-paper overflow-hidden">
@@ -171,7 +170,7 @@ function CheckoutSuccessInner() {
                         <p className="mt-1.5 text-[16px] font-semibold tracking-tight text-ink line-clamp-1">{line.eventTitle}</p>
                         <p className="text-[13px] text-ink-2">{line.tierName}</p>
                         <p className="mt-3 text-[13px] text-ink-3 inline-flex items-center gap-1.5">
-                          <Calendar size={12} /> {formatDate(order.createdAt)}
+                          <Calendar size={12} /> {line.eventStartsAt ? formatDate(line.eventStartsAt) : "Event date unavailable"}
                         </p>
                         <Link
                           href={`/events/${line.eventSlug}`}
@@ -187,7 +186,11 @@ function CheckoutSuccessInner() {
                         <span className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
                       </div>
                       <div className="p-4 md:p-5 bg-paper-2 flex flex-col items-center justify-center gap-2">
-                        <QrCode value={qrValue} size={120} className="rounded-lg ring-1 ring-line" />
+                        {hasRealQr ? <QrCode value={qrValue!} size={120} className="rounded-lg ring-1 ring-line" /> : (
+                          <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-[11px] font-medium text-amber-800">
+                            {ticketsLoading ? "Generating ticket…" : "Ticket QR unavailable — check your email"}
+                          </div>
+                        )}
                         {!hasRealQr && order.status === "paid" && ticketsLoading && (
                           <p className="text-[10px] text-ink-3 inline-flex items-center gap-1">
                             <Loader2 size={10} className="animate-spin" /> Generating ticket…
@@ -215,7 +218,7 @@ function CheckoutSuccessInner() {
               <li key={line.key} className="flex items-baseline justify-between gap-3 text-[13px]">
                 <div className="min-w-0">
                   <p className="font-medium text-ink line-clamp-1">
-                    {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.kind === "shuttle" ? line.description : line.packageName}
+                    {line.kind === "ticket" ? line.tierName : line.kind === "merch" ? line.name : line.packageName}
                   </p>
                   <p className="text-ink-3 text-[12px]">{line.eventTitle} · ×{line.qty}</p>
                 </div>

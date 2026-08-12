@@ -18,7 +18,7 @@ import SaveFavoriteButton from "@/components/events/SaveFavoriteButton"
 import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import { db } from "@/db"
-import { events, orders, reviews, ticketTiers, tickets, users, vendorListings, vendors } from "@/db/schema"
+import { events, merchItems, orders, reviews, ticketTiers, tickets, users, vendorListings, vendors } from "@/db/schema"
 import { and, desc, eq, or, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -146,8 +146,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const eventEndedAt = row.endsAt ?? row.startsAt
   const isPastEvent = eventEndedAt.getTime() < now.getTime()
 
-  const [tierRows, vendorListingRows, reviewRows] = await Promise.all([
+  const [tierRows, merchRows, vendorListingRows, reviewRows] = await Promise.all([
     db.select().from(ticketTiers).where(eq(ticketTiers.eventId, row.id)),
+    db.select().from(merchItems).where(and(eq(merchItems.eventId, row.id), eq(merchItems.active, true))),
     db
       .select({
         id: vendorListings.id,
@@ -609,7 +610,25 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
             <ReviewHighlights reviews={reviewRows} title={`Reviews for ${row.title}`} compact />
 
-            <MerchSection items={[]} eventTitle={row.title} />
+            <MerchSection
+              items={merchRows.map((item) => ({
+                ...item,
+                price: Number(item.price),
+                currency: item.currency ?? "USD",
+                stockQuantity: item.stockQuantity ?? 0,
+                soldQuantity: item.soldQuantity ?? 0,
+                sizes: item.sizes ?? [],
+                colors: item.colors ?? [],
+                images: item.images ?? [],
+                active: item.active ?? false,
+                deliveryAvailable: item.deliveryAvailable ?? false,
+                pickupAtEvent: item.pickupAtEvent ?? true,
+              }))}
+              eventSlug={row.slug}
+              eventTitle={row.title}
+              eventStartsAt={row.startsAt.toISOString()}
+              eventVenue={[row.venue, row.city].filter(Boolean).join(", ")}
+            />
             <VendorSection listings={vendorListingsData} eventId={row.id} eventSlug={row.slug} eventTitle={row.title} isOrganizer={isEventOwner} />
             <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
@@ -628,6 +647,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 eventSlug={row.slug}
                 eventTitle={row.title}
                 eventStartsAt={row.startsAt}
+                eventEndsAt={row.endsAt}
                 eventVenue={[row.venue, row.city].filter(Boolean).join(", ")}
                 emoji={emoji}
                 tiers={tiers}
