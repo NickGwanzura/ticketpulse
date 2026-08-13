@@ -59,6 +59,9 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 const NAV_FLAT: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
+const MOBILE_PRIMARY_HREFS = new Set(["/admin", "/admin/payments", "/admin/events", "/admin/orders"])
+const MOBILE_PRIMARY = NAV_FLAT.filter((item) => MOBILE_PRIMARY_HREFS.has(item.href))
+const MOBILE_MORE = NAV_FLAT.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href))
 
 export default function Sidebar({
   name,
@@ -95,14 +98,14 @@ export default function Sidebar({
 
         {/* Admin identity */}
         <div className="px-4 pt-5 pb-4 border-b border-white/10">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/30 mb-2">Admin</p>
+          <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-white/60 mb-2">Admin</p>
           <div className="flex items-center gap-2.5">
             <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-white/10 text-white text-[12px] font-bold shrink-0">
               {initials || <Shield size={14} />}
             </span>
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-white truncate">{name}</p>
-              <p className="text-[11px] text-white/40 truncate">{email}</p>
+              <p className="text-[11px] text-white/65 truncate">{email}</p>
             </div>
             <div className="ml-auto shrink-0">
               <NotificationBell />
@@ -115,7 +118,7 @@ export default function Sidebar({
           {NAV_GROUPS.map((group, gi) => (
             <div key={gi}>
               {group.label && (
-                <p className="px-3 mb-1 text-[10px] font-semibold tracking-[0.14em] uppercase text-white/30">
+                <p className="px-3 mb-1 text-[11px] font-semibold tracking-[0.14em] uppercase text-white/60">
                   {group.label}
                 </p>
               )}
@@ -127,13 +130,14 @@ export default function Sidebar({
                     <Link
                       key={href}
                       href={href}
-                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all ${
+                      aria-current={active ? "page" : undefined}
+                      className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all ${
                         active
                           ? "bg-white/10 text-white shadow-sm"
-                          : "text-white/55 hover:text-white hover:bg-white/[0.06]"
+                          : "text-white/70 hover:text-white hover:bg-white/[0.06]"
                       }`}
                     >
-                      <Icon size={14} className={active ? "text-white" : "text-white/40"} />
+                      <Icon size={14} className={active ? "text-white" : "text-white/60"} />
                       {label}
                       {!!badge && (
                         <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-[10px] font-bold text-[#0a2540]">
@@ -153,7 +157,7 @@ export default function Sidebar({
         <div className="px-3 pb-4 pt-2 border-t border-white/10 flex items-center gap-1">
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex-1 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
+            className="flex min-h-11 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
           >
             <LogOut size={14} className="text-white/30" /> Sign out
           </button>
@@ -169,7 +173,7 @@ export default function Sidebar({
               {initials || <Shield size={12} />}
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/30 leading-none">Admin</p>
+            <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-white/60 leading-none">Admin</p>
               <p className="text-[13px] font-semibold text-white truncate mt-0.5">{name}</p>
             </div>
           </div>
@@ -177,27 +181,28 @@ export default function Sidebar({
             <NotificationBell />
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-3 py-1.5 text-[12px] font-medium text-white/60 hover:text-white hover:border-white/40 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-[12px] font-medium text-white/80 hover:text-white hover:border-white/50 transition-colors"
             >
               <LogOut size={12} /> Sign out
             </button>
           </div>
         </div>
-        <nav className="flex items-center gap-1 px-2 py-1.5 overflow-x-auto no-scrollbar">
-          {NAV_FLAT.map(({ label, href, icon: Icon, badgeKey }) => {
+        <nav aria-label="Admin navigation" className="flex items-center gap-1 px-2 py-2">
+          {MOBILE_PRIMARY.map(({ label, href, icon: Icon, badgeKey }) => {
             const active = isActive(href)
             const badge = badgeValue(badgeKey)
             return (
               <Link
                 key={href}
                 href={href}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] whitespace-nowrap transition-colors ${
+                aria-current={active ? "page" : undefined}
+                className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] whitespace-nowrap transition-colors ${
                   active
                     ? "bg-white/10 text-white font-semibold"
-                    : "text-white/50 hover:text-white hover:bg-white/[0.06] font-medium"
+                    : "text-white/70 hover:text-white hover:bg-white/[0.06] font-medium"
                 }`}
               >
-                <Icon size={13} className={active ? "text-white" : "text-white/40"} />
+                <Icon size={13} className={active ? "text-white" : "text-white/60"} />
                 {label}
                 {!!badge && (
                   <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-[9px] font-bold text-[#0a2540]">
@@ -207,6 +212,29 @@ export default function Sidebar({
               </Link>
             )
           })}
+          <details className="relative shrink-0">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white">
+              More
+            </summary>
+            <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-xl border border-white/15 bg-[#0a2540] p-2 shadow-xl">
+              {MOBILE_MORE.map(({ label, href, icon: Icon, badgeKey }) => {
+                const active = isActive(href)
+                const badge = badgeValue(badgeKey)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-[13px] ${active ? "bg-white/10 text-white font-semibold" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                  >
+                    <Icon size={14} className={active ? "text-white" : "text-white/60"} />
+                    <span className="flex-1">{label}</span>
+                    {!!badge && <span className="inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-[#0a2540]">{badge}</span>}
+                  </Link>
+                )
+              })}
+            </div>
+          </details>
         </nav>
       </div>
     </>
