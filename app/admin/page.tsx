@@ -177,6 +177,7 @@ export default async function AdminOverviewPage() {
       duplicate_ledgers AS (
         SELECT order_id
         FROM payment_ledger
+        WHERE local_status IN ('paid', 'completed', 'success', 'paid_success')
         GROUP BY order_id
         HAVING COUNT(*) > 1
       )

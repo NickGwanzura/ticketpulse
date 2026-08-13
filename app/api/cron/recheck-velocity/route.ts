@@ -53,13 +53,12 @@ export async function POST(request: Request) {
     .limit(MAX_ORDERS_PER_RUN)
 
   if (targetOrders.length === 0) {
-    log.info("cron/recheck-velocity — no pending Velocity orders to recheck")
-    return NextResponse.json({ checked: 0, fixed: 0, errors: 0 })
+    log.info("cron/recheck-velocity — no pending Velocity orders to recheck; continuing with delivery retries")
+  } else {
+    log.info(`cron/recheck-velocity — found ${targetOrders.length} orders to recheck`, {
+      ids: targetOrders.map((o) => o.id),
+    })
   }
-
-  log.info(`cron/recheck-velocity — found ${targetOrders.length} orders to recheck`, {
-    ids: targetOrders.map((o) => o.id),
-  })
 
   let fixedCount = 0
   let errorCount = 0
