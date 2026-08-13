@@ -5,6 +5,9 @@ import { S3Client, PutBucketCorsCommand, GetBucketCorsCommand } from "@aws-sdk/c
 
 const ALLOWED_ORIGINS = [
   "https://ticketpulse.tech",
+  "https://www.ticketpulse.tech",
+  "http://localhost:3000",
+  "http://localhost:5000",
 ]
 
 async function main() {

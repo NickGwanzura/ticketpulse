@@ -148,14 +148,15 @@ function MemberForm({ eventId, member, onDone }: MemberFormProps) {
           />
         </div>
         <div>
-          <Label>Social / Website URL</Label>
+          <Label>Instagram profile</Label>
           <input
             name="socialUrl"
-            type="url"
+            type="text"
             defaultValue={member?.socialUrl ?? ""}
-            placeholder="https://instagram.com/…"
+            placeholder="@artist or https://instagram.com/artist"
             className={inputCls()}
           />
+          <p className="mt-1 text-[11px] text-ink-3">Shown as a profile link on the public event page.</p>
         </div>
       </div>
 
@@ -249,7 +250,7 @@ function MemberCard({ member, eventId, onEdit, dragHandleProps }: MemberCardProp
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-lg p-1.5 text-ink-3 hover:text-brand-600 hover:bg-brand-50 transition"
-                title="Open social link"
+                title="Open Instagram profile"
               >
                 <ExternalLink size={13} />
               </a>

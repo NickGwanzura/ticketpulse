@@ -52,7 +52,7 @@ type MultiProps = CommonProps & {
 
 type Props = SingleProps | MultiProps
 
-type SignResponse = { uploadUrl: string; publicUrl: string; key: string }
+type UploadResponse = { publicUrl: string; key: string }
 
 type UploadState = {
   id: string
@@ -76,22 +76,36 @@ function formatBytes(bytes: number) {
   return `${bytes} B`
 }
 
-function uploadToR2(uploadUrl: string, file: File, onProgress: (p: number) => void): Promise<void> {
-  // fetch() does not surface upload progress in browsers, so we use XHR.
+function uploadToServer(
+  kind: UploadKind,
+  file: File,
+  vendorId: string | undefined,
+  eventId: string | undefined,
+  onProgress: (p: number) => void,
+): Promise<UploadResponse> {
   return new Promise((resolve, reject) => {
+    const body = new FormData()
+    body.append("kind", kind)
+    if (vendorId) body.append("vendorId", vendorId)
+    if (eventId) body.append("eventId", eventId)
+    body.append("file", file)
+
     const xhr = new XMLHttpRequest()
-    xhr.open("PUT", uploadUrl, true)
-    xhr.setRequestHeader("Content-Type", file.type)
+    xhr.open("POST", "/api/uploads/upload", true)
+    xhr.timeout = 120_000
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) onProgress(ev.loaded / ev.total)
     }
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve()
-      else reject(new Error(`Upload failed with status ${xhr.status}`))
+      let data: Partial<UploadResponse> & { error?: string } = {}
+      try { data = JSON.parse(xhr.responseText) } catch { /* handled below */ }
+      if (xhr.status >= 200 && xhr.status < 300 && data.publicUrl) resolve(data as UploadResponse)
+      else reject(new Error(data.error ?? `Upload failed with status ${xhr.status}`))
     }
-    xhr.onerror = () => reject(new Error("Network error during upload"))
+    xhr.onerror = () => reject(new Error("Network error during upload. Check your connection and retry."))
     xhr.onabort = () => reject(new Error("Upload aborted"))
-    xhr.send(file)
+    xhr.ontimeout = () => reject(new Error("Upload timed out. Please retry."))
+    xhr.send(body)
   })
 }
 
@@ -163,52 +177,11 @@ export default function ImageUploader(props: Props) {
       setUploads((u) => [...u, { id, filename: file.name, progress: 0 }])
 
       try {
-        // 1) Presign
-        const signRes = await fetch("/api/uploads/sign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            kind,
-            filename: file.name,
-            contentType: file.type,
-            contentLength: file.size,
-            vendorId,
-            eventId,
-          }),
-        })
-
-        if (!signRes.ok) {
-          let msg = `Sign failed (${signRes.status})`
-          try {
-            const data = await signRes.json()
-            if (typeof data?.error === "string") msg = data.error
-          } catch { /* ignore */ }
-          throw new Error(msg)
-        }
-
-        const { uploadUrl, publicUrl, key }: SignResponse = await signRes.json()
-
-        // 2) PUT to R2 with progress
-        await uploadToR2(uploadUrl, file, (p) => {
+        // Upload through the same-origin server route. This avoids browser CORS
+        // failures against R2 while keeping the bucket credentials server-side.
+        const { publicUrl } = await uploadToServer(kind, file, vendorId, eventId, (p) => {
           setUploads((u) => u.map((it) => (it.id === id ? { ...it, progress: p } : it)))
         })
-
-        // 2b) Confirm what R2 actually received matches the declared size —
-        // the PUT above only proves *a* file uploaded, not that it respected
-        // the cap the presign step checked against the client's own claim.
-        const confirmRes = await fetch("/api/uploads/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key, kind }),
-        })
-        if (!confirmRes.ok) {
-          let msg = "Upload was rejected after review"
-          try {
-            const data = await confirmRes.json()
-            if (typeof data?.error === "string") msg = data.error
-          } catch { /* ignore */ }
-          throw new Error(msg)
-        }
 
         // 3) Mark complete & append to values
         setUploads((u) => u.filter((it) => it.id !== id))

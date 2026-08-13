@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Calendar, CheckCircle2, Clock, DollarSign, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
+import { Calendar, CheckCircle2, Clock, DollarSign, ExternalLink, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
 // Cuts DB load by ~95% for the most-hit public pages while
@@ -18,8 +18,8 @@ import SaveFavoriteButton from "@/components/events/SaveFavoriteButton"
 import ReviewHighlights from "@/components/reviews/ReviewHighlights"
 import MobileBuyBar from "@/components/MobileBuyBar"
 import { db } from "@/db"
-import { events, merchItems, orders, reviews, ticketTiers, tickets, users, vendorListings, vendors } from "@/db/schema"
-import { and, desc, eq, or, sql } from "drizzle-orm"
+import { eventLineup, events, merchItems, orders, reviews, ticketTiers, tickets, users, vendorListings, vendors } from "@/db/schema"
+import { and, asc, desc, eq, or, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { getTierAvailability } from "@/lib/ticket-availability"
@@ -146,7 +146,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const eventEndedAt = row.endsAt ?? row.startsAt
   const isPastEvent = eventEndedAt.getTime() < now.getTime()
 
-  const [tierRows, merchRows, vendorListingRows, reviewRows] = await Promise.all([
+  const [tierRows, merchRows, vendorListingRows, reviewRows, lineupRows] = await Promise.all([
     db.select().from(ticketTiers).where(eq(ticketTiers.eventId, row.id)),
     db.select().from(merchItems).where(and(eq(merchItems.eventId, row.id), eq(merchItems.active, true))),
     db
@@ -185,6 +185,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       ))
       .orderBy(desc(reviews.featured), desc(reviews.createdAt))
       .limit(3),
+    db
+      .select({
+        id: eventLineup.id,
+        name: eventLineup.name,
+        role: eventLineup.role,
+        bio: eventLineup.bio,
+        imageUrl: eventLineup.imageUrl,
+        socialUrl: eventLineup.socialUrl,
+      })
+      .from(eventLineup)
+      .where(eq(eventLineup.eventId, row.id))
+      .orderBy(asc(eventLineup.displayOrder), asc(eventLineup.createdAt)),
   ])
 
   const availabilityByTier = await getTierAvailability(tierRows.map((t) => t.id))
@@ -530,6 +542,48 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   ))}
                 </div>
               </div>
+            )}
+
+            {lineupRows.length > 0 && (
+              <section className="rounded-2xl border border-line bg-paper p-6 md:p-8">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-3">On the lineup</p>
+                    <h2 className="mt-1 text-[22px] font-bold tracking-tight text-ink">Meet the artists</h2>
+                  </div>
+                  <ExternalLink size={22} className="text-pink-600" aria-hidden="true" />
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {lineupRows.map((member) => (
+                    <article key={member.id} className="rounded-2xl border border-line bg-white p-4">
+                      <div className="flex items-start gap-3">
+                        {member.imageUrl ? (
+                          <img src={member.imageUrl} alt={member.name} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+                        ) : (
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-paper-2 text-[16px] font-bold text-ink-2">
+                            {member.name.slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="truncate text-[15px] font-semibold text-ink">{member.name}</h3>
+                          {member.role && <p className="mt-0.5 text-[12px] text-ink-3">{member.role}</p>}
+                        </div>
+                      </div>
+                      {member.bio && <p className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-ink-2">{member.bio}</p>}
+                      {member.socialUrl && (
+                        <a
+                          href={member.socialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-pink-200 bg-pink-50 px-3.5 text-[12px] font-semibold text-pink-700 transition hover:bg-pink-100"
+                        >
+                          <ExternalLink size={14} /> View Instagram profile
+                        </a>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
             )}
 
             {isPastEvent && (

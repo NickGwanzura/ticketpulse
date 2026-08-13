@@ -12,6 +12,25 @@ function lineupPath(eventId: string) {
   return `/organizer/events/${eventId}/lineup`
 }
 
+function normalizeSocialUrl(value: string | undefined): string | null {
+  const raw = value?.trim()
+  if (!raw) return null
+  const handle = raw.replace(/^@/, "")
+  if (/^[a-zA-Z0-9._]{1,30}$/.test(handle)) return `https://www.instagram.com/${handle}/`
+  try {
+    const url = new URL(raw)
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null
+    if (["instagram.com", "www.instagram.com"].includes(url.hostname.toLowerCase())) {
+      const profile = url.pathname.split("/").filter(Boolean)[0]
+      if (!profile || !/^[a-zA-Z0-9._]{1,30}$/.test(profile)) return null
+      return `https://www.instagram.com/${profile}/`
+    }
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
 export async function addLineupMemberAction(
   eventId: string,
   formData: FormData,
@@ -25,7 +44,9 @@ export async function addLineupMemberAction(
   const role = formData.get("role")?.toString().trim() || null
   const bio = formData.get("bio")?.toString().trim() || null
   const imageUrl = formData.get("imageUrl")?.toString().trim() || null
-  const socialUrl = formData.get("socialUrl")?.toString().trim() || null
+  const rawSocialUrl = formData.get("socialUrl")?.toString()
+  const socialUrl = normalizeSocialUrl(rawSocialUrl)
+  if (rawSocialUrl?.trim() && !socialUrl) return { ok: false, error: "Enter an Instagram handle or a valid profile URL." }
 
   // Get next display order
   const existing = await db
@@ -63,7 +84,9 @@ export async function updateLineupMemberAction(
   const role = formData.get("role")?.toString().trim() || null
   const bio = formData.get("bio")?.toString().trim() || null
   const imageUrl = formData.get("imageUrl")?.toString().trim() || null
-  const socialUrl = formData.get("socialUrl")?.toString().trim() || null
+  const rawSocialUrl = formData.get("socialUrl")?.toString()
+  const socialUrl = normalizeSocialUrl(rawSocialUrl)
+  if (rawSocialUrl?.trim() && !socialUrl) return { ok: false, error: "Enter an Instagram handle or a valid profile URL." }
 
   await db
     .update(eventLineup)
