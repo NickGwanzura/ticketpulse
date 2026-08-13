@@ -144,7 +144,7 @@ export default function VenueMap({ lat, lng, venue, address, city, country, goog
           </div>
 
           {hasCoords && (
-            <p className="text-[10px] text-ink-3/60 tracking-tight">
+            <p className="text-[10px] text-ink-3 tracking-tight">
               {latNum.toFixed(5)}, {lngNum.toFixed(5)}
             </p>
           )}

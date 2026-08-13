@@ -56,6 +56,42 @@
   --color-brand-900: #6d2f1d;
 }
 
+/* Semantic colors used by utility classes that predate the theme tokens.
+ * Keeping these in one layer prevents light-mode status/link colors from
+ * becoming muddy when the OS switches the app to a dark surface. */
+:root {
+  --tp-link: var(--color-navy);
+  --tp-link-hover: var(--color-navy-700);
+  --tp-accent-text: var(--color-brand-600);
+  --tp-accent-strong-text: var(--color-brand-700);
+  --tp-info-text: #0369a1;
+  --tp-info-surface: #eff6ff;
+  --tp-sky-text: #0369a1;
+  --tp-sky-surface: #f0f9ff;
+  --tp-success-text: #047857;
+  --tp-success-surface: #ecfdf5;
+  --tp-green-text: var(--color-green-700);
+  --tp-green-surface: var(--color-green-50);
+  --tp-warning-text: #b45309;
+  --tp-warning-surface: #fffbeb;
+  --tp-danger-text: #be123c;
+  --tp-danger-surface: #fff1f2;
+  --tp-error-text: #b91c1c;
+  --tp-error-surface: #fef2f2;
+  --tp-orange-text: #c2410c;
+  --tp-orange-surface: #fff7ed;
+  --tp-purple-text: #6d28d9;
+  --tp-purple-surface: #faf5ff;
+  --tp-pink-text: #be185d;
+  --tp-pink-surface: #fdf2f8;
+  --tp-cyan-text: #0e7490;
+  --tp-cyan-surface: #ecfeff;
+  --tp-lime-text: #4d7c0f;
+  --tp-lime-surface: #f7fee7;
+  --tp-slate-text: #334155;
+  --tp-slate-surface: #f8fafc;
+}
+
 html { color-scheme: light; }
 
 /*
@@ -79,6 +115,36 @@ html { color-scheme: light; }
 
     --color-line: #2a3441;
     --color-line-2: #384252;
+    --tp-link: #b7c1cc;
+    --tp-link-hover: #eef2f6;
+    --tp-accent-text: #ffb38f;
+    --tp-accent-strong-text: #ffb38f;
+    --tp-info-text: #93c5fd;
+    --tp-info-surface: #17263b;
+    --tp-sky-text: #7dd3fc;
+    --tp-sky-surface: #122a3d;
+    --tp-success-text: #6ee7b7;
+    --tp-success-surface: #112a24;
+    --tp-green-text: #86efac;
+    --tp-green-surface: #17261f;
+    --tp-warning-text: #fcd34d;
+    --tp-warning-surface: #2f2612;
+    --tp-danger-text: #fda4af;
+    --tp-danger-surface: #2e1720;
+    --tp-error-text: #fca5a5;
+    --tp-error-surface: #311719;
+    --tp-orange-text: #ffb38f;
+    --tp-orange-surface: #321d16;
+    --tp-purple-text: #c4b5fd;
+    --tp-purple-surface: #241b35;
+    --tp-pink-text: #f9a8d4;
+    --tp-pink-surface: #321c2a;
+    --tp-cyan-text: #67e8f9;
+    --tp-cyan-surface: #102a35;
+    --tp-lime-text: #bef264;
+    --tp-lime-surface: #293318;
+    --tp-slate-text: #cbd5e1;
+    --tp-slate-surface: #26313f;
     color-scheme: dark;
   }
 }
@@ -94,8 +160,109 @@ html { color-scheme: light; }
 
   --color-line: #2a3441;
   --color-line-2: #384252;
+  --tp-link: #b7c1cc;
+  --tp-link-hover: #eef2f6;
+  --tp-accent-text: #ffb38f;
+  --tp-accent-strong-text: #ffb38f;
+  --tp-info-text: #93c5fd;
+  --tp-info-surface: #17263b;
+  --tp-sky-text: #7dd3fc;
+  --tp-sky-surface: #122a3d;
+  --tp-success-text: #6ee7b7;
+  --tp-success-surface: #112a24;
+  --tp-green-text: #86efac;
+  --tp-green-surface: #17261f;
+  --tp-warning-text: #fcd34d;
+  --tp-warning-surface: #2f2612;
+  --tp-danger-text: #fda4af;
+  --tp-danger-surface: #2e1720;
+  --tp-error-text: #fca5a5;
+  --tp-error-surface: #311719;
+  --tp-orange-text: #ffb38f;
+  --tp-orange-surface: #321d16;
+  --tp-purple-text: #c4b5fd;
+  --tp-purple-surface: #241b35;
+  --tp-pink-text: #f9a8d4;
+  --tp-pink-surface: #321c2a;
+  --tp-cyan-text: #67e8f9;
+  --tp-cyan-surface: #102a35;
+  --tp-lime-text: #bef264;
+  --tp-lime-surface: #293318;
+  --tp-slate-text: #cbd5e1;
+  --tp-slate-surface: #26313f;
   color-scheme: dark;
 }
+
+/* Contrast guardrails for legacy Tailwind color utilities. These selectors
+ * intentionally use the class token rather than generated utility names so
+ * they also cover conditional class strings and remain easy to audit. */
+[class~="bg-white"] { background-color: var(--color-paper) !important; }
+[class~="bg-white/95"] { background-color: color-mix(in srgb, var(--color-paper) 95%, transparent) !important; }
+[class~="bg-white/90"] { background-color: color-mix(in srgb, var(--color-paper) 90%, transparent) !important; }
+[class~="bg-white/85"] { background-color: color-mix(in srgb, var(--color-paper) 85%, transparent) !important; }
+[class~="bg-white/80"] { background-color: color-mix(in srgb, var(--color-paper) 80%, transparent) !important; }
+[class~="bg-white/75"] { background-color: color-mix(in srgb, var(--color-paper) 75%, transparent) !important; }
+
+[class~="text-navy"], [class~="text-navy-600"], [class~="text-navy-700"] { color: var(--tp-link) !important; }
+[class~="text-brand-600"] { color: var(--tp-accent-text) !important; }
+[class~="text-brand-700"], [class~="text-brand-800"] { color: var(--tp-accent-strong-text) !important; }
+[class~="text-blue"], [class~="text-blue-600"], [class~="text-blue-700"] { color: var(--tp-info-text) !important; }
+[class~="text-sky-600"], [class~="text-sky-700"] { color: var(--tp-sky-text) !important; }
+[class~="text-emerald-600"], [class~="text-emerald-700"] { color: var(--tp-success-text) !important; }
+[class~="text-green-600"], [class~="text-green-700"], [class~="text-green-800"] { color: var(--tp-green-text) !important; }
+[class~="text-amber-600"], [class~="text-amber-700"], [class~="text-amber-800"] { color: var(--tp-warning-text) !important; }
+[class~="text-orange-600"], [class~="text-orange-700"], [class~="text-orange-800"] { color: var(--tp-orange-text) !important; }
+[class~="text-rose-600"], [class~="text-rose-700"] { color: var(--tp-danger-text) !important; }
+[class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"] { color: var(--tp-error-text) !important; }
+[class~="text-violet-700"], [class~="text-violet-800"] { color: var(--tp-purple-text) !important; }
+[class~="text-pink-700"], [class~="text-pink-800"] { color: var(--tp-pink-text) !important; }
+[class~="text-cyan-700"], [class~="text-cyan-800"] { color: var(--tp-cyan-text) !important; }
+[class~="text-lime-700"], [class~="text-lime-800"] { color: var(--tp-lime-text) !important; }
+[class~="text-slate-700"], [class~="text-slate-800"] { color: var(--tp-slate-text) !important; }
+[class~="text-amber-700/70"] { color: var(--tp-warning-text) !important; }
+[class~="text-red-800/80"] { color: var(--tp-error-text) !important; }
+[class~="text-rose-700/70"] { color: var(--tp-danger-text) !important; }
+
+[class~="bg-blue-50"], [class~="bg-blue-100"] { background-color: var(--tp-info-surface) !important; }
+[class~="bg-sky-50"], [class~="bg-sky-100"] { background-color: var(--tp-sky-surface) !important; }
+[class~="bg-emerald-50"], [class~="bg-emerald-100"] { background-color: var(--tp-success-surface) !important; }
+[class~="bg-green-50"], [class~="bg-green-100"] { background-color: var(--tp-green-surface) !important; }
+[class~="bg-amber-50"], [class~="bg-amber-100"] { background-color: var(--tp-warning-surface) !important; }
+[class~="bg-orange-50"], [class~="bg-orange-100"] { background-color: var(--tp-orange-surface) !important; }
+[class~="bg-brand-50"], [class~="bg-brand-100"] { background-color: var(--tp-orange-surface) !important; }
+[class~="bg-rose-50"], [class~="bg-rose-100"] { background-color: var(--tp-danger-surface) !important; }
+[class~="bg-red-50"], [class~="bg-red-100"] { background-color: var(--tp-error-surface) !important; }
+[class~="bg-violet-50"], [class~="bg-violet-100"] { background-color: var(--tp-purple-surface) !important; }
+[class~="bg-pink-50"], [class~="bg-pink-100"] { background-color: var(--tp-pink-surface) !important; }
+[class~="bg-cyan-50"], [class~="bg-cyan-100"] { background-color: var(--tp-cyan-surface) !important; }
+[class~="bg-lime-50"], [class~="bg-lime-100"] { background-color: var(--tp-lime-surface) !important; }
+[class~="bg-slate-50"], [class~="bg-slate-100"] { background-color: var(--tp-slate-surface) !important; }
+
+[class~="border-brand-200"], [class~="border-brand-500"], [class~="border-brand-600"] { border-color: color-mix(in srgb, var(--tp-accent-text) 62%, var(--color-line)) !important; }
+[class~="border-orange-200"], [class~="border-orange-300"] { border-color: color-mix(in srgb, var(--tp-orange-text) 58%, var(--color-line)) !important; }
+[class~="border-sky-200"], [class~="border-sky-300"] { border-color: color-mix(in srgb, var(--tp-sky-text) 58%, var(--color-line)) !important; }
+[class~="border-emerald-200"], [class~="border-emerald-300"] { border-color: color-mix(in srgb, var(--tp-success-text) 58%, var(--color-line)) !important; }
+[class~="border-green-100"], [class~="border-green-200"], [class~="border-green-300"] { border-color: color-mix(in srgb, var(--tp-green-text) 48%, var(--color-line)) !important; }
+[class~="border-amber-100"], [class~="border-amber-200"], [class~="border-amber-300"] { border-color: color-mix(in srgb, var(--tp-warning-text) 55%, var(--color-line)) !important; }
+[class~="border-rose-100"], [class~="border-rose-200"], [class~="border-rose-300"] { border-color: color-mix(in srgb, var(--tp-danger-text) 55%, var(--color-line)) !important; }
+[class~="border-red-100"], [class~="border-red-200"], [class~="border-red-300"] { border-color: color-mix(in srgb, var(--tp-error-text) 55%, var(--color-line)) !important; }
+
+/* Opacity-suffixed variants need the same dark tint; otherwise a light
+ * pastel remains perceptually white on dark phones. */
+[class*="bg-blue-50/"], [class*="bg-blue-100/"] { background-color: color-mix(in srgb, var(--tp-info-surface) 75%, transparent) !important; }
+[class*="bg-sky-50/"], [class*="bg-sky-100/"] { background-color: color-mix(in srgb, var(--tp-sky-surface) 75%, transparent) !important; }
+[class*="bg-emerald-50/"], [class*="bg-emerald-100/"] { background-color: color-mix(in srgb, var(--tp-success-surface) 75%, transparent) !important; }
+[class*="bg-green-50/"], [class*="bg-green-100/"] { background-color: color-mix(in srgb, var(--tp-green-surface) 75%, transparent) !important; }
+[class*="bg-amber-50/"], [class*="bg-amber-100/"] { background-color: color-mix(in srgb, var(--tp-warning-surface) 75%, transparent) !important; }
+[class*="bg-orange-50/"], [class*="bg-orange-100/"] { background-color: color-mix(in srgb, var(--tp-orange-surface) 75%, transparent) !important; }
+[class*="bg-brand-50/"], [class*="bg-brand-100/"] { background-color: color-mix(in srgb, var(--tp-orange-surface) 75%, transparent) !important; }
+[class*="bg-rose-50/"], [class*="bg-rose-100/"] { background-color: color-mix(in srgb, var(--tp-danger-surface) 75%, transparent) !important; }
+[class*="bg-red-50/"], [class*="bg-red-100/"] { background-color: color-mix(in srgb, var(--tp-error-surface) 75%, transparent) !important; }
+
+[class~="hover:text-navy"]:hover, [class~="hover:text-navy-700"]:hover { color: var(--tp-link-hover) !important; }
+.group:hover [class~="group-hover:text-navy"], .group:hover [class~="group-hover:text-navy-700"] { color: var(--tp-link-hover) !important; }
+[class~="hover:text-brand-600"]:hover, [class~="hover:text-brand-700"]:hover,
+[class~="hover:text-brand-600/80"]:hover { color: var(--tp-accent-text) !important; }
 
 body {
   background: var(--color-paper);
@@ -137,7 +304,7 @@ body {
    follows the element's border-radius naturally. */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-brand-600), 0 0 0 4px rgba(201, 82, 42, 0.18);
+  box-shadow: 0 0 0 2px var(--tp-accent-text), 0 0 0 4px color-mix(in srgb, var(--tp-accent-text) 28%, transparent);
   border-radius: 6px;
 }
 
@@ -159,6 +326,21 @@ select {
 }
 select:hover {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23425466' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23b7c1cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+  :root:not([data-theme="light"]) select:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23eef2f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  }
+}
+:root[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23b7c1cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] select:hover {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23eef2f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
 
 /* Disabled state pattern — subtle diagonal cross-hatch overlay to make
@@ -313,12 +495,12 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
   font-family: var(--font-body);
   font-weight: 500;
   text-decoration: underline;
-  text-decoration-color: color-mix(in oklab, var(--color-navy) 25%, transparent);
+  text-decoration-color: color-mix(in oklab, var(--tp-link) 45%, transparent);
   text-underline-offset: 2.5px;
   transition: text-decoration-color 150ms ease;
 }
 .tp-link:hover {
-  text-decoration-color: var(--color-navy);
+  text-decoration-color: var(--tp-link-hover);
 }
 
 /* Respect users who prefer reduced motion. */
@@ -340,11 +522,11 @@ html { scroll-padding-top: 5.5rem; }
 /* Dotted hover underline on inline copy links inside long-form prose. */
 .prose a:not(.button) {
   text-decoration: underline;
-  text-decoration-color: color-mix(in oklab, var(--color-navy) 30%, transparent);
+  text-decoration-color: color-mix(in oklab, var(--tp-link) 50%, transparent);
   text-underline-offset: 3px;
 }
 .prose a:not(.button):hover {
-  text-decoration-color: var(--color-navy);
+  text-decoration-color: var(--tp-link-hover);
 }
 
 /* ------------------------------------------------------------------
@@ -426,7 +608,7 @@ html { scroll-padding-top: 5.5rem; }
 }
 .tp-glow-ring:focus-visible,
 .tp-glow-ring:hover {
-  border-color: var(--color-brand-600);
+  border-color: var(--tp-accent-text);
   box-shadow: 0 0 0 3px rgba(19, 17, 50, 0.15);
 }
 
@@ -479,7 +661,7 @@ html { scroll-padding-top: 5.5rem; }
   bottom: 0;
   width: 3px;
   border-radius: 0 2px 2px 0;
-  background: var(--color-brand-600);
+  background: var(--tp-accent-text);
   transform: scaleY(0);
   transform-origin: top center;
   transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
