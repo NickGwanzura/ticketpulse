@@ -26,6 +26,8 @@ type CommonProps = {
   vendorId?: string
   eventId?: string
   aspectRatio?: AspectRatio
+  /** How the preview should fit inside the selected aspect ratio. */
+  fit?: "cover" | "contain"
   label?: string
   helperText?: string
   className?: string
@@ -116,6 +118,7 @@ export default function ImageUploader(props: Props) {
     vendorId,
     eventId,
     aspectRatio = "square",
+    fit = "cover",
     label,
     helperText,
     className,
@@ -289,7 +292,7 @@ export default function ImageUploader(props: Props) {
               <img
                 src={url}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover"
+                className={cn("absolute inset-0 w-full h-full", fit === "contain" ? "object-contain" : "object-cover")}
                 draggable={false}
               />
 

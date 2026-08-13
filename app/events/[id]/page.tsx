@@ -366,13 +366,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       {/* ── Hero banner (cover image only, no title overlay) ── */}
       {row.coverImage ? (
-        <div className="relative w-full h-[32vh] md:h-[44vh] overflow-hidden bg-ink">
+        <div className="relative w-full h-[clamp(220px,58vw,420px)] md:h-[clamp(360px,30vw,520px)] overflow-hidden bg-ink">
           <img
             src={row.coverImage}
             alt={`${row.title} event at ${row.venue}, ${row.city}`}
-            className="w-full h-full object-cover bg-ink"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            className="w-full h-full object-contain bg-ink"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/8 to-transparent" />
         </div>
       ) : (
         <div className="relative w-full h-40 md:h-52 bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-50 flex items-center justify-center overflow-hidden">
@@ -403,7 +406,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       )}
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 pb-28 lg:pb-10">
-        <div className="relative -mt-8 grid grid-cols-1 gap-10 md:-mt-12 lg:grid-cols-3">
+        <div className="relative -mt-4 grid grid-cols-1 gap-10 md:-mt-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-12">
             {/* ── Overview header ── */}
             <section className="overflow-hidden rounded-[28px] border border-line bg-white/95 p-5 shadow-[0_24px_80px_-44px_rgba(10,37,64,0.45)] backdrop-blur-md md:p-7">

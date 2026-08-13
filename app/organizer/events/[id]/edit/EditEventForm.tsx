@@ -290,8 +290,9 @@ export default function EditEventForm({ event, tiers, showCreatedToast, isAdmin 
           value={coverImage}
           onChange={(url) => setCoverImage(url)}
           aspectRatio="wide"
+          fit="contain"
           label="Cover image"
-          helperText="5 MB max. 16:9 looks best."
+          helperText="5 MB max. Posters are shown in full; 16:9 photos look best."
         />
         <input type="hidden" name="coverImage" value={coverImage ?? ""} />
 
