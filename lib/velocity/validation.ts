@@ -19,6 +19,21 @@ export function isValidUUID(value: string): boolean {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value)
 }
 
+/**
+ * Velocity traces are normally UUIDs, but some gateway environments return
+ * prefixed identifiers. Keep the value constrained before interpolating it
+ * into a provider URL or using it as a reconciliation key.
+ */
+export function isValidVelocityTrace(value: string): boolean {
+  return /^[A-Za-z0-9._:-]{1,200}$/.test(value)
+}
+
+export function paymentAmountsMatch(expected: number | string | null | undefined, actual: number | string | null | undefined): boolean {
+  const expectedAmount = Number(expected)
+  const actualAmount = Number(actual)
+  return Number.isFinite(expectedAmount) && Number.isFinite(actualAmount) && Math.abs(expectedAmount - actualAmount) <= 0.01
+}
+
 export function validatePhone(phone: string): boolean {
   if (!phone || typeof phone !== "string") return false
   const cleaned = phone.replace(/[\s\-\(\)]/g, "")

@@ -78,8 +78,8 @@ export async function POST(request: Request) {
       await db.insert(paymentLedger).values({
         orderId: order.id,
         eventId: order.eventId,
-        transactionTrace: velocityMeta.transactionTrace ?? "",
-        salesOrderTrace: velocityMeta.salesOrderTrace,
+        transactionTrace: velocityMeta.transactionTrace || `system-expiry:${order.id}`,
+        salesOrderTrace: velocityMeta.salesOrderTrace || `system-expiry:${order.id}`,
         amount: order.totalAmount,
         currency: order.currency ?? "USD",
         processor: "velocity",
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         source: "cron",
         rawPayload: null,
         errorMessage: "Cron attempted to expire but order has confirmed Velocity payment",
-      })
+      }).onConflictDoNothing()
 
       skippedVelocity.push(order.id)
       continue
@@ -110,6 +110,19 @@ export async function POST(request: Request) {
           log.warn("cron/expire-orders — live poll shows PAID, skipping expiry (recheck-velocity will finalize)", {
             orderId: order.id,
             transactionTrace: velocityMeta.transactionTrace,
+            pollStatus: livePoll.velocityPollStatus,
+          })
+          skippedVelocity.push(order.id)
+          continue
+        }
+
+        // A pending/unknown provider response is not proof of a failed
+        // payment. Keep the order held for reconciliation so a late bank
+        // debit cannot become an orphaned payment after inventory is released.
+        if (livePoll.localStatus !== "FAILED") {
+          log.warn("cron/expire-orders — provider status inconclusive, keeping order pending", {
+            orderId: order.id,
+            localStatus: livePoll.localStatus,
             pollStatus: livePoll.velocityPollStatus,
           })
           skippedVelocity.push(order.id)
@@ -190,8 +203,8 @@ export async function POST(request: Request) {
     await db.insert(paymentLedger).values({
       orderId: order.id,
       eventId: order.eventId,
-      transactionTrace: velocityMeta?.transactionTrace ?? "",
-      salesOrderTrace: velocityMeta?.salesOrderTrace ?? "",
+      transactionTrace: velocityMeta?.transactionTrace || `system-expiry:${order.id}`,
+      salesOrderTrace: velocityMeta?.salesOrderTrace || `system-expiry:${order.id}`,
       amount: order.totalAmount,
       currency: order.currency ?? "USD",
       processor: "velocity",
@@ -200,7 +213,7 @@ export async function POST(request: Request) {
       source: "cron",
       rawPayload: livePoll?.rawResponse ?? undefined,
       errorMessage: reasonParts.join(" "),
-    })
+    }).onConflictDoNothing()
   }
 
   const eventEndedIds = new Set(eventEndedPending.map((order) => order.id))

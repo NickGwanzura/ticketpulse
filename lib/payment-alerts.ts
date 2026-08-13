@@ -35,6 +35,7 @@ export type AlertType =
   | "VELOCITY_API_UNEXPECTED_FORMAT"
   | "VELOCITY_NETWORK_ERROR"
   | "VELOCITY_CONFIG_MISSING"
+  | "PAYMENT_AMOUNT_MISMATCH"
 
 // ─── Alert Payload ──────────────────────────────────────────────────────────
 

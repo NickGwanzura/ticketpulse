@@ -7,6 +7,8 @@ import {
   validateSalesOrderPayload,
   validateTransactionPayload,
   isValidUUID,
+  isValidVelocityTrace,
+  paymentAmountsMatch,
 } from "@/lib/velocity/validation"
 
 describe("velocity validation", () => {
@@ -141,6 +143,19 @@ describe("velocity validation", () => {
     })
     it("rejects null", () => {
       expect(isValidUUID(null as unknown as string)).toBe(false)
+    })
+  })
+
+  describe("card payment reconciliation helpers", () => {
+    it("accepts provider traces without allowing URL delimiters", () => {
+      expect(isValidVelocityTrace("SESSION0002612593872F0709060F99")).toBe(true)
+      expect(isValidVelocityTrace("trace/with/query?x=1")).toBe(false)
+    })
+
+    it("compares monetary values within one cent", () => {
+      expect(paymentAmountsMatch("80.00", 80)).toBe(true)
+      expect(paymentAmountsMatch("80.00", "80.02")).toBe(false)
+      expect(paymentAmountsMatch("not-a-number", 80)).toBe(false)
     })
   })
 })

@@ -155,7 +155,10 @@ export interface NormalizedPollResponse {
 
 export interface VelocityOrderMetadata {
   salesOrderTrace: string
+  salesOrderId?: string | null
   transactionTrace: string | null
+  transactionTraces?: string[]
+  redirectRecoveryAttempted?: boolean
   outstandingAmount: number
   paymentProcessor: VelocityPaymentProcessor | null
   pollStatus: VelocityPollStatus | null

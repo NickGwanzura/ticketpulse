@@ -7,9 +7,9 @@ import { sendEmail } from "@/lib/email"
 import { log } from "@/lib/logger"
 
 /**
- * Sends a recovery email to buyers whose card-redirect payment has been pending
- * for 15+ min. Marks orders so the email is only sent once. In practice the
- * window is 15–30 min, since expire-orders expires pending orders after 30 min.
+ * Sends one recovery email after 15 minutes of an unresolved card payment.
+ * This gives the buyer a clear path to share proof if their bank was debited,
+ * without asking for card numbers or encouraging a duplicate payment.
  */
 export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
   const now = Date.now()
   const minAge = new Date(now - 15 * 60 * 1000)      // > 15 min old
-  const maxAge = new Date(now - 23 * 60 * 60 * 1000) // < 23 h old (expire-orders gets the rest)
+  const maxAge = new Date(now - 23 * 60 * 60 * 1000) // avoid repeating reminders for very old orders
 
   const stale = await db
     .select({
@@ -61,6 +61,8 @@ export async function POST(request: Request) {
     const name = order.guestName ?? "there"
     const orderUrl = `${appUrl}/orders/${order.id}`
     const eventUrl = ev?.slug ? `${appUrl}/events/${ev.slug}` : null
+    const supportUrl = "https://wa.me/263788689923"
+    const reference = order.id.slice(0, 8).toUpperCase()
 
     try {
       await sendEmail({
@@ -69,17 +71,22 @@ export async function POST(request: Request) {
         html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
 <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Your payment is still being processed</h2>
 <p>Hi ${name},</p>
-<p>We noticed you started checkout for <strong>${eventTitle}</strong> but haven't received payment confirmation yet.</p>
-<p>If your card was charged, your tickets will be delivered automatically once the payment clears. You can check your order status here:</p>
+<p>We noticed you started checkout for <strong>${eventTitle}</strong> but haven't received payment confirmation after 15 minutes.</p>
+<p>Card payments can take a few minutes to settle. Please do not pay again while this order is being checked.</p>
+<p>If your bank shows a debit, send us a WhatsApp message with order reference <strong>${reference}</strong>, the amount and time, and a screenshot of the debit with sensitive card or account numbers covered. <strong>Never send a PIN, CVV, password, or full card number.</strong></p>
+<p style="margin:16px 0">
+  <a href="${supportUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">Send proof via WhatsApp →</a>
+</p>
+<p>You can check your order status here:</p>
 <p style="margin:16px 0">
   <a href="${orderUrl}" style="display:inline-block;background:#0a2540;color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px">Check order status →</a>
 </p>
-<p>If the payment failed and you'd like to try again${eventUrl ? `:` : "."}</p>
+<p>If the payment is confirmed, tickets will be delivered automatically. If it is definitely declined, you can try again${eventUrl ? `:` : "."}</p>
 ${eventUrl ? `<p><a href="${eventUrl}" style="color:#0a2540;font-weight:600">Get tickets for ${eventTitle} →</a></p>` : ""}
-<p style="color:#6b7280;font-size:13px;margin-top:24px">Reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${order.id.slice(0, 8).toUpperCase()}</code></p>
-<p style="color:#6b7280;font-size:13px">TicketPulse &middot; <a href="mailto:nick@ticketpulse.tech" style="color:#6b7280">nick@ticketpulse.tech</a></p>
+<p style="color:#6b7280;font-size:13px;margin-top:24px">Reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${reference}</code></p>
+<p style="color:#6b7280;font-size:13px">TicketPulse &middot; <a href="mailto:nick@ticketpulse.tech" style="color:#6b7280">nick@ticketpulse.tech</a> &middot; WhatsApp +263 788 689 923</p>
 </div>`,
-        text: `Hi ${name},\n\nWe noticed you started checkout for ${eventTitle} but haven't received payment confirmation.\n\nIf your card was charged, tickets will be delivered once payment clears.\n\nCheck your order: ${orderUrl}\n\nReference: ${order.id.slice(0, 8).toUpperCase()}\n\nTicketPulse`,
+        text: `Hi ${name},\n\nWe noticed you started checkout for ${eventTitle} but haven't received payment confirmation after 15 minutes.\n\nPlease do not pay again. If your bank shows a debit, WhatsApp ${supportUrl} with reference ${reference}, amount and time, and a screenshot with sensitive numbers covered. Never send a PIN, CVV, password, or full card number.\n\nTickets will be delivered automatically if the payment clears.\n\nCheck your order: ${orderUrl}\n\nReference: ${reference}\n\nTicketPulse`,
       })
       sent++
       toMark.push(order.id)

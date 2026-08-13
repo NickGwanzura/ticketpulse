@@ -64,14 +64,21 @@ function getVelocityTransactionTrace(transaction: {
  * re-poll the transaction and re-initiate a fresh transaction to get a new
  * redirect URL from Velocity.
  *
- * Returns the URL on success, null if unavailable.
+ * Returns the URL (when available) plus the trace/recovery state to persist.
  */
+type CardRedirectRecovery = {
+  redirectUrl: string | null
+  transactionTrace: string | null
+  attempted: boolean
+}
+
 async function recoverCardRedirectUrl(
   transactionTrace: string,
   salesOrderTrace: string,
   salesOrderId: string | undefined,
   orderId: string,
-): Promise<string | null> {
+  recoveryAttempted: boolean,
+): Promise<CardRedirectRecovery> {
   try {
     // First try: poll the existing transaction — Velocity may embed the redirect
     // URL in the poll response.
@@ -79,13 +86,13 @@ async function recoverCardRedirectUrl(
     const pollRedirect = extractRedirectUrl(pollResult as unknown as Record<string, unknown>)
     if (pollRedirect) {
       log.info("velocity checkout - recovered redirect URL from poll", { orderId, transactionTrace })
-      return pollRedirect
+      return { redirectUrl: pollRedirect, transactionTrace: null, attempted: recoveryAttempted }
     }
 
     // Second try: re-initiate a new transaction against the same sales order.
     // Only possible if we have the Velocity sales order UUID. Velocity will
     // generate a fresh hosted checkout session with a new redirect URL.
-    if (salesOrderId) {
+    if (salesOrderId && !recoveryAttempted) {
       const config = getConfig()
       const txPayload: InitiateTransactionPayload = {
         amount: 0, // amount is on the sales order; Velocity reads from it
@@ -104,14 +111,16 @@ async function recoverCardRedirectUrl(
       }
       const newTx = await initiateTransaction(txPayload)
       const newRedirect = extractRedirectUrl(newTx as unknown as Record<string, unknown>)
+      const newTrace = getVelocityTransactionTrace(newTx)
       if (newRedirect) {
         log.info("velocity checkout - recovered redirect URL from re-initiated transaction", {
           orderId,
           transactionTrace,
           newRedirectPreview: `${newRedirect.slice(0, 80)}...`,
         })
-        return newRedirect
+        return { redirectUrl: newRedirect, transactionTrace: newTrace, attempted: true }
       }
+      return { redirectUrl: null, transactionTrace: newTrace, attempted: true }
     }
 
     log.warn("velocity checkout - could not recover redirect URL for card order", {
@@ -120,14 +129,14 @@ async function recoverCardRedirectUrl(
       salesOrderTrace,
       hasSalesOrderId: !!salesOrderId,
     })
-    return null
+    return { redirectUrl: null, transactionTrace: null, attempted: recoveryAttempted }
   } catch (err) {
     log.error("velocity checkout - redirect URL recovery failed", {
       orderId,
       transactionTrace,
       error: err instanceof Error ? err.message : String(err),
     })
-    return null
+    return { redirectUrl: null, transactionTrace: null, attempted: recoveryAttempted }
   }
 }
 
@@ -452,20 +461,34 @@ export async function POST(req: Request) {
     // stuck in a polling loop for a payment they can't complete.
     let resumeRedirectUrl: string | null = vm.redirectUrl ?? null
     if (isCard && !resumeRedirectUrl && vm.transactionTrace) {
-      resumeRedirectUrl = await recoverCardRedirectUrl(
+      const recovery = await recoverCardRedirectUrl(
         vm.transactionTrace,
         vm.salesOrderTrace,
-        undefined, // salesOrderTrace != salesOrderId — we don't store the UUID here
+        vm.salesOrderId ?? undefined,
         resumable.id,
+        vm.redirectRecoveryAttempted === true,
       )
-      // Persist recovered URL for future resumes
-      if (resumeRedirectUrl) {
+      resumeRedirectUrl = recovery.redirectUrl
+      // Persist recovery state and any newly-issued trace so a page refresh
+      // cannot create another remote card transaction indefinitely.
+      if (recovery.attempted || recovery.transactionTrace || recovery.redirectUrl) {
+        const transactionTraces = Array.from(new Set([
+          ...(vm.transactionTraces ?? []),
+          vm.transactionTrace,
+          recovery.transactionTrace,
+        ].filter((trace): trace is string => Boolean(trace))))
         await db
           .update(orders)
           .set({
             metadata: {
               ...meta,
-              velocity: { ...vm, redirectUrl: resumeRedirectUrl },
+              velocity: {
+                ...vm,
+                redirectUrl: resumeRedirectUrl,
+                transactionTrace: recovery.transactionTrace ?? vm.transactionTrace,
+                transactionTraces,
+                redirectRecoveryAttempted: recovery.attempted,
+              },
             },
             updatedAt: new Date(),
           })
@@ -636,19 +659,32 @@ export async function POST(req: Request) {
       // Recover redirect URL for card orders (same logic as primary resume path)
       let resumeRedirectUrl = vm.redirectUrl ?? null
       if (isCard && !resumeRedirectUrl && vm.transactionTrace) {
-        resumeRedirectUrl = await recoverCardRedirectUrl(
+        const recovery = await recoverCardRedirectUrl(
           vm.transactionTrace,
           vm.salesOrderTrace,
-          undefined,
+          vm.salesOrderId ?? undefined,
           concurrent.id,
+          vm.redirectRecoveryAttempted === true,
         )
-        if (resumeRedirectUrl) {
+        resumeRedirectUrl = recovery.redirectUrl
+        if (recovery.attempted || recovery.transactionTrace || recovery.redirectUrl) {
+          const transactionTraces = Array.from(new Set([
+            ...(vm.transactionTraces ?? []),
+            vm.transactionTrace,
+            recovery.transactionTrace,
+          ].filter((trace): trace is string => Boolean(trace))))
           await db
             .update(orders)
             .set({
               metadata: {
                 ...meta,
-                velocity: { ...vm, redirectUrl: resumeRedirectUrl },
+                velocity: {
+                  ...vm,
+                  redirectUrl: resumeRedirectUrl,
+                  transactionTrace: recovery.transactionTrace ?? vm.transactionTrace,
+                  transactionTraces,
+                  redirectRecoveryAttempted: recovery.attempted,
+                },
               },
               updatedAt: new Date(),
             })
@@ -851,6 +887,7 @@ export async function POST(req: Request) {
     let redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
     let transactionBody = transaction.body ?? null
     let transactionTrace = getVelocityTransactionTrace(transaction)
+    const transactionTraces = transactionTrace ? [transactionTrace] : []
 
     if (isCard && !redirectUrl && transactionTrace) {
       for (let attempt = 1; attempt <= VMC_REDIRECT_RETRIES; attempt++) {
@@ -875,12 +912,15 @@ export async function POST(req: Request) {
             redirectUrl = retryUrl
             transactionBody = retryTx.body ?? null
             transactionTrace = getVelocityTransactionTrace(retryTx)
+            if (transactionTrace && !transactionTraces.includes(transactionTrace)) transactionTraces.push(transactionTrace)
             break
           }
           // Update trace if first attempt had none but retry did
           if (!transactionTrace) {
             transactionTrace = getVelocityTransactionTrace(retryTx)
           }
+          const retryTrace = getVelocityTransactionTrace(retryTx)
+          if (retryTrace && !transactionTraces.includes(retryTrace)) transactionTraces.push(retryTrace)
         } catch (retryErr) {
           log.warn("velocity checkout - redirect URL retry attempt failed", {
             orderId,
@@ -958,7 +998,10 @@ export async function POST(req: Request) {
 
     const velocityMeta: VelocityOrderMetadata = {
       salesOrderTrace,
+      salesOrderId,
       transactionTrace,
+      transactionTraces,
+      redirectRecoveryAttempted: false,
       outstandingAmount: total,
       paymentProcessor: processor,
       pollStatus,
@@ -981,19 +1024,6 @@ export async function POST(req: Request) {
     trackEvent({ event: "PAYMENT_INITIATED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, amount: total })
 
     if (isCard && !redirectUrl) {
-      // Release inventory before returning the error — soldQuantity was already
-      // incremented at order creation but the user can't complete payment.
-      await cancelWithInventoryRelease()
-
-      await db
-        .update(orders)
-        .set({
-          status: "cancelled",
-          metadata: { ...baseMeta, velocity: { ...velocityMeta, pollStatus: "INITIATED_BUT_NO_REDIRECT" as VelocityPollStatus } },
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, orderId))
-
       log.error("velocity checkout - card payment missing redirect URL after retries", {
         orderId,
         processor,
@@ -1019,7 +1049,9 @@ export async function POST(req: Request) {
       )
 
       return NextResponse.json({
-        error: "The card payment provider did not return a checkout page. No charge has been made. Please try again or choose EcoCash.",
+        error: "The card payment provider did not return a checkout page. Your order is being held for reconciliation; try again shortly or choose EcoCash.",
+        orderId,
+        recoverable: true,
       }, { status: 502 })
     }
 

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   DollarSign, TrendingUp, Activity, CheckCircle2, AlertTriangle,
-  Smartphone, CreditCard, ArrowUpRight, Pause, Play, PartyPopper,
+  Smartphone, CreditCard, ArrowUpRight, Pause, Play, PartyPopper, MailWarning, Copy,
 } from "lucide-react"
 import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
@@ -70,6 +70,9 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/50",
   pending: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/50",
   expired: "bg-gray-100 text-gray-500 ring-1 ring-gray-200",
+  completed: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/50",
+  cancelled: "bg-rose-50 text-rose-700 ring-1 ring-rose-200/50",
+  refunded: "bg-violet-50 text-violet-700 ring-1 ring-violet-200/50",
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -77,6 +80,9 @@ const STATUS_LABEL: Record<string, string> = {
   failed: "Failed",
   pending: "Pending",
   expired: "Expired",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 }
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -210,14 +216,17 @@ export default function PaymentsViewer({ initialData }: Props) {
           sub={`${stats.successRate}% success rate`}
           positive={stats.successRate >= 80}
         />
-        <StatCard icon={CheckCircle2} label="Paid Transactions" value={String(stats.paidCount)} />
+        <StatCard icon={CheckCircle2} label="Paid Orders" value={String(stats.paidCount)} />
         <StatCard
           icon={AlertTriangle}
-          label="Failed Transactions"
+          label="Failed Orders"
           value={String(stats.failedCount)}
-          sub={stats.successRate >= 80 ? "Healthy" : "Needs attention"}
-          positive={stats.successRate >= 80}
+          sub="Cancelled or refunded"
         />
+        <StatCard icon={AlertTriangle} label="Expired Orders" value={String(stats.expiredCount)} sub="Timed out before payment" />
+        <StatCard icon={Activity} label="Pending Orders" value={String(stats.pendingCount)} sub="Needs follow-up" />
+        <StatCard icon={MailWarning} label="Delivery Attention" value={String(stats.deliveryAttentionCount)} sub="Paid orders needing delivery" />
+        <StatCard icon={Copy} label="Duplicate Ledgers" value={String(stats.duplicateOrderCount)} sub="Orders with >1 settled entry" />
         <div className="rounded-xl border border-line bg-paper p-5 space-y-1.5 col-span-2 lg:col-span-2">
           <div className="flex items-center justify-between">
             <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-3">14d Revenue</span>
@@ -237,7 +246,7 @@ export default function PaymentsViewer({ initialData }: Props) {
           <div className="grid gap-3">
             {methods.map((row) => {
               const method = row.method ?? "unknown"
-              const resolved = row.paid + row.failed
+              const resolved = row.paid + row.failed + row.expired
               const rate = resolved > 0 ? Math.round((row.paid / resolved) * 100) : 0
               return (
                 <div key={method} className="rounded-xl border border-line bg-paper p-4 flex items-center justify-between">
@@ -247,7 +256,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                     </span>
                     <div>
                       <p className="text-[14px] font-semibold text-ink capitalize">{method.replace("velocity-", "")}</p>
-                      <p className="text-[12px] text-ink-3">{row.paid} paid · {row.failed} failed</p>
+                      <p className="text-[12px] text-ink-3">{row.paid} paid · {row.pending} pending · {row.failed} failed · {row.expired} expired</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -281,6 +290,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                 <thead>
                   <tr className="bg-paper-2 border-b border-line">
                     <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Date</th>
+                    <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Order</th>
                     <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Amount</th>
                     <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Status</th>
                     <th className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 px-4 py-3">Processor</th>
@@ -291,7 +301,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                 </thead>
                 <tbody>
                   {transactions.map((entry) => {
-                    const st = entry.localStatus ?? "unknown"
+                    const st = entry.orderStatus ?? entry.localStatus ?? "unknown"
                     return (
                       <tr key={entry.id} className="border-b border-line last:border-0 hover:bg-paper-2 transition-colors">
                         <td className="px-4 py-3 text-[13px] text-ink-2 tabular-nums whitespace-nowrap">
@@ -301,6 +311,10 @@ export default function PaymentsViewer({ initialData }: Props) {
                               })
                             : "—"}
                         </td>
+                        <td className="px-4 py-3 min-w-[180px]">
+                          <p className="text-[13px] font-medium text-ink truncate">{entry.eventTitle ?? "Unknown event"}</p>
+                          <p className="text-[12px] text-ink-3 truncate">{entry.buyerName || entry.buyerEmail || entry.orderId.slice(0, 8)}</p>
+                        </td>
                         <td className="px-4 py-3 text-[14px] font-semibold text-ink tabular-nums whitespace-nowrap">
                           {entry.currency ?? "USD"} {entry.amount}
                         </td>
@@ -308,6 +322,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                           <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md ${STATUS_STYLES[st] ?? "bg-gray-50 text-gray-600"}`}>
                             {STATUS_LABEL[st] ?? st}
                           </span>
+                          {entry.localStatus && entry.localStatus !== st && <p className="text-[11px] text-ink-3 mt-1">Ledger: {entry.localStatus}</p>}
                         </td>
                         <td className="px-4 py-3 text-[13px] text-ink-2 capitalize whitespace-nowrap">{entry.processor}</td>
                         <td className="px-4 py-3 text-[13px] text-ink-2 whitespace-nowrap">{entry.source}</td>
@@ -338,7 +353,7 @@ export default function PaymentsViewer({ initialData }: Props) {
             {/* Mobile cards */}
             <ul className="md:hidden divide-y divide-line rounded-xl border border-line overflow-hidden">
               {transactions.map((entry) => {
-                const st = entry.localStatus ?? "unknown"
+                const st = entry.orderStatus ?? entry.localStatus ?? "unknown"
                 return (
                   <li key={entry.id} className="p-4 bg-paper space-y-2">
                     <div className="flex items-start justify-between gap-3">
@@ -353,6 +368,8 @@ export default function PaymentsViewer({ initialData }: Props) {
                               })
                             : "—"}
                         </p>
+                        <p className="text-[12px] text-ink-2 mt-1 truncate">{entry.eventTitle ?? "Unknown event"}</p>
+                        <p className="text-[12px] text-ink-3 truncate">{entry.buyerName || entry.buyerEmail || entry.orderId.slice(0, 8)}</p>
                       </div>
                       <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md shrink-0 ${STATUS_STYLES[st] ?? "bg-gray-50 text-gray-600"}`}>
                         {STATUS_LABEL[st] ?? st}

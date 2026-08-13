@@ -13,6 +13,7 @@ import {
   alertFinalizeNonPaid,
   alertPaymentAnomaly,
 } from "@/lib/payment-alerts"
+import { isValidVelocityTrace, paymentAmountsMatch } from "@/lib/velocity/validation"
 
 /** Constant-time string comparison — avoids leaking the secret via response timing. */
 function safeEqual(a: string, b: string): boolean {
@@ -63,6 +64,10 @@ export async function POST(req: Request) {
   }
 
   const { transactionTrace, salesOrderTrace } = parsed.data
+  if (!isValidVelocityTrace(transactionTrace) || !isValidVelocityTrace(salesOrderTrace)) {
+    log.warn("velocity callback - invalid trace format", { transactionTrace, salesOrderTrace })
+    return NextResponse.json({ error: "invalid_trace" }, { status: 400 })
+  }
   log.info("velocity callback - received", {
     transactionTrace,
     salesOrderTrace,
@@ -115,6 +120,13 @@ export async function POST(req: Request) {
           salesOrderTrace,
           salesOrderStatus,
         })
+        alertFinalizeNonPaid(
+          "unknown",
+          salesOrderTrace,
+          salesOrderStatus,
+          Number(finalizeResult.body.salesOrder.outstandingAmount),
+        )
+        return NextResponse.json({ status: "acknowledged", note: "Payment finalisation is not complete" })
       }
 
       const [order] = await db
@@ -124,6 +136,7 @@ export async function POST(req: Request) {
           eventId: orders.eventId,
           totalAmount: orders.totalAmount,
           currency: orders.currency,
+          paymentMethod: orders.paymentMethod,
           guestEmail: orders.guestEmail,
           guestName: orders.guestName,
           metadata: orders.metadata,
@@ -147,40 +160,35 @@ export async function POST(req: Request) {
           rawBody as Record<string, unknown> | null,
         )
 
-        await db.insert(paymentLedger).values({
-          orderId: "00000000-0000-0000-0000-000000000000",
-          eventId: "00000000-0000-0000-0000-000000000000",
-          transactionTrace,
-          salesOrderTrace,
-          invoiceId: invoiceId ?? null,
-          amount: "0",
-          currency: "USD",
-          processor: "velocity",
-          velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
-          localStatus: "orphaned",
-          source: "callback",
-          rawPayload: rawBody as Record<string, unknown>,
-          errorMessage: "Order not found for salesOrderTrace",
-        })
-
         return NextResponse.json({ status: "acknowledged", note: "Order not found" })
       }
 
       if (order.status === "paid") {
-        await db.insert(paymentLedger).values({
-          orderId: order.id,
-          eventId: order.eventId,
-          transactionTrace,
-          salesOrderTrace,
-          invoiceId,
-          amount: order.totalAmount,
-          currency: order.currency ?? "USD",
-          processor: "velocity",
-          velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
-          localStatus: "paid",
-          source: "callback",
-          rawPayload: rawBody as Record<string, unknown>,
-        })
+        const [settledLedger] = await db
+          .select({ id: paymentLedger.id })
+          .from(paymentLedger)
+          .where(and(
+            eq(paymentLedger.orderId, order.id),
+            sql`${paymentLedger.localStatus} IN ('paid', 'completed', 'success', 'paid_success')`,
+          ))
+          .limit(1)
+
+        if (!settledLedger) {
+          await db.insert(paymentLedger).values({
+            orderId: order.id,
+            eventId: order.eventId,
+            transactionTrace,
+            salesOrderTrace,
+            invoiceId,
+            amount: order.totalAmount,
+            currency: order.currency ?? "USD",
+            processor: "velocity",
+            velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
+            localStatus: "paid",
+            source: "callback",
+            rawPayload: rawBody as Record<string, unknown>,
+          }).onConflictDoNothing()
+        }
 
         log.info("velocity callback - order already paid, recorded in ledger", { orderId: order.id })
         return NextResponse.json({ status: "acknowledged" })
@@ -188,6 +196,19 @@ export async function POST(req: Request) {
 
       const meta = (order.metadata ?? {}) as Record<string, unknown>
       const velocityMeta = (meta.velocity ?? {}) as Record<string, unknown>
+      const paidAmount = Number(finalizeResult.body.salesOrder.paidAmount)
+      if (!paymentAmountsMatch(order.totalAmount, paidAmount)) {
+        alertPaymentAnomaly({
+          type: "PAYMENT_AMOUNT_MISMATCH",
+          severity: "critical",
+          title: "Velocity callback amount does not match order",
+          detail: `Order ${order.id} expected ${order.totalAmount} ${order.currency ?? "USD"}, but Velocity finalised ${paidAmount}.`,
+          orderId: order.id,
+          paymentMethod: order.paymentMethod ?? "velocity-card",
+          context: { expectedAmount: order.totalAmount, paidAmount, transactionTrace, salesOrderTrace },
+        }).catch(() => {})
+        return NextResponse.json({ status: "acknowledged", note: "Payment amount requires review" })
+      }
       const updatedMeta = {
         ...meta,
         velocity: {
@@ -201,7 +222,7 @@ export async function POST(req: Request) {
         },
       }
 
-      await db
+      const [updatedOrder] = await db
         .update(orders)
         .set({
           status: "paid",
@@ -212,6 +233,13 @@ export async function POST(req: Request) {
           updatedAt: new Date(),
         })
         .where(and(eq(orders.id, order.id), inArray(orders.status, ["pending", "awaiting_verification"])))
+        .returning({ id: orders.id, status: orders.status })
+
+      if (!updatedOrder) {
+        const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).limit(1)
+        log.warn("velocity callback - order changed before payment claim", { orderId: order.id, currentStatus: current?.status })
+        return NextResponse.json({ status: "acknowledged", note: "Order was already processed or cancelled" })
+      }
 
       // Record in ledger before delivery so re-runs are idempotent
       try {
@@ -228,7 +256,7 @@ export async function POST(req: Request) {
           localStatus: "paid",
           source: "callback",
           rawPayload: rawBody as Record<string, unknown>,
-        })
+        }).onConflictDoNothing()
       } catch {
         // Duplicate — already recorded, safe to continue
       }
@@ -246,20 +274,6 @@ export async function POST(req: Request) {
         orderId: order.id,
       })
     } else {
-      await db.insert(paymentLedger).values({
-        orderId: "00000000-0000-0000-0000-000000000000",
-        eventId: "00000000-0000-0000-0000-000000000000",
-        transactionTrace,
-        salesOrderTrace,
-        amount: "0",
-        currency: "USD",
-        processor: "velocity",
-        velocityPollStatus: normalized.velocityPollStatus ?? parsed.data.pollStatus,
-        localStatus: "unconfirmed",
-        source: "callback",
-        rawPayload: rawBody as Record<string, unknown>,
-      })
-
       log.info("velocity callback - payment not yet confirmed", {
         localStatus: normalized.localStatus,
         salesOrderTrace,

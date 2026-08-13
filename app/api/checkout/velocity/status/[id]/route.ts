@@ -5,7 +5,7 @@ import { orders, paymentLedger, events } from "@/db/schema"
 import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
-import { isValidUUID } from "@/lib/velocity/validation"
+import { isValidUUID, isValidVelocityTrace, paymentAmountsMatch } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { sendAdminAlert } from "@/lib/whatsapp"
@@ -13,7 +13,7 @@ import { newPaymentAlert } from "@/lib/whatsapp-templates"
 import {
   alertPollUnknownStatus,
   alertFinalizeNonPaid,
-  alertVelocityUnexpectedResponse,
+  alertPaymentAnomaly,
 } from "@/lib/payment-alerts"
 import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity"
 
@@ -77,10 +77,11 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   }
 
   // Reject malformed traces before they can be interpolated into the Velocity URL path.
-  if (!isValidUUID(velocityMeta.transactionTrace)) {
-    log.error("velocity status - transactionTrace is not a valid UUID", {
+  if (!isValidVelocityTrace(velocityMeta.transactionTrace) || !isValidVelocityTrace(velocityMeta.salesOrderTrace)) {
+    log.error("velocity status - provider trace is malformed", {
       localOrderId: id,
       transactionTrace: velocityMeta.transactionTrace,
+      salesOrderTrace: velocityMeta.salesOrderTrace,
     })
     return NextResponse.json({ error: "invalid_transaction" }, { status: 400 })
   }
@@ -91,16 +92,21 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     // the buzzer still gets finalized; otherwise expire the order and release
     // the inventory reservation NOW instead of leaving the seats locked until
     // the expire-orders cron picks it up.
+    let finalPollStatus: VelocityPollStatus = "UNKNOWN"
+    let finalPollFailed = false
     try {
       const pollResult = await pollTransaction(velocityMeta.transactionTrace)
       const normalized = normalizeVelocityPollResponse(pollResult)
+      finalPollStatus = (normalized.velocityPollStatus as VelocityPollStatus | null) ?? "UNKNOWN"
       if (normalized.localStatus === "PAID") {
         return await handlePollSuccess(order, meta, velocityMeta, id)
       }
-      // A network error means the poll is inconclusive — leave the order
-      // pending so the cron's live-poll safety net decides.
-      if (pollResult.state !== "network_error") {
+      // Only a definitive failed response can safely release the reservation.
+      // UNKNOWN/PENDING means the provider is inconclusive, so keep the order
+      // pending for the cron/admin reconciliation path.
+      if (pollResult.state !== "network_error" && normalized.localStatus === "FAILED") {
         await expireOrderAndReleaseInventory(id)
+        finalPollFailed = true
       }
     } catch (err) {
       log.warn("velocity status - final poll before expiry failed, leaving order for cron", {
@@ -110,10 +116,12 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     }
     return NextResponse.json({
       orderId: id,
-      status: "expired",
+      status: finalPollFailed ? "expired" : "pending",
       paid: false,
-      pollStatus: "TIMEOUT",
-      error: "Payment window expired",
+      pollStatus: finalPollFailed ? "FAILED" : finalPollStatus,
+      ...(finalPollFailed
+        ? { error: "Payment window expired" }
+        : { message: "Payment is still being reconciled. An admin will review it if the provider remains inconclusive." }),
     })
   }
 
@@ -361,6 +369,26 @@ async function handlePollSuccess(
       paid: false,
       pollStatus: "SUCCESS",
       message: `Workflow finalization returned status "${salesOrderStatus}" instead of "PAID"`,
+    })
+  }
+
+  const paidAmount = Number(finalizeResult.body.salesOrder.paidAmount)
+  if (!paymentAmountsMatch(order.totalAmount, paidAmount)) {
+    alertPaymentAnomaly({
+      type: "PAYMENT_AMOUNT_MISMATCH",
+      severity: "critical",
+      title: "Velocity payment amount does not match order",
+      detail: `Order ${id} expected ${order.totalAmount} ${order.currency ?? "USD"}, but Velocity finalised ${paidAmount}.`,
+      orderId: id,
+      paymentMethod: order.paymentMethod ?? "velocity-card",
+      context: { expectedAmount: order.totalAmount, paidAmount, salesOrderTrace: velocityMeta.salesOrderTrace },
+    }).catch(() => {})
+    return NextResponse.json({
+      orderId: id,
+      status: "pending",
+      paid: false,
+      pollStatus: "SUCCESS",
+      message: "Payment amount could not be verified. An admin will review it.",
     })
   }
 

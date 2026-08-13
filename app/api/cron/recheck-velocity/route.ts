@@ -14,6 +14,7 @@ import { alertRecheckHighErrorRate } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { newPaymentAlert } from "@/lib/whatsapp-templates"
 import type { VelocityOrderMetadata } from "@/types/velocity"
+import { paymentAmountsMatch } from "@/lib/velocity/validation"
 
 const MAX_ORDERS_PER_RUN = 30
 const RECHECK_COOLDOWN_MS = 60_000
@@ -159,6 +160,15 @@ export async function POST(request: Request) {
       const invoiceId = finalizeResult.body.invoice.id
       const paidAmount = finalizeResult.body.salesOrder.paidAmount
 
+      if (!paymentAmountsMatch(order.totalAmount, paidAmount)) {
+        results.push({
+          orderId: order.id,
+          action: "skipped",
+          reason: `Velocity paid amount ${paidAmount} does not match order total ${order.totalAmount}`,
+        })
+        continue
+      }
+
       const updatedMeta: { velocity: VelocityOrderMetadata & { recheckedAt: string; finalizedByCron: boolean } } = {
         velocity: {
           ...velocityMeta,
@@ -172,7 +182,7 @@ export async function POST(request: Request) {
         },
       }
 
-      await db
+      const [claimed] = await db
         .update(orders)
         .set({
           status: "paid",
@@ -185,6 +195,12 @@ export async function POST(request: Request) {
           updatedAt: new Date(),
         })
         .where(and(eq(orders.id, order.id), inArray(orders.status, ["pending", "awaiting_verification"])))
+        .returning({ id: orders.id })
+
+      if (!claimed) {
+        results.push({ orderId: order.id, action: "skipped", reason: "Order was already processed by another payment worker" })
+        continue
+      }
 
       log.info("cron/recheck-velocity — order updated to paid", {
         orderId: order.id,
@@ -207,7 +223,7 @@ export async function POST(request: Request) {
           localStatus: "paid",
           source: "cron",
           rawPayload: null,
-        })
+        }).onConflictDoNothing()
       } catch {
         // Duplicate — already recorded, safe to continue
       }
