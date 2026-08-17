@@ -271,6 +271,17 @@ export async function pollAllVelocityOrdersAction(): Promise<{
 
       const pollResult = await pollTransaction(velocityMeta.transactionTrace)
       const normalized = normalizeVelocityPollResponse(pollResult)
+      const providerError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
+      const polledAt = new Date().toISOString()
+      const nextVelocity = {
+        ...velocityMeta,
+        pollStatus: (normalized.velocityPollStatus as VelocityOrderMetadata["pollStatus"]) ?? "UNKNOWN",
+        paymentStatus: normalized.velocityPaymentStatus ?? null,
+        lastPolledAt: polledAt,
+        lastProviderHttpStatus: pollResult.httpStatus ?? null,
+        lastProviderError: pollResult.errorMessage ?? null,
+        consecutiveProviderErrors: providerError ? (velocityMeta.consecutiveProviderErrors ?? 0) + 1 : 0,
+      }
 
       log.info("pollAllVelocityOrdersAction — poll result", {
         orderId: order.id,
@@ -284,14 +295,16 @@ export async function pollAllVelocityOrdersAction(): Promise<{
           .update(orders)
           .set({
             updatedAt: new Date(),
-            metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,pollStatus}', ${JSON.stringify(normalized.velocityPollStatus)}::jsonb)`,
+            metadata: { ...((order.metadata ?? {}) as Record<string, unknown>), velocity: nextVelocity },
           })
           .where(eq(orders.id, order.id))
 
         results.push({
           orderId: order.id,
-          action: "unknown",
-          message: `Unknown payment status — pollStatus: ${normalized.velocityPollStatus ?? "missing"}, paymentStatus: ${normalized.velocityPaymentStatus ?? "missing"}. Requires admin review.`,
+          action: providerError ? "provider_error" : "unknown",
+          message: providerError
+            ? `Velocity returned HTTP ${pollResult.httpStatus}: ${pollResult.errorMessage ?? "provider error"}. Requires provider reconciliation.`
+            : `Unknown payment status — pollStatus: ${normalized.velocityPollStatus ?? "missing"}, paymentStatus: ${normalized.velocityPaymentStatus ?? "missing"}. Requires admin review.`,
         })
         continue
       }
@@ -301,7 +314,7 @@ export async function pollAllVelocityOrdersAction(): Promise<{
           .update(orders)
           .set({
             updatedAt: new Date(),
-            metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,pollStatus}', ${JSON.stringify(normalized.velocityPollStatus)}::jsonb)`,
+            metadata: { ...((order.metadata ?? {}) as Record<string, unknown>), velocity: nextVelocity },
           })
           .where(eq(orders.id, order.id))
 
@@ -330,7 +343,7 @@ export async function pollAllVelocityOrdersAction(): Promise<{
       const updatedMeta = {
         ...meta,
         velocity: {
-          ...velocityMeta,
+          ...nextVelocity,
           pollStatus: "SUCCESS" as const,
           paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
           paymentRef: invoiceId,

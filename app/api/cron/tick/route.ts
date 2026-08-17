@@ -16,6 +16,15 @@ import { NextResponse } from "next/server"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 
+async function invokeCronChild(base: string, path: string, headers: Record<string, string>) {
+  const response = await fetch(`${base}${path}`, { method: "POST", headers })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(`${path} returned HTTP ${response.status}${payload ? `: ${JSON.stringify(payload).slice(0, 300)}` : ""}`)
+  }
+  return payload
+}
+
 export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
   if (authError) return authError
@@ -28,8 +37,7 @@ export async function POST(request: Request) {
 
   // 1. recheck-velocity first — marks paid orders before expire-orders can delete them
   try {
-    const r = await fetch(`${base}/api/cron/recheck-velocity`, { method: "POST", headers })
-    results.recheckVelocity = await r.json()
+    results.recheckVelocity = await invokeCronChild(base, "/api/cron/recheck-velocity", headers)
   } catch (err) {
     log.error("cron/tick — recheck-velocity failed", { error: String(err) })
     results.recheckVelocity = { error: String(err) }
@@ -37,8 +45,7 @@ export async function POST(request: Request) {
 
   // 2. expire stale orders (recheck already rescued any paid ones above)
   try {
-    const r = await fetch(`${base}/api/cron/expire-orders`, { method: "POST", headers })
-    results.expireOrders = await r.json()
+    results.expireOrders = await invokeCronChild(base, "/api/cron/expire-orders", headers)
   } catch (err) {
     log.error("cron/tick — expire-orders failed", { error: String(err) })
     results.expireOrders = { error: String(err) }
@@ -46,8 +53,7 @@ export async function POST(request: Request) {
 
   // 3. event-reminder (runs every run, only acts on events ~24h away)
   try {
-    const r = await fetch(`${base}/api/cron/event-reminder`, { method: "POST", headers })
-    results.eventReminder = await r.json()
+    results.eventReminder = await invokeCronChild(base, "/api/cron/event-reminder", headers)
   } catch (err) {
     log.error("cron/tick — event-reminder failed", { error: String(err) })
     results.eventReminder = { error: String(err) }
@@ -55,8 +61,7 @@ export async function POST(request: Request) {
 
   // 4. card-recovery — emails buyers whose card payment has been pending 15 min+
   try {
-    const r = await fetch(`${base}/api/cron/card-recovery`, { method: "POST", headers })
-    results.cardRecovery = await r.json()
+    results.cardRecovery = await invokeCronChild(base, "/api/cron/card-recovery", headers)
   } catch (err) {
     log.error("cron/tick — card-recovery failed", { error: String(err) })
     results.cardRecovery = { error: String(err) }
@@ -64,8 +69,7 @@ export async function POST(request: Request) {
 
   // 5. cleanup-logs — prunes old past_announce_log rows (cheap, returns fast when nothing to do)
   try {
-    const r = await fetch(`${base}/api/cron/cleanup-logs`, { method: "POST", headers })
-    results.cleanupLogs = await r.json()
+    results.cleanupLogs = await invokeCronChild(base, "/api/cron/cleanup-logs", headers)
   } catch (err) {
     log.error("cron/tick — cleanup-logs failed", { error: String(err) })
     results.cleanupLogs = { error: String(err) }
@@ -73,8 +77,7 @@ export async function POST(request: Request) {
 
   // 6. whatsapp-watchdog — daily session health-check (internally gated to 07:00 UTC)
   try {
-    const r = await fetch(`${base}/api/cron/whatsapp-watchdog`, { method: "POST", headers })
-    results.whatsappWatchdog = await r.json()
+    results.whatsappWatchdog = await invokeCronChild(base, "/api/cron/whatsapp-watchdog", headers)
   } catch (err) {
     log.error("cron/tick — whatsapp-watchdog failed", { error: String(err) })
     results.whatsappWatchdog = { error: String(err) }
@@ -82,8 +85,7 @@ export async function POST(request: Request) {
 
   // 7. reconciliation-digest — daily anomaly summary (internally gated to 08:00 UTC)
   try {
-    const r = await fetch(`${base}/api/cron/reconciliation-digest`, { method: "POST", headers })
-    results.reconciliationDigest = await r.json()
+    results.reconciliationDigest = await invokeCronChild(base, "/api/cron/reconciliation-digest", headers)
   } catch (err) {
     log.error("cron/tick — reconciliation-digest failed", { error: String(err) })
     results.reconciliationDigest = { error: String(err) }

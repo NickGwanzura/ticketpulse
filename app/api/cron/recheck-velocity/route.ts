@@ -90,6 +90,24 @@ export async function POST(request: Request) {
 
       const pollResult = await pollTransaction(velocityMeta.transactionTrace)
       const normalized = normalizeVelocityPollResponse(pollResult)
+      const polledAt = new Date().toISOString()
+      const providerError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
+      const consecutiveProviderErrors = providerError
+        ? (velocityMeta.consecutiveProviderErrors ?? 0) + 1
+        : 0
+      const updatedVelocity = {
+        ...velocityMeta,
+        pollStatus: (normalized.velocityPollStatus as VelocityOrderMetadata["pollStatus"]) ?? "UNKNOWN",
+        paymentStatus: normalized.velocityPaymentStatus ?? null,
+        lastPolledAt: polledAt,
+        lastProviderHttpStatus: pollResult.httpStatus ?? null,
+        lastProviderError: pollResult.errorMessage ?? null,
+        consecutiveProviderErrors,
+      }
+      const updatedOrderMetadata = {
+        ...((order.metadata ?? {}) as Record<string, unknown>),
+        velocity: updatedVelocity,
+      }
 
       log.info("cron/recheck-velocity — poll result", {
         orderId: order.id,
@@ -100,11 +118,25 @@ export async function POST(request: Request) {
       })
 
       if (normalized.localStatus === "UNKNOWN") {
+        if (providerError) {
+          await db
+            .update(orders)
+            .set({ updatedAt: new Date(), metadata: updatedOrderMetadata })
+            .where(eq(orders.id, order.id))
+          errorCount++
+          results.push({
+            orderId: order.id,
+            action: "error",
+            reason: `Velocity HTTP ${pollResult.httpStatus}: ${pollResult.errorMessage ?? "provider error"}`,
+          })
+          continue
+        }
+
         await db
           .update(orders)
           .set({
             updatedAt: new Date(),
-            metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,pollStatus}', ${JSON.stringify(normalized.velocityPollStatus)}::jsonb)`,
+            metadata: updatedOrderMetadata,
           })
           .where(eq(orders.id, order.id))
 
@@ -121,7 +153,7 @@ export async function POST(request: Request) {
           .update(orders)
           .set({
             updatedAt: new Date(),
-            metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,pollStatus}', ${JSON.stringify(normalized.velocityPollStatus)}::jsonb)`,
+            metadata: updatedOrderMetadata,
           })
           .where(eq(orders.id, order.id))
 
@@ -149,6 +181,10 @@ export async function POST(request: Request) {
       })
 
       if (salesOrderStatus !== "PAID") {
+        await db
+          .update(orders)
+          .set({ updatedAt: new Date(), metadata: updatedOrderMetadata })
+          .where(eq(orders.id, order.id))
         results.push({
           orderId: order.id,
           action: "skipped",
@@ -161,6 +197,10 @@ export async function POST(request: Request) {
       const paidAmount = finalizeResult.body.salesOrder.paidAmount
 
       if (!paymentAmountsMatch(order.totalAmount, paidAmount)) {
+        await db
+          .update(orders)
+          .set({ updatedAt: new Date(), metadata: updatedOrderMetadata })
+          .where(eq(orders.id, order.id))
         results.push({
           orderId: order.id,
           action: "skipped",
@@ -171,7 +211,7 @@ export async function POST(request: Request) {
 
       const updatedMeta: { velocity: VelocityOrderMetadata & { recheckedAt: string; finalizedByCron: boolean } } = {
         velocity: {
-          ...velocityMeta,
+          ...updatedVelocity,
           pollStatus: "SUCCESS",
           paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
           paymentRef: invoiceId,

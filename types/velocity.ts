@@ -98,6 +98,10 @@ export interface PollTransactionResponse {
   status: string
   body: VelocityTransactionBody & { pollStatus: VelocityPollStatus }
   workflowId: string
+  /** HTTP status returned by Velocity, when the provider responded. */
+  httpStatus?: number | null
+  /** Provider error message for non-2xx responses. */
+  errorMessage?: string | null
 }
 
 export interface VelocityFinalizeSalesOrder {
@@ -157,6 +161,10 @@ export interface VelocityOrderMetadata {
   salesOrderTrace: string
   salesOrderId?: string | null
   transactionTrace: string | null
+  /** Provider transaction UUID returned alongside transactionTrace. */
+  transactionId?: string | null
+  /** Hosted VMC session identifier extracted from the redirect URL. */
+  transactionSessionId?: string | null
   transactionTraces?: string[]
   redirectRecoveryAttempted?: boolean
   outstandingAmount: number
@@ -172,6 +180,10 @@ export interface VelocityOrderMetadata {
   velocityRawPollResponse?: Record<string, unknown> | null
   recheckedAt?: string | null
   recheckedBy?: string | null
+  lastPolledAt?: string | null
+  lastProviderHttpStatus?: number | null
+  lastProviderError?: string | null
+  consecutiveProviderErrors?: number
   /** Hosted checkout redirect URL returned by Velocity for card (VMC) payments */
   redirectUrl?: string | null
 }

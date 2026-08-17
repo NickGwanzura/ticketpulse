@@ -237,23 +237,31 @@ export async function pollTransaction(
       parsed = {}
     }
 
-    // Ensure the response has a body property at the top level.
-    // If the parsed JSON doesn't have "body" (e.g. error responses like
-    // { message: "Transaction failed" }), construct a synthetic body.
+    const providerError = !response.ok
+      ? (typeof parsed.message === "string"
+        ? parsed.message
+        : `Velocity returned HTTP ${response.status}`)
+      : null
+
+    // Ensure the response has a body property at the top level. A provider
+    // transport/API error is not a payment decision: keep both statuses
+    // UNKNOWN so reconciliation can distinguish it from a real FAILED poll.
     const responseBody =
       (parsed.body as PollTransactionResponse["body"]) ?? {
         id: "",
         trace: transactionTrace,
         amount: 0,
-        paymentStatus: response.ok ? "UNKNOWN" : "FAILED",
+        paymentStatus: "UNKNOWN",
         pollStatus: "UNKNOWN",
       }
 
     const data: PollTransactionResponse = {
-      state: (parsed.state as string) ?? (response.ok ? "unknown" : "error"),
-      status: (parsed.status as string) ?? (response.ok ? "unknown" : "error"),
+      state: typeof parsed.state === "string" ? parsed.state : (response.ok ? "unknown" : "provider_error"),
+      status: typeof parsed.status === "string" ? parsed.status : (response.ok ? "unknown" : "error"),
       body: responseBody,
       workflowId: (parsed.workflowId as string) ?? "",
+      httpStatus: response.status,
+      errorMessage: providerError,
     }
 
     log.info("velocity response", {
@@ -283,7 +291,27 @@ export async function pollTransaction(
         pollStatus: "UNKNOWN",
       },
       workflowId: "",
+      httpStatus: null,
+      errorMessage: err instanceof Error ? err.message : String(err),
     } as PollTransactionResponse
+  }
+}
+
+/**
+ * Extract the hosted checkout session identifier from a Velocity redirect URL.
+ * VMC uses URLs shaped like /payment/{sessionId}; the session is retained as
+ * a reconciliation reference, but transactionTrace remains the poll key.
+ */
+export function extractHostedSessionId(url: string | null | undefined): string | null {
+  if (!url || !url.startsWith("https://")) return null
+
+  try {
+    const parts = new URL(url).pathname.split("/").filter(Boolean)
+    const paymentIndex = parts.findIndex((part) => part.toLowerCase() === "payment")
+    const sessionId = paymentIndex >= 0 ? parts[paymentIndex + 1] : undefined
+    return sessionId ? decodeURIComponent(sessionId) : null
+  } catch {
+    return null
   }
 }
 

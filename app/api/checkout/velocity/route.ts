@@ -4,7 +4,7 @@ import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { checkoutLimiter } from "@/lib/rate-limit"
-import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction } from "@/services/velocity"
+import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction, extractHostedSessionId } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
 import { withLock } from "@/lib/velocity/idempotency"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
@@ -69,6 +69,7 @@ function getVelocityTransactionTrace(transaction: {
 type CardRedirectRecovery = {
   redirectUrl: string | null
   transactionTrace: string | null
+  transactionId: string | null
   attempted: boolean
 }
 
@@ -86,7 +87,12 @@ async function recoverCardRedirectUrl(
     const pollRedirect = extractRedirectUrl(pollResult as unknown as Record<string, unknown>)
     if (pollRedirect) {
       log.info("velocity checkout - recovered redirect URL from poll", { orderId, transactionTrace })
-      return { redirectUrl: pollRedirect, transactionTrace: null, attempted: recoveryAttempted }
+      return {
+        redirectUrl: pollRedirect,
+        transactionTrace: null,
+        transactionId: pollResult.body?.id ?? null,
+        attempted: recoveryAttempted,
+      }
     }
 
     // Second try: re-initiate a new transaction against the same sales order.
@@ -118,9 +124,14 @@ async function recoverCardRedirectUrl(
           transactionTrace,
           newRedirectPreview: `${newRedirect.slice(0, 80)}...`,
         })
-        return { redirectUrl: newRedirect, transactionTrace: newTrace, attempted: true }
+        return {
+          redirectUrl: newRedirect,
+          transactionTrace: newTrace,
+          transactionId: newTx.body?.id ?? null,
+          attempted: true,
+        }
       }
-      return { redirectUrl: null, transactionTrace: newTrace, attempted: true }
+      return { redirectUrl: null, transactionTrace: newTrace, transactionId: newTx.body?.id ?? null, attempted: true }
     }
 
     log.warn("velocity checkout - could not recover redirect URL for card order", {
@@ -129,14 +140,14 @@ async function recoverCardRedirectUrl(
       salesOrderTrace,
       hasSalesOrderId: !!salesOrderId,
     })
-    return { redirectUrl: null, transactionTrace: null, attempted: recoveryAttempted }
+    return { redirectUrl: null, transactionTrace: null, transactionId: null, attempted: recoveryAttempted }
   } catch (err) {
     log.error("velocity checkout - redirect URL recovery failed", {
       orderId,
       transactionTrace,
       error: err instanceof Error ? err.message : String(err),
     })
-    return { redirectUrl: null, transactionTrace: null, attempted: recoveryAttempted }
+    return { redirectUrl: null, transactionTrace: null, transactionId: null, attempted: recoveryAttempted }
   }
 }
 
@@ -485,6 +496,8 @@ export async function POST(req: Request) {
               velocity: {
                 ...vm,
                 redirectUrl: resumeRedirectUrl,
+                transactionId: recovery.transactionId ?? vm.transactionId ?? null,
+                transactionSessionId: extractHostedSessionId(resumeRedirectUrl),
                 transactionTrace: recovery.transactionTrace ?? vm.transactionTrace,
                 transactionTraces,
                 redirectRecoveryAttempted: recovery.attempted,
@@ -681,6 +694,8 @@ export async function POST(req: Request) {
                 velocity: {
                   ...vm,
                   redirectUrl: resumeRedirectUrl,
+                  transactionId: recovery.transactionId ?? vm.transactionId ?? null,
+                  transactionSessionId: extractHostedSessionId(resumeRedirectUrl),
                   transactionTrace: recovery.transactionTrace ?? vm.transactionTrace,
                   transactionTraces,
                   redirectRecoveryAttempted: recovery.attempted,
@@ -958,6 +973,8 @@ export async function POST(req: Request) {
             velocity: {
               salesOrderTrace,
               transactionTrace: null,
+              transactionId: transactionBody?.id ?? null,
+              transactionSessionId: extractHostedSessionId(redirectUrl ?? null),
               outstandingAmount: total,
               paymentProcessor: processor,
               pollStatus: "UNKNOWN" as VelocityPollStatus,
@@ -1000,6 +1017,8 @@ export async function POST(req: Request) {
       salesOrderTrace,
       salesOrderId,
       transactionTrace,
+      transactionId: transactionBody?.id ?? null,
+      transactionSessionId: extractHostedSessionId(redirectUrl ?? null),
       transactionTraces,
       redirectRecoveryAttempted: false,
       outstandingAmount: total,

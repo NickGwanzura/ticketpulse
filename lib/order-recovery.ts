@@ -51,6 +51,67 @@ export type AuditLogEntry = {
   details: string | null
 }
 
+type ManualCompletionMetadata = Record<string, unknown> & {
+  velocity?: Record<string, unknown>
+}
+
+function asMetadata(value: unknown): ManualCompletionMetadata {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as ManualCompletionMetadata
+    : {}
+}
+
+/**
+ * Keep every local representation of a manually confirmed order in sync.
+ * Manual completion is an explicit admin override, so it records a local
+ * SUCCESS signal while preserving the original Velocity traces and adding a
+ * clearly labelled manual-completion audit record.
+ */
+function buildManualCompletionMetadata(
+  current: unknown,
+  orderId: string,
+  paymentRef: string,
+  completedAt: string,
+  completedBy: string,
+): ManualCompletionMetadata {
+  const metadata = asMetadata(current)
+  const currentVelocity = metadata.velocity
+  const velocity = currentVelocity
+    ? {
+        ...currentVelocity,
+        paymentStatus: "SUCCESS",
+        pollStatus: "SUCCESS",
+        outstandingAmount: 0,
+        paymentRef: currentVelocity.paymentRef ?? paymentRef,
+        invoiceRef: currentVelocity.invoiceRef ?? paymentRef,
+        manualCompletionAt: completedAt,
+        manualCompletionBy: completedBy,
+        lastProviderError: null,
+        consecutiveProviderErrors: 0,
+      }
+    : undefined
+
+  return {
+    ...metadata,
+    ...(velocity ? { velocity } : {}),
+    manualCompletion: {
+      orderId,
+      paymentRef,
+      completedAt,
+      completedBy,
+      source: "admin_manual_complete",
+    },
+  }
+}
+
+function getVelocityTraces(metadata: unknown): { transactionTrace: string | null; salesOrderTrace: string | null } {
+  const velocity = asMetadata(metadata).velocity
+  return {
+    transactionTrace: typeof velocity?.transactionTrace === "string" ? velocity.transactionTrace : null,
+    salesOrderTrace: typeof velocity?.salesOrderTrace === "string" ? velocity.salesOrderTrace : null,
+  }
+}
+
 /**
  * Mark an order as manually completed.
  * Sets order status to "completed", records payment as paid when needed,
@@ -81,6 +142,16 @@ export async function markOrderCompleteAction(
 
   const now = new Date()
   const wasPaid = order.status === "paid"
+  const manualPaymentRef = order.paymentRef ?? `manual-${orderId.slice(0, 8)}`
+  const completedAt = now.toISOString()
+  const completionMetadata = buildManualCompletionMetadata(
+    order.metadata,
+    orderId,
+    manualPaymentRef,
+    completedAt,
+    userEmail,
+  )
+  const velocityTraces = getVelocityTraces(order.metadata)
 
   try {
     await db
@@ -90,7 +161,8 @@ export async function markOrderCompleteAction(
         paidAt: order.paidAt ?? now,
         completedAt: now,
         completedBy: userEmail,
-        paymentRef: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
+        paymentRef: manualPaymentRef,
+        metadata: completionMetadata,
         updatedAt: now,
       })
       .where(eq(orders.id, orderId))
@@ -151,16 +223,21 @@ export async function markOrderCompleteAction(
       await db.insert(paymentLedger).values({
         orderId,
         eventId: order.eventId,
-        transactionTrace: `manual-${orderId.slice(0, 8)}-${Date.now()}`,
-        salesOrderTrace: `manual-${orderId.slice(0, 8)}`,
-        invoiceId: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
+        transactionTrace: velocityTraces.transactionTrace ?? `manual-${orderId.slice(0, 8)}-${Date.now()}`,
+        salesOrderTrace: velocityTraces.salesOrderTrace ?? `manual-${orderId.slice(0, 8)}`,
+        invoiceId: manualPaymentRef,
         amount: order.totalAmount,
         currency: order.currency ?? "USD",
         processor: "manual",
         velocityPollStatus: "MANUAL_COMPLETE",
         localStatus: "completed",
         source: "manual_complete",
-        rawPayload: { completedBy: userEmail, completedAt: now.toISOString() },
+        rawPayload: {
+          completedBy: userEmail,
+          completedAt,
+          source: "admin_manual_complete",
+          velocityTraces,
+        },
       })
     } catch (err) {
       log.warn("markOrderComplete - failed to record paymentLedger", { orderId, error: String(err) })
@@ -177,7 +254,12 @@ export async function markOrderCompleteAction(
         buyerEmail: order.guestEmail ?? undefined,
         paymentMethod: order.paymentMethod ?? "manual",
         amount: Number(order.totalAmount ?? 0),
-        metadata: { source: "manual_complete", completedBy: userEmail },
+        metadata: {
+          source: "manual_complete",
+          completedBy: userEmail,
+          paymentRef: manualPaymentRef,
+          velocityTraces,
+        },
       })
     } catch (err) {
       log.warn("markOrderComplete - failed to track event", { orderId, error: String(err) })
@@ -474,6 +556,16 @@ export async function completeAndSendAction(
 
   const now = new Date()
   const delivery = readDeliveryStatus(order.metadata)
+  const manualPaymentRef = order.paymentRef ?? `manual-${orderId.slice(0, 8)}`
+  const completedAt = now.toISOString()
+  const completionMetadata = buildManualCompletionMetadata(
+    order.metadata,
+    orderId,
+    manualPaymentRef,
+    completedAt,
+    userEmail,
+  )
+  const velocityTraces = getVelocityTraces(order.metadata)
 
   // 1. Verify / mark payment
   // 2. Mark order completed (only if not already)
@@ -488,7 +580,8 @@ export async function completeAndSendAction(
           paidAt: order.paidAt ?? now,
           completedAt: now,
           completedBy: userEmail,
-          paymentRef: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
+          paymentRef: manualPaymentRef,
+          metadata: completionMetadata,
           updatedAt: now,
         })
         .where(eq(orders.id, orderId))
@@ -498,16 +591,21 @@ export async function completeAndSendAction(
         await db.insert(paymentLedger).values({
           orderId,
           eventId: order.eventId,
-          transactionTrace: `manual-${orderId.slice(0, 8)}-${Date.now()}`,
-          salesOrderTrace: `manual-${orderId.slice(0, 8)}`,
-          invoiceId: order.paymentRef ?? `manual-${orderId.slice(0, 8)}`,
+          transactionTrace: velocityTraces.transactionTrace ?? `manual-${orderId.slice(0, 8)}-${Date.now()}`,
+          salesOrderTrace: velocityTraces.salesOrderTrace ?? `manual-${orderId.slice(0, 8)}`,
+          invoiceId: manualPaymentRef,
           amount: order.totalAmount,
           currency: order.currency ?? "USD",
           processor: "manual",
           velocityPollStatus: "MANUAL_COMPLETE",
           localStatus: "completed",
           source: "manual_complete_and_send",
-          rawPayload: { completedBy: userEmail, completedAt: now.toISOString() },
+          rawPayload: {
+            completedBy: userEmail,
+            completedAt,
+            source: "admin_manual_complete_and_send",
+            velocityTraces,
+          },
         })
       }
     } catch (err) {
@@ -519,6 +617,17 @@ export async function completeAndSendAction(
         message: `Failed to complete order: ${err instanceof Error ? err.message : String(err)}`,
       }
     }
+  } else {
+    // Repair legacy completed orders created before manual completion updated
+    // metadata and payment references atomically.
+    await db
+      .update(orders)
+      .set({
+        paymentRef: order.paymentRef ?? manualPaymentRef,
+        metadata: completionMetadata,
+        updatedAt: now,
+      })
+      .where(eq(orders.id, orderId))
   }
 
   // 3-8. Generate tickets, QR, PDF, attendee records, send email

@@ -20,7 +20,7 @@ import type { VelocityOrderMetadata, VelocityPollStatus } from "@/types/velocity
 // Must match POLL_TIMEOUT_MS in app/checkout/page.tsx.
 const POLL_TIMEOUT_MS = 5 * 60 * 1000
 
-const PAID_STATUSES = new Set(["paid"])
+const PAID_STATUSES = new Set(["paid", "completed"])
 
 type Params = { id: string }
 
@@ -93,11 +93,19 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     // the inventory reservation NOW instead of leaving the seats locked until
     // the expire-orders cron picks it up.
     let finalPollStatus: VelocityPollStatus = "UNKNOWN"
+    let finalPaymentStatus: string | null = null
     let finalPollFailed = false
+    let finalProviderError = false
+    let finalProviderHttpStatus: number | null = null
+    let finalProviderErrorMessage: string | null = null
     try {
       const pollResult = await pollTransaction(velocityMeta.transactionTrace)
       const normalized = normalizeVelocityPollResponse(pollResult)
       finalPollStatus = (normalized.velocityPollStatus as VelocityPollStatus | null) ?? "UNKNOWN"
+      finalPaymentStatus = normalized.velocityPaymentStatus ?? null
+      finalProviderHttpStatus = pollResult.httpStatus ?? null
+      finalProviderErrorMessage = pollResult.errorMessage ?? null
+      finalProviderError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
       if (normalized.localStatus === "PAID") {
         return await handlePollSuccess(order, meta, velocityMeta, id)
       }
@@ -114,11 +122,34 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         error: String(err),
       })
     }
+    if (!finalPollFailed) {
+      await db
+        .update(orders)
+        .set({
+          metadata: {
+            ...meta,
+            velocity: {
+              ...velocityMeta,
+              pollStatus: finalPollStatus,
+              paymentStatus: finalPaymentStatus,
+              lastPolledAt: new Date().toISOString(),
+              lastProviderHttpStatus: finalProviderHttpStatus,
+              lastProviderError: finalProviderErrorMessage,
+              consecutiveProviderErrors: finalProviderError
+                ? (velocityMeta.consecutiveProviderErrors ?? 0) + 1
+                : 0,
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, id))
+    }
     return NextResponse.json({
       orderId: id,
       status: finalPollFailed ? "expired" : "pending",
       paid: false,
-      pollStatus: finalPollFailed ? "FAILED" : finalPollStatus,
+      pollStatus: finalPollFailed ? "FAILED" : finalProviderError ? "PROVIDER_ERROR" : finalPollStatus,
+      ...(finalProviderError ? { providerHttpStatus: finalProviderHttpStatus } : {}),
       ...(finalPollFailed
         ? { error: "Payment window expired" }
         : { message: "Payment is still being reconciled. An admin will review it if the provider remains inconclusive." }),
@@ -148,6 +179,9 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
     // ── 2. Normalize the poll response ────────────────────────────────────
     const normalized = normalizeVelocityPollResponse(pollResult)
+    const providerError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
+    const polledAt = new Date().toISOString()
+    const previousProviderErrors = velocityMeta.consecutiveProviderErrors ?? 0
 
     log.info("velocity status - normalized", {
       localOrderId: id,
@@ -166,7 +200,12 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       velocity: {
         ...velocityMeta,
         pollStatus: (normalized.velocityPollStatus as VelocityPollStatus | null) ?? "PENDING",
-        ...(!isNetworkError && (normalized.localStatus === "FAILED" || normalized.localStatus === "UNKNOWN")
+        paymentStatus: normalized.velocityPaymentStatus ?? null,
+        lastPolledAt: polledAt,
+        lastProviderHttpStatus: pollResult.httpStatus ?? null,
+        lastProviderError: pollResult.errorMessage ?? null,
+        consecutiveProviderErrors: providerError ? previousProviderErrors + 1 : 0,
+        ...(!isNetworkError && !providerError && (normalized.localStatus === "FAILED" || normalized.localStatus === "UNKNOWN")
           ? {
               failedAt: new Date().toISOString(),
               failureReason: normalized.localStatus === "FAILED"
@@ -203,6 +242,17 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         status: "pending",
         paid: false,
         pollStatus: "PENDING",
+      })
+    }
+
+    if (providerError) {
+      return NextResponse.json({
+        orderId: id,
+        status: "pending",
+        paid: false,
+        pollStatus: "PROVIDER_ERROR",
+        providerHttpStatus: pollResult.httpStatus,
+        message: "The payment provider returned an error while checking this transaction. It has been queued for reconciliation.",
       })
     }
 

@@ -377,7 +377,10 @@ describe("velocity service", () => {
 
       const result = await mod.pollTransaction("bad-trace")
       expect(result.body.pollStatus).toBe("UNKNOWN")
-      expect(result.body.paymentStatus).toBe("FAILED")
+      expect(result.body.paymentStatus).toBe("UNKNOWN")
+      expect(result.httpStatus).toBe(400)
+      expect(result.errorMessage).toBe("Transaction failed")
+      expect(result.state).toBe("provider_error")
     })
 
     it("does NOT throw on HTTP 500 error – returns structured response", async () => {
@@ -385,6 +388,9 @@ describe("velocity service", () => {
 
       const result = await mod.pollTransaction("error-trace")
       expect(result.body.pollStatus).toBe("UNKNOWN")
+      expect(result.body.paymentStatus).toBe("UNKNOWN")
+      expect(result.httpStatus).toBe(500)
+      expect(result.errorMessage).toBe("Internal server error")
     })
 
     it("handles network errors gracefully – returns structured response", async () => {
@@ -405,6 +411,15 @@ describe("velocity service", () => {
 
       const result = await mod.pollTransaction("bad-response")
       expect(result.body.pollStatus).toBe("UNKNOWN")
+      expect(result.body.paymentStatus).toBe("UNKNOWN")
+      expect(result.httpStatus).toBe(502)
+    })
+
+    it("extracts the hosted VMC session while keeping trace as the poll key", () => {
+      expect(mod.extractHostedSessionId("https://secure.velocityafrica.net/payment/SESSION123")).toBe("SESSION123")
+      expect(mod.extractHostedSessionId("https://secure.velocityafrica.net/payment/SESSION%2F123")).toBe("SESSION/123")
+      expect(mod.extractHostedSessionId("https://api.velocityafrica.net/transactions/abc")).toBeNull()
+      expect(mod.extractHostedSessionId(null)).toBeNull()
     })
   })
 
