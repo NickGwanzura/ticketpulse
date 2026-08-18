@@ -63,6 +63,8 @@ export async function POST(request: Request) {
 
   let fixedCount = 0
   let errorCount = 0
+  let providerErrorCount = 0
+  let newProviderIncidentCount = 0
   const results: Array<{
     orderId: string
     action: "skipped" | "fixed" | "error"
@@ -95,6 +97,10 @@ export async function POST(request: Request) {
       const consecutiveProviderErrors = providerError
         ? (velocityMeta.consecutiveProviderErrors ?? 0) + 1
         : 0
+      if (providerError) {
+        providerErrorCount++
+        if (consecutiveProviderErrors === 1) newProviderIncidentCount++
+      }
       const updatedVelocity = {
         ...velocityMeta,
         pollStatus: (normalized.velocityPollStatus as VelocityOrderMetadata["pollStatus"]) ?? "UNKNOWN",
@@ -357,7 +363,11 @@ export async function POST(request: Request) {
   })
 
   // Alert on high error rates — indicates systemic issue with Velocity API
-  if (targetOrders.length > 0) {
+  // Provider errors are persisted per order. Only alert when an order enters
+  // a new provider-error streak; otherwise every five-minute cron run would
+  // send the same email again from a fresh serverless process.
+  const hasNonProviderProcessingErrors = errorCount > providerErrorCount
+  if (targetOrders.length > 0 && (newProviderIncidentCount > 0 || hasNonProviderProcessingErrors)) {
     alertRecheckHighErrorRate(
       targetOrders.length,
       errorCount,
