@@ -105,7 +105,8 @@ export default function CheckoutPage() {
   const [promoLoading, setPromoLoading] = useState(false)
 
   // Drives the "Check your phone" overlay for seamless mobile-money payments.
-  // Polls the Velocity transaction status at 2s intervals until a terminal state.
+  // Polls the Velocity transaction status with a 2s pause between completed
+  // requests until a terminal state (never overlapping slow provider calls).
   // Page-refresh safe: stores startedAt in sessionStorage so the timer survives navigation.
   useEffect(() => {
     if (!pollingOrderId) return
@@ -116,13 +117,15 @@ export default function CheckoutPage() {
     if (!stored) sessionStorage.setItem(startedAtKey, String(startedAt))
 
     let active = true
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let controller: AbortController | null = null
     const statusEndpoint = `/api/checkout/velocity/status/${pollingOrderId}`
 
-    const interval = setInterval(async () => {
+    const poll = async () => {
       if (!active) return
 
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        clearInterval(interval)
+        if (timer) clearTimeout(timer)
         sessionStorage.removeItem(startedAtKey)
         clearPollingSession()
         setPollingOrderId(null)
@@ -132,11 +135,13 @@ export default function CheckoutPage() {
       }
 
       try {
-        const res = await fetch(statusEndpoint, { cache: "no-store" })
+        controller = new AbortController()
+        const res = await fetch(statusEndpoint, { cache: "no-store", signal: controller.signal })
         const data = await res.json()
+        if (!active) return
 
         if (data.paid && pollingContact.current) {
-          clearInterval(interval)
+          if (timer) clearTimeout(timer)
           sessionStorage.removeItem(startedAtKey)
           clearPollingSession()
           const contact = pollingContact.current
@@ -158,7 +163,7 @@ export default function CheckoutPage() {
           terminalPollStatuses.includes(data.pollStatus) ||
           data.pollStatus === "TIMEOUT"
         ) {
-          clearInterval(interval)
+          if (timer) clearTimeout(timer)
           sessionStorage.removeItem(startedAtKey)
           clearPollingSession()
           const isExpired = data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
@@ -175,21 +180,28 @@ export default function CheckoutPage() {
 
         if (data.pollStatus === "UNKNOWN") {
           setSubmitError("We couldn't confirm your payment status. If money was deducted, your tickets will be sent once confirmed. Contact support.")
-          return
         }
 
         if (data.pollStatus === "ERROR") {
           setSubmitError(`An error occurred: ${data.message ?? "Unknown error"}. Your payment may still complete — we'll keep checking.`)
-          return
         }
       } catch {
         // Network blip — fall through to next tick.
+      } finally {
+        controller = null
       }
-    }, POLL_INTERVAL_MS)
+
+      // Do not overlap requests: a Velocity poll can take longer than the
+      // display interval while its async workflow settles.
+      if (active) timer = setTimeout(() => { void poll() }, POLL_INTERVAL_MS)
+    }
+
+    void poll()
 
     return () => {
       active = false
-      clearInterval(interval)
+      if (timer) clearTimeout(timer)
+      controller?.abort()
     }
   }, [pollingOrderId, placeOrder, router])
 
