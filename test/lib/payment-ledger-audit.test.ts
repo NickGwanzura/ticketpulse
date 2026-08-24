@@ -96,4 +96,48 @@ describe("auditOrderPaymentLedger", () => {
     expect(codes).toContain("MANUAL_LEDGER_ON_VELOCITY_ORDER")
     expect(codes).not.toContain("PAID_ORDER_MISSING_LEDGER")
   })
+
+  it("accepts a settled trace retained in VMC transaction history", () => {
+    const order = {
+      ...baseOrder,
+      metadata: {
+        velocity: {
+          ...(baseOrder.metadata as { velocity: Record<string, unknown> }).velocity,
+          transactionTrace: "TX-new",
+          transactionTraces: ["TX-1", "TX-new"],
+        },
+      },
+    }
+
+    const codes = auditOrderPaymentLedger(order, [baseLedger]).map((issue) => issue.code)
+    expect(codes).not.toContain("TRANSACTION_TRACE_MISMATCH")
+  })
+
+  it("flags expired paid orders and expiry rows that consume the real provider trace", () => {
+    const issues = auditOrderPaymentLedger(
+      { ...baseOrder, status: "expired" },
+      [{ ...baseLedger, localStatus: "expired", source: "cron" }],
+    )
+    const codes = issues.map((issue) => issue.code)
+    expect(codes).toContain("EXPIRED_WITH_PAID_SIGNAL")
+    expect(codes).toContain("NONSETTLED_LEDGER_USES_PROVIDER_TRACE")
+  })
+
+  it("flags missing VMC transaction IDs and incomplete paid fields when supplied", () => {
+    const order = {
+      ...baseOrder,
+      paidAt: null,
+      completedAt: null,
+      metadata: {
+        velocity: {
+          ...(baseOrder.metadata as { velocity: Record<string, unknown> }).velocity,
+          paymentProcessor: "VMC",
+        },
+      },
+    }
+
+    const codes = auditOrderPaymentLedger(order, [baseLedger]).map((issue) => issue.code)
+    expect(codes).toContain("VMC_TRANSACTION_ID_MISSING")
+    expect(codes).toContain("PAID_FIELDS_INCOMPLETE")
+  })
 })

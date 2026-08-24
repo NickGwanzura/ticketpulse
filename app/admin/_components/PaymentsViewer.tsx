@@ -5,11 +5,13 @@ import Link from "next/link"
 import {
   DollarSign, TrendingUp, Activity, CheckCircle2, AlertTriangle,
   Smartphone, CreditCard, ArrowUpRight, Pause, Play, PartyPopper, MailWarning, Copy,
+  Clock3, Phone, Mail, Archive,
 } from "lucide-react"
 import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
 
 import type { PaymentsApiResponse } from "@/app/api/admin/payments/data/route"
+import { archiveFinishedEventPendingPaymentsAction } from "@/app/admin/actions/payments"
 import { formatCurrency } from "@/lib/utils"
 
 type Props = {
@@ -85,6 +87,16 @@ const STATUS_LABEL: Record<string, string> = {
   refunded: "Refunded",
 }
 
+function pendingAge(createdAt: string | null, now: number): string {
+  if (!createdAt) return "Unknown age"
+  const elapsed = Math.max(0, now - new Date(createdAt).getTime())
+  const minutes = Math.floor(elapsed / 60_000)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 48) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
+}
+
 // ── Toast ────────────────────────────────────────────────────────────────────
 
 type ToastItem = {
@@ -155,7 +167,7 @@ export default function PaymentsViewer({ initialData }: Props) {
     }
   }, [isLive, onFirstPage])
 
-  const { stats, methods, transactions } = data
+  const { stats, methods, transactions, pendingPayments } = data
 
   return (
     <div className="space-y-8">
@@ -236,6 +248,108 @@ export default function PaymentsViewer({ initialData }: Props) {
           <p className="text-[12px] text-ink-3">Last 14 days</p>
         </div>
       </div>
+
+      {/* Pending orders are queried directly from orders, so payments that
+          never produced a ledger row are still visible and actionable. */}
+      <section>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-[16px] font-bold tracking-tight text-ink">Pending payments</h2>
+            <p className="text-[12px] text-ink-3 mt-1">Latest 50 unresolved orders, including provider errors without ledger entries.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {stats.finishedEventPendingCount > 0 && (
+              <form action={archiveFinishedEventPendingPaymentsAction}>
+                <button type="submit" className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-[12px] font-semibold text-rose-700 hover:bg-rose-100">
+                  <Archive size={13} /> Archive {stats.finishedEventPendingCount} finished-event payment{stats.finishedEventPendingCount === 1 ? "" : "s"}
+                </button>
+              </form>
+            )}
+            <span className="text-[12px] font-semibold text-amber-700 whitespace-nowrap">{stats.pendingCount} unresolved</span>
+          </div>
+        </div>
+
+        {pendingPayments.length === 0 ? (
+          <EmptyState icon={CheckCircle2} title="No pending payments" body="Every payment order is currently resolved." variant="inline" />
+        ) : (
+          <>
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-line bg-paper">
+              <table className="w-full text-left min-w-[1100px]">
+                <thead>
+                  <tr className="bg-paper-2 border-b border-line">
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Age</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Buyer / event</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Amount</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Method</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Provider state</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Error</th>
+                    <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Contact</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingPayments.map((payment) => (
+                    <tr key={payment.orderId} className="border-b border-line last:border-0 hover:bg-paper-2 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-700"><Clock3 size={12} />{pendingAge(payment.createdAt, lastRefreshed.getTime())}</span>
+                        <p className="text-[11px] text-ink-3 mt-1">{payment.status}</p>
+                      </td>
+                      <td className="px-4 py-3 min-w-[220px]">
+                        <p className="text-[13px] font-semibold text-ink">{payment.buyerName ?? payment.buyerEmail ?? "Anonymous"}</p>
+                        <p className="text-[12px] text-ink-3 truncate max-w-[260px]">{payment.eventTitle ?? "Unknown event"}</p>
+                        {payment.eventFinished && <p className="text-[11px] font-semibold text-rose-700 mt-1">Event finished — ready to archive</p>}
+                      </td>
+                      <td className="px-4 py-3 text-[13px] font-semibold text-ink whitespace-nowrap">{payment.currency ?? "USD"} {payment.amount}</td>
+                      <td className="px-4 py-3 text-[12px] text-ink-2 whitespace-nowrap">{payment.paymentMethod?.replace("velocity-", "") ?? "—"}</td>
+                      <td className="px-4 py-3 min-w-[160px]">
+                        <p className="text-[12px] font-medium text-ink">{payment.paymentStatus ?? "Unknown"} / {payment.pollStatus ?? "Unknown"}</p>
+                        {payment.providerHttpStatus && <p className="text-[11px] text-ink-3 mt-1">HTTP {payment.providerHttpStatus} · {payment.consecutiveProviderErrors} errors</p>}
+                        {payment.transactionTrace && <p className="text-[10px] font-mono text-ink-3 mt-1 max-w-[180px] truncate" title={payment.transactionTrace}>TX: {payment.transactionTrace}</p>}
+                        {payment.updatedAt && <p className="text-[10px] text-ink-3 mt-1">Updated {pendingAge(payment.updatedAt, lastRefreshed.getTime())} ago</p>}
+                      </td>
+                      <td className="px-4 py-3 max-w-[240px] text-[12px] text-rose-600 break-words">{payment.providerError ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {payment.buyerEmail && <a href={`mailto:${payment.buyerEmail}`} title={`Email ${payment.buyerEmail}`} className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-paper-2 text-ink-2 hover:text-navy"><Mail size={13} /></a>}
+                          {payment.buyerPhone && <a href={`tel:${payment.buyerPhone}`} title={`Call ${payment.buyerPhone}`} className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-paper-2 text-ink-2 hover:text-navy"><Phone size={13} /></a>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/admin/orders/${payment.orderId}`} className="inline-flex items-center gap-1 text-[12px] font-medium text-navy hover:underline whitespace-nowrap">Review <ArrowUpRight size={12} /></Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="md:hidden space-y-3">
+              {pendingPayments.map((payment) => (
+                <li key={payment.orderId} className="rounded-xl border border-line bg-paper p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[14px] font-semibold text-ink">{payment.buyerName ?? payment.buyerEmail ?? "Anonymous"}</p>
+                      <p className="text-[12px] text-ink-3">{payment.eventTitle ?? "Unknown event"}</p>
+                      {payment.eventFinished && <p className="text-[11px] font-semibold text-rose-700 mt-1">Event finished — ready to archive</p>}
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock3 size={11} />{pendingAge(payment.createdAt, lastRefreshed.getTime())}</span>
+                  </div>
+                  <p className="text-[13px] font-semibold text-ink">{payment.currency ?? "USD"} {payment.amount} · {payment.paymentMethod?.replace("velocity-", "") ?? "Unknown method"}</p>
+                  <p className="text-[12px] text-ink-2">{payment.paymentStatus ?? "Unknown"} / {payment.pollStatus ?? "Unknown"}{payment.providerHttpStatus ? ` · HTTP ${payment.providerHttpStatus}` : ""}</p>
+                  {payment.transactionTrace && <p className="text-[10px] font-mono text-ink-3 truncate" title={payment.transactionTrace}>TX: {payment.transactionTrace}</p>}
+                  {payment.updatedAt && <p className="text-[11px] text-ink-3">Last updated {pendingAge(payment.updatedAt, lastRefreshed.getTime())} ago</p>}
+                  {payment.providerError && <p className="text-[12px] text-rose-600">{payment.providerError} · {payment.consecutiveProviderErrors} consecutive errors</p>}
+                  <div className="flex items-center gap-2">
+                    {payment.buyerEmail && <a href={`mailto:${payment.buyerEmail}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-paper-2 text-[12px] text-ink-2"><Mail size={12} /> Email</a>}
+                    {payment.buyerPhone && <a href={`tel:${payment.buyerPhone}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-paper-2 text-[12px] text-ink-2"><Phone size={12} /> Call</a>}
+                    <Link href={`/admin/orders/${payment.orderId}`} className="ml-auto inline-flex items-center gap-1 text-[12px] font-medium text-navy">Review <ArrowUpRight size={12} /></Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
 
       {/* Payment methods */}
       <section>

@@ -33,7 +33,8 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const [resendingWA, setResendingWA] = useState(false)
   const [resendWANote, setResendWANote] = useState<string | null>(null)
   const [pollingForCard, setPollingForCard] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const orderStatus = order?.status
   const ticketsEnabled = order?.status === "paid" || order?.status === "completed"
   const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, ticketsEnabled)
   const [transferStates, setTransferStates] = useState<Record<string, {
@@ -99,50 +100,58 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   // loop died. We restart a short poll here so the order flips to paid without
   // the user having to wait for the cron job.
   useEffect(() => {
-    if (!welcomeFlag || !order) return
-    if (order.status === "paid") return   // already confirmed, nothing to do
+    if (!welcomeFlag || !orderStatus) return
+    if (orderStatus === "paid" || orderStatus === "completed") return
 
     const startedAt = Date.now()
+    let cancelled = false
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Starts the visible recovery state for a returned card payment.
     setPollingForCard(true)
 
-    pollRef.current = setInterval(async () => {
+    const poll = async () => {
+      if (cancelled) return
       if (Date.now() - startedAt > CARD_POLL_TIMEOUT_MS) {
-        clearInterval(pollRef.current!)
         setPollingForCard(false)
         return
       }
       try {
         const res = await fetch(`/api/checkout/velocity/status/${id}`, { cache: "no-store" })
-        if (!res.ok) return
-        const data = await res.json()
-        if (data.paid) {
-          clearInterval(pollRef.current!)
-          setPollingForCard(false)
-          // Re-fetch the order from the server to get the updated status
-          const fresh = await fetch(`/api/orders/${id}/data`)
-          if (fresh.ok) {
-            const updated: OrderRecord = await fresh.json()
-            setOrder(updated)
-            placeOrder(
-              { name: updated.contact.name, email: updated.contact.email, phone: updated.contact.phone },
-              { method: updated.payment.method },
-              id,
-              "paid",
-            )
+        if (res.ok) {
+          const data = await res.json()
+          if (data.paid) {
+            setPollingForCard(false)
+            // Re-fetch the order from the server to get the updated status
+            const fresh = await fetch(`/api/orders/${id}/data`)
+            if (fresh.ok) {
+              const updated: OrderRecord = await fresh.json()
+              setOrder(updated)
+              placeOrder(
+                { name: updated.contact.name, email: updated.contact.email, phone: updated.contact.phone },
+                { method: updated.payment.method },
+                id,
+                "paid",
+              )
+            }
+            return
+          } else if (["expired", "cancelled"].includes(data.status)) {
+            setPollingForCard(false)
+            setOrder((current) => current ? { ...current, status: "expired" } : current)
+            return
           }
-        } else if (["expired", "cancelled"].includes(data.status)) {
-          clearInterval(pollRef.current!)
-          setPollingForCard(false)
-          setOrder((current) => current ? { ...current, status: "expired" } : current)
         }
       } catch {
         // silently continue polling
       }
-    }, CARD_POLL_INTERVAL_MS)
+      if (!cancelled) pollRef.current = setTimeout(poll, CARD_POLL_INTERVAL_MS)
+    }
 
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [welcomeFlag, order?.status, id, getOrder])
+    pollRef.current = setTimeout(poll, CARD_POLL_INTERVAL_MS)
+
+    return () => {
+      cancelled = true
+      if (pollRef.current) clearTimeout(pollRef.current)
+    }
+  }, [welcomeFlag, orderStatus, id, placeOrder])
 
   async function resendTickets() {
     if (resendingTickets) return

@@ -14,18 +14,18 @@ const url = process.env.DATABASE_URL
 // connectionTimeoutMillis matters: pg's default is 0 (wait forever), so if the
 // DB is unreachable a health check or page render hangs indefinitely instead
 // of failing fast with a readable error.
-const pool = url
+export const dbPool = url
   ? new Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 })
   : null
 
 // An unhandled `error` event on an idle pooled connection crashes the
 // Node process, producing the 500→503 pattern.
-pool?.on("error", (err: Error) => {
+dbPool?.on("error", (err: Error) => {
   console.error("[db] idle pool connection error", err)
 })
 
-export const db: DBType = pool
-  ? drizzle(pool, { schema })
+export const db: DBType = dbPool
+  ? drizzle(dbPool, { schema })
   : (new Proxy({} as DBType, {
       get() {
         throw new Error(

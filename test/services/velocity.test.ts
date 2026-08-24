@@ -312,6 +312,57 @@ describe("velocity service", () => {
   })
 
   describe("pollTransaction", () => {
+    it("uses the transaction ID in the path and sends both provider references in the PUT body", async () => {
+      mockFetch({
+        body: {
+          state: "done",
+          status: "finished",
+          body: {
+            id: "txn-id-001",
+            trace: MOCK_TRANSACTION_TRACE,
+            amount: 50,
+            paymentStatus: "PENDING",
+            pollStatus: "PENDING",
+          },
+          workflowId: "617",
+        },
+      })
+
+      await mod.pollTransaction(MOCK_TRANSACTION_TRACE, {
+        transactionId: "txn-id-001",
+        transactionSessionId: "vmc-session-001",
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.velocity.test/transactions/poll/txn-id-001",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({ id: "txn-id-001", trace: MOCK_TRANSACTION_TRACE }),
+          signal: expect.any(AbortSignal),
+        }),
+      )
+    })
+
+    it("falls back to the trace for both path and body on legacy orders", async () => {
+      mockFetch({
+        body: {
+          state: "done",
+          status: "finished",
+          body: { id: "", trace: MOCK_TRANSACTION_TRACE, amount: 50, paymentStatus: "PENDING", pollStatus: "PENDING" },
+          workflowId: "617",
+        },
+      })
+
+      await mod.pollTransaction(MOCK_TRANSACTION_TRACE)
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `https://api.velocity.test/transactions/poll/${MOCK_TRANSACTION_TRACE}`,
+        expect.objectContaining({
+          body: JSON.stringify({ id: MOCK_TRANSACTION_TRACE, trace: MOCK_TRANSACTION_TRACE }),
+        }),
+      )
+    })
+
     it("returns SUCCESS when payment is confirmed", async () => {
       mockFetch({
         body: {

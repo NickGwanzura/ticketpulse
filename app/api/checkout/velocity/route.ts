@@ -6,7 +6,7 @@ import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, ve
 import { checkoutLimiter } from "@/lib/rate-limit"
 import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction, extractHostedSessionId } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
-import { withLock } from "@/lib/velocity/idempotency"
+import { lockOrderMutation, withLock } from "@/lib/velocity/idempotency"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
@@ -15,7 +15,12 @@ import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { freeOrderAlert } from "@/lib/whatsapp-templates"
-import type { VelocityOrderMetadata, VelocityPollStatus, InitiateTransactionPayload } from "@/types/velocity"
+import type {
+  InitiateTransactionPayload,
+  VelocityOrderMetadata,
+  VelocityPollStatus,
+  VelocityTransactionAttempt,
+} from "@/types/velocity"
 
 // Flexible redirect URL extraction: recursively checks the entire Velocity response
 // for any field name that could contain a hosted checkout URL.
@@ -79,11 +84,16 @@ async function recoverCardRedirectUrl(
   salesOrderId: string | undefined,
   orderId: string,
   recoveryAttempted: boolean,
+  amount: number,
+  currency: "USD" | "ZWG",
+  transactionId?: string | null,
+  transactionSessionId?: string | null,
+  forceNewTransaction = false,
 ): Promise<CardRedirectRecovery> {
   try {
     // First try: poll the existing transaction — Velocity may embed the redirect
     // URL in the poll response.
-    const pollResult = await pollTransaction(transactionTrace)
+    const pollResult = await pollTransaction(transactionTrace, { transactionId, transactionSessionId })
     const pollRedirect = extractRedirectUrl(pollResult as unknown as Record<string, unknown>)
     if (pollRedirect) {
       log.info("velocity checkout - recovered redirect URL from poll", { orderId, transactionTrace })
@@ -98,14 +108,14 @@ async function recoverCardRedirectUrl(
     // Second try: re-initiate a new transaction against the same sales order.
     // Only possible if we have the Velocity sales order UUID. Velocity will
     // generate a fresh hosted checkout session with a new redirect URL.
-    if (salesOrderId && !recoveryAttempted) {
+    if (salesOrderId && (!recoveryAttempted || forceNewTransaction)) {
       const config = getConfig()
       const txPayload: InitiateTransactionPayload = {
-        amount: 0, // amount is on the sales order; Velocity reads from it
+        amount,
         paymentProcessorLabel: "VMC",
         debitPhone: config.merchantPhone || "+263000000000",
         debitRegion: "ZW",
-        debitCurrency: "USD",
+        debitCurrency: currency,
         debitRef: orderId,
         creditPhone: config.merchantPhone,
         creditRegion: "ZW",
@@ -149,6 +159,198 @@ async function recoverCardRedirectUrl(
     })
     return { redirectUrl: null, transactionTrace: null, transactionId: null, attempted: recoveryAttempted }
   }
+}
+
+function mergeVelocityAttempts(
+  ...attemptGroups: Array<Array<VelocityTransactionAttempt | null | undefined> | undefined>
+): VelocityTransactionAttempt[] {
+  const merged = new Map<string, VelocityTransactionAttempt>()
+  for (const attempt of attemptGroups.flatMap((group) => group ?? [])) {
+    if (!attempt) continue
+    const key = attempt.transactionTrace
+      ? `trace:${attempt.transactionTrace}`
+      : attempt.transactionId
+        ? `id:${attempt.transactionId}`
+        : attempt.transactionSessionId
+          ? `session:${attempt.transactionSessionId}`
+          : null
+    if (key) merged.set(key, attempt)
+  }
+  return [...merged.values()].slice(-20)
+}
+
+function velocityAttempt(
+  transaction: { body?: { trace?: string | null; id?: string | null } | null; externalId?: string | null },
+  redirectUrl: string | null | undefined,
+  source: string,
+): VelocityTransactionAttempt | null {
+  const transactionTrace = getVelocityTransactionTrace(transaction)
+  const transactionId = transaction.body?.id ?? null
+  const transactionSessionId = extractHostedSessionId(redirectUrl)
+  if (!transactionTrace && !transactionId && !transactionSessionId) return null
+  return {
+    transactionTrace,
+    transactionId,
+    transactionSessionId,
+    initiatedAt: new Date().toISOString(),
+    source,
+  }
+}
+
+type PersistedCardRecovery = {
+  redirectUrl: string | null
+  transactionTrace: string | null
+  inProgress: boolean
+  recoverable: boolean
+}
+
+/**
+ * Claim card recovery under the shared order lock, perform provider I/O after
+ * releasing the DB transaction, then merge the resulting attempt back under
+ * the same lock. The lease prevents duplicate remote replacement sessions
+ * without holding a database connection during network I/O.
+ */
+async function recoverAndPersistCardRedirect(
+  orderId: string,
+  fallbackCurrency: "USD" | "ZWG",
+): Promise<PersistedCardRecovery> {
+  const claimToken = crypto.randomUUID()
+  const claim = await db.transaction(async (tx) => {
+    await lockOrderMutation(tx, orderId)
+    const [current] = await tx
+      .select({
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        currency: orders.currency,
+        metadata: orders.metadata,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1)
+    const metadata = (current?.metadata ?? {}) as Record<string, unknown> & { velocity?: VelocityOrderMetadata }
+    const velocity = metadata.velocity
+    if (!current || !velocity?.transactionTrace || !velocity.salesOrderTrace) return null
+    if (!["pending", "awaiting_verification"].includes(current.status ?? "")) return null
+
+    const failedSession = velocity.paymentStatus !== "SUCCESS" &&
+      ["FAILED", "TIMEOUT"].includes(velocity.pollStatus ?? "")
+    if (velocity.redirectUrl && !failedSession) {
+      return { current, metadata, velocity, failedSession, alreadyReady: true }
+    }
+
+    const claimedAt = velocity.redirectRecoveryInProgressAt
+      ? new Date(velocity.redirectRecoveryInProgressAt).getTime()
+      : 0
+    if (velocity.redirectRecoveryToken && Date.now() - claimedAt < 2 * 60 * 1000) {
+      return { current, metadata, velocity, failedSession, alreadyReady: false, inProgress: true }
+    }
+
+    const nextVelocity: VelocityOrderMetadata = {
+      ...velocity,
+      redirectRecoveryToken: claimToken,
+      redirectRecoveryInProgressAt: new Date().toISOString(),
+    }
+    await tx
+      .update(orders)
+      .set({ metadata: { ...metadata, velocity: nextVelocity }, updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+    return { current, metadata, velocity: nextVelocity, failedSession, alreadyReady: false, inProgress: false }
+  })
+
+  if (!claim) return { redirectUrl: null, transactionTrace: null, inProgress: false, recoverable: false }
+  if (claim.alreadyReady) {
+    return {
+      redirectUrl: claim.velocity.redirectUrl ?? null,
+      transactionTrace: claim.velocity.transactionTrace,
+      inProgress: false,
+      recoverable: true,
+    }
+  }
+  if (claim.inProgress) {
+    return {
+      redirectUrl: claim.velocity.redirectUrl ?? null,
+      transactionTrace: claim.velocity.transactionTrace,
+      inProgress: true,
+      recoverable: true,
+    }
+  }
+
+  const recovery = await recoverCardRedirectUrl(
+    claim.velocity.transactionTrace!,
+    claim.velocity.salesOrderTrace,
+    claim.velocity.salesOrderId ?? undefined,
+    orderId,
+    claim.velocity.redirectRecoveryAttempted === true,
+    Number(claim.current.totalAmount),
+    (claim.current.currency ?? fallbackCurrency) as "USD" | "ZWG",
+    claim.velocity.transactionId,
+    claim.velocity.transactionSessionId,
+    claim.failedSession,
+  )
+  const recoverySessionId = extractHostedSessionId(recovery.redirectUrl)
+  const newAttempt = recovery.transactionTrace || recovery.transactionId || recoverySessionId
+    ? {
+        transactionTrace: recovery.transactionTrace,
+        transactionId: recovery.transactionId,
+        transactionSessionId: recoverySessionId,
+        initiatedAt: new Date().toISOString(),
+        source: "redirect_recovery",
+      } satisfies VelocityTransactionAttempt
+    : null
+
+  return db.transaction(async (tx) => {
+    await lockOrderMutation(tx, orderId)
+    const [current] = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+    const metadata = (current?.metadata ?? {}) as Record<string, unknown> & { velocity?: VelocityOrderMetadata }
+    const velocity = metadata.velocity
+    if (!current || !velocity) {
+      return { redirectUrl: null, transactionTrace: null, inProgress: false, recoverable: false }
+    }
+
+    const currentAttempt: VelocityTransactionAttempt = {
+      transactionTrace: velocity.transactionTrace,
+      transactionId: velocity.transactionId ?? null,
+      transactionSessionId: velocity.transactionSessionId ?? null,
+      initiatedAt: velocity.initiatedAt ?? new Date().toISOString(),
+      source: "active_legacy",
+    }
+    const transactionAttempts = mergeVelocityAttempts(
+      velocity.transactionAttempts,
+      [currentAttempt, newAttempt],
+    )
+    const shouldActivate = Boolean(
+      recovery.transactionTrace && ["pending", "awaiting_verification", "expired"].includes(current.status ?? ""),
+    )
+    const transactionTrace = shouldActivate ? recovery.transactionTrace : velocity.transactionTrace
+    const redirectUrl = recovery.redirectUrl ?? velocity.redirectUrl ?? null
+    const nextVelocity: VelocityOrderMetadata = {
+      ...velocity,
+      redirectUrl,
+      transactionTrace,
+      transactionId: shouldActivate
+        ? recovery.transactionId
+        : velocity.transactionId ?? null,
+      transactionSessionId: shouldActivate
+        ? recoverySessionId
+        : velocity.transactionSessionId ?? null,
+      transactionTraces: Array.from(new Set([
+        ...(velocity.transactionTraces ?? []),
+        ...transactionAttempts.map((attempt) => attempt.transactionTrace),
+      ].filter((trace): trace is string => Boolean(trace)))),
+      transactionAttempts,
+      redirectRecoveryAttempted: recovery.attempted,
+      redirectRecoveryInProgressAt: null,
+      redirectRecoveryToken: null,
+      ...(shouldActivate
+        ? { pollStatus: "PENDING" as const, paymentStatus: "PENDING", failedAt: null, failureReason: null }
+        : {}),
+    }
+    await tx
+      .update(orders)
+      .set({ metadata: { ...metadata, velocity: nextVelocity }, updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+    return { redirectUrl, transactionTrace, inProgress: false, recoverable: true }
+  })
 }
 
 // Maximum retry attempts for Velocity card transactions that fail to return
@@ -452,7 +654,6 @@ export async function POST(req: Request) {
           eq(orders.guestEmail, parsed.email),
           inArray(orders.status, ["pending", "awaiting_verification"]),
           sql`${orders.createdAt} > now() - interval '30 minutes'`,
-          sql`${orders.metadata}->'velocity'->>'transactionTrace' IS NOT NULL`,
         ),
       )
       .orderBy(desc(orders.createdAt))
@@ -463,7 +664,13 @@ export async function POST(req: Request) {
   const resumable = await findResumableOrder()
   if (resumable) {
     const meta = (resumable.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-    const vm = meta.velocity!
+    const vm = meta.velocity
+    if (!vm) {
+      return NextResponse.json(
+        { error: "Your payment is still being initialized. Please wait a moment and try again." },
+        { status: 409 },
+      )
+    }
     const isCard = resumable.paymentMethod === "velocity-card"
     log.info("velocity checkout - resuming existing order", { orderId: resumable.id, email: parsed.email })
 
@@ -471,42 +678,20 @@ export async function POST(req: Request) {
     // actually gets sent to Velocity's hosted checkout instead of being
     // stuck in a polling loop for a payment they can't complete.
     let resumeRedirectUrl: string | null = vm.redirectUrl ?? null
-    if (isCard && !resumeRedirectUrl && vm.transactionTrace) {
-      const recovery = await recoverCardRedirectUrl(
-        vm.transactionTrace,
-        vm.salesOrderTrace,
-        vm.salesOrderId ?? undefined,
-        resumable.id,
-        vm.redirectRecoveryAttempted === true,
-      )
-      resumeRedirectUrl = recovery.redirectUrl
-      // Persist recovery state and any newly-issued trace so a page refresh
-      // cannot create another remote card transaction indefinitely.
-      if (recovery.attempted || recovery.transactionTrace || recovery.redirectUrl) {
-        const transactionTraces = Array.from(new Set([
-          ...(vm.transactionTraces ?? []),
-          vm.transactionTrace,
-          recovery.transactionTrace,
-        ].filter((trace): trace is string => Boolean(trace))))
-        await db
-          .update(orders)
-          .set({
-            metadata: {
-              ...meta,
-              velocity: {
-                ...vm,
-                redirectUrl: resumeRedirectUrl,
-                transactionId: recovery.transactionId ?? vm.transactionId ?? null,
-                transactionSessionId: extractHostedSessionId(resumeRedirectUrl),
-                transactionTrace: recovery.transactionTrace ?? vm.transactionTrace,
-                transactionTraces,
-                redirectRecoveryAttempted: recovery.attempted,
-              },
-            },
-            updatedAt: new Date(),
-          })
-          .where(eq(orders.id, resumable.id))
+    let resolvedTransactionTrace = vm.transactionTrace
+    if (isCard) {
+      const recovery = await recoverAndPersistCardRedirect(resumable.id, currency as "USD" | "ZWG")
+      if (!recovery.recoverable) {
+        return NextResponse.json({ error: "This payment requires reconciliation." }, { status: 409 })
       }
+      if (recovery.inProgress) {
+        return NextResponse.json(
+          { error: "Your card checkout is being recovered. Please wait a moment and try again." },
+          { status: 409 },
+        )
+      }
+      resumeRedirectUrl = recovery.redirectUrl
+      resolvedTransactionTrace = recovery.transactionTrace ?? vm.transactionTrace
     }
 
     return NextResponse.json({
@@ -514,7 +699,7 @@ export async function POST(req: Request) {
       paymentMethod: isCard ? "CARD" : "ECOCASH",
       orderId: resumable.id,
       salesOrderTrace: vm.salesOrderTrace,
-      transactionTrace: vm.transactionTrace,
+      transactionTrace: resolvedTransactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
       pollRequired: isCard ? undefined : true,
       redirectUrl: resumeRedirectUrl,
@@ -665,46 +850,32 @@ export async function POST(req: Request) {
     const concurrent = await findResumableOrder()
     if (concurrent) {
       const meta = (concurrent.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-      const vm = meta.velocity!
+      const vm = meta.velocity
+      if (!vm) {
+        return NextResponse.json(
+          { error: "Your checkout is being processed. Please wait a moment and try again." },
+          { status: 409 },
+        )
+      }
       const isCard = concurrent.paymentMethod === "velocity-card"
       log.info("velocity checkout - resuming concurrent order after lock wait", { orderId: concurrent.id })
 
       // Recover redirect URL for card orders (same logic as primary resume path)
       let resumeRedirectUrl = vm.redirectUrl ?? null
-      if (isCard && !resumeRedirectUrl && vm.transactionTrace) {
-        const recovery = await recoverCardRedirectUrl(
-          vm.transactionTrace,
-          vm.salesOrderTrace,
-          vm.salesOrderId ?? undefined,
-          concurrent.id,
-          vm.redirectRecoveryAttempted === true,
-        )
-        resumeRedirectUrl = recovery.redirectUrl
-        if (recovery.attempted || recovery.transactionTrace || recovery.redirectUrl) {
-          const transactionTraces = Array.from(new Set([
-            ...(vm.transactionTraces ?? []),
-            vm.transactionTrace,
-            recovery.transactionTrace,
-          ].filter((trace): trace is string => Boolean(trace))))
-          await db
-            .update(orders)
-            .set({
-              metadata: {
-                ...meta,
-                velocity: {
-                  ...vm,
-                  redirectUrl: resumeRedirectUrl,
-                  transactionId: recovery.transactionId ?? vm.transactionId ?? null,
-                  transactionSessionId: extractHostedSessionId(resumeRedirectUrl),
-                  transactionTrace: recovery.transactionTrace ?? vm.transactionTrace,
-                  transactionTraces,
-                  redirectRecoveryAttempted: recovery.attempted,
-                },
-              },
-              updatedAt: new Date(),
-            })
-            .where(eq(orders.id, concurrent.id))
+      let resolvedTransactionTrace = vm.transactionTrace
+      if (isCard) {
+        const recovery = await recoverAndPersistCardRedirect(concurrent.id, currency as "USD" | "ZWG")
+        if (!recovery.recoverable) {
+          return NextResponse.json({ error: "This payment requires reconciliation." }, { status: 409 })
         }
+        if (recovery.inProgress) {
+          return NextResponse.json(
+            { error: "Your card checkout is being recovered. Please wait a moment and try again." },
+            { status: 409 },
+          )
+        }
+        resumeRedirectUrl = recovery.redirectUrl
+        resolvedTransactionTrace = recovery.transactionTrace ?? vm.transactionTrace
       }
 
       return NextResponse.json({
@@ -712,7 +883,7 @@ export async function POST(req: Request) {
         paymentMethod: isCard ? "CARD" : "ECOCASH",
         orderId: concurrent.id,
         salesOrderTrace: vm.salesOrderTrace,
-        transactionTrace: vm.transactionTrace,
+        transactionTrace: resolvedTransactionTrace,
         flow: isCard ? "velocity-redirect" : "velocity-seamless",
         pollRequired: isCard ? undefined : true,
         redirectUrl: resumeRedirectUrl,
@@ -903,6 +1074,9 @@ export async function POST(req: Request) {
     let transactionBody = transaction.body ?? null
     let transactionTrace = getVelocityTransactionTrace(transaction)
     const transactionTraces = transactionTrace ? [transactionTrace] : []
+    let transactionAttempts = mergeVelocityAttempts([
+      velocityAttempt(transaction, redirectUrl, "checkout_initial"),
+    ])
 
     if (isCard && !redirectUrl && transactionTrace) {
       for (let attempt = 1; attempt <= VMC_REDIRECT_RETRIES; attempt++) {
@@ -917,6 +1091,10 @@ export async function POST(req: Request) {
         try {
           const retryTx = await initiateTransaction(transactionPayload)
           const retryUrl = extractRedirectUrl(retryTx as unknown as Record<string, unknown>)
+          transactionAttempts = mergeVelocityAttempts(
+            transactionAttempts,
+            [velocityAttempt(retryTx, retryUrl, `checkout_retry_${attempt}`)],
+          )
           if (retryUrl) {
             log.info("velocity checkout - redirect URL recovered on retry", {
               orderId,
@@ -946,6 +1124,13 @@ export async function POST(req: Request) {
       }
     }
 
+    const activeAttempt = [...transactionAttempts].reverse().find((attempt) =>
+      transactionTrace
+        ? attempt.transactionTrace === transactionTrace
+        : attempt.transactionTrace === null,
+    )
+    const activeTransactionId = activeAttempt?.transactionId ?? transactionBody?.id ?? null
+    const activeTransactionSessionId = activeAttempt?.transactionSessionId ?? extractHostedSessionId(redirectUrl ?? null)
     const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus
 
     log.info("velocity checkout - transaction response", {
@@ -965,16 +1150,23 @@ export async function POST(req: Request) {
       })
 
     if (!transactionTrace) {
-      await db
-        .update(orders)
-        .set({
-          metadata: {
-            ...baseMeta,
-            velocity: {
+      await db.transaction(async (tx) => {
+        await lockOrderMutation(tx, orderId)
+        const [current] = await tx.select({ metadata: orders.metadata }).from(orders).where(eq(orders.id, orderId)).limit(1)
+        const currentMetadata = (current?.metadata ?? {}) as Record<string, unknown>
+        await tx
+          .update(orders)
+          .set({
+            metadata: {
+              ...currentMetadata,
+              ...baseMeta,
+              velocity: {
               salesOrderTrace,
+              salesOrderId,
               transactionTrace: null,
-              transactionId: transactionBody?.id ?? null,
-              transactionSessionId: extractHostedSessionId(redirectUrl ?? null),
+              transactionId: activeTransactionId,
+              transactionSessionId: activeTransactionSessionId,
+              transactionAttempts,
               outstandingAmount: total,
               paymentProcessor: processor,
               pollStatus: "UNKNOWN" as VelocityPollStatus,
@@ -984,11 +1176,12 @@ export async function POST(req: Request) {
               initiatedAt: new Date().toISOString(),
               finalizedAt: null,
               failureReason: "Velocity did not return a transaction trace",
+              },
             },
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, orderId))
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.id, orderId))
+      })
 
       log.error("velocity checkout - transaction missing trace", {
         orderId,
@@ -1017,9 +1210,10 @@ export async function POST(req: Request) {
       salesOrderTrace,
       salesOrderId,
       transactionTrace,
-      transactionId: transactionBody?.id ?? null,
-      transactionSessionId: extractHostedSessionId(redirectUrl ?? null),
+      transactionId: activeTransactionId,
+      transactionSessionId: activeTransactionSessionId,
       transactionTraces,
+      transactionAttempts,
       redirectRecoveryAttempted: false,
       outstandingAmount: total,
       paymentProcessor: processor,
@@ -1032,13 +1226,24 @@ export async function POST(req: Request) {
       redirectUrl: redirectUrl ?? null,
     }
 
-    await db
-      .update(orders)
-      .set({
-        metadata: { ...baseMeta, velocity: velocityMeta },
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, orderId))
+    await db.transaction(async (tx) => {
+      await lockOrderMutation(tx, orderId)
+      const [current] = await tx.select({ metadata: orders.metadata }).from(orders).where(eq(orders.id, orderId)).limit(1)
+      const currentMetadata = (current?.metadata ?? {}) as Record<string, unknown> & { velocity?: VelocityOrderMetadata }
+      const previousVelocity = currentMetadata.velocity
+      const mergedVelocity: VelocityOrderMetadata = {
+        ...velocityMeta,
+        transactionTraces: Array.from(new Set([
+          ...(previousVelocity?.transactionTraces ?? []),
+          ...transactionTraces,
+        ])),
+        transactionAttempts: mergeVelocityAttempts(previousVelocity?.transactionAttempts, transactionAttempts),
+      }
+      await tx
+        .update(orders)
+        .set({ metadata: { ...currentMetadata, ...baseMeta, velocity: mergedVelocity }, updatedAt: new Date() })
+        .where(eq(orders.id, orderId))
+    })
 
     trackEvent({ event: "PAYMENT_INITIATED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, amount: total })
 

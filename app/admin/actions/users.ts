@@ -1,24 +1,17 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, and, inArray, or, sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 
 import { signIn } from "@/auth"
 import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
-import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
-import {
-  sendEmail,
-  adminEmail,
-  sendOrderConfirmationEmail,
-} from "@/lib/email"
-import { eventPublishedNotificationEmail } from "@/lib/email-templates"
-import { log } from "@/lib/logger"
+import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
+import { sendOrderConfirmationEmail } from "@/lib/email"
 import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
-import type { VelocityOrderMetadata } from "@/types/velocity"
 
 export async function verifyUserEmailAction(userId: string) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   await db
     .update(users)
@@ -34,7 +27,7 @@ export async function verifyUserEmailAction(userId: string) {
  * (admin accounts must be created via the database directly).
  */
 export async function updateUserRoleAction(userId: string, newRole: string) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   const allowedRoles = ["attendee", "organizer", "vendor"] as const
   if (!allowedRoles.includes(newRole as typeof allowedRoles[number])) {
@@ -54,7 +47,7 @@ export async function updateUserRoleAction(userId: string, newRole: string) {
  * Unverify a user's email (set emailVerified to null).
  */
 export async function unverifyUserEmailAction(userId: string) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   await db
     .update(users)
@@ -73,7 +66,7 @@ export async function unverifyUserEmailAction(userId: string) {
  * - Other statuses: throws an error.
  */
 export async function resendOrderEmailAction(orderId: string) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   const [order] = await db
     .select()
@@ -179,7 +172,7 @@ export async function resendOrderEmailAction(orderId: string) {
  * Only admins can call this.
  */
 export async function updateCommissionRateAction(userId: string, rate: number) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   if (rate !== PLATFORM_FEE_PERCENT) {
     throw new Error(`TicketPulse commission is fixed at ${PLATFORM_FEE_PERCENT}%`)
@@ -199,7 +192,7 @@ export async function updateCommissionRateAction(userId: string, rate: number) {
  * Sets approvedAt to the current time. No-op if already approved.
  */
 export async function approveOrganizerAction(userId: string) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   const [organizer] = await db
     .select({ email: users.email, name: users.name, approvedAt: users.approvedAt })
@@ -228,6 +221,7 @@ export async function approveOrganizerAction(userId: string) {
   }
 
   revalidatePath("/admin/users")
+  revalidatePath("/admin/organizers")
   revalidatePath("/admin")
 }
 
@@ -235,7 +229,7 @@ export async function approveOrganizerAction(userId: string) {
  * Reject/unapprove an organizer account (sets approvedAt to null).
  */
 export async function rejectOrganizerAction(userId: string) {
-  const session = await requireAdmin()
+  await requireAdmin()
 
   const [organizer] = await db
     .select({ email: users.email, name: users.name })
@@ -263,6 +257,7 @@ export async function rejectOrganizerAction(userId: string) {
   }
 
   revalidatePath("/admin/users")
+  revalidatePath("/admin/organizers")
   revalidatePath("/admin")
 }
 

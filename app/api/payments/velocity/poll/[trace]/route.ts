@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { pollTransaction, normalizeVelocityPollResponse } from "@/services/velocity"
 import { log } from "@/lib/logger"
 import { rateLimit } from "@/lib/rate-limit"
+import { isValidVelocityTrace } from "@/lib/velocity/validation"
 
 // Allow ~1 poll per 3 s over a 5-minute window — well above the 4 s client interval.
 const pollLimiter = rateLimit({ windowMs: 60_000, max: 90 })
@@ -19,7 +20,7 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
 
   const { trace } = await ctx.params
 
-  if (!trace || typeof trace !== "string") {
+  if (!trace || typeof trace !== "string" || !isValidVelocityTrace(trace)) {
     return NextResponse.json({ error: "Transaction trace is required" }, { status: 400 })
   }
 

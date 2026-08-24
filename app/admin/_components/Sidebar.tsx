@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, CreditCard,
-  PieChart, Store, Contact, History,
+  PieChart, Store, Contact, History, UsersRound,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 import ThemeToggle from "@/components/ui/ThemeToggle"
@@ -35,6 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
       { label: "Users",     href: "/admin/users",     icon: Users },
+      { label: "Organizers", href: "/admin/organizers", icon: UsersRound, badgeKey: "pendingOrganizers" },
       { label: "Customers", href: "/admin/customers", icon: Contact },
       { label: "Events",    href: "/admin/events",    icon: Calendar, badgeKey: "pendingEvents" },
       { label: "Orders",    href: "/admin/orders",    icon: Receipt },
@@ -68,11 +69,13 @@ export default function Sidebar({
   email,
   pendingEventCount = 0,
   pendingVendorCount = 0,
+  pendingOrganizerCount = 0,
 }: {
   name: string
   email: string
   pendingEventCount?: number
   pendingVendorCount?: number
+  pendingOrganizerCount?: number
 }) {
   const pathname = usePathname()
   const isActive = (href: string) =>
@@ -81,6 +84,7 @@ export default function Sidebar({
   const badgeValue = (key?: string): number | undefined => {
     if (key === "pendingEvents") return pendingEventCount
     if (key === "pendingVendors") return pendingVendorCount
+    if (key === "pendingOrganizers") return pendingOrganizerCount
     return undefined
   }
 

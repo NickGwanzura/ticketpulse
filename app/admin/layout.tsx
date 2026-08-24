@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
-import { eq, sql } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/db"
-import { events, vendors } from "@/db/schema"
+import { events, users, vendors } from "@/db/schema"
 import Sidebar from "./_components/Sidebar"
 
 export const metadata: Metadata = {
@@ -18,9 +18,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const name = session.user.name ?? "Admin"
   const email = session.user.email ?? ""
 
-  const [[pendingEventsRow], [pendingVendorsRow]] = await Promise.all([
+  const [[pendingEventsRow], [pendingVendorsRow], [pendingOrganizersRow]] = await Promise.all([
     db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(eq(events.status, "pending_review")),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(vendors).where(eq(vendors.verified, false)),
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(users)
+      .where(and(eq(users.role, "organizer"), isNull(users.approvedAt))),
   ])
 
   return (
@@ -30,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         email={email}
         pendingEventCount={pendingEventsRow?.count ?? 0}
         pendingVendorCount={pendingVendorsRow?.count ?? 0}
+        pendingOrganizerCount={pendingOrganizersRow?.count ?? 0}
       />
       <main className="flex-1 min-w-0 bg-paper-2 min-h-[calc(100vh-6rem)]">
         {children}

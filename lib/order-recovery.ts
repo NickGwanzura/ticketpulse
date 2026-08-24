@@ -14,6 +14,8 @@ import { sendOrderConfirmationEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
+import { restoreExpiredOrderInventory } from "@/lib/order-expiry"
+import { lockOrderMutation } from "@/lib/velocity/idempotency"
 
 export type RecoveryResult = {
   success: boolean
@@ -140,107 +142,106 @@ export async function markOrderCompleteAction(
     return { success: false, message: `Cannot complete a ${order.status} order` }
   }
 
-  const now = new Date()
-  const wasPaid = order.status === "paid"
-  const manualPaymentRef = order.paymentRef ?? `manual-${orderId.slice(0, 8)}`
-  const completedAt = now.toISOString()
-  const completionMetadata = buildManualCompletionMetadata(
-    order.metadata,
-    orderId,
-    manualPaymentRef,
-    completedAt,
-    userEmail,
-  )
-  const velocityTraces = getVelocityTraces(order.metadata)
+  let wasPaid = false
+  let manualPaymentRef = `manual-${orderId.slice(0, 8)}`
+  let completedAt = ""
+  let velocityTraces = getVelocityTraces(order.metadata)
 
   try {
-    await db
-      .update(orders)
-      .set({
-        status: "completed",
-        paidAt: order.paidAt ?? now,
-        completedAt: now,
-        completedBy: userEmail,
-        paymentRef: manualPaymentRef,
-        metadata: completionMetadata,
-        updatedAt: now,
-      })
-      .where(eq(orders.id, orderId))
+    const { PLATFORM_FEE_RATE, calculatePlatformFee } = await import("@/lib/platform-fee")
+    await db.transaction(async (tx) => {
+      await lockOrderMutation(tx, orderId)
+      const [current] = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+      if (!current) throw new Error("Order not found")
+      if (current.status === "completed") throw new Error("Order is already completed")
+      if (current.status === "cancelled" || current.status === "refunded") {
+        throw new Error(`Cannot complete a ${current.status} order`)
+      }
+
+      wasPaid = current.status === "paid"
+      const now = new Date()
+      completedAt = now.toISOString()
+      manualPaymentRef = current.paymentRef ?? `manual-${orderId.slice(0, 8)}`
+      velocityTraces = getVelocityTraces(current.metadata)
+      const currentMetadata = asMetadata(current.metadata)
+      if (current.status === "expired") {
+        await restoreExpiredOrderInventory(tx, current, currentMetadata)
+      }
+      const currentCompletionMetadata = buildManualCompletionMetadata(
+        current.metadata,
+        orderId,
+        manualPaymentRef,
+        completedAt,
+        userEmail,
+      )
+      await tx
+        .update(orders)
+        .set({
+          status: "completed",
+          paidAt: current.paidAt ?? now,
+          completedAt: now,
+          completedBy: userEmail,
+          paymentRef: manualPaymentRef,
+          metadata: currentCompletionMetadata,
+          updatedAt: now,
+        })
+        .where(eq(orders.id, orderId))
+
+      if (!wasPaid && isDirectSalePaymentMethod(current.paymentMethod)) {
+        const [existingDue] = await tx
+          .select({ id: organizerFeeDues.id })
+          .from(organizerFeeDues)
+          .where(eq(organizerFeeDues.orderId, orderId))
+          .limit(1)
+        if (!existingDue) {
+          const [event] = await tx
+            .select({ organizerId: events.organizerId })
+            .from(events)
+            .where(eq(events.id, current.eventId))
+            .limit(1)
+          if (event) {
+            const gross = Number(current.totalAmount ?? 0)
+            await tx.insert(organizerFeeDues).values({
+              orderId,
+              eventId: current.eventId,
+              organizerId: event.organizerId,
+              grossAmount: gross.toFixed(2),
+              feeRate: PLATFORM_FEE_RATE.toFixed(4),
+              feeAmount: calculatePlatformFee(gross).toFixed(2),
+              currency: current.currency ?? "USD",
+              createdBy: userEmail,
+              note: `Auto-created for direct sale (payment_method: ${current.paymentMethod})`,
+            })
+          }
+        }
+      }
+
+      if (!wasPaid) {
+        await tx.insert(paymentLedger).values({
+          orderId,
+          eventId: current.eventId,
+          transactionTrace: `manual-complete:${orderId}`,
+          salesOrderTrace: velocityTraces.salesOrderTrace ?? `manual-${orderId.slice(0, 8)}`,
+          invoiceId: manualPaymentRef,
+          amount: current.totalAmount,
+          currency: current.currency ?? "USD",
+          processor: "manual",
+          velocityPollStatus: "MANUAL_COMPLETE",
+          localStatus: "completed",
+          source: "manual_complete",
+          rawPayload: {
+            completedBy: userEmail,
+            completedAt,
+            source: "admin_manual_complete",
+            velocityTraces,
+          },
+        }).onConflictDoNothing()
+      }
+    })
   } catch (err) {
     return {
       success: false,
-      message: `Failed to update order: ${err instanceof Error ? err.message : String(err)}`,
-    }
-  }
-
-  // Direct-sale orders (buyer paid the organiser outside the platform) owe us
-  // our commission separately since no money passed through us — see
-  // lib/direct-sale.ts. Create that fee-due record the first time the order
-  // is confirmed, whichever of the (several) manual-issuance paths got here,
-  // so it can't be missed the way it was before this table existed.
-  if (!wasPaid && isDirectSalePaymentMethod(order.paymentMethod)) {
-    try {
-      const [existingDue] = await db
-        .select({ id: organizerFeeDues.id })
-        .from(organizerFeeDues)
-        .where(eq(organizerFeeDues.orderId, orderId))
-        .limit(1)
-
-      if (!existingDue) {
-        const [event] = await db
-          .select({ organizerId: events.organizerId })
-          .from(events)
-          .where(eq(events.id, order.eventId))
-          .limit(1)
-
-        if (event) {
-          const { PLATFORM_FEE_RATE, calculatePlatformFee } = await import("@/lib/platform-fee")
-          const gross = Number(order.totalAmount ?? 0)
-          const feeAmount = calculatePlatformFee(gross)
-
-          await db.insert(organizerFeeDues).values({
-            orderId,
-            eventId: order.eventId,
-            organizerId: event.organizerId,
-            grossAmount: gross.toFixed(2),
-            feeRate: PLATFORM_FEE_RATE.toFixed(4),
-            feeAmount: feeAmount.toFixed(2),
-            currency: order.currency ?? "USD",
-            createdBy: userEmail,
-            note: `Auto-created for direct sale (payment_method: ${order.paymentMethod})`,
-          })
-        }
-      }
-    } catch (err) {
-      log.error("markOrderComplete - failed to create organizer_fee_dues", { orderId, error: String(err) })
-    }
-  }
-
-  // Only create a manual payment ledger entry when this action is the first
-  // payment confirmation. Completing an already-paid order should not double-count revenue.
-  if (!wasPaid) {
-    try {
-      await db.insert(paymentLedger).values({
-        orderId,
-        eventId: order.eventId,
-        transactionTrace: velocityTraces.transactionTrace ?? `manual-${orderId.slice(0, 8)}-${Date.now()}`,
-        salesOrderTrace: velocityTraces.salesOrderTrace ?? `manual-${orderId.slice(0, 8)}`,
-        invoiceId: manualPaymentRef,
-        amount: order.totalAmount,
-        currency: order.currency ?? "USD",
-        processor: "manual",
-        velocityPollStatus: "MANUAL_COMPLETE",
-        localStatus: "completed",
-        source: "manual_complete",
-        rawPayload: {
-          completedBy: userEmail,
-          completedAt,
-          source: "admin_manual_complete",
-          velocityTraces,
-        },
-      })
-    } catch (err) {
-      log.warn("markOrderComplete - failed to record paymentLedger", { orderId, error: String(err) })
+      message: `Failed to complete order atomically: ${err instanceof Error ? err.message : String(err)}`,
     }
   }
 
@@ -271,7 +272,7 @@ export async function markOrderCompleteAction(
   return {
     success: true,
     message: "Order marked as completed. Payment recorded.",
-    details: { completedAt: now.toISOString(), completedBy: userEmail },
+    details: { completedAt, completedBy: userEmail },
   }
 }
 
@@ -554,80 +555,53 @@ export async function completeAndSendAction(
     }
   }
 
-  const now = new Date()
   const delivery = readDeliveryStatus(order.metadata)
-  const manualPaymentRef = order.paymentRef ?? `manual-${orderId.slice(0, 8)}`
-  const completedAt = now.toISOString()
-  const completionMetadata = buildManualCompletionMetadata(
-    order.metadata,
-    orderId,
-    manualPaymentRef,
-    completedAt,
-    userEmail,
-  )
-  const velocityTraces = getVelocityTraces(order.metadata)
-
   // 1. Verify / mark payment
   // 2. Mark order completed (only if not already)
-  const wasPaid = order.status === "paid" || order.status === "completed"
   let completed = order.status === "completed"
   if (!completed) {
-    try {
-      await db
-        .update(orders)
-        .set({
-          status: "completed",
-          paidAt: order.paidAt ?? now,
-          completedAt: now,
-          completedBy: userEmail,
-          paymentRef: manualPaymentRef,
-          metadata: completionMetadata,
-          updatedAt: now,
-        })
-        .where(eq(orders.id, orderId))
-      completed = true
-
-      if (!wasPaid) {
-        await db.insert(paymentLedger).values({
-          orderId,
-          eventId: order.eventId,
-          transactionTrace: velocityTraces.transactionTrace ?? `manual-${orderId.slice(0, 8)}-${Date.now()}`,
-          salesOrderTrace: velocityTraces.salesOrderTrace ?? `manual-${orderId.slice(0, 8)}`,
-          invoiceId: manualPaymentRef,
-          amount: order.totalAmount,
-          currency: order.currency ?? "USD",
-          processor: "manual",
-          velocityPollStatus: "MANUAL_COMPLETE",
-          localStatus: "completed",
-          source: "manual_complete_and_send",
-          rawPayload: {
-            completedBy: userEmail,
-            completedAt,
-            source: "admin_manual_complete_and_send",
-            velocityTraces,
-          },
-        })
-      }
-    } catch (err) {
+    const completion = await markOrderCompleteAction(orderId, userId, userEmail)
+    if (!completion.success) {
       return {
         success: false,
         completed: false,
         ticketsDelivered: false,
         emailSent: false,
-        message: `Failed to complete order: ${err instanceof Error ? err.message : String(err)}`,
+        message: completion.message,
       }
     }
+    completed = true
   } else {
     // Repair legacy completed orders created before manual completion updated
     // metadata and payment references atomically.
-    await db
-      .update(orders)
-      .set({
-        paymentRef: order.paymentRef ?? manualPaymentRef,
-        metadata: completionMetadata,
-        updatedAt: now,
-      })
-      .where(eq(orders.id, orderId))
+    await db.transaction(async (tx) => {
+      await lockOrderMutation(tx, orderId)
+      const [current] = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+      if (!current) throw new Error("Order not found")
+      if (current.status !== "completed") {
+        throw new Error(`Order status changed to ${current.status ?? "unknown"} during completion repair`)
+      }
+      const now = new Date()
+      const paymentRef = current.paymentRef ?? `manual-${orderId.slice(0, 8)}`
+      const completionMetadata = buildManualCompletionMetadata(
+        current.metadata,
+        orderId,
+        paymentRef,
+        now.toISOString(),
+        userEmail,
+      )
+      await tx
+        .update(orders)
+        .set({
+          paidAt: current.paidAt ?? now,
+          completedAt: current.completedAt ?? now,
+          completedBy: current.completedBy ?? userEmail,
+          paymentRef,
+          metadata: completionMetadata,
+          updatedAt: now,
+        })
+        .where(eq(orders.id, orderId))
+    })
   }
 
   // 3-8. Generate tickets, QR, PDF, attendee records, send email
@@ -670,6 +644,6 @@ export async function completeAndSendAction(
     ticketsDelivered,
     emailSent,
     message,
-    details: { completedAt: now.toISOString(), completedBy: userEmail },
+    details: { completedAt: new Date().toISOString(), completedBy: userEmail },
   }
 }

@@ -11,7 +11,27 @@ import type {
   LookupCustomerResponse,
   VelocityConfig,
   NormalizedPollResponse,
+  VelocityPollReference,
 } from "@/types/velocity"
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
+
+function getRequestTimeoutMs(): number {
+  const configured = Number(process.env.VELOCITY_REQUEST_TIMEOUT_MS)
+  return Number.isFinite(configured) && configured >= 1_000 && configured <= 60_000
+    ? configured
+    : DEFAULT_REQUEST_TIMEOUT_MS
+}
+
+async function velocityFetch(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), getRequestTimeoutMs())
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 function getConfig(): VelocityConfig {
   const apiKey = process.env.VELOCITY_API_KEY
@@ -36,7 +56,7 @@ async function resolveDefaultCustomer(): Promise<{ id: string; companyId: string
 
   const config = getConfig()
   // Per Velocity docs: calling /customers without filters returns the default customer
-  const response = await fetch(`${config.baseUrl}/customers`, {
+  const response = await velocityFetch(`${config.baseUrl}/customers`, {
     headers: { "x-api-key": config.apiKey },
     next: { revalidate: 3600 },
   })
@@ -94,7 +114,7 @@ async function velocityRequest<T>(
   const start = Date.now()
 
   try {
-    const response = await fetch(url, requestInit)
+    const response = await velocityFetch(url, requestInit)
     const elapsed = Date.now() - start
 
     if (!response.ok) {
@@ -209,22 +229,35 @@ export async function initiateTransaction(
 
 export async function pollTransaction(
   transactionTrace: string,
+  reference: VelocityPollReference = {},
 ): Promise<PollTransactionResponse> {
   const config = getConfig()
-  const url = `${config.baseUrl}/transactions/poll/${transactionTrace}`
+  const pathReference = reference.transactionId ?? transactionTrace
+  const path = `/transactions/poll/${encodeURIComponent(pathReference)}`
+  const url = `${config.baseUrl}${path}`
+  const requestBody = {
+    id: reference.transactionId ?? reference.transactionSessionId ?? transactionTrace,
+    trace: transactionTrace,
+  }
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-api-key": config.apiKey,
   }
 
-  log.info("velocity request", { method: "PUT", path: `/transactions/poll/${transactionTrace}` })
+  log.info("velocity request", {
+    method: "PUT",
+    path,
+    hasTransactionId: Boolean(reference.transactionId),
+    hasSessionReference: Boolean(reference.transactionSessionId),
+  })
   const start = Date.now()
 
   try {
-    const response = await fetch(url, {
+    const response = await velocityFetch(url, {
       method: "PUT",
       headers,
+      body: JSON.stringify(requestBody),
       next: { revalidate: 0 },
     })
     const elapsed = Date.now() - start
@@ -265,7 +298,7 @@ export async function pollTransaction(
     }
 
     log.info("velocity response", {
-      path: `/transactions/poll/${transactionTrace}`,
+      path,
       httpStatus: response.status,
       elapsed,
       body: JSON.stringify(data).slice(0, 2000),

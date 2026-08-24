@@ -104,6 +104,13 @@ export interface PollTransactionResponse {
   errorMessage?: string | null
 }
 
+export interface VelocityPollReference {
+  /** Provider transaction UUID. Preferred for the /transactions/poll/{id} path. */
+  transactionId?: string | null
+  /** Hosted VMC session reference retained as a fallback provider identifier. */
+  transactionSessionId?: string | null
+}
+
 export interface VelocityFinalizeSalesOrder {
   id: string
   paidAmount: number
@@ -157,6 +164,14 @@ export interface NormalizedPollResponse {
   rawResponse: PollTransactionResponse | null
 }
 
+export interface VelocityTransactionAttempt {
+  transactionTrace: string | null
+  transactionId: string | null
+  transactionSessionId: string | null
+  initiatedAt: string
+  source: string
+}
+
 export interface VelocityOrderMetadata {
   salesOrderTrace: string
   salesOrderId?: string | null
@@ -166,7 +181,20 @@ export interface VelocityOrderMetadata {
   /** Hosted VMC session identifier extracted from the redirect URL. */
   transactionSessionId?: string | null
   transactionTraces?: string[]
+  transactionAttempts?: VelocityTransactionAttempt[]
+  transactionObservations?: Array<{
+    transactionTrace: string
+    transactionId: string | null
+    pollStatus: string | null
+    paymentStatus: string | null
+    state: string
+    httpStatus: number | null
+    errorMessage: string | null
+    observedAt: string
+  }>
   redirectRecoveryAttempted?: boolean
+  redirectRecoveryInProgressAt?: string | null
+  redirectRecoveryToken?: string | null
   outstandingAmount: number
   paymentProcessor: VelocityPaymentProcessor | null
   pollStatus: VelocityPollStatus | null

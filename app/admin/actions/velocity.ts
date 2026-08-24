@@ -1,234 +1,68 @@
 "use server"
 
+import { and, inArray, sql } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { eq, and, inArray, or, sql } from "drizzle-orm"
 
-import { signIn } from "@/auth"
-import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
-import { events, orders, orderItems, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
-import {
-  sendEmail,
-  adminEmail,
-  sendOrderConfirmationEmail,
-} from "@/lib/email"
-import { eventPublishedNotificationEmail } from "@/lib/email-templates"
+import { orders } from "@/db/schema"
+import { requireAdmin } from "@/lib/auth-guard"
+import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
-import type { VelocityOrderMetadata } from "@/types/velocity"
+import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
+
+function revalidateVelocityViews() {
+  revalidatePath("/admin")
+  revalidatePath("/admin/orders")
+  revalidatePath("/admin/payments")
+  revalidatePath("/admin/velocity")
+}
 
 export async function recheckPaymentAction(
   orderId: string,
 ): Promise<{ fixed: boolean; message: string; details?: Record<string, unknown> }> {
   const session = await requireAdmin()
-
-  const [order] = await db
-    .select()
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1)
-
-  if (!order) throw new Error("Order not found")
-
-  if (order.status === "paid") {
-    return { fixed: false, message: "Order is already paid." }
-  }
-
-  const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-  const velocityMeta = meta.velocity
-
-  if (!velocityMeta?.transactionTrace || !velocityMeta?.salesOrderTrace) {
-    return { fixed: false, message: "No Velocity transaction traces found on this order." }
-  }
-
-  const { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } = await import(
-    "@/services/velocity"
-  )
-
-  // ── Step 1: Poll the transaction ────────────────────────────────────────
-  // pollTransaction no longer throws — it always returns a structured response.
-  const pollResult = await pollTransaction(velocityMeta.transactionTrace)
-  const normalized = normalizeVelocityPollResponse(pollResult)
-
-  log.info("recheckPaymentAction - poll result", {
+  const result = await reconcileVelocityOrder({
     orderId,
-    transactionTrace: velocityMeta.transactionTrace,
-    localStatus: normalized.localStatus,
-    velocityPollStatus: normalized.velocityPollStatus,
-    velocityPaymentStatus: normalized.velocityPaymentStatus,
-    velocityWorkflowStatus: normalized.velocityWorkflowStatus,
-    fullBody: JSON.stringify(pollResult).slice(0, 3000),
+    source: "admin_recheck",
+    actorEmail: session.user.email,
   })
 
-  // ── Not SUCCESS → store failure, do not delete order ────────────────────
-  if (normalized.localStatus !== "PAID") {
-    const failureReason =
-      normalized.localStatus === "FAILED"
-        ? `Velocity returned pollStatus: ${normalized.velocityPollStatus}, paymentStatus: ${normalized.velocityPaymentStatus}`
-        : normalized.localStatus === "UNKNOWN"
-          ? `Unknown payment status – pollStatus: ${normalized.velocityPollStatus ?? "missing"}, paymentStatus: ${normalized.velocityPaymentStatus ?? "missing"}`
-          : "Payment still pending in Velocity"
-
-    const failedMeta = {
-      ...meta,
-      velocity: {
-        ...velocityMeta,
-        pollStatus: (normalized.velocityPollStatus as VelocityOrderMetadata["pollStatus"]) ?? "UNKNOWN",
-        failedAt: new Date().toISOString(),
-        failureReason,
-        recheckedAt: new Date().toISOString(),
-        recheckedBy: session.user.email,
-        velocityRawPollResponse: {
-          state: pollResult.state,
-          status: pollResult.status,
-          body: {
-            trace: pollResult.body?.trace,
-            amount: pollResult.body?.amount,
-            paymentStatus: pollResult.body?.paymentStatus,
-            pollStatus: pollResult.body?.pollStatus,
-          },
-        },
-      },
-    }
-
-    await db
-      .update(orders)
-      .set({ metadata: failedMeta, updatedAt: new Date() })
-      .where(eq(orders.id, orderId))
-
-    revalidatePath("/admin/orders")
-    revalidatePath("/admin")
-
+  if (!result.paid) {
+    revalidateVelocityViews()
     return {
       fixed: false,
-      message:
-        normalized.localStatus === "PENDING"
-          ? `Payment is still pending in Velocity (pollStatus: ${normalized.velocityPollStatus}). Try again later.`
-          : `Payment status in Velocity is "${normalized.velocityPollStatus}" (${normalized.localStatus}). Not confirmed yet. Admin recheck recorded.`,
+      message: `${result.state}: ${result.message ?? "Payment was not confirmed"}`,
       details: {
-        localStatus: normalized.localStatus,
-        pollStatus: normalized.velocityPollStatus,
-        paymentStatus: normalized.velocityPaymentStatus,
-        amount: pollResult.body?.amount,
-        failureReason,
+        state: result.state,
+        transactionTrace: result.transactionTrace,
+        salesOrderTrace: result.salesOrderTrace,
+        providerHttpStatus: result.providerHttpStatus,
       },
     }
   }
 
-  // ── Step 2: Finalize the workflow ───────────────────────────────────────
-  let finalizeResult
   try {
-    finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
-  } catch (err) {
-    return {
-      fixed: false,
-      message: `Poll succeeded but workflow finalization failed: ${err instanceof Error ? err.message : String(err)}. You can retry.`,
-      details: { localStatus: "PAID", salesOrderTrace: velocityMeta.salesOrderTrace },
-    }
-  }
-
-  if (finalizeResult.body.salesOrder.status !== "PAID") {
-    return {
-      fixed: false,
-      message: `Workflow finalization returned status "${finalizeResult.body.salesOrder.status}" instead of "PAID".`,
-      details: {
-        salesOrderStatus: finalizeResult.body.salesOrder.status,
-        outstandingAmount: finalizeResult.body.salesOrder.outstandingAmount,
-        paidAmount: finalizeResult.body.salesOrder.paidAmount,
-      },
-    }
-  }
-
-  const invoiceId = finalizeResult.body.invoice.id
-
-  // ── Step 3: Update local DB directly to PAID ────────────────────────────
-  const finalMeta = {
-    ...meta,
-    velocity: {
-      ...velocityMeta,
-      pollStatus: "SUCCESS" as const,
-      paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
-      paymentRef: invoiceId,
-      invoiceRef: invoiceId,
-      finalizedAt: new Date().toISOString(),
-      recheckedAt: new Date().toISOString(),
-      recheckedBy: session.user.email,
-      recoveryMode: true,
-    },
-  }
-
-  // Update order and record payment ledger atomically
-  try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(orders)
-        .set({
-          status: "paid",
-          paidAt: new Date(),
-          paymentRef: invoiceId,
-          metadata: finalMeta,
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, orderId))
-
-      await tx.insert(paymentLedger).values({
-        orderId,
-        eventId: order.eventId,
-        transactionTrace: velocityMeta.transactionTrace ?? "",
-        salesOrderTrace: velocityMeta.salesOrderTrace,
-        invoiceId,
-        amount: order.totalAmount,
-        currency: order.currency ?? "USD",
-        processor: "velocity",
-        velocityPollStatus: "SUCCESS",
-        localStatus: "paid",
-        source: "admin_recheck",
-        rawPayload: null,
-      })
-    })
-  } catch (err) {
+    const delivery = await deliverTicketForPaidOrder(orderId)
+    revalidateVelocityViews()
     return {
       fixed: true,
-      message: `Payment confirmed in Velocity and workflow finalized, but local DB update failed: ${err instanceof Error ? err.message : String(err)}. Please try again or check logs.`,
-      details: { salesOrderTrace: velocityMeta.salesOrderTrace, invoiceId },
+      message: `Payment confirmed and every local completion field was updated atomically. Delivery: ${delivery.status}; tickets: ${delivery.ticketCount}; email: ${delivery.emailSent ? "sent" : delivery.error ?? "pending retry"}.`,
+      details: {
+        invoiceId: result.invoiceId,
+        transactionTrace: result.transactionTrace,
+        newlySettled: result.newlySettled,
+      },
+    }
+  } catch (error) {
+    log.error("recheckPaymentAction - delivery failed after atomic settlement", { orderId, error: String(error) })
+    revalidateVelocityViews()
+    return {
+      fixed: true,
+      message: `Payment and ledger were fixed, but ticket delivery failed and will be retried by cron: ${error instanceof Error ? error.message : String(error)}`,
+      details: { invoiceId: result.invoiceId, transactionTrace: result.transactionTrace },
     }
   }
-
-  // ── Step 4: Generate tickets and deliver ────────────────────────────────
-  let deliveryResult: string
-  try {
-    const { deliverTicketForPaidOrder } = await import("@/lib/delivery")
-    const delivery = await deliverTicketForPaidOrder(orderId)
-    const emailStatus = delivery.emailSent ? "Email sent." : "Email issue: " + (delivery.error ?? "unknown")
-    deliveryResult = `Delivery: ${delivery.status}, tickets: ${delivery.ticketCount}, ${emailStatus}`
-    log.info("recheckPaymentAction - delivery result", {
-      orderId,
-      deliveryStatus: delivery.status,
-      ticketCount: delivery.ticketCount,
-    })
-  } catch (err) {
-    deliveryResult = `Delivery failed: ${err instanceof Error ? err.message : String(err)}`
-    log.error("recheckPaymentAction - delivery failed", {
-      orderId,
-      error: String(err),
-    })
-  }
-
-  revalidatePath("/admin/orders")
-  revalidatePath("/admin")
-
-  return {
-    fixed: true,
-    message: `Payment confirmed, workflow finalized, order moved to paid. ${deliveryResult} Invoice: ${invoiceId}.`,
-    details: { salesOrderTrace: velocityMeta.salesOrderTrace, invoiceId, pollStatus: "SUCCESS" },
-  }
 }
-
-/**
- * Poll all pending/awaiting_verification Velocity orders and fix any
- * transactions that have completed in Velocity but not locally.
- *
- * Returns a summary of checked, fixed, and failed orders.
- */
 
 export async function pollAllVelocityOrdersAction(): Promise<{
   checked: number
@@ -237,193 +71,46 @@ export async function pollAllVelocityOrdersAction(): Promise<{
   results: Array<{ orderId: string; action: string; message: string }>
 }> {
   const session = await requireAdmin()
-
-  const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
-
   const targetOrders = await db
-    .select({ id: orders.id, status: orders.status, metadata: orders.metadata, guestEmail: orders.guestEmail, eventId: orders.eventId, totalAmount: orders.totalAmount, currency: orders.currency })
+    .select({ id: orders.id })
     .from(orders)
-    .where(
-      and(hasVelocity, inArray(orders.status, ["pending", "awaiting_verification"])),
-    )
+    .where(and(
+      sql`${orders.metadata}->>'velocity' IS NOT NULL`,
+      inArray(orders.status, ["pending", "awaiting_verification", "expired"]),
+    ))
     .limit(30)
 
   const results: Array<{ orderId: string; action: string; message: string }> = []
-  let fixedCount = 0
-  let errorCount = 0
+  let fixed = 0
+  let errors = 0
 
   for (const order of targetOrders) {
     try {
-      const meta = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-      const velocityMeta = meta.velocity
-
-      if (!velocityMeta?.transactionTrace || !velocityMeta?.salesOrderTrace) {
-        results.push({
-          orderId: order.id,
-          action: "skipped",
-          message: "No Velocity traces in metadata",
-        })
-        continue
-      }
-
-      const { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } = await import("@/services/velocity")
-      const { deliverTicketForPaidOrder } = await import("@/lib/delivery")
-
-      const pollResult = await pollTransaction(velocityMeta.transactionTrace)
-      const normalized = normalizeVelocityPollResponse(pollResult)
-      const providerError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
-      const polledAt = new Date().toISOString()
-      const nextVelocity = {
-        ...velocityMeta,
-        pollStatus: (normalized.velocityPollStatus as VelocityOrderMetadata["pollStatus"]) ?? "UNKNOWN",
-        paymentStatus: normalized.velocityPaymentStatus ?? null,
-        lastPolledAt: polledAt,
-        lastProviderHttpStatus: pollResult.httpStatus ?? null,
-        lastProviderError: pollResult.errorMessage ?? null,
-        consecutiveProviderErrors: providerError ? (velocityMeta.consecutiveProviderErrors ?? 0) + 1 : 0,
-      }
-
-      log.info("pollAllVelocityOrdersAction — poll result", {
+      const result = await reconcileVelocityOrder({
         orderId: order.id,
-        localStatus: normalized.localStatus,
-        velocityPollStatus: normalized.velocityPollStatus,
-        paymentStatus: normalized.velocityPaymentStatus,
+        source: "admin_poll_all",
+        actorEmail: session.user.email,
       })
-
-      if (normalized.localStatus === "UNKNOWN") {
-        await db
-          .update(orders)
-          .set({
-            updatedAt: new Date(),
-            metadata: { ...((order.metadata ?? {}) as Record<string, unknown>), velocity: nextVelocity },
-          })
-          .where(eq(orders.id, order.id))
-
-        results.push({
-          orderId: order.id,
-          action: providerError ? "provider_error" : "unknown",
-          message: providerError
-            ? `Velocity returned HTTP ${pollResult.httpStatus}: ${pollResult.errorMessage ?? "provider error"}. Requires provider reconciliation.`
-            : `Unknown payment status — pollStatus: ${normalized.velocityPollStatus ?? "missing"}, paymentStatus: ${normalized.velocityPaymentStatus ?? "missing"}. Requires admin review.`,
-        })
+      if (!result.paid) {
+        const isError = ["PROVIDER_ERROR", "NETWORK_ERROR", "FINALIZE_ERROR", "FINALIZE_PENDING", "AMOUNT_MISMATCH", "CONFLICT"].includes(result.state)
+        if (isError) errors++
+        results.push({ orderId: order.id, action: isError ? "error" : "skipped", message: `${result.state}: ${result.message ?? "not settled"}` })
         continue
       }
 
-      if (normalized.localStatus !== "PAID") {
-        await db
-          .update(orders)
-          .set({
-            updatedAt: new Date(),
-            metadata: { ...((order.metadata ?? {}) as Record<string, unknown>), velocity: nextVelocity },
-          })
-          .where(eq(orders.id, order.id))
-
-        results.push({
-          orderId: order.id,
-          action: "pending",
-          message: `Status: ${normalized.velocityPollStatus ?? "unknown"}`,
-        })
-        continue
-      }
-
-      // Finalize the workflow
-      const finalizeResult = await finalizeWorkflow(velocityMeta.salesOrderTrace)
-      const salesOrderStatus = finalizeResult.body.salesOrder.status
-
-      if (salesOrderStatus !== "PAID") {
-        results.push({
-          orderId: order.id,
-          action: "skipped",
-          message: `Finalization returned ${salesOrderStatus} instead of PAID`,
-        })
-        continue
-      }
-
-      const invoiceId = finalizeResult.body.invoice.id
-      const updatedMeta = {
-        ...meta,
-        velocity: {
-          ...nextVelocity,
-          pollStatus: "SUCCESS" as const,
-          paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
-          paymentRef: invoiceId,
-          invoiceRef: invoiceId,
-          finalizedAt: new Date().toISOString(),
-          recheckedAt: new Date().toISOString(),
-          polledNow: true,
-        },
-      }
-
-      await db.transaction(async (tx) => {
-        await tx
-          .update(orders)
-          .set({
-            status: "paid",
-            paidAt: new Date(),
-            paymentRef: invoiceId,
-            metadata: updatedMeta,
-            updatedAt: new Date(),
-          })
-          .where(eq(orders.id, order.id))
-
-        await tx.insert(paymentLedger).values({
-          orderId: order.id,
-          eventId: order.eventId ?? "00000000-0000-0000-0000-000000000000",
-          transactionTrace: velocityMeta.transactionTrace ?? "",
-          salesOrderTrace: velocityMeta.salesOrderTrace,
-          invoiceId,
-          amount: order.totalAmount ?? "0",
-          currency: order.currency ?? "USD",
-          processor: "velocity",
-          velocityPollStatus: "SUCCESS",
-          localStatus: "paid",
-          source: "admin",
-          rawPayload: null,
-        })
-      })
-
-      // Generate tickets and send confirmation
       const delivery = await deliverTicketForPaidOrder(order.id)
-
-      log.info("pollAllVelocityOrdersAction — delivery result", {
-        orderId: order.id,
-        deliveryStatus: delivery.status,
-        ticketCount: delivery.ticketCount,
-      })
-
-      fixedCount++
+      if (result.newlySettled) fixed++
       results.push({
         orderId: order.id,
-        action: "fixed",
-        message: `Confirmed, delivered. Invoice: ${invoiceId}. ${delivery.emailSent ? "Email sent." : "Email issue: " + (delivery.error ?? "unknown")}`,
+        action: result.newlySettled ? "fixed" : "verified",
+        message: `Invoice ${result.invoiceId}; delivery ${delivery.status}; email ${delivery.emailSent ? "sent" : delivery.error ?? "pending retry"}`,
       })
-    } catch (err) {
-      errorCount++
-      results.push({
-        orderId: order.id,
-        action: "error",
-        message: err instanceof Error ? err.message : String(err),
-      })
+    } catch (error) {
+      errors++
+      results.push({ orderId: order.id, action: "error", message: error instanceof Error ? error.message : String(error) })
     }
   }
 
-  revalidatePath("/admin")
-  revalidatePath("/admin/velocity")
-  revalidatePath("/admin/orders")
-
-  return {
-    checked: targetOrders.length,
-    fixed: fixedCount,
-    errors: errorCount,
-    results,
-  }
+  revalidateVelocityViews()
+  return { checked: targetOrders.length, fixed, errors, results }
 }
-
-/**
- * Refund a paid order — marks order as refunded, all tickets as refunded,
- * and restores inventory for each affected tier.
- */
-/**
- * Mark an order as manually completed (admin).
- * Sets order status to "completed" and records payment as paid.
- */

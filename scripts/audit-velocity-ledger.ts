@@ -7,7 +7,7 @@
  */
 
 import "dotenv/config"
-import { neon } from "@neondatabase/serverless"
+import { Pool } from "pg"
 import { auditOrderPaymentLedger, type AuditableLedgerEntry } from "@/lib/payment-ledger-audit"
 
 type OrderRow = {
@@ -16,6 +16,8 @@ type OrderRow = {
   total_amount: string | null
   currency: string | null
   payment_ref: string | null
+  paid_at: Date | string | null
+  completed_at: Date | string | null
   guest_email: string | null
   guest_name: string | null
   event_title: string | null
@@ -60,15 +62,23 @@ function toLedgerEntry(row: LedgerRow): AuditableLedgerEntry {
 }
 
 async function main() {
-  const sql = neon(DATABASE_URL)
+  const pool = new Pool({
+    connectionString: DATABASE_URL,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 10_000,
+    max: 2,
+  })
 
-  const orders = await sql<OrderRow[]>`
+  try {
+    const { rows: orders } = await pool.query<OrderRow>(`
     SELECT
       o.id,
       o.status,
       o.total_amount,
       o.currency,
       o.payment_ref,
+      o.paid_at,
+      o.completed_at,
       o.guest_email,
       o.guest_name,
       e.title AS event_title,
@@ -78,9 +88,9 @@ async function main() {
     LEFT JOIN events e ON e.id = o.event_id
     WHERE o.metadata->>'velocity' IS NOT NULL
     ORDER BY o.created_at DESC
-  `
+    `)
 
-  const ledgerRows = await sql<LedgerRow[]>`
+    const { rows: ledgerRows } = await pool.query<LedgerRow>(`
     SELECT
       pl.order_id,
       pl.transaction_trace,
@@ -97,16 +107,16 @@ async function main() {
     INNER JOIN orders o ON o.id = pl.order_id
     WHERE o.metadata->>'velocity' IS NOT NULL
     ORDER BY pl.created_at DESC
-  `
+    `)
 
-  const ledgerByOrder = new Map<string, LedgerRow[]>()
-  for (const row of ledgerRows) {
-    const list = ledgerByOrder.get(row.order_id) ?? []
-    list.push(row)
-    ledgerByOrder.set(row.order_id, list)
-  }
+    const ledgerByOrder = new Map<string, LedgerRow[]>()
+    for (const row of ledgerRows) {
+      const list = ledgerByOrder.get(row.order_id) ?? []
+      list.push(row)
+      ledgerByOrder.set(row.order_id, list)
+    }
 
-  const findings = orders
+    const findings = orders
     .map((order) => {
       const ledger = ledgerByOrder.get(order.id) ?? []
       const issues = auditOrderPaymentLedger(
@@ -116,6 +126,8 @@ async function main() {
           totalAmount: order.total_amount,
           currency: order.currency,
           paymentRef: order.payment_ref,
+          paidAt: order.paid_at,
+          completedAt: order.completed_at,
           metadata: order.metadata,
         },
         ledger.map(toLedgerEntry),
@@ -136,7 +148,7 @@ async function main() {
     })
     .filter((finding) => finding.issues.length > 0)
 
-  const summary = {
+    const summary = {
     checkedVelocityOrders: orders.length,
     checkedLedgerRows: ledgerRows.length,
     ordersWithIssues: findings.length,
@@ -144,26 +156,29 @@ async function main() {
     warningIssues: findings.reduce((sum, finding) => sum + finding.issues.filter((issue) => issue.severity === "warning").length, 0),
   }
 
-  if (JSON_OUTPUT) {
-    console.log(JSON.stringify({ summary, findings }, null, 2))
-    return
-  }
-
-  console.log("Velocity/payment ledger audit")
-  console.log(JSON.stringify(summary, null, 2))
-
-  if (findings.length === 0) {
-    console.log("No mismatches found.")
-    return
-  }
-
-  for (const finding of findings) {
-    console.log("")
-    console.log(`${finding.orderId} | ${finding.status} | ${finding.buyer} | ${finding.eventTitle}`)
-    console.log(`  ${finding.currency} ${finding.amount.toFixed(2)} | ledger rows: ${finding.ledgerRows}, settled rows: ${finding.settledLedgerRows}`)
-    for (const issue of finding.issues) {
-      console.log(`  - [${issue.severity}] ${issue.title}: ${issue.detail}`)
+    if (JSON_OUTPUT) {
+      console.log(JSON.stringify({ summary, findings }, null, 2))
+      return
     }
+
+    console.log("Velocity/payment ledger audit")
+    console.log(JSON.stringify(summary, null, 2))
+
+    if (findings.length === 0) {
+      console.log("No mismatches found.")
+      return
+    }
+
+    for (const finding of findings) {
+      console.log("")
+      console.log(`${finding.orderId} | ${finding.status} | ${finding.buyer} | ${finding.eventTitle}`)
+      console.log(`  ${finding.currency} ${finding.amount.toFixed(2)} | ledger rows: ${finding.ledgerRows}, settled rows: ${finding.settledLedgerRows}`)
+      for (const issue of finding.issues) {
+        console.log(`  - [${issue.severity}] ${issue.title}: ${issue.detail}`)
+      }
+    }
+  } finally {
+    await pool.end()
   }
 }
 

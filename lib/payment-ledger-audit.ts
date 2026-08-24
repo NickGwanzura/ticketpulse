@@ -18,6 +18,11 @@ export type PaymentAuditIssue = {
     | "TICKETS_WITHOUT_SETTLED_PAYMENT"
     | "DELIVERY_NOT_STARTED"
     | "DELIVERY_FAILED"
+    | "VELOCITY_REFERENCE_MISSING"
+    | "VMC_TRANSACTION_ID_MISSING"
+    | "EXPIRED_WITH_PAID_SIGNAL"
+    | "PAID_FIELDS_INCOMPLETE"
+    | "NONSETTLED_LEDGER_USES_PROVIDER_TRACE"
   severity: PaymentAuditSeverity
   title: string
   detail: string
@@ -29,6 +34,8 @@ export type AuditableOrder = {
   totalAmount: string | number | null
   currency: string | null
   paymentRef: string | null
+  paidAt?: Date | string | null
+  completedAt?: Date | string | null
   metadata: unknown
 }
 
@@ -75,6 +82,49 @@ export function auditOrderPaymentLedger(
     velocity?.pollStatus === "SUCCESS" ||
     velocity?.paymentStatus === "SUCCESS"
 
+  if (velocity && (!nonEmpty(velocity.transactionTrace) || !nonEmpty(velocity.salesOrderTrace))) {
+    issues.push({
+      code: "VELOCITY_REFERENCE_MISSING",
+      severity: "critical",
+      title: "Velocity references are incomplete",
+      detail: "The order has Velocity metadata but is missing its transaction trace or sales-order trace.",
+    })
+  }
+
+  if (velocity?.paymentProcessor === "VMC" && !nonEmpty(velocity.transactionId)) {
+    issues.push({
+      code: "VMC_TRANSACTION_ID_MISSING",
+      severity: "warning",
+      title: "VMC transaction ID is missing",
+      detail: "The card order has a transaction trace but no provider transaction ID for the preferred poll path.",
+    })
+  }
+
+  if (order.status === "expired" && hasPaidSignal) {
+    issues.push({
+      code: "EXPIRED_WITH_PAID_SIGNAL",
+      severity: "critical",
+      title: "Expired order has a paid signal",
+      detail: "The order was archived even though Velocity metadata or the ledger indicates successful payment.",
+    })
+  }
+
+  if ((order.status === "paid" || order.status === "completed") && ("paidAt" in order || "completedAt" in order)) {
+    const missing = [
+      !order.paidAt ? "paidAt" : null,
+      !order.completedAt ? "completedAt" : null,
+      !nonEmpty(order.paymentRef) ? "paymentRef" : null,
+    ].filter(Boolean)
+    if (missing.length > 0) {
+      issues.push({
+        code: "PAID_FIELDS_INCOMPLETE",
+        severity: "warning",
+        title: "Paid order completion fields are incomplete",
+        detail: `Missing local completion fields: ${missing.join(", ")}.`,
+      })
+    }
+  }
+
   if (settledLedgerEntries.length > 1) {
     issues.push({
       code: "MULTIPLE_PAID_LEDGER_ROWS",
@@ -112,14 +162,37 @@ export function auditOrderPaymentLedger(
   }
 
   const velocityTransactionTrace = nonEmpty(velocity?.transactionTrace)
+  const velocityTransactionTraces = new Set([
+    velocityTransactionTrace,
+    ...(velocity?.transactionTraces ?? []).map((trace) => nonEmpty(trace)),
+  ].filter((trace): trace is string => Boolean(trace)))
   const ledgerTransactionTraces = new Set(velocitySettledLedgerEntries.map((entry) => nonEmpty(entry.transactionTrace)).filter(Boolean))
-  if (velocityTransactionTrace && ledgerTransactionTraces.size > 0 && !ledgerTransactionTraces.has(velocityTransactionTrace)) {
+  if (
+    velocityTransactionTraces.size > 0 &&
+    ledgerTransactionTraces.size > 0 &&
+    ![...ledgerTransactionTraces].some((trace) => trace && velocityTransactionTraces.has(trace))
+  ) {
     issues.push({
       code: "TRANSACTION_TRACE_MISMATCH",
       severity: "critical",
       title: "Transaction trace mismatch",
       detail: "Velocity metadata and payment_ledger point to different transaction traces.",
     })
+  }
+
+  if (velocityTransactionTraces.size > 0) {
+    const conflictingAuditRow = ledgerEntries.find((entry) =>
+      !["paid", "completed", "success", "paid_success"].includes(entry.localStatus) &&
+      velocityTransactionTraces.has(entry.transactionTrace),
+    )
+    if (conflictingAuditRow) {
+      issues.push({
+        code: "NONSETTLED_LEDGER_USES_PROVIDER_TRACE",
+        severity: "critical",
+        title: "Non-settled ledger row consumes a provider trace",
+        detail: `The ${conflictingAuditRow.localStatus} ledger row uses a real Velocity trace and can suppress later settlement callbacks.`,
+      })
+    }
   }
 
   const velocitySalesOrderTrace = nonEmpty(velocity?.salesOrderTrace)

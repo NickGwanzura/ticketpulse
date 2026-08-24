@@ -1,26 +1,22 @@
-import { NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
+import { and, eq, inArray, sql } from "drizzle-orm"
+import { NextResponse } from "next/server"
 import { z } from "zod"
-import { eq, and, inArray, sql } from "drizzle-orm"
+
 import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
-import { pollTransaction, finalizeWorkflow, normalizeVelocityPollResponse } from "@/services/velocity"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
-import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { log } from "@/lib/logger"
-import {
-  alertCallbackOrderNotFound,
-  alertFinalizeNonPaid,
-  alertPaymentAnomaly,
-} from "@/lib/payment-alerts"
-import { isValidVelocityTrace, paymentAmountsMatch } from "@/lib/velocity/validation"
+import { alertCallbackOrderNotFound, alertPaymentAnomaly } from "@/lib/payment-alerts"
+import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
+import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
+import { isValidVelocityTrace } from "@/lib/velocity/validation"
+import type { VelocityOrderMetadata } from "@/types/velocity"
 
-/** Constant-time string comparison — avoids leaking the secret via response timing. */
 function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
   const bufB = Buffer.from(b)
-  if (bufA.length !== bufB.length) return false
-  return timingSafeEqual(bufA, bufB)
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB)
 }
 
 const CallbackBody = z.object({
@@ -30,23 +26,21 @@ const CallbackBody = z.object({
 })
 
 export async function POST(req: Request) {
-  // ── Webhook secret verification ────────────────────────────────────────
   const webhookSecret = process.env.VELOCITY_WEBHOOK_SECRET
   if (!webhookSecret) {
-    log.error("velocity callback - VELOCITY_WEBHOOK_SECRET is not set; rejecting all callback requests")
+    log.error("velocity callback - VELOCITY_WEBHOOK_SECRET is not set")
     return NextResponse.json({ error: "webhook not configured" }, { status: 401 })
   }
+
   const providedSignature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-api-key") ?? ""
   if (!providedSignature || !safeEqual(providedSignature, webhookSecret)) {
-    log.warn("velocity callback - invalid webhook signature", {
-      provided: providedSignature ? `${providedSignature.slice(0, 8)}...` : "none",
-    })
+    log.warn("velocity callback - invalid webhook signature")
     alertPaymentAnomaly({
       type: "CALLBACK_INVALID_SIGNATURE",
       severity: "critical",
       title: "Velocity callback received with an invalid signature",
-      detail: "A request to the payment callback endpoint failed webhook signature verification. This could be a misconfigured integration or a forged request — investigate immediately.",
-    }).catch((err) => log.warn("velocity callback - failed to send invalid-signature alert", { error: String(err) }))
+      detail: "A callback failed signature verification. Check the provider webhook configuration.",
+    }).catch(() => {})
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
@@ -59,236 +53,100 @@ export async function POST(req: Request) {
 
   const parsed = CallbackBody.safeParse(rawBody)
   if (!parsed.success) {
-    log.warn("velocity callback - invalid payload", { errors: parsed.error.flatten() })
     return NextResponse.json({ error: "invalid_payload", detail: parsed.error.flatten() }, { status: 400 })
   }
 
   const { transactionTrace, salesOrderTrace } = parsed.data
   if (!isValidVelocityTrace(transactionTrace) || !isValidVelocityTrace(salesOrderTrace)) {
-    log.warn("velocity callback - invalid trace format", { transactionTrace, salesOrderTrace })
     return NextResponse.json({ error: "invalid_trace" }, { status: 400 })
   }
-  log.info("velocity callback - received", {
-    transactionTrace,
-    salesOrderTrace,
-    pollStatus: parsed.data.pollStatus,
-    allFields: Object.keys(rawBody as Record<string, unknown>).join(", "),
-  })
+
+  const [order] = await db
+    .select({ id: orders.id, metadata: orders.metadata })
+    .from(orders)
+    .where(sql`${orders.metadata}->'velocity'->>'salesOrderTrace' = ${salesOrderTrace}`)
+    .limit(1)
+
+  if (!order) {
+    log.error("velocity callback - order not found", { transactionTrace, salesOrderTrace })
+    alertCallbackOrderNotFound(transactionTrace, salesOrderTrace, rawBody as Record<string, unknown>)
+    return NextResponse.json(
+      { error: "order_not_ready" },
+      { status: 503, headers: { "Retry-After": "10" } },
+    )
+  }
+
+  const velocity = ((order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }).velocity
+  const knownTraces = new Set([
+    velocity?.transactionTrace,
+    ...(velocity?.transactionTraces ?? []),
+  ].filter((trace): trace is string => Boolean(trace)))
+  if (knownTraces.size > 0 && !knownTraces.has(transactionTrace)) {
+    alertPaymentAnomaly({
+      type: "VELOCITY_API_UNEXPECTED_FORMAT",
+      severity: "critical",
+      title: "Velocity callback trace does not belong to the order",
+      detail: `Callback trace ${transactionTrace} was not found in order ${order.id} metadata.`,
+      orderId: order.id,
+      context: { transactionTrace, salesOrderTrace, knownTraces: [...knownTraces] },
+    }).catch(() => {})
+    return NextResponse.json({ error: "transaction_trace_mismatch" }, { status: 409 })
+  }
+
+  const [settled] = await db
+    .select({ id: paymentLedger.id })
+    .from(paymentLedger)
+    .where(and(
+      eq(paymentLedger.orderId, order.id),
+      eq(paymentLedger.transactionTrace, transactionTrace),
+      inArray(paymentLedger.localStatus, ["paid", "completed", "success", "paid_success"]),
+    ))
+    .limit(1)
+  if (settled) {
+    return NextResponse.json({ status: "acknowledged", note: "Already settled" })
+  }
 
   const lockKey = `velocity-finalize:${salesOrderTrace}`
-
   if (!await acquireLock(lockKey)) {
-    log.info("velocity callback - lock contended, acknowledging", { salesOrderTrace })
-    return NextResponse.json({ status: "acknowledged", note: "Already processing" })
+    log.info("velocity callback - lock contended; requesting provider retry", { orderId: order.id })
+    return NextResponse.json(
+      { error: "settlement_in_progress" },
+      { status: 503, headers: { "Retry-After": "5" } },
+    )
   }
 
   try {
-    const [existing] = await db
-      .select({ id: paymentLedger.id })
-      .from(paymentLedger)
-      .where(eq(paymentLedger.transactionTrace, transactionTrace))
-      .limit(1)
-
-    if (existing) {
-      log.info("velocity callback - already processed (ledger entry exists), acknowledging", {
-        salesOrderTrace,
-        transactionTrace,
-        existingId: existing.id,
-      })
-      return NextResponse.json({ status: "acknowledged", note: "Already processed" })
-    }
-
-    const pollResult = await pollTransaction(transactionTrace)
-    const normalized = normalizeVelocityPollResponse(pollResult)
-
-    log.info("velocity callback - poll result", {
+    const result = await reconcileVelocityOrder({
+      orderId: order.id,
+      source: "callback",
+      rawPayload: rawBody as Record<string, unknown>,
       transactionTrace,
-      salesOrderTrace,
-      localStatus: normalized.localStatus,
-      velocityPollStatus: normalized.velocityPollStatus,
-      velocityPaymentStatus: normalized.velocityPaymentStatus,
-      velocityWorkflowStatus: normalized.velocityWorkflowStatus,
     })
 
-    if (normalized.localStatus === "PAID") {
-      const finalizeResult = await finalizeWorkflow(salesOrderTrace)
-      const salesOrderStatus = finalizeResult.body.salesOrder.status
-      const invoiceId = finalizeResult.body.invoice.id
-
-      if (salesOrderStatus !== "PAID") {
-        log.error("velocity callback - finalize returned non-PAID", {
-          salesOrderTrace,
-          salesOrderStatus,
-        })
-        alertFinalizeNonPaid(
-          "unknown",
-          salesOrderTrace,
-          salesOrderStatus,
-          Number(finalizeResult.body.salesOrder.outstandingAmount),
-        )
-        return NextResponse.json({ status: "acknowledged", note: "Payment finalisation is not complete" })
-      }
-
-      const [order] = await db
-        .select({
-          id: orders.id,
-          status: orders.status,
-          eventId: orders.eventId,
-          totalAmount: orders.totalAmount,
-          currency: orders.currency,
-          paymentMethod: orders.paymentMethod,
-          guestEmail: orders.guestEmail,
-          guestName: orders.guestName,
-          metadata: orders.metadata,
-          userId: orders.userId,
-        })
-        .from(orders)
-        .where(
-          and(
-            sql`${orders.metadata}->'velocity'->>'salesOrderTrace' = ${salesOrderTrace}`,
-          ),
-        )
-        .limit(1)
-
-      if (!order) {
-        log.error("velocity callback - order not found for salesOrderTrace", { salesOrderTrace })
-
-        // Alert: Velocity callback received for an order that doesn't exist locally
-        alertCallbackOrderNotFound(
-          transactionTrace,
-          salesOrderTrace,
-          rawBody as Record<string, unknown> | null,
-        )
-
-        return NextResponse.json({ status: "acknowledged", note: "Order not found" })
-      }
-
-      if (order.status === "paid") {
-        const [settledLedger] = await db
-          .select({ id: paymentLedger.id })
-          .from(paymentLedger)
-          .where(and(
-            eq(paymentLedger.orderId, order.id),
-            sql`${paymentLedger.localStatus} IN ('paid', 'completed', 'success', 'paid_success')`,
-          ))
-          .limit(1)
-
-        if (!settledLedger) {
-          await db.insert(paymentLedger).values({
-            orderId: order.id,
-            eventId: order.eventId,
-            transactionTrace,
-            salesOrderTrace,
-            invoiceId,
-            amount: order.totalAmount,
-            currency: order.currency ?? "USD",
-            processor: "velocity",
-            velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
-            localStatus: "paid",
-            source: "callback",
-            rawPayload: rawBody as Record<string, unknown>,
-          }).onConflictDoNothing()
-        }
-
-        log.info("velocity callback - order already paid, recorded in ledger", { orderId: order.id })
-        return NextResponse.json({ status: "acknowledged" })
-      }
-
-      const meta = (order.metadata ?? {}) as Record<string, unknown>
-      const velocityMeta = (meta.velocity ?? {}) as Record<string, unknown>
-      const paidAmount = Number(finalizeResult.body.salesOrder.paidAmount)
-      if (!paymentAmountsMatch(order.totalAmount, paidAmount)) {
-        alertPaymentAnomaly({
-          type: "PAYMENT_AMOUNT_MISMATCH",
-          severity: "critical",
-          title: "Velocity callback amount does not match order",
-          detail: `Order ${order.id} expected ${order.totalAmount} ${order.currency ?? "USD"}, but Velocity finalised ${paidAmount}.`,
-          orderId: order.id,
-          paymentMethod: order.paymentMethod ?? "velocity-card",
-          context: { expectedAmount: order.totalAmount, paidAmount, transactionTrace, salesOrderTrace },
-        }).catch(() => {})
-        return NextResponse.json({ status: "acknowledged", note: "Payment amount requires review" })
-      }
-      const updatedMeta = {
-        ...meta,
-        velocity: {
-          ...velocityMeta,
-          pollStatus: "SUCCESS",
-          paymentStatus: normalized.velocityPaymentStatus ?? "SUCCESS",
-          paymentRef: invoiceId,
-          invoiceRef: invoiceId,
-          finalizedAt: new Date().toISOString(),
-          callbackProcessedAt: new Date().toISOString(),
-        },
-      }
-
-      const [updatedOrder] = await db
-        .update(orders)
-        .set({
-          status: "paid",
-          paidAt: new Date(),
-          completedAt: new Date(),
-          paymentRef: invoiceId,
-          metadata: updatedMeta,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(orders.id, order.id), inArray(orders.status, ["pending", "awaiting_verification"])))
-        .returning({ id: orders.id, status: orders.status })
-
-      if (!updatedOrder) {
-        const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).limit(1)
-        log.warn("velocity callback - order changed before payment claim", { orderId: order.id, currentStatus: current?.status })
-        return NextResponse.json({ status: "acknowledged", note: "Order was already processed or cancelled" })
-      }
-
-      // Record in ledger before delivery so re-runs are idempotent
-      try {
-        await db.insert(paymentLedger).values({
-          orderId: order.id,
-          eventId: order.eventId,
-          transactionTrace,
-          salesOrderTrace,
-          invoiceId,
-          amount: order.totalAmount,
-          currency: order.currency ?? "USD",
-          processor: "velocity",
-          velocityPollStatus: normalized.velocityPollStatus ?? "SUCCESS",
-          localStatus: "paid",
-          source: "callback",
-          rawPayload: rawBody as Record<string, unknown>,
-        }).onConflictDoNothing()
-      } catch {
-        // Duplicate — already recorded, safe to continue
-      }
-
-      // Fire-and-forget delivery — don't block the HTTP response (Velocity may
-      // time out and retry). The cron recheck handles delivery retries.
-      deliverTicketForPaidOrder(order.id).catch((err) =>
-        log.error("velocity callback - delivery failed (callback will retry via cron)", {
-          orderId: order.id,
-          error: String(err),
-        }),
+    if (result.paid) {
+      deliverTicketForPaidOrder(order.id).catch((error) =>
+        log.error("velocity callback - delivery failed; cron will retry", { orderId: order.id, error: String(error) }),
       )
-
-      log.info("velocity callback - order processed", {
-        orderId: order.id,
-      })
-    } else {
-      log.info("velocity callback - payment not yet confirmed", {
-        localStatus: normalized.localStatus,
-        salesOrderTrace,
-      })
+      return NextResponse.json({ status: "acknowledged", paid: true, invoiceId: result.invoiceId })
     }
 
-    return NextResponse.json({ status: "acknowledged" })
-  } catch (err) {
-    log.error("velocity callback - error", {
+    if (["NETWORK_ERROR", "PROVIDER_ERROR", "FINALIZE_ERROR", "FINALIZE_PENDING"].includes(result.state)) {
+      return NextResponse.json(
+        { error: "velocity_reconciliation_incomplete", state: result.state },
+        { status: 503, headers: { "Retry-After": "15" } },
+      )
+    }
+
+    return NextResponse.json({ status: "acknowledged", paid: false, state: result.state })
+  } catch (error) {
+    log.error("velocity callback - reconciliation error", {
+      orderId: order.id,
       transactionTrace,
       salesOrderTrace,
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     })
     return NextResponse.json({ error: "internal_error" }, { status: 500 })
   } finally {
-    await releaseLock(lockKey).catch(() => {})
+    await releaseLock(lockKey)
   }
 }

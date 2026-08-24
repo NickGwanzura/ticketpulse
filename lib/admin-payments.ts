@@ -13,6 +13,7 @@ export type PaymentsApiResponse = {
     paidCount: number
     failedCount: number
     pendingCount: number
+    finishedEventPendingCount: number
     expiredCount: number
     deliveryAttentionCount: number
     duplicateOrderCount: number
@@ -47,6 +48,26 @@ export type PaymentsApiResponse = {
     invoiceId: string | null
     errorMessage: string | null
   }>
+  pendingPayments: Array<{
+    orderId: string
+    eventTitle: string | null
+    buyerName: string | null
+    buyerEmail: string | null
+    buyerPhone: string | null
+    status: string | null
+    paymentMethod: string | null
+    amount: string
+    currency: string | null
+    createdAt: string | null
+    updatedAt: string | null
+    paymentStatus: string | null
+    pollStatus: string | null
+    providerHttpStatus: string | null
+    providerError: string | null
+    consecutiveProviderErrors: number
+    transactionTrace: string | null
+    eventFinished: boolean
+  }>
   sparkPoints: number[]
   page: number
   totalPages: number
@@ -77,12 +98,14 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
     [paidCount],
     [failedCount],
     [pendingCount],
+    [finishedEventPendingCount],
     [expiredCount],
     [deliveryAttention],
     methodRows,
     dailyRevenue,
     recentLedger,
     [ledgerCount],
+    pendingOrders,
     duplicateRows,
   ] = await Promise.all([
     db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(settledOrderStatus),
@@ -93,6 +116,10 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(settledOrderStatus),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(failedOrderStatus),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(pendingOrderStatus),
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(orders)
+      .innerJoin(events, eq(events.id, orders.eventId))
+      .where(and(pendingOrderStatus, sql`COALESCE(${events.endsAt}, ${events.startsAt}) <= NOW()`)),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(eq(orders.status, "expired")),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(and(
       settledOrderStatus,
@@ -142,6 +169,30 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
       .leftJoin(events, eq(paymentLedger.eventId, events.id))
       .orderBy(desc(paymentLedger.createdAt)).limit(PAGE_SIZE).offset(offset),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(paymentLedger),
+    db.select({
+      orderId: orders.id,
+      eventTitle: events.title,
+      buyerName: orders.guestName,
+      buyerEmail: orders.guestEmail,
+      buyerPhone: orders.guestPhone,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      amount: orders.totalAmount,
+      currency: orders.currency,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      paymentStatus: sql<string | null>`${orders.metadata}->'velocity'->>'paymentStatus'`,
+      pollStatus: sql<string | null>`${orders.metadata}->'velocity'->>'pollStatus'`,
+      providerHttpStatus: sql<string | null>`${orders.metadata}->'velocity'->>'lastProviderHttpStatus'`,
+      providerError: sql<string | null>`${orders.metadata}->'velocity'->>'lastProviderError'`,
+      consecutiveProviderErrors: sql<number>`COALESCE((${orders.metadata}->'velocity'->>'consecutiveProviderErrors')::int, 0)`,
+      transactionTrace: sql<string | null>`${orders.metadata}->'velocity'->>'transactionTrace'`,
+      eventFinished: sql<boolean>`COALESCE(${events.endsAt}, ${events.startsAt}) <= NOW()`,
+    }).from(orders)
+      .leftJoin(events, eq(orders.eventId, events.id))
+      .where(pendingOrderStatus)
+      .orderBy(desc(orders.createdAt))
+      .limit(50),
     db.select({ orderId: paymentLedger.orderId }).from(paymentLedger)
       .where(settledLedgerStatus).groupBy(paymentLedger.orderId).having(sql`COUNT(*) > 1`),
   ])
@@ -174,6 +225,7 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
       paidCount: totalPaid,
       failedCount: totalFailed,
       pendingCount: pendingCount?.count ?? 0,
+      finishedEventPendingCount: finishedEventPendingCount?.count ?? 0,
       expiredCount: expiredCount?.count ?? 0,
       deliveryAttentionCount: deliveryAttention?.count ?? 0,
       duplicateOrderCount: duplicateRows.length,
@@ -193,6 +245,13 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
       ...row,
       amount: String(row.amount),
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+    })),
+    pendingPayments: pendingOrders.map((row) => ({
+      ...row,
+      amount: String(row.amount),
+      createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : null,
+      consecutiveProviderErrors: Number(row.consecutiveProviderErrors ?? 0),
     })),
     sparkPoints,
     page: safePage,
