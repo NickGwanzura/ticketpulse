@@ -43,6 +43,11 @@ export type DeliveryMetadata = {
   lastDeliveryAttemptAt: string | null
 }
 
+export type DeliveryOptions = {
+  /** Keep the buyer delivery flow, but suppress organizer email/WhatsApp notices when false. */
+  notifyOrganizers?: boolean
+}
+
 const DEFAULT_DELIVERY: DeliveryMetadata = {
   status: "NOT_STARTED",
   ticketIssuedAt: null,
@@ -68,7 +73,7 @@ function getDeliveryMeta(meta: Record<string, unknown>): DeliveryMetadata {
  * Safe to call multiple times — checks for existing tickets before creating.
  * Returns a summary of what was done.
  */
-export async function deliverTicketForPaidOrder(orderId: string): Promise<{
+export async function deliverTicketForPaidOrder(orderId: string, options: DeliveryOptions = {}): Promise<{
   success: boolean
   status: DeliveryStatus
   ticketCount: number
@@ -85,13 +90,13 @@ export async function deliverTicketForPaidOrder(orderId: string): Promise<{
   }
 
   try {
-    return await _deliver(orderId)
+    return await _deliver(orderId, options)
   } finally {
     await releaseLock(lockKey).catch(() => {})
   }
 }
 
-async function _deliver(orderId: string): Promise<{
+async function _deliver(orderId: string, options: DeliveryOptions = {}): Promise<{
   success: boolean
   status: DeliveryStatus
   ticketCount: number
@@ -378,7 +383,7 @@ async function _deliver(orderId: string): Promise<{
 
         // ── Notify organizer and admin about the sale ─────────────────────
         if (ev) {
-          notifyOrganizerSale(order, ev, saleLines, baseUrl).catch((err) =>
+          notifyOrganizerSale(order, ev, saleLines, baseUrl, options.notifyOrganizers !== false).catch((err) =>
             log.warn("delivery - organizer notification failed", { orderId, error: String(err) }),
           )
         }
@@ -473,6 +478,7 @@ async function notifyOrganizerSale(
   ev: { title: string; startsAt: Date | null; venue: string | null; organizerId: string },
   lines: { label: string; qty: number; amount: string }[],
   baseUrl: string,
+  notifyOrganizers = true,
 ) {
   const [org] = await db
     .select({ name: users.name, email: users.email, phone: users.phone })
@@ -480,7 +486,7 @@ async function notifyOrganizerSale(
     .where(eq(users.id, ev.organizerId))
     .limit(1)
 
-  if (org?.email) {
+  if (notifyOrganizers && org?.email) {
     const { html, text } = saleNotificationEmail({
       role: "organizer",
       eventTitle: ev.title,
@@ -496,7 +502,7 @@ async function notifyOrganizerSale(
     )
   }
 
-  if (org?.phone) {
+  if (notifyOrganizers && org?.phone) {
     const { organizerSaleNotification } = await import("@/lib/whatsapp-templates")
     const chatId = formatChatId(org.phone)
     // Send brand image + sale notification

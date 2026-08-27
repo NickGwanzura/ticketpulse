@@ -1,13 +1,13 @@
 /**
- * Combined cron entry point — call this every minute from Railway (or any
+ * Combined cron entry point — call this every minute from Dokploy (or any
  * external scheduler) with the CRON_SECRET header.
  *
  * Runs all cron jobs in the correct dependency order:
  *   1. recheck-velocity  — confirms pending payments before anything expires
  *   2. expire-orders     — expires stale orders (safe now that paid ones are caught above)
  *
- * Railway cron setup:
- *   Create a cron job in the Railway dashboard:
+ * Dokploy cron setup:
+ *   Create a cron job in the Dokploy dashboard:
  *     Schedule:  * * * * *   (every minute)
  *     Command:   curl -X POST https://ticketpulse.tech/api/cron/tick \
  *                     -H "x-cron-secret: $CRON_SECRET"
@@ -67,7 +67,16 @@ export async function POST(request: Request) {
     results.cardRecovery = { error: String(err) }
   }
 
-  // 5. cleanup-logs — prunes old past_announce_log rows (cheap, returns fast when nothing to do)
+  // 5. payment follow-ups — one recovery email per unpaid Visa/EcoCash buyer
+  // from the last 72 hours; the job marks successful sends for idempotency.
+  try {
+    results.paymentFollowups = await invokeCronChild(base, "/api/cron/payment-followups", headers)
+  } catch (err) {
+    log.error("cron/tick — payment-followups failed", { error: String(err) })
+    results.paymentFollowups = { error: String(err) }
+  }
+
+  // 6. cleanup-logs — prunes old past_announce_log rows (cheap, returns fast when nothing to do)
   try {
     results.cleanupLogs = await invokeCronChild(base, "/api/cron/cleanup-logs", headers)
   } catch (err) {
@@ -75,7 +84,7 @@ export async function POST(request: Request) {
     results.cleanupLogs = { error: String(err) }
   }
 
-  // 6. whatsapp-watchdog — daily session health-check (internally gated to 07:00 UTC)
+  // 7. whatsapp-watchdog — daily session health-check (internally gated to 07:00 UTC)
   try {
     results.whatsappWatchdog = await invokeCronChild(base, "/api/cron/whatsapp-watchdog", headers)
   } catch (err) {
@@ -83,7 +92,7 @@ export async function POST(request: Request) {
     results.whatsappWatchdog = { error: String(err) }
   }
 
-  // 7. reconciliation-digest — daily anomaly summary (internally gated to 08:00 UTC)
+  // 8. reconciliation-digest — daily anomaly summary (internally gated to 08:00 UTC)
   try {
     results.reconciliationDigest = await invokeCronChild(base, "/api/cron/reconciliation-digest", headers)
   } catch (err) {

@@ -1032,6 +1032,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Merchant phone not configured" }, { status: 500 })
     }
 
+    // ── Persist the sales-order trace before the risky call ──────────────────
+    // initiateTransaction() is where Velocity actually dispatches the EcoCash
+    // USSD prompt — if our HTTP request to it times out (15s) but the prompt
+    // was already sent, the buyer can still approve and pay while we think the
+    // request failed. Writing salesOrderTrace now, before that call, means the
+    // Velocity webhook callback (which looks orders up by salesOrderTrace, see
+    // app/api/payments/velocity/callback/route.ts) can still find and settle
+    // this order later even if initiateTransaction throws below.
+    await db.transaction(async (tx) => {
+      await lockOrderMutation(tx, orderId)
+      const [current] = await tx.select({ metadata: orders.metadata }).from(orders).where(eq(orders.id, orderId)).limit(1)
+      const currentMetadata = (current?.metadata ?? {}) as Record<string, unknown>
+      await tx
+        .update(orders)
+        .set({
+          metadata: {
+            ...currentMetadata,
+            ...baseMeta,
+            velocity: {
+              salesOrderTrace,
+              salesOrderId,
+              transactionTrace: null,
+              outstandingAmount: total,
+              paymentProcessor: processor,
+              pollStatus: "UNKNOWN" as VelocityPollStatus,
+              paymentStatus: null,
+              paymentRef: null,
+              invoiceRef: null,
+              initiatedAt: new Date().toISOString(),
+              finalizedAt: null,
+            },
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+    })
+
     const isCard = processor === "VMC"
 
     const returnUrlFields: Record<string, string | undefined> = {}
@@ -1295,19 +1332,35 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Checkout failed"
     log.error("velocity checkout failed", { orderId, error: message })
 
-    // Alert on Velocity API errors during checkout — medium severity since
-    // these are transient network errors the buyer can retry themselves.
+    // A network/timeout error talking to Velocity is ambiguous — the request
+    // (createSalesOrder or initiateTransaction) may have actually gone through
+    // on Velocity's side even though our client gave up waiting for a
+    // response. This is exactly how a real EcoCash charge can succeed while
+    // our order still gets cancelled. Only cancel + release inventory on a
+    // *definitive* rejection from Velocity (a real error response). Ambiguous
+    // cases are left "pending" — the salesOrderTrace persisted above lets the
+    // webhook callback (app/api/payments/velocity/callback/route.ts) or the
+    // recheck-velocity cron reconcile the order once Velocity's real status
+    // is known, instead of orphaning it.
+    const isAmbiguous = message.startsWith("Network error communicating with Velocity Africa")
+
     alertPaymentAnomaly({
       type: "TRANSACTION_API_ERROR",
-      severity: "medium",
-      title: "Velocity API error during checkout",
-      detail: `Checkout for order ${orderId} (${parsed.paymentMethod}) hit a Velocity API error: ${message.slice(0, 300)}. The buyer was shown an error and can retry.`,
+      severity: isAmbiguous ? "high" : "medium",
+      title: isAmbiguous
+        ? "Velocity request timed out — order left pending for reconciliation"
+        : "Velocity API error during checkout",
+      detail: isAmbiguous
+        ? `Checkout for order ${orderId} (${parsed.paymentMethod}) hit an ambiguous network/timeout error: ${message.slice(0, 300)}. Order left pending — the buyer may still complete payment.`
+        : `Checkout for order ${orderId} (${parsed.paymentMethod}) hit a Velocity API error: ${message.slice(0, 300)}. The buyer was shown an error and can retry.`,
       orderId,
       paymentMethod: parsed.paymentMethod,
-      context: { errorMessage: message.slice(0, 500) },
+      context: { errorMessage: message.slice(0, 500), isAmbiguous },
     }).catch(() => {})
 
-    await cancelWithInventoryRelease()
+    if (!isAmbiguous) {
+      await cancelWithInventoryRelease()
+    }
     return NextResponse.json({ error: message }, { status: 502 })
   }
 }

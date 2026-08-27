@@ -3,7 +3,7 @@ import { eq, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, events, paymentLedger, organizerFeeDues } from "@/db/schema"
 import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
-import { deliverTicketForPaidOrder, readDeliveryStatus } from "@/lib/delivery"
+import { deliverTicketForPaidOrder, readDeliveryStatus, type DeliveryOptions } from "@/lib/delivery"
 import {
   deterministicTicketId,
   generateCombinedTicketPdf,
@@ -44,6 +44,8 @@ export type CompleteAndSendResult = {
   message: string
   details?: Record<string, unknown>
 }
+
+export type CompletionOptions = DeliveryOptions
 
 export type AuditLogEntry = {
   id: string
@@ -534,6 +536,7 @@ export async function completeAndSendAction(
   orderId: string,
   userId: string,
   userEmail: string,
+  options: CompletionOptions = {},
 ): Promise<CompleteAndSendResult> {
   const [order] = await db
     .select()
@@ -617,7 +620,7 @@ export async function completeAndSendAction(
       .where(eq(tickets.orderId, orderId))
 
     if (existingTickets.length === 0 || delivery.emailSentAt === null) {
-      const result = await deliverTicketForPaidOrder(orderId)
+      const result = await deliverTicketForPaidOrder(orderId, options)
       ticketsDelivered = result.ticketCount > 0
       emailSent = result.emailSent
     } else {
