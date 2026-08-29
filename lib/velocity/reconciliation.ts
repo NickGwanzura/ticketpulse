@@ -25,6 +25,14 @@ import type {
 const SETTLED_LEDGER_STATUSES = ["paid", "completed", "success", "paid_success"]
 const SETTLEABLE_ORDER_STATUSES = ["pending", "awaiting_verification", "expired"]
 
+/**
+ * After this many consecutive Velocity provider errors (4xx/5xx on poll),
+ * stop auto-retrying and flag the order for manual review instead. Without
+ * this cap, recheck-velocity retries forever — some orders have accumulated
+ * 1,000+ failed poll attempts over weeks with no path back to resolution.
+ */
+export const MAX_CONSECUTIVE_PROVIDER_ERRORS = 20
+
 type OrderMetadata = Record<string, unknown> & {
   velocity?: VelocityOrderMetadata
   archive?: Record<string, unknown>
@@ -36,6 +44,7 @@ export type VelocityReconciliationState =
   | LocalPaymentStatus
   | "PROVIDER_ERROR"
   | "NETWORK_ERROR"
+  | "UNPOLLABLE"
   | "INVALID"
   | "FINALIZE_PENDING"
   | "FINALIZE_ERROR"
@@ -54,6 +63,8 @@ export type VelocityReconciliationResult = {
   pollResult: PollTransactionResponse | null
   providerHttpStatus: number | null
   message: string | null
+  /** True when this order just crossed into needing manual review (see MAX_CONSECUTIVE_PROVIDER_ERRORS / UNPOLLABLE). */
+  manualReviewRequired?: boolean
 }
 
 export type ReconcileVelocityOrderOptions = {
@@ -66,6 +77,8 @@ export type ReconcileVelocityOrderOptions = {
 
 type BuildObservedVelocityMetadataOptions = {
   preserveActiveReference?: boolean
+  /** Set when the poll used a fallback trace-as-id and Velocity 400'd it — this reference will never resolve on its own. */
+  unpollable?: boolean
 }
 
 function asMetadata(value: unknown): OrderMetadata {
@@ -118,6 +131,21 @@ export function buildObservedVelocityMetadata(
     }
   }
 
+  const nextConsecutiveProviderErrors = providerFailure
+    ? (current.consecutiveProviderErrors ?? 0) + 1
+    : 0
+  const crossedErrorCap = providerFailure && !options.unpollable && nextConsecutiveProviderErrors >= MAX_CONSECUTIVE_PROVIDER_ERRORS
+  const manualReviewRequired = providerFailure
+    ? Boolean(options.unpollable || crossedErrorCap || current.manualReviewRequired)
+    : false
+  const manualReviewReason = !manualReviewRequired
+    ? null
+    : options.unpollable
+      ? "Velocity poll endpoint rejects this transaction reference (400) — no provider transactionId was ever issued, so this will not resolve automatically."
+      : crossedErrorCap
+        ? `Exceeded ${MAX_CONSECUTIVE_PROVIDER_ERRORS} consecutive Velocity provider errors — needs manual verification against the Velocity dashboard.`
+        : (current.manualReviewReason ?? null)
+
   return {
     ...current,
     transactionTrace,
@@ -129,9 +157,9 @@ export function buildObservedVelocityMetadata(
     lastPolledAt: observedAt,
     lastProviderHttpStatus: pollResult.httpStatus ?? null,
     lastProviderError: pollResult.errorMessage ?? null,
-    consecutiveProviderErrors: providerFailure
-      ? (current.consecutiveProviderErrors ?? 0) + 1
-      : 0,
+    consecutiveProviderErrors: nextConsecutiveProviderErrors,
+    manualReviewRequired,
+    manualReviewReason,
     ...(!networkError && !providerError && normalized.localStatus === "FAILED"
       ? {
           failedAt: observedAt,
@@ -159,6 +187,7 @@ async function persistPollObservation(
   pollResult: PollTransactionResponse,
   transactionTrace: string,
   observedAt: string,
+  unpollable = false,
 ): Promise<VelocityOrderMetadata> {
   return db.transaction(async (tx) => {
     await lockOrderMutation(tx, orderId)
@@ -176,7 +205,7 @@ async function persistPollObservation(
       pollResult,
       transactionTrace,
       observedAt,
-      { preserveActiveReference },
+      { preserveActiveReference, unpollable },
     )
     await tx
       .update(orders)
@@ -234,19 +263,27 @@ export async function reconcileVelocityOrder(
     (entry) => entry.transactionTrace === transactionTrace,
   )
   const isCurrentTrace = transactionTrace === velocity.transactionTrace
+  const usedTransactionId = isCurrentTrace ? velocity.transactionId : attempt?.transactionId
   const pollResult = await pollTransaction(transactionTrace, {
-    transactionId: isCurrentTrace ? velocity.transactionId : attempt?.transactionId,
+    transactionId: usedTransactionId,
     transactionSessionId: isCurrentTrace ? velocity.transactionSessionId : attempt?.transactionSessionId,
   })
   const normalized = normalizeVelocityPollResponse(pollResult)
   const observedAt = new Date().toISOString()
   const providerError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
+  // Velocity's poll endpoint wants its own provider-assigned transactionId;
+  // when we never got one back from initiateTransaction, we fall back to
+  // polling with the transactionTrace instead — Velocity rejects that with a
+  // 400 every time. Nothing on our side can backfill a real transactionId
+  // after the fact, so this reference will never resolve on its own.
+  const isUnpollableReference = !usedTransactionId && pollResult.httpStatus === 400
 
   const observedVelocity = await persistPollObservation(
     order.id,
     pollResult,
     transactionTrace,
     observedAt,
+    isUnpollableReference,
   )
 
   const polledResult = {
@@ -254,10 +291,18 @@ export async function reconcileVelocityOrder(
     transactionTrace,
     pollResult,
     providerHttpStatus: pollResult.httpStatus ?? null,
+    manualReviewRequired: observedVelocity.manualReviewRequired === true,
   }
 
   if (pollResult.state === "network_error") {
     return { ...polledResult, state: "NETWORK_ERROR", message: pollResult.errorMessage ?? "Velocity network error" }
+  }
+  if (isUnpollableReference) {
+    return {
+      ...polledResult,
+      state: "UNPOLLABLE",
+      message: observedVelocity.manualReviewReason ?? "Velocity poll endpoint rejects this transaction reference",
+    }
   }
   if (providerError) {
     return { ...polledResult, state: "PROVIDER_ERROR", message: pollResult.errorMessage ?? "Velocity provider error" }
@@ -374,6 +419,8 @@ export async function reconcileVelocityOrder(
         failureReason: null,
         lastProviderError: null,
         consecutiveProviderErrors: 0,
+        manualReviewRequired: false,
+        manualReviewReason: null,
         ...(options.actorEmail ? { recheckedAt: settledAt.toISOString(), recheckedBy: options.actorEmail } : {}),
         ...(options.source === "callback" ? { callbackProcessedAt: settledAt.toISOString() } : {}),
       }

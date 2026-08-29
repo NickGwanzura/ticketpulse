@@ -212,6 +212,16 @@ export interface VelocityOrderMetadata {
   lastProviderHttpStatus?: number | null
   lastProviderError?: string | null
   consecutiveProviderErrors?: number
+  /**
+   * Set when automated polling should stop and a human needs to check this
+   * order against the Velocity dashboard directly — either because the poll
+   * reference is structurally unusable (see `reconcileVelocityOrder`'s
+   * UNPOLLABLE state) or because it has exceeded MAX_CONSECUTIVE_PROVIDER_ERRORS.
+   * The recheck-velocity cron excludes these orders so they stop being
+   * retried forever.
+   */
+  manualReviewRequired?: boolean
+  manualReviewReason?: string | null
   /** Hosted checkout redirect URL returned by Velocity for card (VMC) payments */
   redirectUrl?: string | null
 }

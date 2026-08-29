@@ -31,6 +31,7 @@ export type AlertType =
   // Cron / recheck
   | "RECHECK_PERSISTENT_FAILURE"
   | "RECHECK_HIGH_ERROR_RATE"
+  | "VELOCITY_MANUAL_REVIEW_REQUIRED"
   // General Velocity API
   | "VELOCITY_API_UNEXPECTED_FORMAT"
   | "VELOCITY_NETWORK_ERROR"
@@ -321,6 +322,33 @@ export async function alertRecheckHighErrorRate(
     title: `High payment cron error rate — ${errors}/${checked} orders failed`,
     detail: `The recheck-velocity cron found ${checked} pending orders. Fixed: ${fixed}. Errors: ${errors} (${errorRate}% error rate). First 5 failing orders: ${errorDetails.slice(0, 5).map((e) => `${e.orderId.slice(0, 8)}… (${e.reason ?? "unknown"})`).join(", ")}.`,
     context: { checked, fixed, errors, errorRate, sampleErrorDetails: errorDetails.slice(0, 5) },
+  })
+}
+
+/**
+ * Alert once when an order stops being auto-retried by recheck-velocity and
+ * needs a human to check it against the Velocity dashboard directly — either
+ * because its poll reference is structurally unusable (no transactionId ever
+ * issued) or it exceeded MAX_CONSECUTIVE_PROVIDER_ERRORS. After this fires,
+ * the cron excludes the order going forward, so this is the only signal an
+ * admin gets — it will not repeat.
+ */
+export async function alertVelocityManualReviewRequired(
+  orderId: string,
+  transactionTrace: string | null,
+  salesOrderTrace: string | null,
+  reason: string,
+  paymentMethod?: string,
+): Promise<void> {
+  await alertPaymentAnomaly({
+    type: "VELOCITY_MANUAL_REVIEW_REQUIRED",
+    severity: "high",
+    title: "Order needs manual payment review — auto-retry stopped",
+    detail: `${reason} Check this order against the Velocity dashboard and complete it manually (scripts/complete-order-cli.ts) if the payment actually succeeded.`,
+    orderId,
+    transactionTrace: transactionTrace ?? undefined,
+    salesOrderTrace: salesOrderTrace ?? undefined,
+    paymentMethod,
   })
 }
 

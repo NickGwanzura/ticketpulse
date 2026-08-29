@@ -6,7 +6,7 @@ import { events, orders } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
-import { alertRecheckHighErrorRate } from "@/lib/payment-alerts"
+import { alertRecheckHighErrorRate, alertVelocityManualReviewRequired } from "@/lib/payment-alerts"
 import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { newPaymentAlert } from "@/lib/whatsapp-templates"
@@ -39,6 +39,10 @@ export async function POST(request: Request) {
       sql`${orders.metadata}->>'velocity' IS NOT NULL`,
       inArray(orders.status, ["pending", "awaiting_verification"]),
       lt(orders.updatedAt, cutoff),
+      // Orders already flagged for manual review have a structurally
+      // unpollable reference or exceeded the provider-error cap — retrying
+      // them further just burns Velocity API calls for no benefit.
+      sql`COALESCE((${orders.metadata}->'velocity'->>'manualReviewRequired')::boolean, false) = false`,
     ))
     .limit(MAX_ORDERS_PER_RUN)
 
@@ -82,7 +86,7 @@ export async function POST(request: Request) {
         continue
       }
 
-      const providerError = result.state === "PROVIDER_ERROR" || result.state === "NETWORK_ERROR"
+      const providerError = result.state === "PROVIDER_ERROR" || result.state === "NETWORK_ERROR" || result.state === "UNPOLLABLE"
       const processingError = ["FINALIZE_ERROR", "FINALIZE_PENDING", "AMOUNT_MISMATCH", "CONFLICT"].includes(result.state)
       if (providerError || processingError) {
         errorCount++
@@ -93,6 +97,19 @@ export async function POST(request: Request) {
         results.push({ orderId: order.id, action: "error", reason: `${result.state}: ${result.message ?? "unknown error"}` })
       } else {
         results.push({ orderId: order.id, action: "skipped", reason: `${result.state}: ${result.message ?? "not settled"}` })
+      }
+
+      // This order just stopped being auto-retried (see the SQL exclusion
+      // above) — fire the one alert an admin will get for it, since the
+      // batch-level alertRecheckHighErrorRate below won't repeat per-order.
+      if (result.manualReviewRequired) {
+        alertVelocityManualReviewRequired(
+          order.id,
+          result.transactionTrace,
+          result.salesOrderTrace,
+          result.message ?? "Velocity payment could not be automatically reconciled.",
+          order.paymentMethod ?? undefined,
+        ).catch((error) => log.warn("cron/recheck-velocity - manual review alert failed", { orderId: order.id, error: String(error) }))
       }
     } catch (error) {
       errorCount++
