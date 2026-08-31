@@ -3,6 +3,7 @@ import { headers } from "next/headers"
 import "./globals.css"
 import Providers from "@/components/layout/Providers"
 import TopBar from "@/components/layout/TopBar"
+import PaymentStatusNotice from "@/components/layout/PaymentStatusNotice"
 import Navbar, { type NavbarFeaturedItem } from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
 import CookiesNotice from "@/components/CookiesNotice"
@@ -139,6 +140,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           {!bare && <TopBar />}
           {!bare && <Navbar featured={featured} />}
+          {!bare && <PaymentStatusNotice />}
           <div className={bare ? "" : "min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]"}>{children}</div>
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}
