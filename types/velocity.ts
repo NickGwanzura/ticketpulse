@@ -115,8 +115,20 @@ export interface VelocityFinalizeSalesOrder {
   id: string
   paidAmount: number
   outstandingAmount: number
+  grandTotal?: number
   status: string
   name: string
+}
+
+export interface VelocitySalesOrderPayment {
+  id: string
+  name?: string
+  status?: string
+}
+
+export interface VelocitySalesOrderLookup extends VelocityFinalizeSalesOrder {
+  trace: string
+  payments?: VelocitySalesOrderPayment[]
 }
 
 export interface VelocityFinalizeInvoice {
@@ -185,6 +197,7 @@ export interface VelocityOrderMetadata {
   transactionObservations?: Array<{
     transactionTrace: string
     transactionId: string | null
+    amount?: number | null
     pollStatus: string | null
     paymentStatus: string | null
     state: string
@@ -214,8 +227,8 @@ export interface VelocityOrderMetadata {
   consecutiveProviderErrors?: number
   /**
    * Set when automated polling should stop and a human needs to check this
-   * order against the Velocity dashboard directly — either because the poll
-   * reference is structurally unusable (see `reconcileVelocityOrder`'s
+   * order against the Velocity dashboard directly — either because Velocity
+   * says its poll allowance is exhausted (see `reconcileVelocityOrder`'s
    * UNPOLLABLE state) or because it has exceeded MAX_CONSECUTIVE_PROVIDER_ERRORS.
    * The recheck-velocity cron excludes these orders so they stop being
    * retried forever.

@@ -312,7 +312,7 @@ describe("velocity service", () => {
   })
 
   describe("pollTransaction", () => {
-    it("uses the transaction ID in the path and sends both provider references in the PUT body", async () => {
+    it("uses the transaction trace in the path and sends both provider references in the PUT body", async () => {
       mockFetch({
         body: {
           state: "done",
@@ -334,7 +334,7 @@ describe("velocity service", () => {
       })
 
       expect(global.fetch).toHaveBeenCalledWith(
-        "https://api.velocity.test/transactions/poll/txn-id-001",
+        `https://api.velocity.test/transactions/poll/${MOCK_TRANSACTION_TRACE}`,
         expect.objectContaining({
           method: "PUT",
           body: JSON.stringify({ id: "txn-id-001", trace: MOCK_TRANSACTION_TRACE }),
@@ -343,7 +343,7 @@ describe("velocity service", () => {
       )
     })
 
-    it("falls back to the trace for both path and body on legacy orders", async () => {
+    it("sends a trace-only body for legacy orders without another provider reference", async () => {
       mockFetch({
         body: {
           state: "done",
@@ -358,8 +358,21 @@ describe("velocity service", () => {
       expect(global.fetch).toHaveBeenCalledWith(
         `https://api.velocity.test/transactions/poll/${MOCK_TRANSACTION_TRACE}`,
         expect.objectContaining({
-          body: JSON.stringify({ id: MOCK_TRANSACTION_TRACE, trace: MOCK_TRANSACTION_TRACE }),
+          body: JSON.stringify({ trace: MOCK_TRANSACTION_TRACE }),
         }),
+      )
+    })
+
+    it("includes Velocity error details in structured poll failures", async () => {
+      mockFetch({
+        status: 400,
+        body: { message: "Invalid request", errors: ["Max poll attempts reached for transaction: trace-1"] },
+      })
+
+      const result = await mod.pollTransaction("trace-1")
+
+      expect(result.errorMessage).toBe(
+        "Invalid request: Max poll attempts reached for transaction: trace-1",
       )
     })
 
@@ -471,6 +484,31 @@ describe("velocity service", () => {
       expect(mod.extractHostedSessionId("https://secure.velocityafrica.net/payment/SESSION%2F123")).toBe("SESSION/123")
       expect(mod.extractHostedSessionId("https://api.velocityafrica.net/transactions/abc")).toBeNull()
       expect(mod.extractHostedSessionId(null)).toBeNull()
+    })
+  })
+
+  describe("getSalesOrderById", () => {
+    it("reads a sales order without invoking update-workflow", async () => {
+      mockFetch({
+        body: {
+          id: "so-uuid",
+          trace: MOCK_SALES_ORDER_TRACE,
+          paidAmount: 50,
+          outstandingAmount: 0,
+          grandTotal: 50,
+          status: "PAID",
+          name: "SORD-00038",
+          payments: [{ id: "pay-1", name: "PAY-00001", status: "APPROVED" }],
+        },
+      })
+
+      const result = await mod.getSalesOrderById("so-uuid")
+
+      expect(result.status).toBe("PAID")
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.velocity.test/sales-orders/so-uuid",
+        expect.objectContaining({ method: "GET" }),
+      )
     })
   })
 

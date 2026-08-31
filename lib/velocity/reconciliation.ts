@@ -8,10 +8,11 @@ import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
 import { restoreExpiredOrderInventory } from "@/lib/order-expiry"
 import { alertPaymentAnomaly } from "@/lib/payment-alerts"
-import { lockOrderMutation } from "@/lib/velocity/idempotency"
+import { acquireLock, lockOrderMutation, releaseLock } from "@/lib/velocity/idempotency"
 import { paymentAmountsMatch } from "@/lib/velocity/validation"
 import {
   finalizeWorkflow,
+  getSalesOrderById,
   normalizeVelocityPollResponse,
   pollTransaction,
 } from "@/services/velocity"
@@ -77,7 +78,7 @@ export type ReconcileVelocityOrderOptions = {
 
 type BuildObservedVelocityMetadataOptions = {
   preserveActiveReference?: boolean
-  /** Set when the poll used a fallback trace-as-id and Velocity 400'd it — this reference will never resolve on its own. */
+  /** Set when Velocity explicitly says the transaction cannot be polled again. */
   unpollable?: boolean
 }
 
@@ -106,6 +107,7 @@ export function buildObservedVelocityMetadata(
   const observation = {
     transactionTrace,
     transactionId: pollResult.body?.id || null,
+    amount: Number.isFinite(Number(pollResult.body?.amount)) ? Number(pollResult.body.amount) : null,
     pollStatus: normalized.velocityPollStatus,
     paymentStatus: normalized.velocityPaymentStatus,
     state: pollResult.state,
@@ -141,7 +143,7 @@ export function buildObservedVelocityMetadata(
   const manualReviewReason = !manualReviewRequired
     ? null
     : options.unpollable
-      ? "Velocity poll endpoint rejects this transaction reference (400) — no provider transactionId was ever issued, so this will not resolve automatically."
+      ? "Velocity has exhausted the allowed poll attempts for this transaction, so it will not resolve through automatic polling."
       : crossedErrorCap
         ? `Exceeded ${MAX_CONSECUTIVE_PROVIDER_ERRORS} consecutive Velocity provider errors — needs manual verification against the Velocity dashboard.`
         : (current.manualReviewReason ?? null)
@@ -264,19 +266,46 @@ export async function reconcileVelocityOrder(
   )
   const isCurrentTrace = transactionTrace === velocity.transactionTrace
   const usedTransactionId = isCurrentTrace ? velocity.transactionId : attempt?.transactionId
-  const pollResult = await pollTransaction(transactionTrace, {
-    transactionId: usedTransactionId,
-    transactionSessionId: isCurrentTrace ? velocity.transactionSessionId : attempt?.transactionSessionId,
-  })
+  // Velocity's poll endpoint has a provider-side side effect for successful
+  // VMC transactions: polling the same success again creates another payment
+  // application on the sales order. Reuse a previously persisted successful
+  // observation instead of calling the provider a second time.
+  const successfulObservation = velocity.transactionObservations?.find((entry) =>
+    entry.transactionTrace === transactionTrace &&
+    (entry.pollStatus === "SUCCESS" || entry.paymentStatus === "SUCCESS") &&
+    Number.isFinite(Number(entry.amount)),
+  )
+  const pollResult: PollTransactionResponse = successfulObservation
+    ? {
+        state: "done",
+        status: "finished",
+        body: {
+          id: successfulObservation.transactionId ?? usedTransactionId ?? "",
+          trace: transactionTrace,
+          amount: Number(successfulObservation.amount),
+          paymentStatus: successfulObservation.paymentStatus ?? "SUCCESS",
+          pollStatus: (successfulObservation.pollStatus ?? "SUCCESS") as VelocityPollStatus,
+        },
+        workflowId: "cached-success",
+        httpStatus: 200,
+        errorMessage: null,
+      }
+    : await pollTransaction(transactionTrace, {
+        transactionId: usedTransactionId,
+        transactionSessionId: isCurrentTrace ? velocity.transactionSessionId : attempt?.transactionSessionId,
+      })
   const normalized = normalizeVelocityPollResponse(pollResult)
   const observedAt = new Date().toISOString()
   const providerError = typeof pollResult.httpStatus === "number" && pollResult.httpStatus >= 400
-  // Velocity's poll endpoint wants its own provider-assigned transactionId;
-  // when we never got one back from initiateTransaction, we fall back to
-  // polling with the transactionTrace instead — Velocity rejects that with a
-  // 400 every time. Nothing on our side can backfill a real transactionId
-  // after the fact, so this reference will never resolve on its own.
-  const isUnpollableReference = !usedTransactionId && pollResult.httpStatus === 400
+  // A 400 is not automatically terminal: Velocity accepts a trace-only poll
+  // for transactions whose initiation response omitted the provider UUID.
+  // Stop only when the provider explicitly reports that its poll allowance is
+  // exhausted. Other 4xx responses retain the bounded provider-error retry.
+  const providerErrorMessage = pollResult.errorMessage?.toLowerCase() ?? ""
+  const isUnpollableReference = pollResult.httpStatus === 400 && (
+    providerErrorMessage.includes("max poll attempts reached") ||
+    providerErrorMessage.includes("maximum poll attempts reached")
+  )
 
   const observedVelocity = await persistPollObservation(
     order.id,
@@ -319,15 +348,66 @@ export async function reconcileVelocityOrder(
     }
   }
 
+  // The transaction itself is the authoritative charge record. Validate it
+  // before touching the sales-order workflow so an unrelated/incorrect trace
+  // can never settle this order.
+  if (!paymentAmountsMatch(order.totalAmount, pollResult.body.amount)) {
+    alertPaymentAnomaly({
+      type: "PAYMENT_AMOUNT_MISMATCH",
+      severity: "critical",
+      title: "Velocity transaction amount does not match order",
+      detail: `Order ${order.id} expected ${order.totalAmount} ${order.currency ?? "USD"}, but transaction ${transactionTrace} is ${pollResult.body.amount}.`,
+      orderId: order.id,
+      paymentMethod: order.paymentMethod ?? "velocity-card",
+      context: { expectedAmount: order.totalAmount, transactionAmount: pollResult.body.amount, transactionTrace, salesOrderTrace },
+    }).catch(() => {})
+    return { ...polledResult, state: "AMOUNT_MISMATCH", message: "Velocity transaction amount does not match the order total" }
+  }
+
   let finalizeResult
+  const finalizeLockKey = `finalize:${salesOrderTrace}`
+  const finalizeLockAcquired = await acquireLock(finalizeLockKey)
+  if (!finalizeLockAcquired) {
+    return {
+      ...polledResult,
+      state: "FINALIZE_PENDING",
+      message: "Velocity sales-order finalization is already in progress",
+    }
+  }
   try {
-    finalizeResult = await finalizeWorkflow(salesOrderTrace)
+    // First read the sales order. Calling update-workflow on an already-paid
+    // sales order creates another approved payment inside Velocity, so skip
+    // that mutating endpoint once the sales order is PAID.
+    if (velocity.salesOrderId) {
+      const remoteSalesOrder = await getSalesOrderById(velocity.salesOrderId)
+      if (remoteSalesOrder.status === "PAID") {
+        const providerPayment = remoteSalesOrder.payments?.[0]
+        finalizeResult = {
+          state: "done",
+          status: "finished",
+          body: {
+            salesOrder: remoteSalesOrder,
+            invoice: {
+              id: pollResult.body.id || providerPayment?.id || velocity.salesOrderId,
+              name: providerPayment?.name ?? pollResult.body.id ?? velocity.salesOrderId,
+              status: providerPayment?.status ?? "PAID",
+            },
+          },
+        }
+      } else {
+        finalizeResult = await finalizeWorkflow(salesOrderTrace)
+      }
+    } else {
+      finalizeResult = await finalizeWorkflow(salesOrderTrace)
+    }
   } catch (error) {
     return {
       ...polledResult,
       state: "FINALIZE_ERROR",
       message: error instanceof Error ? error.message : String(error),
     }
+  } finally {
+    await releaseLock(finalizeLockKey)
   }
 
   if (finalizeResult.body.salesOrder.status !== "PAID") {
@@ -338,18 +418,36 @@ export async function reconcileVelocityOrder(
     }
   }
 
-  const paidAmount = finalizeResult.body.salesOrder.paidAmount
-  if (!paymentAmountsMatch(order.totalAmount, paidAmount)) {
+  const paidAmount = Number(finalizeResult.body.salesOrder.paidAmount)
+  const salesOrderGrandTotal = finalizeResult.body.salesOrder.grandTotal
+  if (
+    salesOrderGrandTotal !== undefined &&
+    !paymentAmountsMatch(order.totalAmount, salesOrderGrandTotal)
+  ) {
     alertPaymentAnomaly({
       type: "PAYMENT_AMOUNT_MISMATCH",
       severity: "critical",
-      title: "Velocity payment amount does not match order",
-      detail: `Order ${order.id} expected ${order.totalAmount} ${order.currency ?? "USD"}, but Velocity finalised ${paidAmount}.`,
+      title: "Velocity sales-order total does not match local order",
+      detail: `Order ${order.id} expected ${order.totalAmount} ${order.currency ?? "USD"}, but Velocity sales order ${salesOrderTrace} totals ${salesOrderGrandTotal}.`,
+      orderId: order.id,
+      paymentMethod: order.paymentMethod ?? "velocity-card",
+      context: { expectedAmount: order.totalAmount, salesOrderGrandTotal, transactionTrace, salesOrderTrace },
+    }).catch(() => {})
+    return { ...polledResult, state: "AMOUNT_MISMATCH", message: "Velocity sales-order total does not match the order total" }
+  }
+  if (!Number.isFinite(paidAmount) || paidAmount < Number(order.totalAmount)) {
+    return { ...polledResult, state: "FINALIZE_PENDING", message: "Velocity sales order has not received the full order amount" }
+  }
+  if (paidAmount > Number(order.totalAmount)) {
+    alertPaymentAnomaly({
+      type: "PAYMENT_AMOUNT_MISMATCH",
+      severity: "critical",
+      title: "Velocity sales order contains duplicate payment applications",
+      detail: `Velocity sales order ${salesOrderTrace} reports ${paidAmount} paid against a ${order.totalAmount} order. The matching ${pollResult.body.amount} transaction will settle locally once; Velocity must remove the duplicate internal payment applications.`,
       orderId: order.id,
       paymentMethod: order.paymentMethod ?? "velocity-card",
       context: { expectedAmount: order.totalAmount, paidAmount, transactionTrace, salesOrderTrace },
     }).catch(() => {})
-    return { ...polledResult, state: "AMOUNT_MISMATCH", message: "Velocity paid amount does not match the order total" }
   }
 
   const invoiceId = finalizeResult.body.invoice.id
@@ -361,8 +459,8 @@ export async function reconcileVelocityOrder(
 
       const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).limit(1)
       if (!current) throw new Error("Order disappeared during Velocity settlement")
-      if (!paymentAmountsMatch(current.totalAmount, paidAmount)) {
-        throw new Error(`Order total changed during settlement (expected ${current.totalAmount}, Velocity paid ${paidAmount})`)
+      if (!paymentAmountsMatch(current.totalAmount, pollResult.body.amount)) {
+        throw new Error(`Order total changed during settlement (expected ${current.totalAmount}, transaction paid ${pollResult.body.amount})`)
       }
 
       const currentMetadata = asMetadata(current.metadata)

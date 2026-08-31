@@ -12,6 +12,7 @@ import type {
   VelocityConfig,
   NormalizedPollResponse,
   VelocityPollReference,
+  VelocitySalesOrderLookup,
 } from "@/types/velocity"
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
@@ -227,18 +228,34 @@ export async function initiateTransaction(
   })
 }
 
+/**
+ * Read a sales order without advancing its workflow. This must be checked
+ * before update-workflow because Velocity's update endpoint is not
+ * idempotent: repeated calls create duplicate payment applications.
+ */
+export async function getSalesOrderById(salesOrderId: string): Promise<VelocitySalesOrderLookup> {
+  return velocityRequest<VelocitySalesOrderLookup>(
+    `/sales-orders/${encodeURIComponent(salesOrderId)}`,
+    { method: "GET" },
+  )
+}
+
 export async function pollTransaction(
   transactionTrace: string,
   reference: VelocityPollReference = {},
 ): Promise<PollTransactionResponse> {
   const config = getConfig()
-  const pathReference = reference.transactionId ?? transactionTrace
-  const path = `/transactions/poll/${encodeURIComponent(pathReference)}`
+  // Velocity's route parameter is the workflow/transaction trace. The
+  // provider-assigned transaction UUID belongs in the body only. Supplying
+  // that UUID in the URL makes Velocity look for a workflow with the UUID and
+  // returns HTTP 500 ("Workflow instance with that ID does not exist").
+  const path = `/transactions/poll/${encodeURIComponent(transactionTrace)}`
   const url = `${config.baseUrl}${path}`
-  const requestBody = {
-    id: reference.transactionId ?? reference.transactionSessionId ?? transactionTrace,
+  const bodyReference = reference.transactionId ?? reference.transactionSessionId
+  const requestBody: { id?: string; trace: string } = bodyReference ? {
+    id: bodyReference,
     trace: transactionTrace,
-  }
+  } : { trace: transactionTrace }
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -270,10 +287,14 @@ export async function pollTransaction(
       parsed = {}
     }
 
+    const providerErrors = Array.isArray(parsed.errors)
+      ? parsed.errors.filter((entry): entry is string => typeof entry === "string")
+      : []
     const providerError = !response.ok
-      ? (typeof parsed.message === "string"
-        ? parsed.message
-        : `Velocity returned HTTP ${response.status}`)
+      ? [
+          typeof parsed.message === "string" ? parsed.message : `Velocity returned HTTP ${response.status}`,
+          ...providerErrors,
+        ].filter(Boolean).join(": ")
       : null
 
     // Ensure the response has a body property at the top level. A provider

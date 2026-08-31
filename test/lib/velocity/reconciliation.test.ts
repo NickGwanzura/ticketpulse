@@ -43,6 +43,7 @@ describe("Velocity reconciliation metadata", () => {
     expect(observed.transactionId).toBe("transaction-id-2")
     expect(observed.transactionSessionId).toBe("session-1")
     expect(observed.transactionTrace).toBe("trace-new")
+    expect(observed.transactionObservations?.[0]?.amount).toBe(25)
     expect(observed.transactionTraces).toEqual(["trace-old", "trace-new"])
     expect(observed.paymentStatus).toBe("SUCCESS")
     expect(observed.lastPolledAt).toBe("2026-08-24T10:00:00.000Z")
@@ -63,6 +64,28 @@ describe("Velocity reconciliation metadata", () => {
     expect(observed.consecutiveProviderErrors).toBe(3)
     expect(observed.failedAt).toBeUndefined()
     expect(observed.failureReason).toBeUndefined()
+  })
+
+  it("marks an exhausted Velocity poll allowance for manual review", () => {
+    const poll: PollTransactionResponse = {
+      state: "provider_error",
+      status: "error",
+      body: { id: "", trace: "trace-old", amount: 0, paymentStatus: "UNKNOWN", pollStatus: "UNKNOWN" },
+      workflowId: "",
+      httpStatus: 400,
+      errorMessage: "Invalid request: Max poll attempts reached for transaction: trace-old",
+    }
+
+    const observed = buildObservedVelocityMetadata(
+      current,
+      poll,
+      "trace-old",
+      "2026-08-24T10:00:00.000Z",
+      { unpollable: true },
+    )
+
+    expect(observed.manualReviewRequired).toBe(true)
+    expect(observed.manualReviewReason).toContain("exhausted the allowed poll attempts")
   })
 
   it("clears stale failure metadata after a valid non-failed poll", () => {
