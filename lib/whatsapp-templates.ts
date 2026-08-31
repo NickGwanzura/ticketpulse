@@ -130,13 +130,13 @@ export function paymentAnomalyAlert(
   detail: string,
 ): string {
   return [
-    `*Payment Anomaly*`,
+    `*Payment review required*`,
     ``,
     title,
     orderId ? `Order: ${orderId}` : null,
     `Type: ${type}`,
-    detail.length > 200 ? detail.slice(0, 200) + "…" : detail,
-    orderId ? `${BRAND.appUrl}/admin/orders/${orderId}` : null,
+    detail.length > 320 ? detail.slice(0, 320) + "…" : detail,
+    orderId ? `Review: ${BRAND.appUrl}/admin/orders/${orderId}` : null,
     footer(true),
   ]
     .filter(Boolean)

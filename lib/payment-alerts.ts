@@ -343,8 +343,8 @@ export async function alertVelocityManualReviewRequired(
   await alertPaymentAnomaly({
     type: "VELOCITY_MANUAL_REVIEW_REQUIRED",
     severity: "high",
-    title: "Order needs manual payment review — auto-retry stopped",
-    detail: `${reason} Check this order against the Velocity dashboard and complete it manually (scripts/complete-order-cli.ts) if the payment actually succeeded.`,
+    title: "Manual payment review needed — Velocity polling stopped",
+    detail: `${reason} Automatic retries are paused to prevent duplicate charges. Open the order, verify the transaction in the Velocity dashboard, then mark it paid only if Velocity confirms success.`,
     orderId,
     transactionTrace: transactionTrace ?? undefined,
     salesOrderTrace: salesOrderTrace ?? undefined,

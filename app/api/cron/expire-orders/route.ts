@@ -27,8 +27,10 @@ export async function POST(request: Request) {
   const authError = verifyCronSecret(request)
   if (authError) return authError
 
-  const pendingCutoff = new Date(Date.now() - 30 * 60 * 1000)
-  const awaitingCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
+  // A payment may be polled for at most 24 hours. After that point the order
+  // is closed as an unpaid/failed payment and is no longer eligible for any
+  // automatic reconciliation attempts.
+  const paymentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const columns = {
     id: orders.id,
     status: orders.status,
@@ -42,8 +44,8 @@ export async function POST(request: Request) {
   }
 
   const [pendingStale, awaitingStale, eventEndedPending] = await Promise.all([
-    db.select(columns).from(orders).where(and(eq(orders.status, "pending"), lte(orders.createdAt, pendingCutoff))).limit(50),
-    db.select(columns).from(orders).where(and(eq(orders.status, "awaiting_verification"), lte(orders.createdAt, awaitingCutoff))).limit(50),
+    db.select(columns).from(orders).where(and(eq(orders.status, "pending"), lte(orders.createdAt, paymentCutoff))).limit(50),
+    db.select(columns).from(orders).where(and(eq(orders.status, "awaiting_verification"), lte(orders.createdAt, paymentCutoff))).limit(50),
     db
       .select(columns)
       .from(orders)
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
 
   for (const order of candidates) {
     const velocity = ((order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }).velocity
+    const pastPaymentCutoff = Boolean(order.createdAt && order.createdAt <= paymentCutoff)
     let reconciliationState = "NO_VELOCITY_REFERENCE"
     let reconciliationPayload: Record<string, unknown> | null = null
 
@@ -80,22 +83,45 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Only a definitive failure across every known provider attempt is safe
-      // to archive. Missing, pending, unknown, and transport states stay open.
-      if (result.state !== "FAILED") {
+      // A candidate past the 24-hour payment window is closed even when
+      // Velocity remains pending or unavailable. Event-ended candidates that
+      // are younger than 24 hours still require a definitive failure signal.
+      if (result.state !== "FAILED" && !pastPaymentCutoff) {
         skippedIds.push(order.id)
         continue
       }
     } else {
-      // Missing references are not proof of non-payment: checkout may have
-      // created a remote transaction immediately before persisting metadata.
-      skippedIds.push(order.id)
-      continue
+      // The 24-hour cutoff is the final boundary even when checkout never
+      // persisted a provider reference. Event-ended orders remain protected
+      // until that boundary is reached.
+      if (!pastPaymentCutoff) {
+        skippedIds.push(order.id)
+        continue
+      }
     }
 
     const reason = eventEndedIds.has(order.id) ? "event_ended_unpaid" : "payment_timeout"
     if (!await expireOrderAndReleaseInventory(order.id, reason)) continue
     expiredIds.push(order.id)
+
+    if (velocity) {
+      const failedVelocity = {
+        ...velocity,
+        pollStatus: "FAILED",
+        paymentStatus: "FAILED",
+        failedAt: new Date().toISOString(),
+        failureReason: "Payment was not settled within 24 hours; automatic polling stopped.",
+        manualReviewRequired: false,
+        manualReviewReason: null,
+      }
+      await db
+        .update(orders)
+        .set({
+          metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity}', ${JSON.stringify(failedVelocity)}::jsonb)`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(orders.id, order.id), eq(orders.status, "expired")))
+    }
 
     await db.insert(paymentLedger).values({
       orderId: order.id,
@@ -146,8 +172,8 @@ export async function POST(request: Request) {
       return sendEmail({
         to: order.guestEmail!,
         subject: `Your order has expired — ${eventTitle}`,
-        html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a"><h2>Your order has expired</h2><p>Hi ${name},</p><p>Your order for <strong>${eventTitle}</strong> expired after the payment provider confirmed it was unpaid.</p><p>If money was deducted, contact us with reference <code>${reference}</code>.</p>${eventUrl ? `<p><a href="${eventUrl}">Try again</a></p>` : ""}</div>`,
-        text: `Hi ${name},\n\nYour order for ${eventTitle} expired after the payment provider confirmed it was unpaid. If money was deducted, contact us with reference ${reference}.${eventUrl ? `\n\nTry again: ${eventUrl}` : ""}`,
+        html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a"><h2>Your order has expired</h2><p>Hi ${name},</p><p>Your order for <strong>${eventTitle}</strong> was closed because payment was not confirmed within 24 hours.</p><p>If money was deducted, contact us with reference <code>${reference}</code>.</p>${eventUrl ? `<p><a href="${eventUrl}">Try again</a></p>` : ""}</div>`,
+        text: `Hi ${name},\n\nYour order for ${eventTitle} was closed because payment was not confirmed within 24 hours. If money was deducted, contact us with reference ${reference}.${eventUrl ? `\n\nTry again: ${eventUrl}` : ""}`,
       })
     }))
   }
