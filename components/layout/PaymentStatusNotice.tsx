@@ -26,15 +26,15 @@ export default function PaymentStatusNotice() {
     <aside
       role="alert"
       aria-label="Payment service notice"
-      className="border-b border-amber-200 bg-amber-50 text-amber-950"
+      className="border-b border-amber-200 bg-amber-50 text-amber-800"
     >
       <div className="mx-auto flex min-h-12 max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
         <AlertTriangle size={18} className="shrink-0 text-amber-600" aria-hidden="true" />
         <p className="min-w-0 flex-1 text-[12px] leading-5 md:text-[13px]">
-          <strong>EcoCash service notice:</strong> EcoCash is currently experiencing service instability. If you pay and don&apos;t receive your ticket, WhatsApp us promptly at&nbsp;
+          <strong>Payment service notice:</strong> Card payments (Visa/Mastercard) are currently stable, but EcoCash is still operating below 100% due to service instability. For all questions or payment issues, WhatsApp us promptly at&nbsp;
           <a
             href="https://wa.me/263777816368"
-            className="inline-flex min-h-8 items-center gap-1 font-bold text-amber-900 underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
+            className="inline-flex min-h-8 items-center gap-1 font-bold text-amber-800 underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
             target="_blank"
             rel="noreferrer"
           >
