@@ -142,11 +142,11 @@ export default function EventCard({
   return (
     <Link
       href={`/events/${slug}`}
-      className="tp-premium-card group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 hover:-translate-y-1.5 hover:border-orange-200 hover:shadow-[0_34px_90px_-28px_rgba(201,82,42,0.34)]"
+      className="tp-premium-card group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_24px_60px_-28px_rgba(201,82,42,0.34)]"
     >
       <span className="pointer-events-none absolute inset-x-5 top-0 z-20 h-px bg-gradient-to-r from-transparent via-orange-300/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
       {/* Category header */}
-      <div className={`relative h-48 overflow-hidden ${coverImage ? "bg-navy" : `bg-gradient-to-br ${visual.gradient}`}`}>
+      <div className={`relative h-44 sm:h-48 overflow-hidden ${coverImage ? "bg-navy" : `bg-gradient-to-br ${visual.gradient}`}`}>
         {coverImage ? (
           <>
             {/* Cover image */}
@@ -162,7 +162,7 @@ export default function EventCard({
             {/* Hover shine */}
             <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             {/* Category label */}
-            <span className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[10px] font-semibold tracking-wide px-2.5 py-1 rounded-full ring-1 ring-white/20`}>
+            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white backdrop-blur-sm ring-1 ring-white/20">
               {visual.emoji} {category}
             </span>
           </>
@@ -191,7 +191,7 @@ export default function EventCard({
 
         {/* Top-left: status */}
         {isPast ? (
-          <span className="absolute top-3 left-3 bg-ink text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+            <span className="absolute top-3 left-3 rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
             PAST EVENT
           </span>
         ) : sponsored ? (
@@ -213,7 +213,7 @@ export default function EventCard({
           </span>
         )}
         {!isPast && !featured && !soldOut && status === "published" && (
-          <span className="absolute top-3 left-3 bg-orange-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm shadow-orange-900/20">
+          <span className="absolute top-3 left-3 rounded-full bg-orange-600 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm shadow-orange-900/20">
             ON SALE
           </span>
         )}
@@ -237,14 +237,14 @@ export default function EventCard({
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 flex-col p-5">
-        <p className={`text-[11px] font-semibold tracking-[0.18em] uppercase mb-2 ${visual.tint}`}>{category}</p>
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+        <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${visual.tint}`}>{category}</p>
 
-        <h3 className="text-[16px] font-semibold leading-snug tracking-tight text-ink mb-3 line-clamp-2 group-hover:text-navy-700 transition-colors">
+        <h3 className="mb-2.5 line-clamp-2 text-[17px] font-semibold leading-snug tracking-[-0.01em] text-ink transition-colors group-hover:text-navy-700">
           {title}
         </h3>
 
-        <div className="space-y-1.5 mb-4">
+        <div className="mb-3.5 space-y-1.5">
           <div className="flex items-center gap-2 text-[13px] text-ink-2">
             <Calendar size={13} className="text-ink-3 shrink-0" />
             <span>{formatDateShort(date)}</span>
@@ -260,14 +260,14 @@ export default function EventCard({
         </div>
 
         {/* Footer */}
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-line">
+        <div className="mt-auto flex items-center justify-between border-t border-line pt-3.5">
           <div>
             {isPast ? (
               <span className="text-[13px] font-semibold text-ink-2">Event ended</span>
             ) : lowestPrice != null ? (
               <>
                 <span className="text-[11px] text-ink-3">From</span>
-                <span className="ml-1.5 text-[16px] font-bold tracking-tight text-ink">
+                <span className="ml-1.5 text-[17px] font-bold tracking-tight text-ink">
                   {formatCurrency(lowestPrice, currency)}
                 </span>
               </>
@@ -275,7 +275,7 @@ export default function EventCard({
               <span className="text-[13px] font-semibold text-green-700">Free entry</span>
             )}
           </div>
-          <span className="inline-flex items-center gap-1 rounded-lg bg-paper-2 ring-1 ring-line px-2.5 py-1.5 text-[12px] font-semibold text-navy transition-all group-hover:bg-orange-600 group-hover:text-white group-hover:ring-orange-600">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-paper-2 px-3 py-2 text-[12px] font-semibold text-navy ring-1 ring-line transition-all group-hover:bg-orange-600 group-hover:text-white group-hover:ring-orange-600">
             {isPast ? "Summary" : "Buy tickets"} <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </div>

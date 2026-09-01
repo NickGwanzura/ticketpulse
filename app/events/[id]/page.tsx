@@ -39,6 +39,23 @@ const CATEGORY_EMOJI: Record<string, string> = {
   "cocktail experience": "🍹",
 }
 
+// Public profile details captured from the linked Instagram pages. Keep this
+// limited to artist-facing descriptors; booking contacts stay off the public page.
+const PUBLIC_LINEUP_PROFILES: Record<string, { descriptor: string; audience: string }> = {
+  "_jay_dj._": { descriptor: "House music DJ", audience: "7,022 followers" },
+  reverb7: { descriptor: "Afrobeats & AfroHouse DJ · Producer", audience: "7,565 followers" },
+}
+
+function getPublicLineupProfile(socialUrl: string | null) {
+  if (!socialUrl) return null
+  try {
+    const handle = new URL(socialUrl).pathname.split("/").filter(Boolean)[0]?.toLowerCase()
+    return handle ? PUBLIC_LINEUP_PROFILES[handle] ?? null : null
+  } catch {
+    return null
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
@@ -559,6 +576,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {lineupRows.map((member) => (
                     <article key={member.id} className="rounded-2xl border border-line bg-white p-4">
+                      {(() => {
+                        const profile = getPublicLineupProfile(member.socialUrl)
+                        return (
                       <div className="flex items-start gap-3">
                         {member.imageUrl ? (
                           <img src={member.imageUrl} alt={member.name} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
@@ -569,9 +589,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                         )}
                         <div className="min-w-0">
                           <h3 className="truncate text-[15px] font-semibold text-ink">{member.name}</h3>
-                          {member.role && <p className="mt-0.5 text-[12px] text-ink-3">{member.role}</p>}
+                          {(member.role || profile) && (
+                            <p className="mt-0.5 text-[12px] text-ink-3">
+                              {profile?.descriptor ?? member.role}
+                              {profile?.audience && <span className="text-ink-3/75"> · {profile.audience}</span>}
+                            </p>
+                          )}
                         </div>
                       </div>
+                        )
+                      })()}
                       {member.bio && <p className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-ink-2">{member.bio}</p>}
                       {member.socialUrl && (
                         <a

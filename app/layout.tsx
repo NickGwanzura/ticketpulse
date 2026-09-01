@@ -13,7 +13,7 @@ import CommandPalette from "@/components/command-palette/CommandPalette"
 import MobileNav from "@/components/layout/MobileNav"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
-import { grift } from "@/lib/fonts"
+import { mona } from "@/lib/fonts"
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"),
@@ -89,7 +89,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" className={grift.variable}>
+    <html lang="en" className={mona.variable}>
       <body className="font-body bg-paper text-ink antialiased">
         <script
           type="application/ld+json"

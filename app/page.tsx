@@ -59,7 +59,7 @@ const HERO_TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure checkout", tone: "bg-emerald-50", accent: "text-emerald-700", ring: "ring-emerald-200/70" },
   { icon: Wallet, label: "EcoCash + Visa", tone: "bg-orange-50", accent: "text-orange-700", ring: "ring-orange-200/80" },
   { icon: Smartphone, label: "Instant QR delivery", tone: "bg-sky-50", accent: "text-sky-700", ring: "ring-sky-200/70" },
-  { icon: FileText, label: "Payout tracking", tone: "bg-amber-50", accent: "text-amber-700", ring: "ring-amber-200/70" },
+  { icon: FileText, label: "Easy payouts", tone: "bg-amber-50", accent: "text-amber-700", ring: "ring-amber-200/70" },
 ]
 
 export default async function Home() {
@@ -165,7 +165,7 @@ export default async function Home() {
           <div className="absolute left-1/2 top-16 h-px w-[78vw] -translate-x-1/2 bg-gradient-to-r from-transparent via-orange-300/60 to-transparent" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-12 md:pb-20">
+        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-8 md:pb-20">
           <div className="mx-auto max-w-5xl text-center">
             <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-orange-300/35 bg-navy/55 px-3.5 py-1.5 shadow-sm shadow-orange-950/20 backdrop-blur-md">
               <span className="relative flex h-2 w-2">
@@ -177,23 +177,23 @@ export default async function Home() {
               </span>
             </div>
 
-            <h1 className="tp-fade-up-1 mx-auto mt-8 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94]">
+            <h1 className="tp-fade-up-1 mx-auto mt-6 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:mt-8 sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94]">
               Sell tickets.<br />
               <span className="text-orange-300">Scan guests.</span><br />
               Get paid.
             </h1>
 
-            <p className="tp-fade-up-2 mx-auto mt-7 max-w-2xl text-[16px] leading-relaxed text-white/82 md:text-[18px]">
-              TicketPulse helps organizers sell online, deliver instant QR tickets, manage attendees, reconcile Velocity payments, and request payouts. Buyers get secure checkout and support without needing an account.
+            <p className="tp-fade-up-2 mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-white/82 md:mt-7 md:text-[18px]">
+              The event platform built for Zimbabwean organizers. Sell tickets online, deliver instant QR tickets, manage attendees, reconcile payments, and request payouts. Buyers get secure checkout and support without needing an account.
             </p>
 
-            <div className="tp-fade-up-3 mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <div className="tp-fade-up-3 mt-7 flex flex-col items-stretch justify-center gap-3 sm:mt-9 sm:flex-row sm:items-center">
               <SplitCTA href="/auth/signup?role=organizer" label="Start selling" size="lg" />
               <Link
                 href="/events"
                 className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-orange-300/55 hover:bg-orange-400/15 hover:text-orange-100 active:scale-[0.99]"
               >
-                Browse events <ArrowUpRight size={15} />
+                Buy tickets <ArrowUpRight size={15} />
               </Link>
             </div>
 
@@ -204,18 +204,7 @@ export default async function Home() {
               <PhoneCall size={13} /> Prefer help? Book a setup call
             </Link>
 
-            <div className="tp-fade-up-5 mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-2">
-              {HERO_TRUST_ITEMS.map(({ icon: Icon, label, tone, accent, ring }) => (
-                <span key={label} className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-navy/55 px-3 py-2 text-[12px] font-semibold text-white/90 ring-1 ${ring} backdrop-blur-md`}>
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${tone}`}>
-                    <Icon size={12} className={accent} />
-                  </span>
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            <p className="tp-fade-up-5 mx-auto mt-5 max-w-2xl text-[13px] font-medium text-white/65">
+            <p className="tp-fade-up-5 mx-auto mt-4 max-w-2xl text-[13px] font-medium text-white/65 md:mt-5">
               One platform for ticket sales, QR delivery, gate scanning, reconciliation, and payouts.
             </p>
           </div>
@@ -223,7 +212,7 @@ export default async function Home() {
 
         {/* Stats strip */}
         <div className="border-t border-white/15 bg-navy/70 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-5 md:px-8 py-7 md:py-9">
+          <div className="max-w-7xl mx-auto px-5 md:px-8 py-5 md:py-9">
             <div className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-white/15">
               {buildStats(eventsOnSale).map((s, i) => (
                 <div
@@ -236,6 +225,16 @@ export default async function Home() {
                   </p>
                   <p className="mt-1.5 text-[13px] text-white/60">{s.label}</p>
                 </div>
+              ))}
+            </div>
+            <div className="tp-fade-up-5 mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-2 md:mt-7">
+              {HERO_TRUST_ITEMS.map(({ icon: Icon, label, tone, accent, ring }, index) => (
+                <span key={label} className={`${index === 1 ? "hidden sm:inline-flex" : "inline-flex"} items-center gap-2 rounded-full border border-white/15 bg-navy/55 px-3 py-2 text-[12px] font-semibold text-white/90 ring-1 ${ring} backdrop-blur-md`}>
+                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${tone}`}>
+                    <Icon size={12} className={accent} />
+                  </span>
+                  {label}
+                </span>
               ))}
             </div>
           </div>

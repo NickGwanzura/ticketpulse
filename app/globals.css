@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-heading: var(--font-grift), "system-ui", sans-serif;
-  --font-body: var(--font-grift), "system-ui", sans-serif;
+  --font-heading: var(--font-mona), "system-ui", sans-serif;
+  --font-body: var(--font-mona), "system-ui", sans-serif;
   --font-sans: var(--font-body);
 
   --color-paper: #ffffff;

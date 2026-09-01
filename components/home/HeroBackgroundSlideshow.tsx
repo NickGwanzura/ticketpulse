@@ -26,8 +26,8 @@ export default function HeroBackgroundSlideshow() {
         </div>
       ))}
 
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,18,35,0.88)_0%,rgba(5,18,35,0.72)_48%,rgba(5,18,35,0.46)_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,35,0.10)_0%,rgba(5,18,35,0.34)_62%,rgba(5,18,35,0.82)_100%)]" />
+      <div className="tp-hero-overlay-horizontal absolute inset-0 bg-[linear-gradient(90deg,rgba(5,18,35,0.88)_0%,rgba(5,18,35,0.72)_48%,rgba(5,18,35,0.46)_100%)]" />
+      <div className="tp-hero-overlay-vertical absolute inset-0 bg-[linear-gradient(180deg,rgba(5,18,35,0.10)_0%,rgba(5,18,35,0.34)_62%,rgba(5,18,35,0.82)_100%)]" />
 
       <style>{`
         @keyframes tp-hero-crossfade {
@@ -38,6 +38,17 @@ export default function HeroBackgroundSlideshow() {
         .tp-hero-slide {
           animation: tp-hero-crossfade 24s ease-in-out infinite;
           will-change: opacity, transform;
+        }
+
+        @media (max-width: 639px) {
+          .tp-hero-slide { animation: none; display: none; }
+          .tp-hero-slide:first-child { display: block; opacity: 1; transform: none; }
+          .tp-hero-overlay-horizontal {
+            background: linear-gradient(90deg, rgba(5,18,35,0.78) 0%, rgba(5,18,35,0.58) 52%, rgba(5,18,35,0.35) 100%);
+          }
+          .tp-hero-overlay-vertical {
+            background: linear-gradient(180deg, rgba(5,18,35,0.08) 0%, rgba(5,18,35,0.22) 62%, rgba(5,18,35,0.68) 100%);
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {

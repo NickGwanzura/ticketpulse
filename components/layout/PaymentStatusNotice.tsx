@@ -31,7 +31,7 @@ export default function PaymentStatusNotice() {
       <div className="mx-auto flex min-h-12 max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
         <AlertTriangle size={18} className="shrink-0 text-amber-600" aria-hidden="true" />
         <p className="min-w-0 flex-1 text-[12px] leading-5 md:text-[13px]">
-          <strong>Payment service notice:</strong> Card payments (Visa/Mastercard) are currently stable, but EcoCash is still operating below 100% due to service instability. For all questions or payment issues, WhatsApp us promptly at&nbsp;
+          <strong>Payment notice:</strong> Visa/Mastercard are stable, but EcoCash remains unreliable. For questions or missing tickets, WhatsApp&nbsp;
           <a
             href="https://wa.me/263777816368"
             className="inline-flex min-h-8 items-center gap-1 font-bold text-amber-800 underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
@@ -41,7 +41,7 @@ export default function PaymentStatusNotice() {
             <MessageCircle size={13} aria-hidden="true" />
             0777 816 368
           </a>
-          &nbsp;for immediate help. We&apos;ll review affected transactions and arrange a refund or manual processing where necessary. Please don&apos;t pay twice.
+          &nbsp;for help.
         </p>
         <button
           type="button"
