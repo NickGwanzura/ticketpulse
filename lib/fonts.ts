@@ -27,19 +27,6 @@ export const grift = localFont({
   variable: "--font-grift",
 })
 
-export const atkinson = localFont({
-  src: [
-    { path: "../public/fonts/AtkinsonHyperlegible-Regular.woff2",    weight: "400", style: "normal" },
-    { path: "../public/fonts/AtkinsonHyperlegible-Italic.woff2",     weight: "400", style: "italic" },
-    { path: "../public/fonts/AtkinsonHyperlegible-Bold.woff2",       weight: "700", style: "normal" },
-    { path: "../public/fonts/AtkinsonHyperlegible-BoldItalic.woff2", weight: "700", style: "italic" },
-  ],
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "sans-serif"],
-  variable: "--font-atkinson",
-})
-
 export const mona = localFont({
   src: [
     { path: "../public/fonts/MonaSansVariable.woff2",         weight: "200 900", style: "normal" },
