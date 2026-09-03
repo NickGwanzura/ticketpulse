@@ -22,6 +22,6 @@ flutter:
   assets:
     - assets/brand/
   fonts:
-    - family: MonaSans
+    - family: Manrope
       fonts:
-        - asset: assets/fonts/MonaSans.ttf
+        - asset: assets/fonts/Manrope.ttf

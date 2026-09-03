@@ -15,7 +15,7 @@ void main() {
   setUpAll(() async {
     if (!preview) return;
     for (final font in {
-      'MonaSans': 'assets/fonts/MonaSans.ttf',
+      'Manrope': 'assets/fonts/Manrope.ttf',
       'MaterialIcons':
           '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
     }.entries) {

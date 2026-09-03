@@ -27,10 +27,10 @@ abstract final class Pulse {
           outline: dark ? const Color(0xFF344152) : line,
         );
     final text = ThemeData(brightness: brightness).textTheme
-        .apply(fontFamily: 'MonaSans', bodyColor: ink, displayColor: ink)
+        .apply(fontFamily: 'Manrope', bodyColor: ink, displayColor: ink)
         .copyWith(
           headlineLarge: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 34,
             fontWeight: FontWeight.w700,
             letterSpacing: -1.3,
@@ -38,7 +38,7 @@ abstract final class Pulse {
             color: ink,
           ),
           headlineMedium: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 28,
             fontWeight: FontWeight.w700,
             letterSpacing: -.9,
@@ -46,7 +46,7 @@ abstract final class Pulse {
             color: ink,
           ),
           headlineSmall: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 25,
             fontWeight: FontWeight.w700,
             letterSpacing: -.8,
@@ -54,33 +54,33 @@ abstract final class Pulse {
             color: ink,
           ),
           titleLarge: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 20,
             fontWeight: FontWeight.w700,
             letterSpacing: -.5,
             color: ink,
           ),
           titleMedium: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 16,
             fontWeight: FontWeight.w600,
             letterSpacing: -.25,
             color: ink,
           ),
           bodyLarge: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 16,
             height: 1.5,
             color: ink,
           ),
           bodyMedium: TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 14,
             height: 1.5,
             color: secondary,
           ),
           labelLarge: const TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -90,7 +90,7 @@ abstract final class Pulse {
     );
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'MonaSans',
+      fontFamily: 'Manrope',
       colorScheme: colors,
       textTheme: text,
       scaffoldBackgroundColor: dark ? const Color(0xFF0D1520) : paper,
@@ -130,7 +130,7 @@ abstract final class Pulse {
             : const Color(0xFFEEF3F8),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
-            fontFamily: 'MonaSans',
+            fontFamily: 'Manrope',
             fontSize: 11,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700

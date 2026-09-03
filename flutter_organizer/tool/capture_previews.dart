@@ -18,7 +18,7 @@ void main() {
       throw StateError('Set FLUTTER_ROOT to your Flutter SDK path.');
     }
     for (final font in {
-      'MonaSans': 'assets/fonts/MonaSans.ttf',
+      'Manrope': 'assets/fonts/Manrope.ttf',
       'MaterialIcons':
           '$sdk/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
     }.entries) {
