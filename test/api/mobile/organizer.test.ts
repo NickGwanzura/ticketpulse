@@ -74,7 +74,7 @@ describe("organizer bearer routes", () => {
     expect(mocks.select).not.toHaveBeenCalled()
   })
   it("paginates organizer orders without returning the sentinel row", async () => {
-    const query = { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), offset: vi.fn().mockResolvedValue([
+    const query = { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), leftJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn().mockReturnThis(), offset: vi.fn().mockResolvedValue([
       { id: "a", totalAmount: "10.25", currency: "USD" }, { id: "b", totalAmount: "20", currency: "USD" },
     ]) }
     mocks.select.mockReturnValue(query)

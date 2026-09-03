@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import 'scanner.dart';
+import 'order_detail.dart';
 import 'overview_widgets.dart';
 import '../design.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +28,9 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
 
   Future<void> _reload() async {
     final future = widget.api.events();
-    setState(() => _events = future);
+    setState(() {
+      _events = future;
+    });
     try {
       await future;
     } catch (_) {
@@ -435,6 +438,14 @@ class OrdersScreen extends StatefulWidget {
 class _OrdersScreenState extends State<OrdersScreen> {
   final List<Json> _orders = [];
   String? _status, _error;
+  final _search = TextEditingController();
+  String _query = '';
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   bool _busy = false, _more = true;
   @override
   void initState() {
@@ -456,6 +467,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final page = await widget.api.orders(
         offset: _orders.length,
         status: _status,
+        query: _query,
       );
       if (mounted) {
         setState(() {
@@ -477,14 +489,47 @@ class _OrdersScreenState extends State<OrdersScreen> {
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const Eyebrow('Every ticket counts'),
+        Eyebrow(
+          widget.api.user?['role'] == 'admin'
+              ? 'Operations & support'
+              : 'Every ticket counts',
+        ),
         const SizedBox(height: 10),
         Text(
           'Sales & orders',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
-        const Text('Customer orders for the events you manage.'),
+        Text(
+          widget.api.user?['role'] == 'admin'
+              ? 'Find a buyer, inspect an order, and resolve ticket issues.'
+              : 'Sales, buyer details, and entry for your events.',
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _search,
+          enabled: !_busy,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (value) {
+            _query = value.trim();
+            _load(reset: true);
+          },
+          decoration: InputDecoration(
+            labelText: 'Search orders',
+            hintText: 'Buyer, email, event, or reference',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: IconButton(
+              tooltip: 'Search orders',
+              onPressed: _busy
+                  ? null
+                  : () {
+                      _query = _search.text.trim();
+                      _load(reset: true);
+                    },
+              icon: const Icon(Icons.arrow_forward_rounded),
+            ),
+          ),
+        ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
           initialValue: _status ?? 'all',
@@ -515,37 +560,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
         ),
         const SizedBox(height: 20),
         for (final order in _orders)
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  StatusChip(order['status'] as String? ?? 'pending'),
-                  const SizedBox(height: 8),
-                  Text(
-                    order['eventTitle'] as String,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    money(order['totalAmount'], order['currency'] as String),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  Text(order['guestName'] as String? ?? 'Guest'),
-                  const SizedBox(height: 8),
-                  Text(dateLabel(order['createdAt'])),
-                  Text(
-                    'Payment: ${statusLabel(order['paymentMethod'] as String? ?? 'Not specified')}',
-                  ),
-                  SelectableText(
-                    'Order ${order['id']}',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                ],
-              ),
-            ),
+          OrderCard(
+            order: order,
+            onTap: () async {
+              await showOrderDetail(
+                context,
+                widget.api,
+                order['id'].toString(),
+              );
+              if (mounted) _load(reset: true);
+            },
           ),
         if (_error != null) Failure(message: _error!, retry: () => _load()),
         if (_busy)
@@ -586,7 +610,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   Future<void> _reload() async {
     final future = widget.api.payments();
-    setState(() => _future = future);
+    setState(() {
+      _future = future;
+    });
     try {
       await future;
     } catch (_) {
@@ -767,7 +793,9 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _reload() async {
     final future = widget.api.adminOverview();
-    setState(() => _future = future);
+    setState(() {
+      _future = future;
+    });
     try {
       await future;
     } catch (_) {}
@@ -848,7 +876,7 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
             _buildPayoutQueue(context, payouts),
             _buildOrganizerApprovals(context, organizers),
-            _buildRecentOrders(context, recentOrders),
+            _buildRecentOrders(context, widget.api, recentOrders),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: () => openWebsite(context, widget.api, '/admin'),
@@ -862,27 +890,29 @@ class _AdminScreenState extends State<AdminScreen> {
   );
 }
 
-Widget _buildRecentOrders(BuildContext context, List<Json> rows) =>
-    _AdminSection(
-      title: 'Recent orders',
-      child: rows.isEmpty
-          ? const Text('No orders yet.')
-          : Column(
-              children: rows.take(12).map((row) {
-                final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
-                    .toString();
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: Text(
-                    row['eventTitle']?.toString() ?? 'Untitled event',
-                  ),
-                  subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
-                  trailing: Text(money(row['totalAmount'] ?? 0)),
-                );
-              }).toList(),
-            ),
-    );
+Widget _buildRecentOrders(
+  BuildContext context,
+  OrganizerApi api,
+  List<Json> rows,
+) => _AdminSection(
+  title: 'Recent orders',
+  child: rows.isEmpty
+      ? const Text('No orders yet.')
+      : Column(
+          children: rows.take(12).map((row) {
+            final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
+                .toString();
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(row['eventTitle']?.toString() ?? 'Untitled event'),
+              subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => showOrderDetail(context, api, row['id'].toString()),
+            );
+          }).toList(),
+        ),
+);
 
 class _RevenueCard extends StatelessWidget {
   const _RevenueCard({required this.value});

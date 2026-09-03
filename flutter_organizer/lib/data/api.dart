@@ -216,12 +216,19 @@ class OrganizerApi extends ChangeNotifier {
   Future<OrderPage> orders({
     int offset = 0,
     String? status,
+    String? query,
   }) async => OrderPage.fromJson(
     await request(
-      '/api/mobile/organizer/orders?limit=25&offset=$offset${status == null ? '' : '&status=${Uri.encodeQueryComponent(status)}'}',
+      '/api/mobile/organizer/orders?limit=25&offset=$offset${status == null ? '' : '&status=${Uri.encodeQueryComponent(status)}'}${query == null || query.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(query)}'}',
     ),
   );
   Future<Json> payments() => request('/api/mobile/organizer/payments');
+  Future<Json> orderDetail(String id) =>
+      request('/api/mobile/organizer/orders/${Uri.encodeComponent(id)}');
+  Future<Json> orderAction(String id, String action) => request(
+    '/api/mobile/organizer/orders/${Uri.encodeComponent(id)}',
+    body: {'action': action, if (action == 'complete') 'confirmPayment': true},
+  );
   Future<Json> adminOverview() => request('/api/mobile/admin/overview');
   Future<Json> scan(String code, String eventId) => request(
     '/api/mobile/organizer/scan',
