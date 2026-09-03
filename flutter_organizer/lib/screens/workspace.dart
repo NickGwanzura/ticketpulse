@@ -717,6 +717,7 @@ class _AdminScreenState extends State<AdminScreen> {
       final orders = data['orderSummary'] as Json;
       final payouts = (data['pendingPayouts'] as List).cast<Json>();
       final organizers = (data['pendingOrganizers'] as List).cast<Json>();
+      final recentOrders = (data['recentOrders'] as List).cast<Json>();
       final orderCount = orders.values.fold<int>(
         0,
         (sum, value) => sum + number((value as Json)['count']).toInt(),
@@ -773,6 +774,7 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
             _buildPayoutQueue(context, payouts),
             _buildOrganizerApprovals(context, organizers),
+            _buildRecentOrders(context, recentOrders),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: () => openWebsite(context, widget.api, '/admin'),
@@ -785,6 +787,28 @@ class _AdminScreenState extends State<AdminScreen> {
     },
   );
 }
+
+Widget _buildRecentOrders(BuildContext context, List<Json> rows) =>
+    _AdminSection(
+      title: 'Recent orders',
+      child: rows.isEmpty
+          ? const Text('No orders yet.')
+          : Column(
+              children: rows.take(12).map((row) {
+                final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
+                    .toString();
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: Text(
+                    row['eventTitle']?.toString() ?? 'Untitled event',
+                  ),
+                  subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
+                  trailing: Text(money(row['totalAmount'] ?? 0)),
+                );
+              }).toList(),
+            ),
+    );
 
 class _RevenueCard extends StatelessWidget {
   const _RevenueCard({required this.value});
