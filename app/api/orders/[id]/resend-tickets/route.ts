@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
-import { orders, events, orderItems, ticketTiers } from "@/db/schema"
+import { orders, events, orderItems, ticketTiers, users } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -22,15 +22,17 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     )
   }
 
-  const [order] = await db
-    .select()
+  const [row] = await db
+    .select({ order: orders, buyerEmail: users.email })
     .from(orders)
+    .leftJoin(users, eq(users.id, orders.userId))
     .where(eq(orders.id, id))
     .limit(1)
 
-  if (!order) {
+  if (!row) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 })
   }
+  const { order, buyerEmail } = row
 
   if (order.status !== "paid" && order.status !== "completed") {
     return NextResponse.json(
@@ -39,7 +41,8 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     )
   }
 
-  if (!order.guestEmail) {
+  const recipientEmail = order.guestEmail ?? buyerEmail
+  if (!recipientEmail) {
     return NextResponse.json(
       { error: "Order has no guest email on file." },
       { status: 400 },
@@ -90,7 +93,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
 
   try {
     await sendOrderConfirmationEmail({
-      to: order.guestEmail,
+      to: recipientEmail,
       buyerName: order.guestName,
       orderId: id,
       eventTitle: ev.title,
@@ -110,5 +113,5 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     )
   }
 
-  return NextResponse.json({ ok: true, sentTo: order.guestEmail })
+  return NextResponse.json({ ok: true, sentTo: recipientEmail })
 }

@@ -101,7 +101,12 @@ class _ScannerScreenState extends State<ScannerScreen>
       final result = await widget.api.scan(code, _event!.id);
       if (!mounted) return;
       final duplicate = result['status'] == 'duplicate';
-      final ticket = result['ticket'] as Json;
+      final ticket = result['ticket'];
+      if (ticket is! Json) {
+        throw const ApiException(
+          'The server returned an incomplete scan result. Scan the ticket again.',
+        );
+      }
       setState(() {
         _outcome = duplicate ? 'duplicate' : 'new';
         _message =

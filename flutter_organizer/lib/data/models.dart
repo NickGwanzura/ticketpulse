@@ -41,7 +41,9 @@ class OrganizerEvent {
 
 class OrderPage {
   OrderPage.fromJson(Json json)
-    : orders = (json['orders'] as List).cast<Json>(),
+    : orders = (json['orders'] is List)
+          ? (json['orders'] as List).whereType<Json>().toList()
+          : const [],
       hasMore = json['hasMore'] == true;
   final List<Json> orders;
   final bool hasMore;

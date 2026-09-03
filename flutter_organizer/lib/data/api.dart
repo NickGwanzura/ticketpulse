@@ -209,10 +209,16 @@ class OrganizerApi extends ChangeNotifier {
     }
   }
 
-  Future<List<OrganizerEvent>> events() async =>
-      ((await request('/api/mobile/organizer/events'))['events'] as List)
-          .map((e) => OrganizerEvent.fromJson(e as Json))
-          .toList();
+  Future<List<OrganizerEvent>> events() async {
+    final raw = (await request('/api/mobile/organizer/events'))['events'];
+    if (raw is! List) {
+      throw const ApiException(
+        'Event data is unavailable. Refresh and try again.',
+      );
+    }
+    return raw.whereType<Json>().map(OrganizerEvent.fromJson).toList();
+  }
+
   Future<OrderPage> orders({
     int offset = 0,
     String? status,
