@@ -39,11 +39,61 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
     _scanEvent = event;
     _tab = 3;
   });
+
+  void _showNotifications() {
+    final isAdmin = widget.api.user?['role'] == 'admin';
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Notifications',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 14),
+              _NotificationRow(
+                icon: Icons.receipt_long_outlined,
+                title: 'Order activity',
+                message: 'New orders and payment updates appear in Orders.',
+              ),
+              _NotificationRow(
+                icon: isAdmin
+                    ? Icons.support_agent_outlined
+                    : Icons.qr_code_scanner,
+                title: isAdmin ? 'Support queue' : 'Gate scanning',
+                message: isAdmin
+                    ? 'Review organizer approvals and payout issues in Admin operations.'
+                    : 'Duplicate and successful scans are reported instantly.',
+              ),
+              _NotificationRow(
+                icon: Icons.event_outlined,
+                title: 'Event updates',
+                message:
+                    'Pull down on Home or Events to refresh live activity.',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const BrandWordmark(),
       actions: [
+        IconButton(
+          tooltip: 'Notifications',
+          onPressed: _showNotifications,
+          icon: const Badge(child: Icon(Icons.notifications_none_rounded)),
+        ),
         PopupMenuButton<String>(
           tooltip: 'Account',
           itemBuilder: (_) => [
@@ -220,6 +270,27 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
         ),
       ],
     ),
+  );
+}
+
+class _NotificationRow extends StatelessWidget {
+  const _NotificationRow({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+  final IconData icon;
+  final String title;
+  final String message;
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: CircleAvatar(
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+    ),
+    title: Text(title),
+    subtitle: Text(message),
   );
 }
 
