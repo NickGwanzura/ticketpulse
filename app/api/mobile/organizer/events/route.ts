@@ -2,10 +2,10 @@ import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { events, ticketTiers, tickets } from "@/db/schema"
 import { eq, and, sql, isNotNull, desc } from "drizzle-orm"
-import { authenticateRequest } from "@/lib/mobile-auth"
+import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
 
 export async function GET(request: Request) {
-  const auth = await authenticateRequest(request)
+  const auth = await authenticateOrganizer(request)
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
   }
@@ -29,9 +29,7 @@ export async function GET(request: Request) {
     })
     .from(events)
     .where(
-      auth.role === "admin"
-        ? undefined
-        : eq(events.organizerId, auth.userId),
+      organizerEventScope(auth.userId, auth.role),
     )
     .orderBy(desc(events.startsAt))
 
@@ -82,5 +80,5 @@ export async function GET(request: Request) {
     }),
   )
 
-  return NextResponse.json({ ok: true, events: enriched })
+  return NextResponse.json({ ok: true, events: enriched }, { headers: privateHeaders })
 }

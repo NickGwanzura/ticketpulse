@@ -26,6 +26,14 @@ export async function requireEventAccess(eventId: string): Promise<EventAccess> 
     return { allowed: false, redirectTo: `/auth/signin?callbackUrl=/organizer/events/${eventId}/edit` }
   }
 
+  return requireEventAccessForUser(eventId, session.user)
+}
+
+/** Server-only: identity must come from a verified session or bearer token. */
+export async function requireEventAccessForUser(
+  eventId: string,
+  user: { id: string; role?: string | null },
+): Promise<EventAccess> {
   const [event] = await db
     .select({ id: events.id, organizerId: events.organizerId })
     .from(events)
@@ -37,12 +45,12 @@ export async function requireEventAccess(eventId: string): Promise<EventAccess> 
   }
 
   // Owner or admin — full access
-  if (event.organizerId === session.user.id) {
-    return { allowed: true, role: "owner", userId: session.user.id, eventId }
+  if (event.organizerId === user.id) {
+    return { allowed: true, role: "owner", userId: user.id, eventId }
   }
 
-  if (session.user.role === "admin") {
-    return { allowed: true, role: "owner", userId: session.user.id, eventId }
+  if (user.role === "admin") {
+    return { allowed: true, role: "owner", userId: user.id, eventId }
   }
 
   // Check if the user is an invited organiser for this event
@@ -52,13 +60,13 @@ export async function requireEventAccess(eventId: string): Promise<EventAccess> 
     .where(
       and(
         eq(eventOrganisers.eventId, eventId),
-        eq(eventOrganisers.userId, session.user.id),
+        eq(eventOrganisers.userId, user.id),
       ),
     )
     .limit(1)
 
   if (invited) {
-    return { allowed: true, role: "editor", userId: session.user.id, eventId }
+    return { allowed: true, role: "editor", userId: user.id, eventId }
   }
 
   return { allowed: false, redirectTo: "/organizer" }

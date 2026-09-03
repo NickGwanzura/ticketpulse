@@ -36,7 +36,11 @@ type LookupTicket = {
   staffRole: "security" | "usher" | "dj_sound" | "bar_staff" | "vip_host" | "media" | "other" | null
 }
 
-export async function markTicketScanned(rawCode: string, context: ScanContext = {}): Promise<ScanResult> {
+export async function markTicketScanned(
+  rawCode: string,
+  context: ScanContext = {},
+  authorizeEvent: typeof requireEventAccess = requireEventAccess,
+): Promise<ScanResult> {
   const code = rawCode.trim()
   if (!code) return { ok: false, error: "Empty code" }
   if (code.length > 2000) return { ok: false, error: "Code is too long" }
@@ -122,7 +126,7 @@ export async function markTicketScanned(rawCode: string, context: ScanContext = 
   }
 
   if (ticket.eventId) {
-    const access = await requireEventAccess(ticket.eventId)
+    const access = await authorizeEvent(ticket.eventId)
     if (!access.allowed) {
       await logScanAttempt({ ticket, outcome: "unauthorized", reason: "Scanner is not authorized for this event" })
       return { ok: false, error: "You are not authorized to scan tickets for this event" }

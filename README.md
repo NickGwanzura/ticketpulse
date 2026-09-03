@@ -65,3 +65,10 @@ See [`.env.example`](./.env.example) for all required variables organised by sec
 
 The app is designed to deploy on Railway. Ensure all environment variables from
 `.env.example` are set in the Railway dashboard before starting the service.
+
+## Flutter organizer app
+
+The native Android/iOS organizer app lives in [`flutter_organizer/`](./flutter_organizer/README.md).
+It includes sign-in, event operations, customer orders, QR check-in, and payout
+status, using the shared backend. See its README for setup, API contracts, and
+build verification. The Expo app in `mobile/` remains a separate project.
