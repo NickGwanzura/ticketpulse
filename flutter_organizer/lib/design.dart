@@ -107,9 +107,14 @@ abstract final class Pulse {
       cardTheme: CardThemeData(
         color: surface,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
+        elevation: 1,
+        shadowColor: Colors.black.withValues(alpha: dark ? .28 : .07),
         margin: EdgeInsets.zero,
-        shape: shape,
+        shape: shape.copyWith(
+          side: BorderSide(
+            color: dark ? const Color(0xFF263548) : const Color(0xFFE8EDF2),
+          ),
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: dark ? const Color(0xFF293543) : line,

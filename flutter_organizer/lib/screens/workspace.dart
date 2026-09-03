@@ -883,6 +883,7 @@ class _AdminScreenState extends State<AdminScreen> {
               icon: const Icon(Icons.open_in_new),
               label: const Text('Open full admin console'),
             ),
+            const SizedBox(height: 56),
           ],
         ),
       );
@@ -896,22 +897,29 @@ Widget _buildRecentOrders(
   List<Json> rows,
 ) => _AdminSection(
   title: 'Recent orders',
-  child: rows.isEmpty
-      ? const Text('No orders yet.')
-      : Column(
-          children: rows.take(12).map((row) {
-            final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
-                .toString();
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.receipt_long_outlined),
-              title: Text(row['eventTitle']?.toString() ?? 'Untitled event'),
-              subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => showOrderDetail(context, api, row['id'].toString()),
-            );
-          }).toList(),
-        ),
+  child: Card(
+    clipBehavior: Clip.antiAlias,
+    child: rows.isEmpty
+        ? const Padding(
+            padding: EdgeInsets.all(8),
+            child: Text('No orders yet.'),
+          )
+        : Column(
+            children: rows.take(12).map((row) {
+              final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
+                  .toString();
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(row['eventTitle']?.toString() ?? 'Untitled event'),
+                subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () =>
+                    showOrderDetail(context, api, row['id'].toString()),
+              );
+            }).toList(),
+          ),
+  ),
 );
 
 class _RevenueCard extends StatelessWidget {
@@ -1005,7 +1013,12 @@ class _AdminList<T> extends StatelessWidget {
   final Widget Function(T item) builder;
   @override
   Widget build(BuildContext context) => items.isEmpty
-      ? empty
+      ? Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: empty,
+          ),
+        )
       : Card(
           child: Column(children: [for (final item in items) builder(item)]),
         );
@@ -1159,18 +1172,21 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 32),
-    child: Column(
-      children: [
-        Icon(icon, size: 40),
-        const SizedBox(height: 16),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(message, textAlign: TextAlign.center),
-      ],
+    child: SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          Icon(icon, size: 40),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(message, textAlign: TextAlign.center),
+        ],
+      ),
     ),
   );
 }
