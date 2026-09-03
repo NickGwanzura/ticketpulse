@@ -732,12 +732,12 @@ class _AdminScreenState extends State<AdminScreen> {
             const Eyebrow('Control room'),
             const SizedBox(height: 10),
             Text(
-              'TicketPulse admin',
+              'Admin operations & support',
               style: Theme.of(context).textTheme.headlineLarge,
             ),
             const SizedBox(height: 6),
             const Text(
-              'Platform health at a glance. Operational actions remain audited on the web console.',
+              'Monitor orders, payouts, events, and organizer support from one place.',
             ),
             const SizedBox(height: 24),
             Row(
