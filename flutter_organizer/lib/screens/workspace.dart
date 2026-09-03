@@ -786,9 +786,12 @@ class _AdminScreenState extends State<AdminScreen> {
       final data = snapshot.data!;
       final events = data['eventSummary'] as Json;
       final orders = data['orderSummary'] as Json;
-      final payouts = (data['pendingPayouts'] as List).cast<Json>();
-      final organizers = (data['pendingOrganizers'] as List).cast<Json>();
-      final recentOrders = (data['recentOrders'] as List).cast<Json>();
+      final payouts = ((data['pendingPayouts'] as List?) ?? const [])
+          .cast<Json>();
+      final organizers = ((data['pendingOrganizers'] as List?) ?? const [])
+          .cast<Json>();
+      final recentOrders = ((data['recentOrders'] as List?) ?? const [])
+          .cast<Json>();
       final orderCount = orders.values.fold<int>(
         0,
         (sum, value) => sum + number((value as Json)['count']).toInt(),
