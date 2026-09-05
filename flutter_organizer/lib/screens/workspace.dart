@@ -865,9 +865,9 @@ class _AdminScreenState extends State<AdminScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$error')));
       }
     } finally {
       if (mounted) setState(() => _loadingMore = false);
@@ -976,13 +976,11 @@ class _AdminScreenState extends State<AdminScreen> {
 Widget _buildRecentOrders(
   BuildContext context,
   OrganizerApi api,
-  List<Json> rows,
-  {
-    required bool hasMore,
-    required bool loadingMore,
-    required VoidCallback onLoadMore,
-  }
-) => _AdminSection(
+  List<Json> rows, {
+  required bool hasMore,
+  required bool loadingMore,
+  required VoidCallback onLoadMore,
+}) => _AdminSection(
   title: 'Recent orders',
   child: Card(
     clipBehavior: Clip.antiAlias,
@@ -994,17 +992,19 @@ Widget _buildRecentOrders(
         : Column(
             children: [
               ...rows.map((row) {
-              final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
-                  .toString();
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.receipt_long_outlined),
-                title: Text(row['eventTitle']?.toString() ?? 'Untitled event'),
-                subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () =>
-                    showOrderDetail(context, api, row['id'].toString()),
-              );
+                final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
+                    .toString();
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: Text(
+                    row['eventTitle']?.toString() ?? 'Untitled event',
+                  ),
+                  subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () =>
+                      showOrderDetail(context, api, row['id'].toString()),
+                );
               }),
               if (hasMore)
                 Padding(
@@ -1013,7 +1013,9 @@ Widget _buildRecentOrders(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: loadingMore ? null : onLoadMore,
-                      child: Text(loadingMore ? 'Loading…' : 'Load more orders'),
+                      child: Text(
+                        loadingMore ? 'Loading…' : 'Load more orders',
+                      ),
                     ),
                   ),
                 ),

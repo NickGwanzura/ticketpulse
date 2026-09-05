@@ -17,7 +17,7 @@ beforeEach(() => {
   mocks.auth.mockResolvedValue({ ok: true, userId: "admin-1", role: "admin", email: "admin@example.com" })
   mocks.scope.mockReturnValue(undefined)
   mocks.rate.mockReturnValue({ allowed: true })
-  mocks.select.mockImplementation(() => ({ from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), leftJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), limit: vi.fn(async () => rows), then: (resolve: (v: unknown[]) => unknown) => Promise.resolve([]).then(resolve) }))
+  mocks.select.mockImplementation(() => ({ from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), leftJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn(async () => rows), then: (resolve: (v: unknown[]) => unknown) => Promise.resolve([]).then(resolve) }))
   mocks.complete.mockResolvedValue({ success: true, message: "Order completed" })
   mocks.resend.mockResolvedValue(Response.json({ ok: true, sentTo: "buyer@example.com" }))
 })

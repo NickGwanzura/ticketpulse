@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
-import { events, orders, orderItems, tickets, ticketTiers, users } from "@/db/schema"
+import { events, orders, orderItems, tickets, ticketScanLogs, ticketTiers, users } from "@/db/schema"
 import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
 import { markOrderCompleteAction } from "@/lib/order-recovery"
 import { POST as resendTickets } from "@/app/api/orders/[id]/resend-tickets/route"
@@ -35,13 +35,15 @@ export async function GET(request: Request, context: Context) {
   const result = await access(request, context)
   if (result.response) return result.response
   const { order, identity, id } = result
-  const [items, ticketRows] = await Promise.all([
+  const [items, ticketRows, scanRows] = await Promise.all([
     db.select({ id: orderItems.id, name: ticketTiers.name, type: orderItems.type, quantity: orderItems.quantity, unitPrice: orderItems.unitPrice, total: orderItems.total })
       .from(orderItems).leftJoin(ticketTiers, eq(ticketTiers.id, orderItems.tierId)).where(eq(orderItems.orderId, id)),
     db.select({ id: tickets.id, tierName: ticketTiers.name, status: tickets.status, scannedAt: tickets.scannedAt })
       .from(tickets).leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId)).where(eq(tickets.orderId, id)),
+    db.select({ id: ticketScanLogs.id, outcome: ticketScanLogs.outcome, reason: ticketScanLogs.reason, source: ticketScanLogs.source, createdAt: ticketScanLogs.createdAt })
+      .from(ticketScanLogs).where(eq(ticketScanLogs.orderId, id)).orderBy(desc(ticketScanLogs.createdAt)).limit(100),
   ])
-  return respond({ ok: true, order: { ...order, totalAmount: Number(order.totalAmount), currency: order.currency ?? "USD", buyerName: order.guestName ?? order.buyerName, buyerEmail: order.guestEmail ?? order.buyerEmail }, items, tickets: ticketRows,
+  return respond({ ok: true, order: { ...order, totalAmount: Number(order.totalAmount), currency: order.currency ?? "USD", buyerName: order.guestName ?? order.buyerName, buyerEmail: order.guestEmail ?? order.buyerEmail }, items, tickets: ticketRows, scanLogs: scanRows,
     actions: { resend: ["paid", "completed"].includes(order.status ?? "") && !!(order.guestEmail ?? order.buyerEmail),
       complete: identity.role === "admin" && ["pending", "awaiting_verification", "paid"].includes(order.status ?? "") } })
 }

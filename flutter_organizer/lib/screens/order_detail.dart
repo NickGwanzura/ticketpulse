@@ -167,6 +167,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               final tickets = (data['tickets'] as List? ?? [])
                   .whereType<Json>()
                   .toList();
+              final scanLogs = (data['scanLogs'] as List? ?? [])
+                  .whereType<Json>()
+                  .toList();
               final actions = data['actions'] as Json? ?? {};
               final currency = order['currency']?.toString() ?? 'USD';
               final colors = Theme.of(context).colorScheme;
@@ -264,7 +267,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           if (order['guestPhone'] != null)
                             OutlinedButton.icon(
                               onPressed: () => _contact(
-                                Uri(scheme: 'tel', path: order['guestPhone'].toString()),
+                                Uri(
+                                  scheme: 'tel',
+                                  path: order['guestPhone'].toString(),
+                                ),
                               ),
                               icon: const Icon(Icons.call_outlined, size: 18),
                               label: const Text('Call buyer'),
@@ -343,6 +349,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     ticket['status']?.toString() ??
                                         'not checked in',
                                   ),
+                          ),
+                        ),
+                    ]),
+                    _section(context, 'Scan activity', [
+                      if (scanLogs.isEmpty)
+                        const Text('No scan attempts recorded for this order.'),
+                      for (final log in scanLogs)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            log['outcome'] == 'valid'
+                                ? Icons.check_circle_outline
+                                : Icons.info_outline,
+                          ),
+                          title: Text(
+                            statusLabel(log['outcome']?.toString() ?? 'scan'),
+                          ),
+                          subtitle: Text(
+                            [
+                              if (log['reason'] != null)
+                                log['reason'].toString(),
+                              if (log['source'] != null)
+                                log['source'].toString(),
+                              dateLabel(log['createdAt']),
+                            ].join(' · '),
                           ),
                         ),
                     ]),
