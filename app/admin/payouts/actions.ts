@@ -97,7 +97,7 @@ type PayoutRow = {
  * in one transaction. This used to be copy-pasted (with small variations)
  * across five separate functions — approve/reject/processing/paid/update-status.
  */
-async function transitionPayout(opts: {
+export async function transitionPayout(opts: {
   payoutId: string
   action: string
   allowedFrom: readonly string[]

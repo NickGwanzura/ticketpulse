@@ -30,6 +30,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   );
   OrganizerEvent? _event;
   bool _cameraOpen = false, _busy = false, _needsReset = false;
+  int _queuedScans = 0;
   String? _message;
   String _outcome = '';
   @override
@@ -40,6 +41,14 @@ class _ScannerScreenState extends State<ScannerScreen>
     _event =
         eligible.where((e) => e.id == widget.initialEvent?.id).firstOrNull ??
         eligible.firstOrNull;
+    _syncQueue();
+  }
+
+  Future<void> _syncQueue() async {
+    try {
+      final remaining = await widget.api.syncQueuedScans();
+      if (mounted) setState(() => _queuedScans = remaining);
+    } catch (_) {}
   }
 
   @override
@@ -116,6 +125,18 @@ class _ScannerScreenState extends State<ScannerScreen>
       widget.onScanned();
     } catch (e) {
       if (mounted) {
+        if (e is ApiException && e.status == 0) {
+          await widget.api.queueScan(code, _event!.id);
+          final count = await widget.api.pendingScanCount();
+          if (!mounted) return;
+          setState(() {
+            _queuedScans = count;
+            _outcome = 'queued';
+            _message =
+                'Connection unavailable. Scan saved for later verification.\n$count scan${count == 1 ? '' : 's'} pending.';
+          });
+          return;
+        }
         setState(() {
           _outcome = 'error';
           _message = e is ApiException && e.status == 0
@@ -142,7 +163,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         ),
         const SizedBox(height: 8),
         const Text(
-          'Check a ticket against the selected event. An internet connection is required.',
+          'Check tickets online. If the connection drops, scans are saved as unconfirmed and retried when you reconnect.',
         ),
         const SizedBox(height: 24),
         if (eligible.isEmpty)
@@ -174,6 +195,24 @@ class _ScannerScreenState extends State<ScannerScreen>
                   }),
           ),
           const SizedBox(height: 20),
+          if (_queuedScans > 0)
+            Card(
+              color: Theme.of(context).colorScheme.tertiaryContainer,
+              child: ListTile(
+                leading: const Icon(Icons.sync_problem_outlined),
+                title: Text(
+                  '$_queuedScans scan${_queuedScans == 1 ? '' : 's'} pending',
+                ),
+                subtitle: const Text(
+                  'These entries are unconfirmed until the server verifies them.',
+                ),
+                trailing: IconButton(
+                  tooltip: 'Sync scans',
+                  onPressed: _syncQueue,
+                  icon: const Icon(Icons.sync),
+                ),
+              ),
+            ),
           if (_cameraOpen)
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
@@ -283,6 +322,8 @@ class _ScannerScreenState extends State<ScannerScreen>
             Card(
               color: _outcome == 'error'
                   ? Theme.of(context).colorScheme.errorContainer
+                  : _outcome == 'queued'
+                  ? Theme.of(context).colorScheme.tertiaryContainer
                   : Theme.of(context).colorScheme.secondaryContainer,
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -295,6 +336,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                             ? Icons.check_circle_outline
                             : _outcome == 'duplicate'
                             ? Icons.warning_amber
+                            : _outcome == 'queued'
+                            ? Icons.cloud_off_outlined
                             : Icons.error_outline,
                         size: 48,
                       ),

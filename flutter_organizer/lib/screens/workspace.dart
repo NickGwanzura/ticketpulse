@@ -949,8 +949,8 @@ class _AdminScreenState extends State<AdminScreen> {
               title: 'Paid order value',
               child: _RevenueCard(value: money(paid?['total'] ?? 0)),
             ),
-            _buildPayoutQueue(context, payouts),
-            _buildOrganizerApprovals(context, organizers),
+            _buildPayoutQueue(context, widget.api, payouts),
+            _buildOrganizerApprovals(context, widget.api, organizers),
             _buildRecentOrders(
               context,
               widget.api,
@@ -1050,6 +1050,7 @@ class _RevenueCard extends StatelessWidget {
 
 Widget _buildPayoutQueue(
   BuildContext context,
+  OrganizerApi api,
   List<Json> payouts,
 ) => _AdminSection(
   title: 'Payout queue',
@@ -1072,37 +1073,178 @@ Widget _buildPayoutQueue(
       subtitle: Text(
         '${payout['eventTitle'] ?? 'Platform payout'} · ${statusLabel(payout['status'] as String)}',
       ),
-      trailing: Text(
-        money(payout['amount'], payout['currency'] as String),
-        style: Theme.of(context).textTheme.labelLarge,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            money(payout['amount'], payout['currency'] as String),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Payout actions',
+            onSelected: (action) async {
+              await _runPayoutAction(context, api, payout, action);
+            },
+            itemBuilder: (_) => [
+              if (payout['status'] == 'pending')
+                const PopupMenuItem(value: 'approve', child: Text('Approve')),
+              if (payout['status'] == 'pending' ||
+                  payout['status'] == 'approved' ||
+                  payout['status'] == 'processing')
+                const PopupMenuItem(value: 'paid', child: Text('Mark paid')),
+              if (payout['status'] == 'approved')
+                const PopupMenuItem(
+                  value: 'processing',
+                  child: Text('Mark processing'),
+                ),
+              if (payout['status'] == 'pending')
+                const PopupMenuItem(value: 'reject', child: Text('Reject')),
+            ],
+          ),
+        ],
       ),
     ),
   ),
 );
 
-Widget _buildOrganizerApprovals(BuildContext context, List<Json> organizers) =>
-    _AdminSection(
-      title: 'Organizer approvals',
-      trailing: '${organizers.length}',
-      child: _AdminList<Json>(
-        items: organizers.take(5).toList(),
-        empty: const EmptyState(
-          icon: Icons.verified_outlined,
-          title: 'No approvals waiting',
-          message: 'New organizer applications will appear here.',
+Widget _buildOrganizerApprovals(
+  BuildContext context,
+  OrganizerApi api,
+  List<Json> organizers,
+) => _AdminSection(
+  title: 'Organizer approvals',
+  trailing: '${organizers.length}',
+  child: _AdminList<Json>(
+    items: organizers.take(5).toList(),
+    empty: const EmptyState(
+      icon: Icons.verified_outlined,
+      title: 'No approvals waiting',
+      message: 'New organizer applications will appear here.',
+    ),
+    builder: (organizer) => ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      leading: const Icon(Icons.person_outline),
+      title: Text(organizer['name'] as String? ?? 'Unnamed organizer'),
+      subtitle: Text(organizer['email'] as String? ?? 'No email'),
+      trailing: PopupMenuButton<String>(
+        tooltip: 'Organizer actions',
+        onSelected: (action) async {
+          await _runOrganizerAction(context, api, organizer, action);
+        },
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: 'approve', child: Text('Approve organizer')),
+          PopupMenuItem(value: 'reject', child: Text('Reject organizer')),
+        ],
+      ),
+    ),
+  ),
+);
+
+Future<void> _runPayoutAction(
+  BuildContext context,
+  OrganizerApi api,
+  Json payout,
+  String action,
+) async {
+  String? reason;
+  String? proofReference;
+  if (action == 'reject') {
+    final controller = TextEditingController();
+    reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reject payout'),
+        content: TextField(
+          controller: controller,
+          maxLength: 500,
+          decoration: const InputDecoration(labelText: 'Reason'),
         ),
-        builder: (organizer) => ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: 4,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
           ),
-          leading: const Icon(Icons.person_outline),
-          title: Text(organizer['name'] as String? ?? 'Unnamed organizer'),
-          subtitle: Text(organizer['email'] as String? ?? 'No email'),
-          trailing: const Icon(Icons.chevron_right),
-        ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Reject'),
+          ),
+        ],
       ),
     );
+    controller.dispose();
+    if (reason == null || reason.isEmpty) return;
+  } else if (action == 'paid') {
+    proofReference = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Mark payout paid'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Proof reference (optional)',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Mark paid'),
+            ),
+          ],
+        );
+      },
+    );
+    if (proofReference == null) return;
+  }
+  try {
+    await api.adminPayoutAction(
+      payout['id'].toString(),
+      action,
+      reason: reason,
+      proofReference: proofReference,
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Payout updated.')));
+    }
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+}
+
+Future<void> _runOrganizerAction(
+  BuildContext context,
+  OrganizerApi api,
+  Json organizer,
+  String action,
+) async {
+  try {
+    await api.adminOrganizerAction(organizer['id'].toString(), action);
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Organizer updated.')));
+    }
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+}
 
 class _AdminList<T> extends StatelessWidget {
   const _AdminList({

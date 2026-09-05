@@ -41,12 +41,15 @@ class OrganizerApi extends ChangeNotifier {
   final Uri baseUrl;
   final SessionStore store;
   final http.Client _client;
+  final FlutterSecureStorage _scanStorage = const FlutterSecureStorage();
   Json? user;
   String? startupError;
   bool restoring = true;
   String? _access, _refresh;
   Future<void>? _refreshing;
   int _generation = 0;
+
+  String get _scanQueueKey => 'ticketpulse.organizer.scan-queue.$baseUrl';
 
   Future<Json> _send(String path, {Json? body, String? token}) async {
     try {
@@ -241,6 +244,23 @@ class OrganizerApi extends ChangeNotifier {
   }) => request(
     '/api/mobile/admin/overview?recentOffset=$recentOffset&recentLimit=$recentLimit',
   );
+  Future<Json> adminPayoutAction(
+    String id,
+    String action, {
+    String? reason,
+    String? proofReference,
+  }) => request(
+    '/api/mobile/admin/payouts/${Uri.encodeComponent(id)}',
+    body: {
+      'action': action,
+      ...?reason == null ? null : {'reason': reason},
+      ...?proofReference == null ? null : {'proofReference': proofReference},
+    },
+  );
+  Future<Json> adminOrganizerAction(String id, String action) => request(
+    '/api/mobile/admin/organizers/${Uri.encodeComponent(id)}',
+    body: {'action': action},
+  );
   Future<Json> notifications() => request('/api/mobile/notifications');
   Future<Json> markNotificationsRead() =>
       request('/api/mobile/notifications', body: {'all': true});
@@ -248,6 +268,48 @@ class OrganizerApi extends ChangeNotifier {
     '/api/mobile/organizer/scan',
     body: {'code': code, 'eventId': eventId},
   );
+
+  Future<void> queueScan(String code, String eventId) async {
+    final raw = await _scanStorage.read(key: _scanQueueKey);
+    final queue = raw == null
+        ? <Json>[]
+        : ((jsonDecode(raw) as List?) ?? const []).whereType<Json>().toList();
+    queue.add({
+      'code': code,
+      'eventId': eventId,
+      'queuedAt': DateTime.now().toUtc().toIso8601String(),
+    });
+    await _scanStorage.write(
+      key: _scanQueueKey,
+      value: jsonEncode(queue.take(100).toList()),
+    );
+  }
+
+  Future<int> pendingScanCount() async {
+    final raw = await _scanStorage.read(key: _scanQueueKey);
+    return raw == null ? 0 : ((jsonDecode(raw) as List?) ?? const []).length;
+  }
+
+  Future<int> syncQueuedScans() async {
+    final raw = await _scanStorage.read(key: _scanQueueKey);
+    final queue = raw == null
+        ? <Json>[]
+        : ((jsonDecode(raw) as List?) ?? const []).whereType<Json>().toList();
+    final remaining = <Json>[];
+    for (var index = 0; index < queue.length; index++) {
+      final item = queue[index];
+      try {
+        await scan(item['code'].toString(), item['eventId'].toString());
+      } on ApiException catch (error) {
+        if (error.status == 0) {
+          remaining.addAll(queue.sublist(index));
+          break;
+        }
+      }
+    }
+    await _scanStorage.write(key: _scanQueueKey, value: jsonEncode(remaining));
+    return remaining.length;
+  }
 
   Future<void> signOut() async {
     ++_generation;
