@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../design.dart';
@@ -107,6 +108,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not copy. Please try again.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _contact(Uri uri) async {
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open the contact action.')),
         );
       }
     }
@@ -231,6 +246,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               ),
                               icon: const Icon(Icons.mail_outline, size: 18),
                               label: const Text('Copy email'),
+                            ),
+                          if (order['buyerEmail'] != null)
+                            OutlinedButton.icon(
+                              onPressed: () => _contact(
+                                Uri(
+                                  scheme: 'mailto',
+                                  path: order['buyerEmail'].toString(),
+                                  queryParameters: {
+                                    'subject': 'TicketPulse order ${widget.id}',
+                                  },
+                                ),
+                              ),
+                              icon: const Icon(Icons.email_outlined, size: 18),
+                              label: const Text('Email buyer'),
+                            ),
+                          if (order['guestPhone'] != null)
+                            OutlinedButton.icon(
+                              onPressed: () => _contact(
+                                Uri(scheme: 'tel', path: order['guestPhone'].toString()),
+                              ),
+                              icon: const Icon(Icons.call_outlined, size: 18),
+                              label: const Text('Call buyer'),
                             ),
                         ],
                       ),

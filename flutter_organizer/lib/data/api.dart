@@ -235,7 +235,8 @@ class OrganizerApi extends ChangeNotifier {
     '/api/mobile/organizer/orders/${Uri.encodeComponent(id)}',
     body: {'action': action, if (action == 'complete') 'confirmPayment': true},
   );
-  Future<Json> adminOverview() => request('/api/mobile/admin/overview');
+  Future<Json> adminOverview({int recentOffset = 0, int recentLimit = 25}) =>
+      request('/api/mobile/admin/overview?recentOffset=$recentOffset&recentLimit=$recentLimit');
   Future<Json> notifications() => request('/api/mobile/notifications');
   Future<Json> markNotificationsRead() =>
       request('/api/mobile/notifications', body: {'all': true});

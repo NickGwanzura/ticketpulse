@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/api.dart';
@@ -21,11 +22,23 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
   int _notificationUnread = 0;
   OrganizerEvent? _scanEvent;
   late Future<List<OrganizerEvent>> _events;
+  Timer? _pollTimer;
   @override
   void initState() {
     super.initState();
     _events = widget.api.events();
     _loadNotificationCount();
+    _pollTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      _reload();
+      _loadNotificationCount();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadNotificationCount() async {
@@ -814,6 +827,9 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   late Future<Json> _future;
+  List<Json>? _recentOrders;
+  bool _recentHasMore = false;
+  bool _loadingMore = false;
   @override
   void initState() {
     super.initState();
@@ -821,6 +837,8 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _reload() async {
+    _recentOrders = null;
+    _recentHasMore = false;
     final future = widget.api.adminOverview();
     setState(() {
       _future = future;
@@ -828,6 +846,32 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       await future;
     } catch (_) {}
+  }
+
+  Future<void> _loadMoreRecent() async {
+    if (_loadingMore || !_recentHasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final data = await widget.api.adminOverview(
+        recentOffset: _recentOrders?.length ?? 0,
+      );
+      final rows = ((data['recentOrders'] as List?) ?? const [])
+          .whereType<Json>();
+      if (mounted) {
+        setState(() {
+          (_recentOrders ??= []).addAll(rows);
+          _recentHasMore = data['recentOrdersHasMore'] == true;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
   }
 
   @override
@@ -849,6 +893,8 @@ class _AdminScreenState extends State<AdminScreen> {
           .cast<Json>();
       final recentOrders = ((data['recentOrders'] as List?) ?? const [])
           .cast<Json>();
+      _recentHasMore = data['recentOrdersHasMore'] == true;
+      final visibleRecentOrders = _recentOrders ?? recentOrders;
       final orderCount = orders.values.fold<int>(
         0,
         (sum, value) => sum + number((value as Json)['count']).toInt(),
@@ -905,7 +951,14 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
             _buildPayoutQueue(context, payouts),
             _buildOrganizerApprovals(context, organizers),
-            _buildRecentOrders(context, widget.api, recentOrders),
+            _buildRecentOrders(
+              context,
+              widget.api,
+              visibleRecentOrders,
+              hasMore: _recentHasMore,
+              loadingMore: _loadingMore,
+              onLoadMore: _loadMoreRecent,
+            ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: () => openWebsite(context, widget.api, '/admin'),
@@ -924,6 +977,11 @@ Widget _buildRecentOrders(
   BuildContext context,
   OrganizerApi api,
   List<Json> rows,
+  {
+    required bool hasMore,
+    required bool loadingMore,
+    required VoidCallback onLoadMore,
+  }
 ) => _AdminSection(
   title: 'Recent orders',
   child: Card(
@@ -934,7 +992,8 @@ Widget _buildRecentOrders(
             child: Text('No orders yet.'),
           )
         : Column(
-            children: rows.take(12).map((row) {
+            children: [
+              ...rows.map((row) {
               final buyer = (row['buyerName'] ?? row['buyerEmail'] ?? 'Guest')
                   .toString();
               return ListTile(
@@ -946,7 +1005,19 @@ Widget _buildRecentOrders(
                 onTap: () =>
                     showOrderDetail(context, api, row['id'].toString()),
               );
-            }).toList(),
+              }),
+              if (hasMore)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: loadingMore ? null : onLoadMore,
+                      child: Text(loadingMore ? 'Loading…' : 'Load more orders'),
+                    ),
+                  ),
+                ),
+            ],
           ),
   ),
 );
