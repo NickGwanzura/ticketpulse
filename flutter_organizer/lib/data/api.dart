@@ -236,6 +236,9 @@ class OrganizerApi extends ChangeNotifier {
     body: {'action': action, if (action == 'complete') 'confirmPayment': true},
   );
   Future<Json> adminOverview() => request('/api/mobile/admin/overview');
+  Future<Json> notifications() => request('/api/mobile/notifications');
+  Future<Json> markNotificationsRead() =>
+      request('/api/mobile/notifications', body: {'all': true});
   Future<Json> scan(String code, String eventId) => request(
     '/api/mobile/organizer/scan',
     body: {'code': code, 'eventId': eventId},

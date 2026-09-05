@@ -18,12 +18,25 @@ class OrganizerWorkspace extends StatefulWidget {
 class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
   int _tab = 0;
   bool _eventsDirty = false;
+  int _notificationUnread = 0;
   OrganizerEvent? _scanEvent;
   late Future<List<OrganizerEvent>> _events;
   @override
   void initState() {
     super.initState();
     _events = widget.api.events();
+    _loadNotificationCount();
+  }
+
+  Future<void> _loadNotificationCount() async {
+    try {
+      final data = await widget.api.notifications();
+      if (mounted) {
+        setState(
+          () => _notificationUnread = number(data['unreadCount']).toInt(),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _reload() async {
@@ -43,8 +56,26 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
     _tab = 3;
   });
 
-  void _showNotifications() {
-    final isAdmin = widget.api.user?['role'] == 'admin';
+  Future<void> _showNotifications() async {
+    Json data;
+    try {
+      data = await widget.api.notifications();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$error')));
+      return;
+    }
+    final rows = ((data['notifications'] as List?) ?? const [])
+        .whereType<Json>()
+        .toList();
+    if (!mounted) return;
+    setState(() => _notificationUnread = 0);
+    try {
+      await widget.api.markNotificationsRead();
+    } catch (_) {}
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -60,26 +91,20 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 14),
-              _NotificationRow(
-                icon: Icons.receipt_long_outlined,
-                title: 'Order activity',
-                message: 'New orders and payment updates appear in Orders.',
-              ),
-              _NotificationRow(
-                icon: isAdmin
-                    ? Icons.support_agent_outlined
-                    : Icons.qr_code_scanner,
-                title: isAdmin ? 'Support queue' : 'Gate scanning',
-                message: isAdmin
-                    ? 'Review organizer approvals and payout issues in Admin operations.'
-                    : 'Duplicate and successful scans are reported instantly.',
-              ),
-              _NotificationRow(
-                icon: Icons.event_outlined,
-                title: 'Event updates',
-                message:
-                    'Pull down on Home or Events to refresh live activity.',
-              ),
+              if (rows.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: Text('You’re all caught up.')),
+                ),
+              for (final row in rows.take(30))
+                _NotificationRow(
+                  icon: row['read'] == true
+                      ? Icons.notifications_none
+                      : Icons.notifications_active_outlined,
+                  title: row['title']?.toString() ?? 'TicketPulse update',
+                  message:
+                      '${row['body'] ?? ''}\n${dateLabel(row['createdAt'])}',
+                ),
             ],
           ),
         ),
@@ -95,7 +120,11 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
         IconButton(
           tooltip: 'Notifications',
           onPressed: _showNotifications,
-          icon: const Badge(child: Icon(Icons.notifications_none_rounded)),
+          icon: Badge(
+            isLabelVisible: _notificationUnread > 0,
+            label: Text('$_notificationUnread'),
+            child: const Icon(Icons.notifications_none_rounded),
+          ),
         ),
         PopupMenuButton<String>(
           tooltip: 'Account',
