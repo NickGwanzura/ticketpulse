@@ -100,7 +100,7 @@ and [QR scanner documentation](https://pub.dev/packages/mobile_scanner).
 
 ## Visual design and brand assets
 
-The UI follows the website's navy/burnt-orange palette and uses Manrope for
+The UI follows the website's navy/burnt-orange palette and uses Inter for
 the premium app UI. The light and white logo SVGs come from
 `public/ticketpulse-logo.svg` and `public/ticketpulse-logo-white.svg`; their paths
 and colors are preserved, with presentation fill attributes for Flutter SVG
