@@ -42,7 +42,7 @@ export async function GET(request: Request, context: Context) {
       .from(tickets).leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId)).where(eq(tickets.orderId, id)),
   ])
   return respond({ ok: true, order: { ...order, totalAmount: Number(order.totalAmount), currency: order.currency ?? "USD", buyerName: order.guestName ?? order.buyerName, buyerEmail: order.guestEmail ?? order.buyerEmail }, items, tickets: ticketRows,
-    actions: { resend: ["paid", "completed"].includes(order.status ?? "") && !!order.guestEmail,
+    actions: { resend: ["paid", "completed"].includes(order.status ?? "") && !!(order.guestEmail ?? order.buyerEmail),
       complete: identity.role === "admin" && ["pending", "awaiting_verification", "paid"].includes(order.status ?? "") } })
 }
 
