@@ -396,7 +396,7 @@ class EventCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        StatusChip(event.status),
+                        StatusChip(event.displayStatus),
                         const SizedBox(height: 7),
                         Text(
                           event.title,
