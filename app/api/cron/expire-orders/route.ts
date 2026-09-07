@@ -70,7 +70,11 @@ export async function POST(request: Request) {
     let reconciliationState = "NO_VELOCITY_REFERENCE"
     let reconciliationPayload: Record<string, unknown> | null = null
 
-    if (velocity) {
+    if (velocity && !pastPaymentCutoff) {
+      // Before the 24-hour boundary, reconcile once more so a late SUCCESS
+      // can still issue tickets. Once the boundary is crossed, skip Velocity
+      // entirely: provider polling is no longer allowed and stale 400/max-
+      // attempts responses must not keep an order alive.
       const result = await reconcileVelocityOrderBeforeExpiry({ orderId: order.id, source: "expiry_cron" })
       reconciliationState = result.state
       reconciliationPayload = result.pollResult as unknown as Record<string, unknown> | null
@@ -83,13 +87,14 @@ export async function POST(request: Request) {
         continue
       }
 
-      // A candidate past the 24-hour payment window is closed even when
-      // Velocity remains pending or unavailable. Event-ended candidates that
-      // are younger than 24 hours still require a definitive failure signal.
-      if (result.state !== "FAILED" && !pastPaymentCutoff) {
+      // Event-ended candidates that are younger than 24 hours still require
+      // a definitive failure signal before releasing their inventory.
+      if (result.state !== "FAILED") {
         skippedIds.push(order.id)
         continue
       }
+    } else if (velocity) {
+      reconciliationState = "PAYMENT_TIMEOUT"
     } else {
       // The 24-hour cutoff is the final boundary even when checkout never
       // persisted a provider reference. Event-ended orders remain protected
