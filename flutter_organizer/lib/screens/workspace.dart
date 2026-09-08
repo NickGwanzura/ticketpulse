@@ -6,6 +6,7 @@ import '../data/models.dart';
 import 'scanner.dart';
 import 'order_detail.dart';
 import 'overview_widgets.dart';
+import 'event_monitor.dart';
 import '../design.dart';
 import 'package:intl/intl.dart';
 
@@ -16,7 +17,8 @@ class OrganizerWorkspace extends StatefulWidget {
   State<OrganizerWorkspace> createState() => _OrganizerWorkspaceState();
 }
 
-class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
+class _OrganizerWorkspaceState extends State<OrganizerWorkspace>
+    with WidgetsBindingObserver {
   int _tab = 0;
   bool _eventsDirty = false;
   int _notificationUnread = 0;
@@ -26,6 +28,7 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _events = widget.api.events();
     _loadNotificationCount();
     _pollTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -37,8 +40,17 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _reload();
+      _loadNotificationCount();
+    }
   }
 
   Future<void> _loadNotificationCount() async {
@@ -69,6 +81,16 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
     _tab = 3;
   });
 
+  Future<void> _monitor(OrganizerEvent event) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) =>
+            EventMonitorScreen(api: widget.api, initialEvent: event),
+      ),
+    );
+    if (mounted) _reload();
+  }
+
   Future<void> _showNotifications() async {
     Json data;
     try {
@@ -84,45 +106,99 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
         .whereType<Json>()
         .toList();
     if (!mounted) return;
+    final previousUnread = _notificationUnread;
     setState(() => _notificationUnread = 0);
-    try {
-      await widget.api.markNotificationsRead();
-    } catch (_) {}
-    if (!mounted) return;
-    showModalBottomSheet<void>(
+    final sheet = showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notifications',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 14),
-              if (rows.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: Text('You’re all caught up.')),
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .76,
+        minChildSize: .4,
+        maxChildSize: .94,
+        builder: (context, scrollController) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notifications',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              for (final row in rows.take(30))
-                _NotificationRow(
-                  icon: row['read'] == true
-                      ? Icons.notifications_none
-                      : Icons.notifications_active_outlined,
-                  title: row['title']?.toString() ?? 'TicketPulse update',
-                  message:
-                      '${row['body'] ?? ''}\n${dateLabel(row['createdAt'])}',
+                const SizedBox(height: 4),
+                Text(
+                  'Operational updates and account activity',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-            ],
+                const SizedBox(height: 10),
+                Expanded(
+                  child: rows.isEmpty
+                      ? ListView(
+                          controller: scrollController,
+                          children: const [
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 48),
+                              child: Center(
+                                child: Text('You’re all caught up.'),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          controller: scrollController,
+                          itemCount: rows.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (_, index) {
+                            final row = rows[index];
+                            final link = row['link']?.toString();
+                            return _NotificationRow(
+                              icon: row['read'] == true
+                                  ? Icons.notifications_none
+                                  : Icons.notifications_active_outlined,
+                              title:
+                                  row['title']?.toString() ??
+                                  'TicketPulse update',
+                              message: row['body']?.toString() ?? '',
+                              date: dateLabel(row['createdAt']),
+                              priority: row['priority']?.toString() ?? 'normal',
+                              onTap: link == null || link.isEmpty
+                                  ? null
+                                  : () {
+                                      Navigator.pop(sheetContext);
+                                      Future<void>.microtask(() {
+                                        if (context.mounted) {
+                                          openWebsite(
+                                            context,
+                                            widget.api,
+                                            link,
+                                          );
+                                        }
+                                      });
+                                    },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+    try {
+      await widget.api.markNotificationsRead();
+    } catch (error) {
+      if (mounted) {
+        setState(() => _notificationUnread = previousUnread);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not mark notifications read: $error')),
+        );
+      }
+    }
+    await sheet;
   }
 
   @override
@@ -266,7 +342,11 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
                               'Create an event on TicketPulse, then refresh to manage it here.',
                         ),
                       for (final event in (_tab == 0 ? events.take(3) : events))
-                        EventCard(event: event, onScan: () => _scan(event)),
+                        EventCard(
+                          event: event,
+                          onScan: () => _scan(event),
+                          onMonitor: () => _monitor(event),
+                        ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: () => openWebsite(
@@ -323,26 +403,54 @@ class _NotificationRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
+    required this.date,
+    required this.priority,
+    this.onTap,
   });
   final IconData icon;
-  final String title;
-  final String message;
+  final String title, message, date, priority;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: CircleAvatar(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      child: Icon(icon, color: Theme.of(context).colorScheme.primary),
-    ),
-    title: Text(title),
-    subtitle: Text(message),
-  );
+  Widget build(BuildContext context) {
+    final urgent = priority == 'urgent' || priority == 'high';
+    final color = urgent
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.primary;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: .12),
+        child: Icon(icon, color: color),
+      ),
+      title: Row(
+        children: [
+          Expanded(child: Text(title)),
+          if (urgent)
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: StatusChip('attention'),
+            ),
+        ],
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text('$message\n$date'),
+      ),
+      trailing: onTap == null ? null : const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
+    );
+  }
 }
 
 class EventCard extends StatelessWidget {
-  const EventCard({super.key, required this.event, required this.onScan});
+  const EventCard({
+    super.key,
+    required this.event,
+    required this.onScan,
+    required this.onMonitor,
+  });
   final OrganizerEvent event;
-  final VoidCallback onScan;
+  final VoidCallback onScan, onMonitor;
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -373,7 +481,7 @@ class EventCard extends StatelessWidget {
                               : DateFormat('MMM').format(date).toUpperCase(),
                           style: TextStyle(
                             color: colors.primary,
-                            fontSize: 10,
+                            fontSize: 12,
                             letterSpacing: 1,
                             fontWeight: FontWeight.w700,
                           ),
@@ -453,6 +561,11 @@ class EventCard extends StatelessWidget {
                       '${event.checkedIn} checked in',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onMonitor,
+                    icon: const Icon(Icons.monitor_heart_outlined, size: 16),
+                    label: const Text('Monitor'),
                   ),
                   if (event.canScan)
                     TextButton.icon(
@@ -833,13 +946,22 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   void initState() {
     super.initState();
-    _future = widget.api.adminOverview();
+    _future = _fetchOverview();
+  }
+
+  Future<Json> _fetchOverview() async {
+    final data = await widget.api.adminOverview();
+    _recentOrders = ((data['recentOrders'] as List?) ?? const [])
+        .whereType<Json>()
+        .toList();
+    _recentHasMore = data['recentOrdersHasMore'] == true;
+    return data;
   }
 
   Future<void> _reload() async {
     _recentOrders = null;
     _recentHasMore = false;
-    final future = widget.api.adminOverview();
+    final future = _fetchOverview();
     setState(() {
       _future = future;
     });
@@ -891,15 +1013,15 @@ class _AdminScreenState extends State<AdminScreen> {
           .cast<Json>();
       final organizers = ((data['pendingOrganizers'] as List?) ?? const [])
           .cast<Json>();
-      final recentOrders = ((data['recentOrders'] as List?) ?? const [])
-          .cast<Json>();
-      _recentHasMore = data['recentOrdersHasMore'] == true;
-      final visibleRecentOrders = _recentOrders ?? recentOrders;
+      final visibleRecentOrders = _recentOrders ?? const <Json>[];
       final orderCount = orders.values.fold<int>(
         0,
         (sum, value) => sum + number((value as Json)['count']).toInt(),
       );
-      final paid = orders['paid'] as Json?;
+      final paidValues =
+          ((data['paidOrderValueByCurrency'] as List?) ?? const [])
+              .whereType<Json>()
+              .toList();
       return RefreshIndicator(
         onRefresh: _reload,
         child: ListView(
@@ -917,40 +1039,73 @@ class _AdminScreenState extends State<AdminScreen> {
               'Monitor orders, payouts, events, and organizer support from one place.',
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: _AdminStat(
-                    value: '${events['published'] ?? 0}',
-                    label: 'Live events',
-                    icon: Icons.wifi_tethering,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _AdminStat(
-                    value: '$orderCount',
-                    label: 'Orders',
-                    icon: Icons.receipt_long_outlined,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _AdminStat(
-                    value: '${organizers.length}',
-                    label: 'Approvals',
-                    icon: Icons.person_add_alt_1_outlined,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = constraints.maxWidth >= 620
+                    ? (constraints.maxWidth - 24) / 3
+                    : (constraints.maxWidth - 12) / 2;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: itemWidth,
+                      child: _AdminStat(
+                        value:
+                            '${data['liveEventCount'] ?? events['published'] ?? 0}',
+                        label: 'Live events',
+                        icon: Icons.wifi_tethering,
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _AdminStat(
+                        value: '$orderCount',
+                        label: 'Orders',
+                        icon: Icons.receipt_long_outlined,
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _AdminStat(
+                        value: '${organizers.length}',
+                        label: 'Approvals',
+                        icon: Icons.person_add_alt_1_outlined,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 22),
             _AdminSection(
               title: 'Paid order value',
-              child: _RevenueCard(value: money(paid?['total'] ?? 0)),
+              child: paidValues.isEmpty
+                  ? const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text('No paid order value yet.'),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final value in paidValues)
+                          _RevenueCard(
+                            value: money(
+                              value['total'],
+                              value['currency']?.toString() ?? 'USD',
+                            ),
+                          ),
+                      ],
+                    ),
             ),
-            _buildPayoutQueue(context, widget.api, payouts),
-            _buildOrganizerApprovals(context, widget.api, organizers),
+            _buildPayoutQueue(context, widget.api, payouts, onChanged: _reload),
+            _buildOrganizerApprovals(
+              context,
+              widget.api,
+              organizers,
+              onChanged: _reload,
+            ),
             _buildRecentOrders(
               context,
               widget.api,
@@ -1051,12 +1206,13 @@ class _RevenueCard extends StatelessWidget {
 Widget _buildPayoutQueue(
   BuildContext context,
   OrganizerApi api,
-  List<Json> payouts,
-) => _AdminSection(
+  List<Json> payouts, {
+  required VoidCallback onChanged,
+}) => _AdminSection(
   title: 'Payout queue',
   trailing: '${payouts.length}',
   child: _AdminList<Json>(
-    items: payouts.take(5).toList(),
+    items: payouts,
     empty: const EmptyState(
       icon: Icons.check_circle_outline,
       title: 'All clear',
@@ -1083,7 +1239,9 @@ Widget _buildPayoutQueue(
           PopupMenuButton<String>(
             tooltip: 'Payout actions',
             onSelected: (action) async {
-              await _runPayoutAction(context, api, payout, action);
+              if (await _runPayoutAction(context, api, payout, action)) {
+                onChanged();
+              }
             },
             itemBuilder: (_) => [
               if (payout['status'] == 'pending')
@@ -1110,12 +1268,13 @@ Widget _buildPayoutQueue(
 Widget _buildOrganizerApprovals(
   BuildContext context,
   OrganizerApi api,
-  List<Json> organizers,
-) => _AdminSection(
+  List<Json> organizers, {
+  required VoidCallback onChanged,
+}) => _AdminSection(
   title: 'Organizer approvals',
   trailing: '${organizers.length}',
   child: _AdminList<Json>(
-    items: organizers.take(5).toList(),
+    items: organizers,
     empty: const EmptyState(
       icon: Icons.verified_outlined,
       title: 'No approvals waiting',
@@ -1129,7 +1288,9 @@ Widget _buildOrganizerApprovals(
       trailing: PopupMenuButton<String>(
         tooltip: 'Organizer actions',
         onSelected: (action) async {
-          await _runOrganizerAction(context, api, organizer, action);
+          if (await _runOrganizerAction(context, api, organizer, action)) {
+            onChanged();
+          }
         },
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'approve', child: Text('Approve organizer')),
@@ -1140,7 +1301,7 @@ Widget _buildOrganizerApprovals(
   ),
 );
 
-Future<void> _runPayoutAction(
+Future<bool> _runPayoutAction(
   BuildContext context,
   OrganizerApi api,
   Json payout,
@@ -1173,12 +1334,12 @@ Future<void> _runPayoutAction(
       ),
     );
     controller.dispose();
-    if (reason == null || reason.isEmpty) return;
+    if (reason == null || reason.isEmpty) return false;
   } else if (action == 'paid') {
+    final controller = TextEditingController();
     proofReference = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        final controller = TextEditingController();
         return AlertDialog(
           title: const Text('Mark payout paid'),
           content: TextField(
@@ -1201,7 +1362,8 @@ Future<void> _runPayoutAction(
         );
       },
     );
-    if (proofReference == null) return;
+    controller.dispose();
+    if (proofReference == null) return false;
   }
   try {
     await api.adminPayoutAction(
@@ -1215,21 +1377,45 @@ Future<void> _runPayoutAction(
         context,
       ).showSnackBar(const SnackBar(content: Text('Payout updated.')));
     }
+    return true;
   } catch (error) {
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('$error')));
     }
+    return false;
   }
 }
 
-Future<void> _runOrganizerAction(
+Future<bool> _runOrganizerAction(
   BuildContext context,
   OrganizerApi api,
   Json organizer,
   String action,
 ) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(
+        action == 'approve' ? 'Approve organizer?' : 'Reject organizer?',
+      ),
+      content: Text(
+        '${organizer['name'] ?? organizer['email'] ?? 'This organizer'} will ${action == 'approve' ? 'gain organizer access' : 'be removed from the approval queue'}.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: Text(action == 'approve' ? 'Approve' : 'Reject'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return false;
   try {
     await api.adminOrganizerAction(organizer['id'].toString(), action);
     if (context.mounted) {
@@ -1237,12 +1423,14 @@ Future<void> _runOrganizerAction(
         context,
       ).showSnackBar(const SnackBar(content: Text('Organizer updated.')));
     }
+    return true;
   } catch (error) {
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('$error')));
     }
+    return false;
   }
 }
 
@@ -1366,7 +1554,7 @@ class StatusChip extends StatelessWidget {
               label[0].toUpperCase() + label.substring(1),
               style: TextStyle(
                 color: color,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),

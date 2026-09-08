@@ -13,6 +13,22 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+class ScanQueueSyncResult {
+  const ScanQueueSyncResult({
+    required this.pending,
+    required this.rejected,
+    required this.synced,
+    required this.duplicates,
+  });
+
+  final int pending;
+  final int rejected;
+  final int synced;
+  final int duplicates;
+
+  int get totalRemaining => pending + rejected;
+}
+
 abstract class SessionStore {
   Future<String?> read();
   Future<void> write(String value);
@@ -270,45 +286,109 @@ class OrganizerApi extends ChangeNotifier {
   );
 
   Future<void> queueScan(String code, String eventId) async {
-    final raw = await _scanStorage.read(key: _scanQueueKey);
-    final queue = raw == null
-        ? <Json>[]
-        : ((jsonDecode(raw) as List?) ?? const []).whereType<Json>().toList();
+    final queue = await _readScanQueue();
+    if (queue.length >= 100) {
+      throw const ApiException(
+        'The offline scan queue is full. Connect and sync before scanning more tickets.',
+      );
+    }
+    final now = DateTime.now().toUtc();
     queue.add({
+      'id': now.microsecondsSinceEpoch.toString(),
       'code': code,
       'eventId': eventId,
-      'queuedAt': DateTime.now().toUtc().toIso8601String(),
+      'queuedAt': now.toIso8601String(),
+      'state': 'pending',
+      'attempts': 0,
     });
-    await _scanStorage.write(
-      key: _scanQueueKey,
-      value: jsonEncode(queue.take(100).toList()),
-    );
+    await _writeScanQueue(queue);
   }
 
   Future<int> pendingScanCount() async {
-    final raw = await _scanStorage.read(key: _scanQueueKey);
-    return raw == null ? 0 : ((jsonDecode(raw) as List?) ?? const []).length;
+    return (await _readScanQueue()).length;
   }
 
-  Future<int> syncQueuedScans() async {
-    final raw = await _scanStorage.read(key: _scanQueueKey);
-    final queue = raw == null
-        ? <Json>[]
-        : ((jsonDecode(raw) as List?) ?? const []).whereType<Json>().toList();
+  Future<void> discardRejectedScans() async {
+    final queue = await _readScanQueue();
+    await _writeScanQueue(
+      queue.where((item) => item['state'] != 'rejected').toList(),
+    );
+  }
+
+  Future<ScanQueueSyncResult> syncQueuedScans() async {
+    final queue = await _readScanQueue();
+    var synced = 0;
+    var duplicates = 0;
+    var stoppedForConnection = false;
     final remaining = <Json>[];
-    for (var index = 0; index < queue.length; index++) {
-      final item = queue[index];
+    for (final item in queue) {
+      if (item['state'] == 'rejected' || stoppedForConnection) {
+        remaining.add(item);
+        continue;
+      }
+      final code = item['code']?.toString() ?? '';
+      final eventId = item['eventId']?.toString() ?? '';
+      if (code.isEmpty || eventId.isEmpty) {
+        remaining.add({
+          ...item,
+          'state': 'rejected',
+          'lastError': 'Saved scan data is incomplete.',
+        });
+        continue;
+      }
       try {
-        await scan(item['code'].toString(), item['eventId'].toString());
+        final result = await scan(code, eventId);
+        if (result['status'] == 'duplicate') {
+          duplicates++;
+        } else {
+          synced++;
+        }
       } on ApiException catch (error) {
-        if (error.status == 0) {
-          remaining.addAll(queue.sublist(index));
-          break;
+        final retryable =
+            error.status == 0 || error.status == 429 || error.status >= 500;
+        if (retryable || error.status == 401 || error.status == 403) {
+          remaining.add(item);
+          stoppedForConnection = true;
+          if (error.status == 401 || error.status == 403) rethrow;
+        } else {
+          remaining.add({
+            ...item,
+            'state': 'rejected',
+            'lastError': error.message,
+            'lastAttemptAt': DateTime.now().toUtc().toIso8601String(),
+            'attempts': number(item['attempts']).toInt() + 1,
+          });
         }
       }
     }
-    await _scanStorage.write(key: _scanQueueKey, value: jsonEncode(remaining));
-    return remaining.length;
+    await _writeScanQueue(remaining);
+    final rejected = remaining
+        .where((item) => item['state'] == 'rejected')
+        .length;
+    return ScanQueueSyncResult(
+      pending: remaining.length - rejected,
+      rejected: rejected,
+      synced: synced,
+      duplicates: duplicates,
+    );
+  }
+
+  Future<List<Json>> _readScanQueue() async {
+    final raw = await _scanStorage.read(key: _scanQueueKey);
+    if (raw == null || raw.isEmpty) return <Json>[];
+    try {
+      return ((jsonDecode(raw) as List?) ?? const [])
+          .whereType<Json>()
+          .toList();
+    } catch (_) {
+      throw const ApiException(
+        'Saved offline scans could not be read. Contact TicketPulse support before clearing app data.',
+      );
+    }
+  }
+
+  Future<void> _writeScanQueue(List<Json> queue) async {
+    await _scanStorage.write(key: _scanQueueKey, value: jsonEncode(queue));
   }
 
   Future<void> signOut() async {

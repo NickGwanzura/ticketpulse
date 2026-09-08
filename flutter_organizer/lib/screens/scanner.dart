@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -30,7 +31,10 @@ class _ScannerScreenState extends State<ScannerScreen>
   );
   OrganizerEvent? _event;
   bool _cameraOpen = false, _busy = false, _needsReset = false;
+  bool _syncing = false;
   int _queuedScans = 0;
+  int _rejectedScans = 0;
+  Timer? _syncTimer;
   String? _message;
   String _outcome = '';
   @override
@@ -42,18 +46,77 @@ class _ScannerScreenState extends State<ScannerScreen>
         eligible.where((e) => e.id == widget.initialEvent?.id).firstOrNull ??
         eligible.firstOrNull;
     _syncQueue();
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _queuedScans > _rejectedScans) _syncQueue(quiet: true);
+    });
   }
 
-  Future<void> _syncQueue() async {
+  Future<void> _syncQueue({bool quiet = false}) async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
     try {
-      final remaining = await widget.api.syncQueuedScans();
-      if (mounted) setState(() => _queuedScans = remaining);
-    } catch (_) {}
+      final result = await widget.api.syncQueuedScans();
+      if (!mounted) return;
+      setState(() {
+        _queuedScans = result.totalRemaining;
+        _rejectedScans = result.rejected;
+      });
+      if (!quiet &&
+          (result.synced > 0 || result.duplicates > 0 || result.rejected > 0)) {
+        final parts = <String>[
+          if (result.synced > 0) '${result.synced} verified',
+          if (result.duplicates > 0) '${result.duplicates} already used',
+          if (result.rejected > 0) '${result.rejected} need review',
+        ];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Offline scans: ${parts.join(' · ')}.')),
+        );
+      }
+    } catch (error) {
+      if (mounted && !quiet) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$error')));
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  Future<void> _discardRejected() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Clear rejected scans?'),
+        content: Text(
+          '$_rejectedScans scan${_rejectedScans == 1 ? '' : 's'} could not be verified. Clear them only after the gate team has reviewed the guests.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Clear reviewed'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await widget.api.discardRejectedScans();
+    if (mounted) {
+      setState(() {
+        _queuedScans -= _rejectedScans;
+        _rejectedScans = 0;
+      });
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _syncTimer?.cancel();
     _manual.dispose();
     _camera.dispose();
     super.dispose();
@@ -61,10 +124,10 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_cameraOpen) return;
-    if (state == AppLifecycleState.resumed && !_busy && !_needsReset) {
-      _startCamera();
-    } else if (state != AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed) {
+      _syncQueue(quiet: true);
+      if (_cameraOpen && !_busy && !_needsReset) _startCamera();
+    } else if (_cameraOpen) {
       _camera.stop();
     }
   }
@@ -126,7 +189,16 @@ class _ScannerScreenState extends State<ScannerScreen>
     } catch (e) {
       if (mounted) {
         if (e is ApiException && e.status == 0) {
-          await widget.api.queueScan(code, _event!.id);
+          try {
+            await widget.api.queueScan(code, _event!.id);
+          } on ApiException catch (queueError) {
+            if (!mounted) return;
+            setState(() {
+              _outcome = 'error';
+              _message = '${queueError.message}\nEntry is unconfirmed.';
+            });
+            return;
+          }
           final count = await widget.api.pendingScanCount();
           if (!mounted) return;
           setState(() {
@@ -197,19 +269,49 @@ class _ScannerScreenState extends State<ScannerScreen>
           const SizedBox(height: 20),
           if (_queuedScans > 0)
             Card(
-              color: Theme.of(context).colorScheme.tertiaryContainer,
-              child: ListTile(
-                leading: const Icon(Icons.sync_problem_outlined),
-                title: Text(
-                  '$_queuedScans scan${_queuedScans == 1 ? '' : 's'} pending',
-                ),
-                subtitle: const Text(
-                  'These entries are unconfirmed until the server verifies them.',
-                ),
-                trailing: IconButton(
-                  tooltip: 'Sync scans',
-                  onPressed: _syncQueue,
-                  icon: const Icon(Icons.sync),
+              color: _rejectedScans > 0
+                  ? Theme.of(context).colorScheme.errorContainer
+                  : Theme.of(context).colorScheme.tertiaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+                child: Row(
+                  children: [
+                    const Icon(Icons.sync_problem_outlined),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _rejectedScans > 0
+                                ? '$_rejectedScans scan${_rejectedScans == 1 ? '' : 's'} need review'
+                                : '$_queuedScans scan${_queuedScans == 1 ? '' : 's'} pending',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          Text(
+                            _rejectedScans > 0
+                                ? 'The server rejected these entries. Review them before clearing.'
+                                : 'They will retry automatically when connection returns.',
+                          ),
+                          if (_rejectedScans > 0)
+                            TextButton(
+                              onPressed: _discardRejected,
+                              child: const Text('Clear after review'),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Sync scans',
+                      onPressed: _syncing ? null : _syncQueue,
+                      icon: _syncing
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.sync),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -78,6 +78,10 @@ export async function GET(request: Request) {
         totalCapacity: Number(capacityAgg?.totalCapacity ?? 0),
         totalSold: Number(soldAgg?.totalSold ?? 0),
         checkedIn: Number(checkinAgg?.checkedIn ?? 0),
+        isFinished: event.endsAt != null && event.endsAt <= new Date(),
+        canScan:
+          (event.status === "published" || event.status === "sold_out") &&
+          (event.endsAt == null || event.endsAt > new Date()),
       }
     }),
   )

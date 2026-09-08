@@ -36,7 +36,17 @@ sign-in is separate from the native session.
 - QR camera and manual ticket/verification-link entry with a required live event.
   New, duplicate, invalid, and unconfirmed network outcomes are distinct. Each
   result requires an explicit “Check another ticket” action before scanning again.
-  The app performs no offline admission or queued scan replay.
+  Unconfirmed scans are stored securely on the device and retried every 30 seconds
+  and whenever the app resumes. Server-rejected entries remain visible for gate-team
+  review until they are explicitly cleared; queue overflow never discards scans.
+- Event monitoring refreshes sales, remaining capacity, and admissions every 15
+  seconds, highlights low inventory, and closes scanning using server-derived event
+  state rather than relying only on the phone clock.
+- The notification center supports long, scrollable histories, urgency indicators,
+  unread state, and links to the relevant TicketPulse operation.
+- Admin operations include order drilldowns with ticket and scan activity, paginated
+  recent orders, complete payout and organizer queues, and in-app approval and payout
+  actions that refresh immediately after success.
 - Payments: canonical revenue/fees/net/available figures, payout progress and
   history. Finances always belong to the signed-in user, even for admins; invited
   event revenue is not added to the user's personal payout balance.
@@ -53,10 +63,12 @@ in the device's local time. Organizer reads are private and not cached.
 | POST | `/api/mobile/auth/login` | `{email,password}` → `{ok,user,accessToken,refreshToken}` |
 | POST | `/api/mobile/auth/refresh` | `{refreshToken}` → `{ok,accessToken,refreshToken}` |
 | GET | `/api/mobile/me` | Bearer token → `{ok,user}` |
-| GET | `/api/mobile/organizer/events` | Bearer token → `{ok,events:[{id,title,status,startsAt,venue,city,totalSold,totalCapacity,checkedIn}]}` |
+| GET | `/api/mobile/organizer/events` | Bearer token → `{ok,events:[{id,title,status,startsAt,endsAt,venue,city,totalSold,totalCapacity,checkedIn,isFinished,canScan}]}` |
 | GET | `/api/mobile/organizer/orders` | `limit` 1–100 (default 25), `offset` ≥0, optional `status` → `{ok,orders,hasMore}` |
 | GET | `/api/mobile/organizer/payments` | `{ok,currency,summary,payouts,hasMore}`; latest 100 payouts |
 | POST | `/api/mobile/organizer/scan` | `{code,eventId}` → `{ok:true,status:new\|duplicate,ticket}` or `{ok:false,error}` |
+| GET | `/api/mobile/notifications` | Latest notifications, unread count, priority, and operation link |
+| GET | `/api/mobile/admin/overview` | Admin counts, currency-separated paid value, queues, and recent-order pagination |
 
 Organizer routes verify bearer tokens and re-read the user's current role. Event
 reads/orders use owner or invited-organizer membership (admins may view all).

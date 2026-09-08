@@ -33,13 +33,18 @@ class OrganizerEvent {
       city = json['city'] as String? ?? '',
       sold = number(json['totalSold']).toInt(),
       capacity = number(json['totalCapacity']).toInt(),
-      checkedIn = number(json['checkedIn']).toInt();
+      checkedIn = number(json['checkedIn']).toInt(),
+      _serverFinished = json['isFinished'] as bool?,
+      _serverCanScan = json['canScan'] as bool?;
   final String id, title, status, venue, city;
   final DateTime? startsAt, endsAt;
   final int sold, capacity, checkedIn;
-  bool get isFinished => endsAt != null && !endsAt!.isAfter(DateTime.now());
+  final bool? _serverFinished, _serverCanScan;
+  bool get isFinished =>
+      _serverFinished ?? (endsAt != null && !endsAt!.isAfter(DateTime.now()));
   bool get canScan =>
-      !isFinished && (status == 'published' || status == 'sold_out');
+      _serverCanScan ??
+      (!isFinished && (status == 'published' || status == 'sold_out'));
   String get displayStatus => isFinished ? 'completed' : status;
 }
 

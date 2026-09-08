@@ -140,11 +140,19 @@ void main() {
             matchesGoldenFile('../docs/orders-$role-detail.png'),
           );
         }
+        final detailScroll = find
+            .descendant(
+              of: find.byType(ListView).last,
+              matching: find.byType(Scrollable),
+            )
+            .first;
         await tester.scrollUntilVisible(
           find.text('Resend tickets'),
           400,
-          scrollable: find.byType(Scrollable).last,
+          scrollable: detailScroll,
         );
+        await tester.ensureVisible(find.text('Resend tickets'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Resend tickets'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Cancel'));
@@ -159,7 +167,7 @@ void main() {
         await tester.scrollUntilVisible(
           find.text('Order actions'),
           400,
-          scrollable: find.byType(Scrollable).last,
+          scrollable: detailScroll,
         );
         expect(
           find.text('Mark payment received'),
