@@ -31,12 +31,24 @@ class OrganizerEvent {
       endsAt = DateTime.tryParse('${json['endsAt']}'),
       venue = json['venue'] as String? ?? 'Venue to be confirmed',
       city = json['city'] as String? ?? '',
+      country = json['country'] as String? ?? 'Zimbabwe',
+      address = json['address'] as String? ?? '',
+      category = json['category'] as String? ?? 'Other',
+      description = json['description'] as String? ?? '',
       sold = number(json['totalSold']).toInt(),
       capacity = number(json['totalCapacity']).toInt(),
       checkedIn = number(json['checkedIn']).toInt(),
       _serverFinished = json['isFinished'] as bool?,
       _serverCanScan = json['canScan'] as bool?;
-  final String id, title, status, venue, city;
+  final String id,
+      title,
+      status,
+      venue,
+      city,
+      country,
+      address,
+      category,
+      description;
   final DateTime? startsAt, endsAt;
   final int sold, capacity, checkedIn;
   final bool? _serverFinished, _serverCanScan;

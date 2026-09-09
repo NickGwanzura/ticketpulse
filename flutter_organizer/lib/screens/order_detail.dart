@@ -81,7 +81,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       if (!mounted) return;
       setState(() {
         _failed = false;
-        _feedback = result['message']?.toString() ?? 'Order updated.';
+        _feedback = complete
+            ? '${result['message']?.toString() ?? 'Order updated.'} Audit record saved.'
+            : result['message']?.toString() ?? 'Order updated.';
       });
       await _refresh();
     } catch (error) {

@@ -65,5 +65,10 @@ export async function POST(request: Request, context: Context) {
     return respond({ ok: false, error: "Confirm received payment for an eligible order before continuing." }, 409)
   }
   const completed = await markOrderCompleteAction(id, identity.userId, identity.email)
-  return respond({ ok: completed.success, message: completed.message, error: completed.success ? undefined : completed.message }, completed.success ? 200 : 409)
+  return respond({
+    ok: completed.success,
+    message: completed.message,
+    error: completed.success ? undefined : completed.message,
+    ...(completed.success ? { audit: { recorded: true, source: "admin_manual_complete", ...completed.details } } : {}),
+  }, completed.success ? 200 : 409)
 }

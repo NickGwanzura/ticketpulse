@@ -7,6 +7,7 @@ import 'scanner.dart';
 import 'order_detail.dart';
 import 'overview_widgets.dart';
 import 'event_monitor.dart';
+import 'event_editor.dart';
 import '../design.dart';
 import 'package:intl/intl.dart';
 
@@ -89,6 +90,26 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace>
       ),
     );
     if (mounted) _reload();
+  }
+
+  Future<void> _editEvent([OrganizerEvent? event]) async {
+    final saved = await Navigator.of(context).push<OrganizerEvent>(
+      MaterialPageRoute(
+        builder: (_) => EventEditorScreen(api: widget.api, event: event),
+      ),
+    );
+    if (saved != null && mounted) {
+      _eventsDirty = true;
+      await _reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            event == null ? 'Event draft created.' : 'Event changes saved.',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _showNotifications() async {
@@ -334,6 +355,15 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace>
                         ),
                         const SizedBox(height: 24),
                       ],
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.icon(
+                          onPressed: () => _editEvent(),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Create event'),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
                       if (events.isEmpty)
                         const EmptyState(
                           icon: Icons.event_outlined,
@@ -346,6 +376,7 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace>
                           event: event,
                           onScan: () => _scan(event),
                           onMonitor: () => _monitor(event),
+                          onEdit: () => _editEvent(event),
                         ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
@@ -448,9 +479,10 @@ class EventCard extends StatelessWidget {
     required this.event,
     required this.onScan,
     required this.onMonitor,
+    required this.onEdit,
   });
   final OrganizerEvent event;
-  final VoidCallback onScan, onMonitor;
+  final VoidCallback onScan, onMonitor, onEdit;
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -566,6 +598,11 @@ class EventCard extends StatelessWidget {
                     onPressed: onMonitor,
                     icon: const Icon(Icons.monitor_heart_outlined, size: 16),
                     label: const Text('Monitor'),
+                  ),
+                  TextButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Edit'),
                   ),
                   if (event.canScan)
                     TextButton.icon(

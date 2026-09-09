@@ -67,7 +67,12 @@ class OrganizerApi extends ChangeNotifier {
 
   String get _scanQueueKey => 'ticketpulse.organizer.scan-queue.$baseUrl';
 
-  Future<Json> _send(String path, {Json? body, String? token}) async {
+  Future<Json> _send(
+    String path, {
+    Json? body,
+    String? token,
+    String method = 'GET',
+  }) async {
     try {
       final headers = <String, String>{
         'Accept': 'application/json',
@@ -75,11 +80,13 @@ class OrganizerApi extends ChangeNotifier {
         if (token != null) 'Authorization': 'Bearer $token',
       };
       final uri = baseUrl.resolve(path);
-      final response =
-          await (body == null
-                  ? _client.get(uri, headers: headers)
-                  : _client.post(uri, headers: headers, body: jsonEncode(body)))
-              .timeout(const Duration(seconds: 20));
+      final encoded = body == null ? null : jsonEncode(body);
+      final effectiveMethod = body != null && method == 'GET' ? 'POST' : method;
+      final response = await switch (effectiveMethod) {
+        'PATCH' => _client.patch(uri, headers: headers, body: encoded),
+        'POST' => _client.post(uri, headers: headers, body: encoded),
+        _ => _client.get(uri, headers: headers),
+      }.timeout(const Duration(seconds: 20));
       Json data;
       try {
         data = jsonDecode(response.body) as Json;
@@ -199,12 +206,12 @@ class OrganizerApi extends ChangeNotifier {
     }
   }
 
-  Future<Json> request(String path, {Json? body}) async {
+  Future<Json> request(String path, {Json? body, String method = 'GET'}) async {
     final generation = _generation;
     final token = _access;
     if (token == null) throw const ApiException('Please sign in again.', 401);
     try {
-      return await _send(path, body: body, token: token);
+      return await _send(path, body: body, token: token, method: method);
     } on ApiException catch (e) {
       if (e.status != 401 || generation != _generation) rethrow;
       // Concurrent 401s share one refresh. A late 401 uses the already renewed token.
@@ -220,7 +227,7 @@ class OrganizerApi extends ChangeNotifier {
         throw const ApiException('Please sign in again.', 401);
       }
       try {
-        return await _send(path, body: body, token: _access);
+        return await _send(path, body: body, token: _access, method: method);
       } on ApiException catch (retryError) {
         if (retryError.status == 401) await signOut();
         rethrow;
@@ -236,6 +243,72 @@ class OrganizerApi extends ChangeNotifier {
       );
     }
     return raw.whereType<Json>().map(OrganizerEvent.fromJson).toList();
+  }
+
+  Future<OrganizerEvent> createEvent({
+    required String title,
+    required String category,
+    required String venue,
+    required String city,
+    required String country,
+    String? address,
+    String? description,
+    required DateTime startsAt,
+    DateTime? endsAt,
+  }) async {
+    final data = await request(
+      '/api/mobile/organizer/events',
+      body: {
+        'title': title,
+        'category': category,
+        'venue': venue,
+        'city': city,
+        'country': country,
+        'address': address,
+        'description': description,
+        'startsAt': startsAt.toUtc().toIso8601String(),
+        'endsAt': endsAt?.toUtc().toIso8601String(),
+      },
+    );
+    final event = data['event'];
+    if (event is! Json) {
+      throw const ApiException('Event was created but could not be loaded.');
+    }
+    return OrganizerEvent.fromJson(event);
+  }
+
+  Future<OrganizerEvent> updateEvent(
+    String id, {
+    required String title,
+    required String category,
+    required String venue,
+    required String city,
+    required String country,
+    String? address,
+    String? description,
+    required DateTime startsAt,
+    DateTime? endsAt,
+  }) async {
+    final data = await request(
+      '/api/mobile/organizer/events/${Uri.encodeComponent(id)}',
+      method: 'PATCH',
+      body: {
+        'title': title,
+        'category': category,
+        'venue': venue,
+        'city': city,
+        'country': country,
+        'address': address,
+        'description': description,
+        'startsAt': startsAt.toUtc().toIso8601String(),
+        'endsAt': endsAt?.toUtc().toIso8601String(),
+      },
+    );
+    final event = data['event'];
+    if (event is! Json) {
+      throw const ApiException('Event was saved but could not be loaded.');
+    }
+    return OrganizerEvent.fromJson(event);
   }
 
   Future<OrderPage> orders({
