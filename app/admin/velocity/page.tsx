@@ -37,7 +37,7 @@ export default async function AdminVelocityPage({
       or(
         like(orders.guestEmail, `%${query}%`),
         like(orders.guestName, `%${query}%`),
-        like(orders.id, `%${query}%`),
+        like(sql`${orders.id}::text`, `%${query}%`),
       ),
     )
   }

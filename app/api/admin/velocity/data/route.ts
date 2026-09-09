@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       or(
         like(orders.guestEmail, `%${query}%`),
         like(orders.guestName, `%${query}%`),
-        like(orders.id, `%${query}%`),
+        like(sql`${orders.id}::text`, `%${query}%`),
       ),
     )
   }

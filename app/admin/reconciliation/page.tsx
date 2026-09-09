@@ -154,7 +154,7 @@ export default async function AdminReconciliationPage({
       or(
         like(orders.guestEmail, `%${query}%`),
         like(orders.guestName, `%${query}%`),
-        like(orders.id, `%${query}%`),
+        like(sql`${orders.id}::text`, `%${query}%`),
         like(events.title, `%${query}%`),
       ),
     )

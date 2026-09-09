@@ -140,7 +140,7 @@ export default async function AdminOrdersPage({
       or(
         like(orders.guestEmail, `%${query}%`),
         like(orders.guestName, `%${query}%`),
-        like(orders.id, `%${query}%`),
+        like(sql`${orders.id}::text`, `%${query}%`),
       ),
     )
   }

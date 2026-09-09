@@ -568,7 +568,7 @@ export default async function EventOverviewPage({
                   { label: "WhatsApp broadcast", href: `/organizer/events/${id}/whatsapp`, icon: MessageCircle },
                   { label: "Promo codes", href: `/organizer/events/${id}/promos`, icon: Tag },
                   { label: "Gate scanner", href: `/organizer/scan`, icon: ScanLine },
-                  { label: "Staff tickets", href: `/organizer/events/${id}/staff`, icon: QrCode },
+                  { label: "Complimentary tickets", href: `/organizer/events/${id}/staff`, icon: QrCode },
                   { label: "Photo gallery", href: `/organizer/events/${id}/gallery`, icon: ImageIcon },
                   { label: "Questions", href: `/organizer/events/${id}/questions`, icon: HelpCircle },
                   { label: "Collect reviews", href: `/reviews/new?event=${encodeURIComponent(event.slug ?? id)}`, icon: Star },

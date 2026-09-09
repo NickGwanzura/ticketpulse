@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events, users, tickets, vendors } from "@/db/schema"
-import { or, ilike, and, eq, desc } from "drizzle-orm"
+import { or, ilike, and, eq, desc, sql } from "drizzle-orm"
 import { rateLimit } from "@/lib/rate-limit"
 
 const searchLimiter = rateLimit({ windowMs: 60_000, max: 30 })
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
         or(
           ilike(orders.guestEmail, `%${q}%`),
           ilike(orders.guestName, `%${q}%`),
-          ilike(orders.id, `%${q}%`)
+          ilike(sql`${orders.id}::text`, `%${q}%`)
         )
       )
       .orderBy(desc(orders.createdAt))

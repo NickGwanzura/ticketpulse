@@ -1,18 +1,18 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
-import { eq, and, desc, sql } from "drizzle-orm"
+import { eq, and, desc, or, sql } from "drizzle-orm"
 import Link from "next/link"
 import { ArrowLeft, Users, QrCode, Shield } from "lucide-react"
 
 import { db } from "@/db"
-import { events, tickets } from "@/db/schema"
+import { events, tickets, orders } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import StaffTicketList from "./StaffTicketList"
 import GenerateStaffTicketForm from "./GenerateStaffTicketForm"
 
-export const metadata = { title: "Staff tickets" }
+export const metadata = { title: "Complimentary tickets" }
 
 type RouteParams = { id: string }
 
@@ -49,10 +49,24 @@ export default async function StaffTicketsPage({ params }: { params: Promise<Rou
     .where(and(eq(tickets.eventId, id), eq(tickets.isStaffTicket, true)))
     .orderBy(desc(tickets.createdAt))
 
-  const total = staffTickets.length
-  const activeCount = staffTickets.filter((t) => t.status === "available").length
-  const usedCount = staffTickets.filter((t) => t.status === "used" || t.scannedAt).length
-  const cancelledCount = staffTickets.filter((t) => t.status === "cancelled").length
+  const guestTickets = await db.select({
+    id: tickets.id,
+    name: sql<string>`coalesce(${tickets.holderName}, ${orders.guestName})`,
+    email: sql<string>`coalesce(${tickets.holderEmail}, ${orders.guestEmail})`,
+    status: tickets.status,
+    scannedAt: tickets.scannedAt,
+    orderId: orders.id,
+  }).from(tickets).innerJoin(orders, eq(tickets.orderId, orders.id))
+    .where(and(eq(tickets.eventId, id), eq(orders.eventId, id),
+      or(eq(tickets.isStaffTicket, false), sql`${tickets.isStaffTicket} is null`),
+      eq(orders.paymentMethod, "complimentary")))
+    .orderBy(desc(tickets.createdAt))
+
+  const allTickets = [...staffTickets, ...guestTickets]
+  const total = allTickets.length
+  const activeCount = allTickets.filter((t) => t.status === "available" && !t.scannedAt).length
+  const usedCount = allTickets.filter((t) => t.status === "used" || t.scannedAt).length
+  const cancelledCount = allTickets.filter((t) => t.status === "cancelled").length
 
   const roleLabels: Record<string, string> = {
     security: "Security",
@@ -68,8 +82,8 @@ export default async function StaffTicketsPage({ params }: { params: Promise<Rou
     <div className="tp-fade-up">
       <PageHeader
         eyebrow="Organizer"
-        title={`Staff tickets: ${event.title}`}
-        subtitle="Generate free staff tickets for event workers. These are separate from paid attendee tickets."
+        title={`Complimentary tickets: ${event.title}`}
+        subtitle="View free guest tickets and manage staff passes for this event."
         actions={
           <Link
             href={`/organizer/events/${id}/edit`}
@@ -85,7 +99,7 @@ export default async function StaffTicketsPage({ params }: { params: Promise<Rou
         {/* Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Total staff tickets", value: total.toString(), icon: QrCode },
+            { label: "Complimentary tickets", value: total.toString(), icon: QrCode },
             { label: "Active", value: activeCount.toString(), icon: Users },
             { label: "Used", value: usedCount.toString(), icon: Shield },
             { label: "Cancelled", value: cancelledCount.toString(), icon: Shield },
@@ -100,14 +114,37 @@ export default async function StaffTicketsPage({ params }: { params: Promise<Rou
           ))}
         </div>
 
-        {/* Generate form */}
+        <section className="rounded-2xl border border-line bg-paper overflow-hidden">
+          <div className="px-5 py-4 border-b border-line">
+            <h2 className="text-[16px] font-semibold text-ink">Guest tickets ({guestTickets.length})</h2>
+            <p className="text-[13px] text-ink-3 mt-1">Complimentary admission · no charge. Each row is one ticket.</p>
+          </div>
+          {guestTickets.length === 0 ? (
+            <EmptyState icon={Users} title="No complimentary guest tickets yet" body="Issued complimentary guest tickets will appear here." variant="inline" />
+          ) : (
+            <ul className="divide-y divide-line">
+              {guestTickets.map((ticket) => (
+                <li key={ticket.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-ink">{ticket.name ?? "Guest"}</p>
+                    <p className="text-[13px] text-ink-3 break-all">{ticket.email ?? "No email"}</p>
+                    <p className="text-[11px] text-ink-3 mt-1">Ticket #{ticket.id.slice(0, 8)} · Order #{ticket.orderId.slice(0, 8)}</p>
+                  </div>
+                  <span className="text-[12px] font-medium text-ink-2">{ticket.status === "cancelled" ? "Cancelled" : ticket.scannedAt || ticket.status === "used" ? "Used" : ticket.status === "available" ? "Active" : ticket.status ?? "Unknown"} · Free</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Generate staff passes */}
         <GenerateStaffTicketForm eventId={id} />
 
         {/* Ticket list */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden">
           <div className="px-5 py-4 border-b border-line">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">
-              All staff tickets ({total})
+              Staff passes ({staffTickets.length})
             </h2>
           </div>
 

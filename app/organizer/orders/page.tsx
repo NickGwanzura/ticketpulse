@@ -164,7 +164,7 @@ export default async function OrganizerOrdersPage({
       or(
         like(orders.guestEmail, `%${escaped}%`),
         like(orders.guestName, `%${escaped}%`),
-        like(orders.id, `%${escaped}%`),
+        like(sql`${orders.id}::text`, `%${escaped}%`),
       ),
     )
   }
