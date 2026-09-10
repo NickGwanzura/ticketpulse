@@ -50,34 +50,74 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _act(String action, Json order) async {
     if (_busy) return;
     final complete = action == 'complete';
-    final accepted = await showDialog<bool>(
+    final paymentRefController = TextEditingController();
+    final noteController = TextEditingController();
+    final input = await showDialog<Json>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(complete ? 'Confirm payment received' : 'Resend tickets?'),
-        content: Text(
-          complete
-              ? 'Confirm that ${money(order['totalAmount'], order['currency']?.toString() ?? 'USD')} has been received for this order. This records payment, marks the order completed, and logs your account in the audit trail. Tickets can be resent afterwards.'
-              : 'Send the ticket email to ${order['guestEmail'] ?? order['buyerEmail'] ?? 'the buyer on file'}?',
-        ),
+        content: complete
+            ? SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Confirm that ${money(order['totalAmount'], order['currency']?.toString() ?? 'USD')} has been received. This completes the order and records your action in the audit trail.',
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: paymentRefController,
+                      decoration: const InputDecoration(
+                        labelText: 'Payment reference (optional)',
+                        hintText: 'e.g. EcoCash receipt number',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 3,
+                      maxLength: 1000,
+                      decoration: const InputDecoration(
+                        labelText: 'Internal note (optional)',
+                        hintText: 'Add context for support staff',
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Text(
+                'Send the ticket email to ${order['guestEmail'] ?? order['buyerEmail'] ?? 'the buyer on file'}?',
+              ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, {
+              'paymentRef': paymentRefController.text.trim(),
+              'note': noteController.text.trim(),
+            }),
             child: Text(complete ? 'Payment received' : 'Send tickets'),
           ),
         ],
       ),
     );
-    if (accepted != true || !mounted) return;
+    paymentRefController.dispose();
+    noteController.dispose();
+    if (input == null || !mounted) return;
     setState(() {
       _busy = true;
       _feedback = null;
     });
     try {
-      final result = await widget.api.orderAction(widget.id, action);
+      final result = await widget.api.orderAction(
+        widget.id,
+        action,
+        paymentRef: input['paymentRef']?.toString(),
+        note: input['note']?.toString(),
+      );
       if (!mounted) return;
       setState(() {
         _failed = false;
@@ -155,6 +195,156 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _openSupportCase() async {
+    final subject = TextEditingController();
+    final note = TextEditingController();
+    var priority = 'normal';
+    final input = await showDialog<Json>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Open support case'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: subject,
+                  maxLength: 160,
+                  decoration: const InputDecoration(
+                    labelText: 'Subject',
+                    hintText: 'e.g. Buyer did not receive tickets',
+                  ),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: priority,
+                  decoration: const InputDecoration(labelText: 'Priority'),
+                  items: const [
+                    DropdownMenuItem(value: 'low', child: Text('Low')),
+                    DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                    DropdownMenuItem(value: 'high', child: Text('High')),
+                    DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => priority = value ?? 'normal'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: note,
+                  maxLines: 3,
+                  maxLength: 1000,
+                  decoration: const InputDecoration(
+                    labelText: 'Internal note (optional)',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, {
+                'subject': subject.text.trim(),
+                'priority': priority,
+                'note': note.text.trim(),
+              }),
+              child: const Text('Open case'),
+            ),
+          ],
+        ),
+      ),
+    );
+    subject.dispose();
+    note.dispose();
+    if (input == null ||
+        input['subject']?.toString().isEmpty != false ||
+        !mounted) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await widget.api.supportCaseAction(
+        widget.id,
+        'support_open',
+        subject: input['subject']?.toString(),
+        priority: input['priority']?.toString(),
+        note: input['note']?.toString(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Support case opened.')));
+      }
+      await _refresh();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$error')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resolveSupportCase() async {
+    final note = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Resolve support case'),
+        content: TextField(
+          controller: note,
+          maxLines: 3,
+          maxLength: 1000,
+          decoration: const InputDecoration(
+            labelText: 'Resolution note (optional)',
+            alignLabelWithHint: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Resolve case'),
+          ),
+        ],
+      ),
+    );
+    final resolutionNote = note.text.trim();
+    note.dispose();
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.api.supportCaseAction(
+        widget.id,
+        'support_resolve',
+        note: resolutionNote,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Support case resolved.')));
+      }
+      await _refresh();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$error')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -199,6 +389,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   .whereType<Json>()
                   .toList();
               final actions = data['actions'] as Json? ?? {};
+              final supportCase = data['supportCase'] is Json
+                  ? data['supportCase'] as Json
+                  : null;
               final currency = order['currency']?.toString() ?? 'USD';
               final buyerPhone =
                   order['guestPhone']?.toString() ??
@@ -411,6 +604,41 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             ].join(' · '),
                           ),
                         ),
+                    ]),
+                    _section(context, 'Support case', [
+                      if (supportCase == null ||
+                          supportCase['status'] == 'resolved') ...[
+                        if (supportCase?['status'] == 'resolved')
+                          Text(
+                            'Resolved ${dateLabel(supportCase?['resolvedAt'])}',
+                          ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _busy ? null : _openSupportCase,
+                          icon: const Icon(Icons.support_agent_outlined),
+                          label: const Text('Open support case'),
+                        ),
+                      ] else ...[
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.support_agent_outlined),
+                          title: Text(
+                            supportCase['subject']?.toString() ?? 'Open case',
+                          ),
+                          subtitle: Text(
+                            '${statusLabel(supportCase['priority']?.toString() ?? 'normal')} priority · assigned to ${supportCase['assignedTo'] ?? 'support'}',
+                          ),
+                        ),
+                        if (supportCase['note'] != null &&
+                            supportCase['note'].toString().isNotEmpty)
+                          Text(supportCase['note'].toString()),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _busy ? null : _resolveSupportCase,
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Resolve case'),
+                        ),
+                      ],
                     ]),
                     _section(context, 'Order actions', [
                       if (_feedback != null)

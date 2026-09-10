@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { auth } from "@/auth"
 import { generateOrdersReconPdfBuffer } from "@/lib/pdf/orders-report"
-import { getOrdersReconReport } from "@/lib/orders-recon-report"
+import { getOrdersReconReport, ordersReconReportToCsv } from "@/lib/orders-recon-report"
 
 export async function GET(request: Request) {
   const session = await auth()
@@ -19,6 +19,15 @@ export async function GET(request: Request) {
     status: params.get("status") ?? "all",
   })
   const stamp = report.generatedAt.toISOString().slice(0, 10)
+  if (params.get("format") === "csv") {
+    return new NextResponse(ordersReconReportToCsv(report), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="orders-reconciliation-${stamp}.csv"`,
+        "Cache-Control": "no-store",
+      },
+    })
+  }
   const pdf = await generateOrdersReconPdfBuffer(report)
 
   return new NextResponse(new Uint8Array(pdf), {

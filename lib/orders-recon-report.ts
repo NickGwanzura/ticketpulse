@@ -192,3 +192,14 @@ export async function getOrdersReconReport(input: OrdersReconReportInput): Promi
     rows,
   }
 }
+
+export function ordersReconReportToCsv(report: OrdersReconReport): string {
+  const headers = ["order_id", "event", "customer_name", "customer_email", "customer_phone", "status", "payment_method", "payment_reference", "ticket_count", "amount", "currency", "created_at", "paid_at", "delivery_status"]
+  const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`
+  const rows = report.rows.map(row => [
+    row.id, row.eventTitle, row.customerName, row.customerEmail, row.customerPhone, row.status,
+    row.paymentMethod, row.paymentRef, row.ticketCount, row.amount.toFixed(2), row.currency,
+    row.createdAt, row.paidAt, row.deliveryStatus,
+  ].map(escape).join(","))
+  return [headers.join(","), ...rows].join("\n") + "\n"
+}

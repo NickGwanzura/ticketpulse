@@ -245,6 +245,10 @@ class OrganizerApi extends ChangeNotifier {
     return raw.whereType<Json>().map(OrganizerEvent.fromJson).toList();
   }
 
+  Future<Json> eventMonitor(String id) => request(
+    '/api/mobile/organizer/events/${Uri.encodeComponent(id)}/monitor',
+  );
+
   Future<OrganizerEvent> createEvent({
     required String title,
     required String category,
@@ -323,9 +327,35 @@ class OrganizerApi extends ChangeNotifier {
   Future<Json> payments() => request('/api/mobile/organizer/payments');
   Future<Json> orderDetail(String id) =>
       request('/api/mobile/organizer/orders/${Uri.encodeComponent(id)}');
-  Future<Json> orderAction(String id, String action) => request(
+  Future<Json> orderAction(
+    String id,
+    String action, {
+    String? paymentRef,
+    String? note,
+  }) => request(
     '/api/mobile/organizer/orders/${Uri.encodeComponent(id)}',
-    body: {'action': action, if (action == 'complete') 'confirmPayment': true},
+    body: {
+      'action': action,
+      if (action == 'complete') 'confirmPayment': true,
+      if (paymentRef != null && paymentRef.trim().isNotEmpty)
+        'paymentRef': paymentRef.trim(),
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    },
+  );
+  Future<Json> supportCaseAction(
+    String id,
+    String action, {
+    String? subject,
+    String? priority,
+    String? note,
+  }) => request(
+    '/api/mobile/organizer/orders/${Uri.encodeComponent(id)}',
+    body: {
+      'action': action,
+      ...?subject == null ? null : {'subject': subject},
+      ...?priority == null ? null : {'priority': priority},
+      ...?note == null ? null : {'note': note},
+    },
   );
   Future<Json> adminOverview({
     int recentOffset = 0,

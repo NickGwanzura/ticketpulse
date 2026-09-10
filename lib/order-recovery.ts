@@ -77,6 +77,7 @@ function buildManualCompletionMetadata(
   paymentRef: string,
   completedAt: string,
   completedBy: string,
+  note?: string,
 ): ManualCompletionMetadata {
   const metadata = asMetadata(current)
   const currentVelocity = metadata.velocity
@@ -104,6 +105,7 @@ function buildManualCompletionMetadata(
       completedAt,
       completedBy,
       source: "admin_manual_complete",
+      ...(note ? { note } : {}),
     },
   }
 }
@@ -125,6 +127,7 @@ export async function markOrderCompleteAction(
   orderId: string,
   userId: string,
   userEmail: string,
+  options: { paymentRef?: string; note?: string } = {},
 ): Promise<RecoveryResult> {
   const [order] = await db
     .select()
@@ -163,7 +166,7 @@ export async function markOrderCompleteAction(
       wasPaid = current.status === "paid"
       const now = new Date()
       completedAt = now.toISOString()
-      manualPaymentRef = current.paymentRef ?? `manual-${orderId.slice(0, 8)}`
+      manualPaymentRef = options.paymentRef?.trim() || current.paymentRef || `manual-${orderId.slice(0, 8)}`
       velocityTraces = getVelocityTraces(current.metadata)
       const currentMetadata = asMetadata(current.metadata)
       if (current.status === "expired") {
@@ -175,6 +178,7 @@ export async function markOrderCompleteAction(
         manualPaymentRef,
         completedAt,
         userEmail,
+        options.note?.trim() || undefined,
       )
       await tx
         .update(orders)

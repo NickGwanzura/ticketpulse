@@ -23,6 +23,7 @@ class EventMonitorScreen extends StatefulWidget {
 class _EventMonitorScreenState extends State<EventMonitorScreen>
     with WidgetsBindingObserver {
   late OrganizerEvent _event = widget.initialEvent;
+  Json _monitorData = const {};
   Timer? _timer;
   bool _refreshing = false;
   String? _error;
@@ -52,14 +53,15 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
     if (_refreshing) return;
     setState(() => _refreshing = true);
     try {
-      final events = await widget.api.events();
-      final event = events.where((item) => item.id == _event.id).firstOrNull;
-      if (event == null) {
+      final data = await widget.api.eventMonitor(_event.id);
+      final eventData = data['event'];
+      if (eventData is! Json) {
         throw const ApiException('This event is no longer available.');
       }
       if (mounted) {
         setState(() {
-          _event = event;
+          _event = OrganizerEvent.fromJson(eventData);
+          _monitorData = data;
           _updatedAt = DateTime.now();
           _error = null;
         });
@@ -82,6 +84,18 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
         : _event.checkedIn / _event.sold;
     final lowInventory =
         _event.capacity > 0 && remaining <= (_event.capacity * .1).ceil();
+    final orderSummary = _monitorData['orderSummary'] is Json
+        ? _monitorData['orderSummary'] as Json
+        : const <String, dynamic>{};
+    final scanSummary = _monitorData['scanSummary'] is Json
+        ? _monitorData['scanSummary'] as Json
+        : const <String, dynamic>{};
+    final alerts =
+        (_monitorData['alerts'] as List?)?.whereType<String>().toList() ??
+        const <String>[];
+    final recentScans =
+        (_monitorData['recentScans'] as List?)?.whereType<Json>().toList() ??
+        const <Json>[];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Event monitor'),
@@ -157,6 +171,36 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
                 ),
               ),
             ],
+            if (alerts.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Card(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.priority_high_rounded,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Needs attention'),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      for (final alert in alerts)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text('• $alert'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -189,9 +233,67 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
                       value: '${(checkInRatio * 100).clamp(0, 100).round()}%',
                       label: 'Admission rate',
                     ),
+                    _MetricCard(
+                      width: width,
+                      icon: Icons.payments_outlined,
+                      value:
+                          '${number(orderSummary['paid']).toInt() + number(orderSummary['completed']).toInt()}',
+                      label: 'Paid orders',
+                    ),
+                    _MetricCard(
+                      width: width,
+                      icon: Icons.error_outline,
+                      value:
+                          '${number(orderSummary['expired']).toInt() + number(orderSummary['cancelled']).toInt()}',
+                      label: 'Failed payments',
+                    ),
+                    _MetricCard(
+                      width: width,
+                      icon: Icons.qr_code_2_outlined,
+                      value: '${number(scanSummary['valid']).toInt()}',
+                      label: 'Valid scans',
+                    ),
                   ],
                 );
               },
+            ),
+            const SizedBox(height: 22),
+            Text(
+              'Recent scanner activity',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: recentScans.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(18),
+                      child: Text('No scans recorded yet.'),
+                    )
+                  : Column(
+                      children: [
+                        for (final scan in recentScans.take(8))
+                          ListTile(
+                            dense: true,
+                            leading: Icon(
+                              scan['outcome'] == 'valid'
+                                  ? Icons.check_circle_outline
+                                  : Icons.info_outline,
+                            ),
+                            title: Text(
+                              statusLabel(
+                                scan['outcome']?.toString() ?? 'scan',
+                              ),
+                            ),
+                            subtitle: Text(
+                              [
+                                if (scan['reason'] != null)
+                                  scan['reason'].toString(),
+                                dateLabel(scan['createdAt']),
+                              ].join(' · '),
+                            ),
+                          ),
+                      ],
+                    ),
             ),
             const SizedBox(height: 22),
             Text(

@@ -11,12 +11,13 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
   const recentLimit = Math.min(Math.max(Number.parseInt(params.get("recentLimit") ?? "25", 10) || 25, 1), 50)
   const recentOffset = Math.max(Number.parseInt(params.get("recentOffset") ?? "0", 10) || 0, 0)
-  const [eventCounts, liveEvents, orderStats, paidValues, payoutRows, organizerRows, recentOrders] = await Promise.all([
+  const [eventCounts, liveEvents, supportCases, orderStats, paidValues, payoutRows, organizerRows, recentOrders] = await Promise.all([
     db.select({ status: events.status, count: sql<number>`count(*)::int` }).from(events).groupBy(events.status),
     db.select({ count: sql<number>`count(*)::int` }).from(events).where(and(
       inArray(events.status, ["published", "sold_out"]),
       or(isNull(events.endsAt), gt(events.endsAt, new Date())),
     )),
+    db.select({ count: sql<number>`count(*)::int` }).from(orders).where(sql`${orders.metadata}->'supportCase'->>'status' = 'open'`),
     db.select({ status: orders.status, count: sql<number>`count(*)::int`, total: sql<string>`coalesce(sum(${orders.totalAmount}), 0)` }).from(orders).groupBy(orders.status),
     db.select({ currency: orders.currency, total: sql<string>`coalesce(sum(${orders.totalAmount}), 0)` })
       .from(orders)
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true,
     eventSummary: Object.fromEntries(eventCounts.map(row => [row.status ?? "unknown", Number(row.count)])),
     liveEventCount: Number(liveEvents[0]?.count ?? 0),
+    openSupportCaseCount: Number(supportCases[0]?.count ?? 0),
     orderSummary: Object.fromEntries(orderStats.map(row => [row.status ?? "unknown", { count: Number(row.count), total: Number(row.total) }])),
     paidOrderValueByCurrency: paidValues.map(row => ({ currency: row.currency ?? "USD", total: Number(row.total) })),
     pendingPayouts: payoutRows.map(row => ({ ...row, amount: Number(row.amount), currency: row.currency ?? "USD" })),

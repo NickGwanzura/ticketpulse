@@ -1110,6 +1110,14 @@ class _AdminScreenState extends State<AdminScreen> {
                         icon: Icons.person_add_alt_1_outlined,
                       ),
                     ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _AdminStat(
+                        value: '${data['openSupportCaseCount'] ?? 0}',
+                        label: 'Open support cases',
+                        icon: Icons.support_agent_outlined,
+                      ),
+                    ),
                   ],
                 );
               },
@@ -1150,6 +1158,36 @@ class _AdminScreenState extends State<AdminScreen> {
               hasMore: _recentHasMore,
               loadingMore: _loadingMore,
               onLoadMore: _loadMoreRecent,
+            ),
+            _AdminSection(
+              title: 'Reports & exports',
+              child: Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.file_download_outlined),
+                      title: const Text('Orders and reconciliation'),
+                      subtitle: const Text(
+                        'Download sales and payment reports as PDF or CSV.',
+                      ),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () =>
+                          openWebsite(context, widget.api, '/admin/orders'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.history_outlined),
+                      title: const Text('Audit log'),
+                      subtitle: const Text(
+                        'Review payment, payout, order, and support activity.',
+                      ),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () =>
+                          openWebsite(context, widget.api, '/admin/audit-log'),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(

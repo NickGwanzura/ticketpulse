@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm"
+import { and, desc, eq, ilike, or, sql, exists } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
-import { events, orders, users } from "@/db/schema"
+import { events, orders, tickets, users } from "@/db/schema"
 import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
 
 const Query = z.object({
@@ -29,7 +29,8 @@ export async function GET(request: Request) {
   }).from(orders).innerJoin(events, eq(events.id, orders.eventId))
     .leftJoin(users, eq(users.id, orders.userId))
     .where(and(organizerEventScope(identity.userId, identity.role), status ? eq(orders.status, status) : undefined,
-      pattern ? or(ilike(sql`${orders.id}::text`, pattern), ilike(orders.guestName, pattern), ilike(orders.guestEmail, pattern), ilike(users.name, pattern), ilike(users.email, pattern), ilike(events.title, pattern)) : undefined))
+      pattern ? or(ilike(sql`${orders.id}::text`, pattern), ilike(orders.guestName, pattern), ilike(orders.guestEmail, pattern), ilike(orders.guestPhone, pattern), ilike(orders.paymentRef, pattern), ilike(users.name, pattern), ilike(users.email, pattern), ilike(events.title, pattern),
+        exists(db.select({ id: tickets.id }).from(tickets).where(and(eq(tickets.orderId, orders.id), ilike(tickets.qrCode, pattern))))) : undefined))
     .orderBy(desc(orders.createdAt), desc(orders.id)).limit(limit + 1).offset(offset)
   return NextResponse.json({
     ok: true, hasMore: rows.length > limit,
