@@ -20,7 +20,7 @@ async function access(request: Request, context: Context) {
   const [order] = await db.select({
     id: orders.id, status: orders.status, totalAmount: orders.totalAmount, currency: orders.currency,
     guestName: orders.guestName, guestEmail: orders.guestEmail, guestPhone: orders.guestPhone,
-    buyerName: users.name, buyerEmail: users.email,
+    buyerName: users.name, buyerEmail: users.email, buyerPhone: users.phone,
     createdAt: orders.createdAt, paidAt: orders.paidAt, completedAt: orders.completedAt,
     paymentMethod: orders.paymentMethod, paymentRef: orders.paymentRef,
     eventId: events.id, eventTitle: events.title, eventStartsAt: events.startsAt, eventVenue: events.venue,

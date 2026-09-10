@@ -129,6 +129,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _whatsapp(String phone, String buyerName) async {
+    final normalized = phone
+        .replaceAll(RegExp(r'[^0-9+]'), '')
+        .replaceFirst('+', '');
+    if (normalized.isEmpty) return;
+    final message = Uri.encodeComponent(
+      'Hi $buyerName, this is TicketPulse support regarding your order ${widget.id}.',
+    );
+    final appUri = Uri.parse('whatsapp://send?phone=$normalized&text=$message');
+    final webUri = Uri.parse('https://wa.me/$normalized?text=$message');
+    try {
+      if (await launchUrl(appUri, mode: LaunchMode.externalApplication)) return;
+      if (!await launchUrl(webUri, mode: LaunchMode.externalApplication)) {
+        throw Exception();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open WhatsApp. Check the buyer number.'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -174,6 +200,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   .toList();
               final actions = data['actions'] as Json? ?? {};
               final currency = order['currency']?.toString() ?? 'USD';
+              final buyerPhone =
+                  order['guestPhone']?.toString() ??
+                  order['buyerPhone']?.toString();
+              final buyerName = order['buyerName']?.toString() ?? 'there';
               final colors = Theme.of(context).colorScheme;
               return RefreshIndicator(
                 onRefresh: _refresh,
@@ -230,8 +260,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           padding: const EdgeInsets.only(top: 6),
                           child: SelectableText('${order['buyerEmail']}'),
                         ),
-                      if (order['guestPhone'] != null)
-                        SelectableText('${order['guestPhone']}'),
+                      if (buyerPhone != null && buyerPhone.isNotEmpty)
+                        SelectableText(buyerPhone),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
@@ -266,16 +296,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               icon: const Icon(Icons.email_outlined, size: 18),
                               label: const Text('Email buyer'),
                             ),
-                          if (order['guestPhone'] != null)
+                          if (buyerPhone != null && buyerPhone.isNotEmpty)
                             OutlinedButton.icon(
                               onPressed: () => _contact(
-                                Uri(
-                                  scheme: 'tel',
-                                  path: order['guestPhone'].toString(),
-                                ),
+                                Uri(scheme: 'tel', path: buyerPhone),
                               ),
                               icon: const Icon(Icons.call_outlined, size: 18),
                               label: const Text('Call buyer'),
+                            ),
+                          if (buyerPhone != null && buyerPhone.isNotEmpty)
+                            OutlinedButton.icon(
+                              onPressed: () => _whatsapp(buyerPhone, buyerName),
+                              icon: const Icon(Icons.chat_outlined, size: 18),
+                              label: const Text('WhatsApp buyer'),
                             ),
                         ],
                       ),
