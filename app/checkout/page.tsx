@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import CheckoutPaymentNotice from "@/app/checkout/CheckoutPaymentNotice"
 import { useCart } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"
 import {
@@ -487,6 +488,7 @@ export default function CheckoutPage() {
           {/* Payment method — hidden for free orders */}
           {!isFree && <div className="rounded-2xl border border-line bg-paper p-5 md:p-6">
             <h2 className="text-[15px] font-semibold tracking-tight text-ink mb-4">Payment method</h2>
+            <CheckoutPaymentNotice />
             <div className="space-y-2">
               {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
                 const checked = form.payment === value

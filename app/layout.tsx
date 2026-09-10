@@ -71,6 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const h = await headers()
   const path = h.get("x-pathname") ?? ""
   const bare = path.startsWith("/coming-soon")
+  const showGlobalPaymentNotice = !bare && !path.startsWith("/checkout")
 
   let featured: NavbarFeaturedItem[] = []
   if (!bare) {
@@ -140,7 +141,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           {!bare && <TopBar />}
           {!bare && <Navbar featured={featured} />}
-          {!bare && <PaymentStatusNotice />}
+          {showGlobalPaymentNotice && <PaymentStatusNotice />}
           <div className={bare ? "" : "min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]"}>{children}</div>
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}
