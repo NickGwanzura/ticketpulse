@@ -75,7 +75,7 @@ export type PaymentsApiResponse = {
 }
 
 const PAGE_SIZE = 25
-const settledOrderStatus = sql`${orders.status} IN ('paid', 'completed')`
+const settledOrderStatus = sql`${orders.status} IN ('paid', 'completed') AND ${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`
 const failedOrderStatus = sql`${orders.status} IN ('cancelled', 'refunded')`
 const pendingOrderStatus = sql`${orders.status} IN ('pending', 'awaiting_verification')`
 const settledLedgerStatus = sql`${paymentLedger.localStatus} IN ('paid', 'completed', 'success', 'paid_success')`

@@ -6,6 +6,7 @@ import { lockOrderMutation, type DbTx } from "@/lib/velocity/idempotency"
 
 type ExpirableOrderMetadata = Record<string, unknown> & {
   inventoryReserved?: boolean
+  velocity?: object
   promo?: { id?: string }
   archive?: Record<string, unknown> & {
     inventoryReleased?: boolean
@@ -163,6 +164,15 @@ export async function expireOrderAndReleaseInventory(orderId: string, reason = "
         .set({
           metadata: {
             ...meta,
+            ...(reason === "payment_timeout" && meta.velocity ? {
+              velocity: {
+                ...meta.velocity,
+                failedAt: archivedAt,
+                failureReason: "Payment was not confirmed within 24 hours; automatic polling stopped. Contact support if money was deducted.",
+                manualReviewRequired: false,
+                manualReviewReason: null,
+              },
+            } : {}),
             archive: {
               ...(meta.archive ?? {}),
               status: "archived",

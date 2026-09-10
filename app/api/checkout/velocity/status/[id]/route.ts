@@ -8,6 +8,7 @@ import { log } from "@/lib/logger"
 import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
 import { alertFinalizeNonPaid, alertPollUnknownStatus } from "@/lib/payment-alerts"
 import { rateLimit } from "@/lib/rate-limit"
+import { paymentWindowExpired } from "@/lib/velocity/poll-policy"
 import {
   reconcileVelocityOrder,
   reconcileVelocityOrderBeforeExpiry,
@@ -43,8 +44,14 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   if (PAID_STATUSES.has(order.status ?? "")) {
     return NextResponse.json({ orderId: id, status: order.status, paid: true, sentTo: order.guestEmail })
   }
-  if (["cancelled", "refunded"].includes(order.status ?? "")) {
+  if (["cancelled", "refunded", "expired"].includes(order.status ?? "")) {
     return NextResponse.json({ orderId: id, status: order.status, paid: false })
+  }
+
+  if (paymentWindowExpired(order.createdAt)) {
+    await expireOrderAndReleaseInventory(id, "payment_timeout")
+    const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, id)).limit(1)
+    return NextResponse.json({ orderId: id, status: current?.status, paid: PAID_STATUSES.has(current?.status ?? "") })
   }
 
   const metadata = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
@@ -122,8 +129,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   }
 
   const providerUnavailable = result.state === "NETWORK_ERROR" || result.state === "PROVIDER_ERROR"
-  const needsReview = ["UNKNOWN", "FINALIZE_ERROR", "FINALIZE_PENDING", "AMOUNT_MISMATCH", "CONFLICT"].includes(result.state)
-  const currentStatus = order.status === "expired" ? "expired" : "pending"
+  const needsReview = ["UNPOLLABLE", "UNKNOWN", "FINALIZE_ERROR", "FINALIZE_PENDING", "AMOUNT_MISMATCH", "CONFLICT"].includes(result.state)
+  const currentStatus = result.orderStatus === "expired" ? "expired" : "pending"
 
   return NextResponse.json({
     orderId: id,

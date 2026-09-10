@@ -184,8 +184,8 @@ export default async function EventsPage({
 
   if (isHeroView) {
     const [paidOrdersResult, ticketsSoldResult, organizerCountResult] = await Promise.all([
-      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(orders).where(eq(orders.status, "paid")),
-      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(tickets).where(and(eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))),
+      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(orders).where(and(eq(orders.status, "paid"), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)),
+      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(tickets).leftJoin(orders, eq(orders.id, tickets.orderId)).where(and(eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)),
       db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(users).where(eq(users.role, "organizer")),
     ])
     heroStats.paidOrders = Number(paidOrdersResult[0]?.count ?? 0)

@@ -6,6 +6,8 @@ import { events, orders } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
+import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
+import { PAYMENT_WINDOW_MS } from "@/lib/velocity/poll-policy"
 import { alertRecheckHighErrorRate, alertVelocityManualReviewRequired } from "@/lib/payment-alerts"
 import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
 import { sendAdminAlert } from "@/lib/whatsapp"
@@ -21,6 +23,16 @@ export async function POST(request: Request) {
 
   const startedAt = Date.now()
   const cutoff = new Date(startedAt - RECHECK_COOLDOWN_MS)
+  // Sweep stopped and missing-reference orders too: they never enter the poll batch.
+  const staleOrders = await db.select({ id: orders.id }).from(orders).where(and(
+    inArray(orders.status, ["pending", "awaiting_verification"]),
+    sql`${orders.metadata}->>'velocity' IS NOT NULL`,
+    lt(orders.createdAt, new Date(startedAt - PAYMENT_WINDOW_MS)),
+  )).limit(MAX_ORDERS_PER_RUN)
+  let expiredCount = 0
+  for (const order of staleOrders) {
+    if (await expireOrderAndReleaseInventory(order.id, "payment_timeout")) expiredCount++
+  }
   const targetOrders = await db
     .select({
       id: orders.id,
@@ -155,6 +167,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     checked: targetOrders.length,
+    expired: expiredCount,
     fixed: fixedCount,
     retried: retriedCount,
     errors: errorCount,

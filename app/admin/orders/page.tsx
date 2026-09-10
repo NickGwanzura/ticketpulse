@@ -197,17 +197,21 @@ export default async function AdminOrdersPage({
   const allOrders = await db
     .select({
       status: orders.status,
+      paymentMethod: orders.paymentMethod,
       totalAmount: orders.totalAmount,
       currency: orders.currency,
     })
     .from(orders)
 
-  const paidOrders = allOrders.filter((o) => o.status === "paid" || o.status === "completed")
+  const paidOrders = allOrders.filter((o) =>
+    (o.status === "paid" || o.status === "completed") && o.paymentMethod !== "complimentary",
+  )
   const pendingOrders = allOrders.filter(
     (o) => o.status === "pending" || o.status === "awaiting_verification",
   )
   const cancelledOrders = allOrders.filter((o) => o.status === "cancelled")
   const totalPaid = paidOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+  const now = new Date()
 
   const statCards = [
     {
@@ -225,7 +229,7 @@ export default async function AdminOrdersPage({
       bg: "bg-sky-50",
     },
     {
-      label: "Completed",
+      label: "Paid / completed",
       value: paidOrders.length.toLocaleString(),
       icon: TrendingUp,
       tone: "text-brand-600",
@@ -420,7 +424,7 @@ export default async function AdminOrdersPage({
                               <div className="inline-flex items-center gap-1.5" title={tooltip || undefined}>
                                 <Smartphone size={12} className="text-green-700 shrink-0" />
                                 <span className="text-[12px] text-ink-2 whitespace-nowrap">
-                                  {o.paymentMethod ?? <span className="italic text-ink-3">—</span>}
+                                  {o.paymentMethod === "complimentary" ? "Complimentary" : o.paymentMethod ?? <span className="italic text-ink-3">—</span>}
                                 </span>
                                 {pollStatus && (
                                   <span className={`text-[10px] font-semibold ${pollStatus === "SUCCESS" ? "text-emerald-600" : pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
@@ -573,7 +577,7 @@ export default async function AdminOrdersPage({
                           {o.paymentMethod ? (
                             <>
                               <Smartphone size={11} className="text-green-700" />
-                              {o.paymentMethod}
+                              {o.paymentMethod === "complimentary" ? "Complimentary" : o.paymentMethod}
                             </>
                           ) : (
                             <span className="italic text-ink-3">No payment method</span>
@@ -599,7 +603,7 @@ export default async function AdminOrdersPage({
                         <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
                         {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
                           <p className="text-[10px] text-ink-3">
-                            {Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
+                            {Math.floor((now.getTime() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
                           </p>
                         )}
                       </div>

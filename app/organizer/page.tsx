@@ -232,7 +232,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, checkedIn: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]), sql`scanned_at IS NOT NULL`)).groupBy(tickets.eventId) : Promise.resolve([]),
-    eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]))).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
+    eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
     eventIds.length > 0 ? db.execute(sql`
       WITH organizer_orders AS (
         SELECT o.id, o.metadata
@@ -697,8 +697,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <EmptyState icon={Ticket} title="No orders yet" body="Orders appear as attendees buy tickets." />
             ) : (
               <ul className="divide-y divide-line">
-                {recentOrdersRaw.map((o) => (
-                  <li key={`${o.guestEmail ?? "guest"}-${o.createdAt ? new Date(o.createdAt).toISOString() : Math.random()}`} className="px-5 py-3.5 flex items-center gap-3">
+                {recentOrdersRaw.map((o, index) => (
+                  <li key={`${o.guestEmail ?? "guest"}-${o.createdAt ? new Date(o.createdAt).toISOString() : index}`} className="px-5 py-3.5 flex items-center gap-3">
                     <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" || o.status === "completed" ? "bg-emerald-500" : "bg-rose-400"}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>

@@ -6,7 +6,8 @@ import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
-import { restoreExpiredOrderInventory } from "@/lib/order-expiry"
+import { expireOrderAndReleaseInventory, restoreExpiredOrderInventory } from "@/lib/order-expiry"
+import { isAutomaticPoll, paymentWindowExpired, POLL_INTERVAL_MS } from "@/lib/velocity/poll-policy"
 import { alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { acquireLock, lockOrderMutation, releaseLock } from "@/lib/velocity/idempotency"
 import { paymentAmountsMatch } from "@/lib/velocity/validation"
@@ -257,6 +258,19 @@ export async function reconcileVelocityOrder(
     providerHttpStatus: null,
   }
 
+  if (isAutomaticPoll(options.source)) {
+    if (order.status === "expired") {
+      return { ...baseResult, state: "FAILED", message: "Order expired; automatic polling stopped." }
+    }
+    if (["pending", "awaiting_verification"].includes(order.status ?? "") && paymentWindowExpired(order.createdAt)) {
+      const expired = await expireOrderAndReleaseInventory(order.id, "payment_timeout")
+      return { ...baseResult, orderStatus: expired ? "expired" : order.status, state: "UNKNOWN", message: "Payment window closed; refresh the order status." }
+    }
+    if (velocity?.manualReviewRequired) {
+      return { ...baseResult, state: "UNPOLLABLE", message: velocity.manualReviewReason ?? "Payment requires manual review." }
+    }
+  }
+
   if (!velocity || !transactionTrace || !salesOrderTrace) {
     return { ...baseResult, state: "INVALID", message: "Velocity transaction references are missing" }
   }
@@ -275,6 +289,19 @@ export async function reconcileVelocityOrder(
     (entry.pollStatus === "SUCCESS" || entry.paymentStatus === "SUCCESS") &&
     Number.isFinite(Number(entry.amount)),
   )
+  if (!successfulObservation && isAutomaticPoll(options.source)) {
+    // Claim a polling interval atomically, shared by browser requests and cron.
+    // Multiple tabs must not spend the provider's poll allowance concurrently.
+    const now = new Date()
+    const [claimed] = await db.update(orders).set({
+      metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,lastPollRequestedAt}', ${JSON.stringify(now.toISOString())}::jsonb)`,
+    }).where(and(
+      eq(orders.id, order.id),
+      inArray(orders.status, ["pending", "awaiting_verification"]),
+      sql`COALESCE(${orders.metadata}->'velocity'->>'lastPollRequestedAt', '') < ${new Date(now.getTime() - POLL_INTERVAL_MS).toISOString()}`,
+    )).returning({ id: orders.id })
+    if (!claimed) return { ...baseResult, state: "PENDING", message: "Waiting for the next payment check." }
+  }
   const pollResult: PollTransactionResponse = successfulObservation
     ? {
         state: "done",

@@ -178,7 +178,7 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
         -- issued the ticket, so no money passed through us to owe the organiser
         -- for. Excluded here; tracked instead in organizer_fee_dues. Covers every
         -- direct-payment method string, not just the literal "organizer_direct".
-        AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join(DIRECT_PAYMENT_METHODS.map((m) => sql`${m}`), sql`, `)}))
+        AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join([...DIRECT_PAYMENT_METHODS, "complimentary"].map((m) => sql`${m}`), sql`, `)}))
       GROUP BY oi.id, oi.order_id, o.event_id, oi.quantity, oi.total
     )
     SELECT
