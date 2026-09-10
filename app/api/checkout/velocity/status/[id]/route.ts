@@ -73,6 +73,18 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         if (recovery.newlySettled) await deliverTicketForPaidOrder(id)
         return NextResponse.json({ orderId: id, status: recovery.orderStatus, paid: true, sentTo: order.guestEmail })
       }
+      // An initiation timeout can leave a valid sales order without a local
+      // transaction trace. Reconciliation now discovers that reference from
+      // Velocity's read-only transaction list; keep the buyer in a pending
+      // state while that recovery is retried instead of returning a misleading
+      // hard 400.
+      return NextResponse.json({
+        orderId: id,
+        status: recovery.orderStatus ?? "pending",
+        paid: false,
+        pollStatus: recovery.state,
+        message: recovery.message ?? "Payment is still being reconciled. Please do not pay again.",
+      })
     }
     return NextResponse.json({ error: "missing_velocity_transaction" }, { status: 400 })
   }

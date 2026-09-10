@@ -14,6 +14,7 @@ import { acquireLock, lockOrderMutation, releaseLock } from "@/lib/velocity/idem
 import { paymentAmountsMatch } from "@/lib/velocity/validation"
 import {
   finalizeWorkflow,
+  findVelocityTransaction,
   getSalesOrderById,
   normalizeVelocityPollResponse,
   pollTransaction,
@@ -27,6 +28,7 @@ import type {
 
 const SETTLED_LEDGER_STATUSES = ["paid", "completed", "success", "paid_success"]
 const SETTLEABLE_ORDER_STATUSES = ["pending", "awaiting_verification", "expired"]
+const TRANSACTION_DISCOVERY_COOLDOWN_MS = 15_000
 
 /**
  * After this many consecutive Velocity provider errors (4xx/5xx on poll),
@@ -243,8 +245,102 @@ export async function reconcileVelocityOrder(
   }
 
   const metadata = asMetadata(order.metadata)
-  const velocity = metadata.velocity
-  const transactionTrace = options.transactionTrace ?? velocity?.transactionTrace ?? null
+  let velocity = metadata.velocity
+  let transactionTrace = options.transactionTrace ?? velocity?.transactionTrace ?? null
+
+  // An initiation timeout can happen after Velocity accepted the payment
+  // request. In that case the local order has a sales-order reference but no
+  // transaction trace, so ordinary polling cannot even start. Recover the
+  // provider reference from the read-only transaction list before treating
+  // the order as invalid or expirable.
+  const lastDiscoveryAt = velocity?.lastTransactionDiscoveryAt ? Date.parse(velocity.lastTransactionDiscoveryAt) : NaN
+  const discoveryCooldownActive = Number.isFinite(lastDiscoveryAt) && Date.now() - lastDiscoveryAt < TRANSACTION_DISCOVERY_COOLDOWN_MS
+  if (velocity?.salesOrderId && !transactionTrace && !discoveryCooldownActive) {
+    try {
+      const discoveryStartedAt = new Date().toISOString()
+      const discovered = await findVelocityTransaction({
+        salesOrderId: velocity?.salesOrderId,
+        amount: order.totalAmount,
+        paymentProcessor: velocity.paymentProcessor,
+        debitPhone: order.guestPhone,
+        debitRef: order.id,
+      })
+      if (discovered?.trace) {
+        const discoveredAt = discoveryStartedAt
+        const discoveredObservation = String(discovered.pollStatus ?? "").toUpperCase() === "SUCCESS"
+          ? {
+              transactionTrace: discovered.trace,
+              transactionId: discovered.id ?? null,
+              amount: Number(discovered.orderAmount ?? discovered.amount ?? discovered.totalAmount ?? order.totalAmount),
+              pollStatus: "SUCCESS",
+              paymentStatus: String(discovered.paymentStatus ?? discovered.status ?? "SUCCESS").toUpperCase(),
+              state: "done",
+              httpStatus: 200,
+              errorMessage: null,
+              observedAt: discoveredAt,
+            }
+          : null
+        const nextVelocity: VelocityOrderMetadata = {
+          ...velocity,
+          transactionTrace: discovered.trace,
+          transactionId: discovered.id ?? null,
+          transactionTraces: Array.from(new Set([...(velocity.transactionTraces ?? []), discovered.trace])),
+          transactionAttempts: [
+            ...(velocity.transactionAttempts ?? []),
+            {
+              transactionTrace: discovered.trace,
+              transactionId: discovered.id ?? null,
+              transactionSessionId: null,
+              initiatedAt: discovered.createdAt ?? discoveredAt,
+              source: "transaction_discovery",
+            },
+          ],
+          ...(discoveredObservation
+            ? { transactionObservations: [...(velocity.transactionObservations ?? []), discoveredObservation] }
+            : {}),
+          paymentStatus: String(discovered.paymentStatus ?? discovered.status ?? velocity.paymentStatus ?? "UNKNOWN").toUpperCase(),
+          pollStatus: String(discovered.pollStatus ?? velocity.pollStatus ?? "UNKNOWN").toUpperCase() as VelocityPollStatus,
+          lastTransactionDiscoveryAt: discoveredAt,
+          lastProviderError: null,
+          manualReviewRequired: false,
+          manualReviewReason: null,
+        }
+        await db.update(orders).set({
+          metadata: { ...metadata, velocity: nextVelocity },
+          updatedAt: new Date(),
+        }).where(eq(orders.id, order.id))
+        velocity = nextVelocity
+        transactionTrace = discovered.trace
+        log.info("velocity reconciliation - recovered transaction after initiation timeout", {
+          orderId: order.id,
+          salesOrderId: nextVelocity.salesOrderId,
+          transactionId: discovered.id,
+          transactionTrace: discovered.trace,
+          pollStatus: discovered.pollStatus ?? null,
+        })
+      }
+      if (!discovered) {
+        await db.update(orders).set({
+          metadata: { ...metadata, velocity: { ...velocity, lastTransactionDiscoveryAt: discoveryStartedAt } },
+          updatedAt: new Date(),
+        }).where(eq(orders.id, order.id))
+      }
+    } catch (error) {
+      // A provider list outage is inconclusive. Keep the order pending so a
+      // later poll/recheck can retry discovery without sending a second debit.
+      const discoveryFailedAt = new Date().toISOString()
+      await db.update(orders).set({
+        metadata: { ...metadata, velocity: { ...velocity, lastTransactionDiscoveryAt: discoveryFailedAt } },
+        updatedAt: new Date(),
+      }).where(eq(orders.id, order.id)).catch(() => {})
+      log.warn("velocity reconciliation - transaction discovery failed", {
+        orderId: order.id,
+        salesOrderId: velocity.salesOrderId,
+        error: String(error),
+      })
+    }
+  }
+
   const salesOrderTrace = velocity?.salesOrderTrace ?? null
 
   const baseResult = {

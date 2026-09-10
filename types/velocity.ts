@@ -93,6 +93,29 @@ export interface InitiateTransactionResponse {
   message?: string | null
 }
 
+/**
+ * Transaction rows returned by Velocity's read-only GET /transactions
+ * endpoint. The endpoint is useful after an initiation timeout: Velocity can
+ * accept the EcoCash request even when the initiating HTTP request aborts
+ * before TicketPulse receives the transaction trace.
+ */
+export interface VelocityTransactionRecord {
+  id: string
+  trace: string
+  createdAt?: string | null
+  amount?: number | null
+  orderAmount?: number | null
+  totalAmount?: number | null
+  paymentProcessorLabel?: VelocityPaymentProcessor | string | null
+  debitPhone?: string | null
+  debitRef?: string | null
+  salesOrderId?: string | null
+  paymentStatus?: string | null
+  pollStatus?: string | null
+  status?: string | null
+  [key: string]: unknown
+}
+
 export interface PollTransactionResponse {
   state: string
   status: string
@@ -223,6 +246,8 @@ export interface VelocityOrderMetadata {
   recheckedAt?: string | null
   recheckedBy?: string | null
   lastPolledAt?: string | null
+  /** Last attempt to recover a missing transaction reference from Velocity. */
+  lastTransactionDiscoveryAt?: string | null
   lastProviderHttpStatus?: number | null
   lastProviderError?: string | null
   consecutiveProviderErrors?: number

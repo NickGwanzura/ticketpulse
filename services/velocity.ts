@@ -14,6 +14,7 @@ import type {
   NormalizedPollResponse,
   VelocityPollReference,
   VelocitySalesOrderLookup,
+  VelocityTransactionRecord,
 } from "@/types/velocity"
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
@@ -227,6 +228,83 @@ export async function initiateTransaction(
     method: "POST",
     body: payload,
   })
+}
+
+function normaliseTransactionPhone(phone: string | null | undefined): string {
+  return String(phone ?? "").replace(/\D/g, "").replace(/^0/, "263")
+}
+
+function transactionAmount(transaction: VelocityTransactionRecord): number | null {
+  const amount = transaction.orderAmount ?? transaction.amount ?? transaction.totalAmount
+  const parsed = Number(amount)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function normaliseProcessorLabel(value: string | null | undefined): string {
+  const label = String(value ?? "").toUpperCase().replace(/[^A-Z]/g, "")
+  if (label.includes("VISA") || label.includes("MASTERCARD") || label === "VMC") return "VMC"
+  if (label.includes("ECOCASH")) return "ECOCASH"
+  return label
+}
+
+/**
+ * Pick the provider transaction belonging to one sales order from the
+ * read-only transaction list. This is deliberately pure so matching stays
+ * testable and never guesses across different orders or amounts.
+ */
+export function selectVelocityTransaction(
+  transactions: VelocityTransactionRecord[],
+  options: {
+    salesOrderId: string
+    amount?: number | string | null
+    paymentProcessor?: string | null
+    debitPhone?: string | null
+    debitRef?: string | null
+  },
+): VelocityTransactionRecord | null {
+  const expectedAmount = options.amount == null ? null : Number(options.amount)
+  const expectedPhone = normaliseTransactionPhone(options.debitPhone)
+  const expectedProcessor = normaliseProcessorLabel(options.paymentProcessor)
+  const candidates = transactions.filter((transaction) => {
+    if (transaction.salesOrderId !== options.salesOrderId) return false
+    const amount = transactionAmount(transaction)
+    if (expectedAmount != null && (!Number.isFinite(amount) || amount !== expectedAmount)) return false
+    if (expectedProcessor && normaliseProcessorLabel(transaction.paymentProcessorLabel) !== expectedProcessor) return false
+    if (expectedPhone && normaliseTransactionPhone(transaction.debitPhone) !== expectedPhone) return false
+    // Velocity replaces the client debitRef with its own EcoCash payment
+    // reference (for example MP...). The sales-order ID is the authoritative
+    // correlation key, so never reject an exact sales-order match because the
+    // provider-generated debitRef differs.
+    return Boolean(transaction.trace)
+  })
+
+  candidates.sort((a, b) => {
+    const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
+    const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
+    return bTime - aTime
+  })
+  return candidates[0] ?? null
+}
+
+/**
+ * Recover a transaction reference after an initiation request timed out.
+ * Velocity exposes the accepted transaction through its read-only list even
+ * when the original POST response never reached TicketPulse.
+ */
+export async function findVelocityTransaction(options: {
+  salesOrderId: string
+  amount?: number | string | null
+  paymentProcessor?: string | null
+  debitPhone?: string | null
+  debitRef?: string | null
+}): Promise<VelocityTransactionRecord | null> {
+  const response = await velocityRequest<unknown>("/transactions", { method: "GET" })
+  const transactions = Array.isArray(response)
+    ? response as VelocityTransactionRecord[]
+    : (response && typeof response === "object" && Array.isArray((response as { content?: unknown }).content)
+      ? (response as { content: VelocityTransactionRecord[] }).content
+      : [])
+  return selectVelocityTransaction(transactions, options)
 }
 
 /**
