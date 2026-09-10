@@ -57,6 +57,13 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const metadata = (order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
   const velocity = metadata.velocity
   if (!velocity?.transactionTrace || !velocity.salesOrderTrace) {
+    if (velocity?.salesOrderId) {
+      const recovery = await reconcileVelocityOrder({ orderId: id, source: "poll" })
+      if (recovery.paid) {
+        if (recovery.newlySettled) await deliverTicketForPaidOrder(id)
+        return NextResponse.json({ orderId: id, status: recovery.orderStatus, paid: true, sentTo: order.guestEmail })
+      }
+    }
     return NextResponse.json({ error: "missing_velocity_transaction" }, { status: 400 })
   }
   if (!isValidVelocityTrace(velocity.transactionTrace) || !isValidVelocityTrace(velocity.salesOrderTrace)) {

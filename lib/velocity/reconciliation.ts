@@ -8,6 +8,7 @@ import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
 import { expireOrderAndReleaseInventory, restoreExpiredOrderInventory } from "@/lib/order-expiry"
 import { isAutomaticPoll, paymentWindowExpired, POLL_INTERVAL_MS } from "@/lib/velocity/poll-policy"
+import { protectedFromRecovery, recoverPaidSalesOrder } from "@/lib/velocity/sales-order-recovery"
 import { alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { acquireLock, lockOrderMutation, releaseLock } from "@/lib/velocity/idempotency"
 import { paymentAmountsMatch } from "@/lib/velocity/validation"
@@ -258,6 +259,18 @@ export async function reconcileVelocityOrder(
     providerHttpStatus: null,
   }
 
+  if (protectedFromRecovery(order)) {
+    const paid = order.status === "paid" || order.status === "completed"
+    return { ...baseResult, paid, state: paid ? "PAID" : "INVALID", message: "Existing completion or protected order preserved." }
+  }
+  if (velocity?.salesOrderId) {
+    try {
+      const recovery = await recoverPaidSalesOrder(order.id, options.source)
+      if (recovery.paid) return { ...baseResult, paid: true, newlySettled: recovery.newlySettled, orderStatus: recovery.status, state: "PAID", message: "Velocity sales order confirms full payment." }
+    } catch (error) {
+      return { ...baseResult, state: "PROVIDER_ERROR", message: error instanceof Error ? error.message : String(error) }
+    }
+  }
   if (isAutomaticPoll(options.source)) {
     if (order.status === "expired") {
       return { ...baseResult, state: "FAILED", message: "Order expired; automatic polling stopped." }
@@ -286,7 +299,7 @@ export async function reconcileVelocityOrder(
   // observation instead of calling the provider a second time.
   const successfulObservation = velocity.transactionObservations?.find((entry) =>
     entry.transactionTrace === transactionTrace &&
-    (entry.pollStatus === "SUCCESS" || entry.paymentStatus === "SUCCESS") &&
+    entry.pollStatus === "SUCCESS" &&
     Number.isFinite(Number(entry.amount)),
   )
   if (!successfulObservation && isAutomaticPoll(options.source)) {
@@ -486,6 +499,10 @@ export async function reconcileVelocityOrder(
 
       const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).limit(1)
       if (!current) throw new Error("Order disappeared during Velocity settlement")
+      if (protectedFromRecovery(current)) {
+        if (current.status === "paid" || current.status === "completed") return { newlySettled: false, status: current.status }
+        throw new Error("Order became protected during reconciliation")
+      }
       if (!paymentAmountsMatch(current.totalAmount, pollResult.body.amount)) {
         throw new Error(`Order total changed during settlement (expected ${current.totalAmount}, transaction paid ${pollResult.body.amount})`)
       }

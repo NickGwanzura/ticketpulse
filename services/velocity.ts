@@ -421,8 +421,8 @@ export function getProcessorLabel(paymentMethod: string): string {
  *
  * Priority order:
  *   1. body.pollStatus === "SUCCESS"   => PAID
- *   2. body.paymentStatus === "SUCCESS" => PAID  (gateway settlement confirmed;
- *        covers PENDING+SUCCESS and FAILED+SUCCESS when the poll workflow lags)
+ *   Initiation paymentStatus SUCCESS is not proof of payment. Only poll success
+ *   or a separately verified fully paid sales order confirms settlement.
  *   3. body.pollStatus === "FAILED"    => FAILED
  *   4. body.paymentStatus === "FAILED" => FAILED
  *   5. body.pollStatus === "PENDING"   => PENDING
@@ -451,10 +451,6 @@ export function normalizeVelocityPollResponse(
   let localStatus: NormalizedPollResponse["localStatus"]
 
   if (pollStatus === "SUCCESS") {
-    localStatus = "PAID"
-  } else if (paymentStatus === "SUCCESS") {
-    // Gateway confirmed settlement — promote to PAID even when pollStatus is
-    // still PENDING or FAILED (the async poll workflow can lag behind).
     localStatus = "PAID"
   } else if (pollStatus === "FAILED") {
     localStatus = "FAILED"

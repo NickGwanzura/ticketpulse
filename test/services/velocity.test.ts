@@ -117,11 +117,11 @@ describe("velocity service", () => {
       expect(result.localStatus).toBe("PENDING")
     })
 
-    it("returns PAID when body.pollStatus is missing but paymentStatus is SUCCESS", () => {
+    it("returns UNKNOWN when only initiation success is available", () => {
       const result = mod.normalizeVelocityPollResponse(pollResponse({
         paymentStatus: "SUCCESS", pollStatus: undefined,
       }))
-      expect(result.localStatus).toBe("PAID")
+      expect(result.localStatus).toBe("UNKNOWN")
       expect(result.velocityPaymentStatus).toBe("SUCCESS")
     })
 
@@ -158,19 +158,19 @@ describe("velocity service", () => {
     })
 
     // ── CARD PAYMENT EDGE CASES ──────────────────────────────────────────
-    it("returns PAID when paymentStatus is SUCCESS even if pollStatus is FAILED (async settlement)", () => {
+    it("respects failed polling despite successful initiation", () => {
       const result = mod.normalizeVelocityPollResponse(pollResponse({
         paymentStatus: "SUCCESS", pollStatus: "FAILED",
       }))
-      expect(result.localStatus).toBe("PAID")
+      expect(result.localStatus).toBe("FAILED")
       expect(result.velocityPaymentStatus).toBe("SUCCESS")
     })
 
-    it("returns PAID when paymentStatus is SUCCESS even if pollStatus is PENDING", () => {
+    it("waits for polling after successful initiation", () => {
       const result = mod.normalizeVelocityPollResponse(pollResponse({
         paymentStatus: "SUCCESS", pollStatus: "PENDING",
       }))
-      expect(result.localStatus).toBe("PAID")
+      expect(result.localStatus).toBe("PENDING")
       expect(result.velocityPollStatus).toBe("PENDING")
       expect(result.velocityPaymentStatus).toBe("SUCCESS")
     })
@@ -204,14 +204,12 @@ describe("velocity service", () => {
       expect(result.localStatus).toBe("UNKNOWN")
     })
 
-    it("returns PAID for SUCCESS paymentStatus with post-event settlement delay", () => {
-      // Card payments often settle asynchronously — Velocity confirms the
-      // payment (paymentStatus=SUCCESS) before the poll workflow completes.
+    it("keeps delayed polling pending until confirmed", () => {
       const result = mod.normalizeVelocityPollResponse(pollResponse({
         paymentStatus: "SUCCESS",
         pollStatus: "PENDING",
       }))
-      expect(result.localStatus).toBe("PAID")
+      expect(result.localStatus).toBe("PENDING")
     })
   })
 

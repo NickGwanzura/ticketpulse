@@ -88,6 +88,9 @@ export async function restoreExpiredOrderInventory(
  */
 export async function expireOrderAndReleaseInventory(orderId: string, reason = "payment_timeout"): Promise<boolean> {
   try {
+    const { recoverPaidSalesOrder } = await import("@/lib/velocity/sales-order-recovery")
+    const verification = await recoverPaidSalesOrder(orderId, "expiry_sales_order_check")
+    if (!verification.safeToExpire) return false
     return await db.transaction(async (tx) => {
       await lockOrderMutation(tx, orderId)
 

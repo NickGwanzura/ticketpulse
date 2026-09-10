@@ -128,6 +128,7 @@ export interface VelocitySalesOrderPayment {
 
 export interface VelocitySalesOrderLookup extends VelocityFinalizeSalesOrder {
   trace: string
+  currencyCodeString?: string
   payments?: VelocitySalesOrderPayment[]
 }
 

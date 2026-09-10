@@ -46,8 +46,6 @@ function normalizeVelocityPollResponse(
 
   if (pollStatus === "SUCCESS") {
     localStatus = "PAID"
-  } else if (paymentStatus === "SUCCESS") {
-    localStatus = "PAID"
   } else if (pollStatus === "FAILED") {
     localStatus = "FAILED"
   } else if (paymentStatus === "FAILED") {
@@ -76,20 +74,18 @@ describe("normalizeVelocityPollResponse", () => {
       expect(result.localStatus).toBe("PAID")
     })
 
-    it("returns PAID when paymentStatus is SUCCESS even if pollStatus is PENDING", () => {
-      // Gateway confirmed settlement — promote to PAID
+    it("keeps successful initiation pending until polling succeeds", () => {
       const result = normalizeVelocityPollResponse({
         body: { pollStatus: "PENDING", paymentStatus: "SUCCESS" },
       })
-      expect(result.localStatus).toBe("PAID")
+      expect(result.localStatus).toBe("PENDING")
     })
 
-    it("returns PAID when paymentStatus is SUCCESS even if pollStatus is FAILED", () => {
-      // The async poll workflow can lag behind gateway settlement
+    it("respects failed polling after successful initiation", () => {
       const result = normalizeVelocityPollResponse({
         body: { pollStatus: "FAILED", paymentStatus: "SUCCESS" },
       })
-      expect(result.localStatus).toBe("PAID")
+      expect(result.localStatus).toBe("FAILED")
     })
   })
 

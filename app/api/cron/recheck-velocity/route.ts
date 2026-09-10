@@ -31,7 +31,11 @@ export async function POST(request: Request) {
   )).limit(MAX_ORDERS_PER_RUN)
   let expiredCount = 0
   for (const order of staleOrders) {
-    if (await expireOrderAndReleaseInventory(order.id, "payment_timeout")) expiredCount++
+    try {
+      if (await expireOrderAndReleaseInventory(order.id, "payment_timeout")) expiredCount++
+    } catch (error) {
+      log.warn("cron/recheck-velocity - expiry verification deferred", { orderId: order.id, error: String(error) })
+    }
   }
   const targetOrders = await db
     .select({
@@ -51,10 +55,8 @@ export async function POST(request: Request) {
       sql`${orders.metadata}->>'velocity' IS NOT NULL`,
       inArray(orders.status, ["pending", "awaiting_verification"]),
       lt(orders.updatedAt, cutoff),
-      // Orders already flagged for manual review have a structurally
-      // unpollable reference or exceeded the provider-error cap — retrying
-      // them further just burns Velocity API calls for no benefit.
-      sql`COALESCE((${orders.metadata}->'velocity'->>'manualReviewRequired')::boolean, false) = false`,
+      // Include stopped transactions for read-only sales-order recovery.
+      // The reconciler still prevents additional transaction polls for them.
     ))
     .limit(MAX_ORDERS_PER_RUN)
 
@@ -67,12 +69,12 @@ export async function POST(request: Request) {
   for (const order of targetOrders) {
     try {
       const velocity = ((order.metadata ?? {}) as { velocity?: VelocityOrderMetadata }).velocity
-      if (!velocity?.transactionTrace || !velocity.salesOrderTrace) {
+      if (!velocity?.salesOrderId && (!velocity?.transactionTrace || !velocity.salesOrderTrace)) {
         results.push({ orderId: order.id, action: "skipped", reason: "Velocity references are missing" })
         continue
       }
 
-      const previousProviderErrors = velocity.consecutiveProviderErrors ?? 0
+      const previousProviderErrors = velocity?.consecutiveProviderErrors ?? 0
       const result = await reconcileVelocityOrder({ orderId: order.id, source: "cron" })
 
       if (result.paid) {
