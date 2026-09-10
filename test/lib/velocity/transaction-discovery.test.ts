@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { selectVelocityTransaction } from "@/services/velocity"
+import {
+  isVelocityTransactionSuccessful,
+  selectVelocityTransaction,
+} from "@/services/velocity"
 
 describe("Velocity transaction discovery", () => {
   it("selects the newest exact sales-order transaction", () => {
@@ -85,5 +88,45 @@ describe("Velocity transaction discovery", () => {
     })
 
     expect(result?.trace).toBe("vmc-trace")
+  })
+
+  it("prefers an older confirmed success over a newer failed retry", () => {
+    const result = selectVelocityTransaction([
+      {
+        id: "successful",
+        trace: "successful-trace",
+        createdAt: "2026-09-10T10:00:00.000Z",
+        orderAmount: 1,
+        paymentProcessorLabel: "ECOCASH",
+        debitPhone: "0777816368",
+        salesOrderId: "sales-order-1",
+        pollStatus: "SUCCESS",
+        paymentStatus: "SUCCESS",
+      },
+      {
+        id: "failed-retry",
+        trace: "failed-retry-trace",
+        createdAt: "2026-09-10T11:00:00.000Z",
+        orderAmount: 1,
+        paymentProcessorLabel: "ECOCASH",
+        debitPhone: "0777816368",
+        salesOrderId: "sales-order-1",
+        pollStatus: "FAILED",
+        paymentStatus: "FAILED",
+      },
+    ], {
+      salesOrderId: "sales-order-1",
+      amount: 1,
+      paymentProcessor: "ECOCASH",
+      debitPhone: "0777816368",
+    })
+
+    expect(result?.id).toBe("successful")
+  })
+
+  it("requires both provider statuses before treating discovery as successful", () => {
+    expect(isVelocityTransactionSuccessful({ id: "1", trace: "a", pollStatus: "SUCCESS", paymentStatus: "SUCCESS" })).toBe(true)
+    expect(isVelocityTransactionSuccessful({ id: "2", trace: "b", pollStatus: "SUCCESS", paymentStatus: "FAILED" })).toBe(false)
+    expect(isVelocityTransactionSuccessful({ id: "3", trace: "c", pollStatus: "PENDING", paymentStatus: "SUCCESS" })).toBe(false)
   })
 })

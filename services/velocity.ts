@@ -247,6 +247,25 @@ function normaliseProcessorLabel(value: string | null | undefined): string {
   return label
 }
 
+const TRANSACTION_LIST_CACHE_MS = 30_000
+let transactionListCache: {
+  expiresAt: number
+  promise: Promise<VelocityTransactionRecord[]>
+} | null = null
+
+export function isVelocityTransactionSuccessful(transaction: VelocityTransactionRecord): boolean {
+  return String(transaction.pollStatus ?? "").toUpperCase() === "SUCCESS" &&
+    String(transaction.paymentStatus ?? "").toUpperCase() === "SUCCESS"
+}
+
+function transactionOutcomeRank(transaction: VelocityTransactionRecord): number {
+  if (isVelocityTransactionSuccessful(transaction)) return 3
+  const pollStatus = String(transaction.pollStatus ?? "").toUpperCase()
+  const paymentStatus = String(transaction.paymentStatus ?? "").toUpperCase()
+  if (pollStatus === "PENDING" || paymentStatus === "PENDING") return 2
+  return 1
+}
+
 /**
  * Pick the provider transaction belonging to one sales order from the
  * read-only transaction list. This is deliberately pure so matching stays
@@ -279,6 +298,8 @@ export function selectVelocityTransaction(
   })
 
   candidates.sort((a, b) => {
+    const outcomeDifference = transactionOutcomeRank(b) - transactionOutcomeRank(a)
+    if (outcomeDifference !== 0) return outcomeDifference
     const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
     const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
     return bTime - aTime
@@ -298,12 +319,21 @@ export async function findVelocityTransaction(options: {
   debitPhone?: string | null
   debitRef?: string | null
 }): Promise<VelocityTransactionRecord | null> {
-  const response = await velocityRequest<unknown>("/transactions", { method: "GET" })
-  const transactions = Array.isArray(response)
-    ? response as VelocityTransactionRecord[]
-    : (response && typeof response === "object" && Array.isArray((response as { content?: unknown }).content)
-      ? (response as { content: VelocityTransactionRecord[] }).content
-      : [])
+  const now = Date.now()
+  if (!transactionListCache || transactionListCache.expiresAt <= now) {
+    const promise = velocityRequest<unknown>("/transactions", { method: "GET" })
+      .then((response) => Array.isArray(response)
+        ? response as VelocityTransactionRecord[]
+        : (response && typeof response === "object" && Array.isArray((response as { content?: unknown }).content)
+          ? (response as { content: VelocityTransactionRecord[] }).content
+          : []))
+      .catch((error) => {
+        transactionListCache = null
+        throw error
+      })
+    transactionListCache = { expiresAt: now + TRANSACTION_LIST_CACHE_MS, promise }
+  }
+  const transactions = await transactionListCache.promise
   return selectVelocityTransaction(transactions, options)
 }
 

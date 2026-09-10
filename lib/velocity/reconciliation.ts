@@ -16,6 +16,7 @@ import {
   finalizeWorkflow,
   findVelocityTransaction,
   getSalesOrderById,
+  isVelocityTransactionSuccessful,
   normalizeVelocityPollResponse,
   pollTransaction,
 } from "@/services/velocity"
@@ -27,7 +28,7 @@ import type {
 } from "@/types/velocity"
 
 const SETTLED_LEDGER_STATUSES = ["paid", "completed", "success", "paid_success"]
-const SETTLEABLE_ORDER_STATUSES = ["pending", "awaiting_verification", "expired"]
+const SETTLEABLE_ORDER_STATUSES = ["pending", "awaiting_verification", "expired"] as const
 const TRANSACTION_DISCOVERY_COOLDOWN_MS = 15_000
 
 /**
@@ -248,6 +249,26 @@ export async function reconcileVelocityOrder(
   let velocity = metadata.velocity
   let transactionTrace = options.transactionTrace ?? velocity?.transactionTrace ?? null
 
+  // Manual completion and already-settled orders are authoritative. Return
+  // before any provider lookup or metadata write so a delayed recovery job
+  // cannot modify them after an operator has finished the order.
+  if (protectedFromRecovery(order)) {
+    const paid = order.status === "paid" || order.status === "completed"
+    return {
+      orderId: order.id,
+      paid,
+      newlySettled: false,
+      orderStatus: order.status,
+      transactionTrace,
+      salesOrderTrace: velocity?.salesOrderTrace ?? null,
+      invoiceId: order.paymentRef ?? velocity?.invoiceRef ?? null,
+      pollResult: null,
+      providerHttpStatus: null,
+      state: paid ? "PAID" : "INVALID",
+      message: "Existing completion or protected order preserved.",
+    }
+  }
+
   // An initiation timeout can happen after Velocity accepted the payment
   // request. In that case the local order has a sales-order reference but no
   // transaction trace, so ordinary polling cannot even start. Recover the
@@ -256,88 +277,110 @@ export async function reconcileVelocityOrder(
   const lastDiscoveryAt = velocity?.lastTransactionDiscoveryAt ? Date.parse(velocity.lastTransactionDiscoveryAt) : NaN
   const discoveryCooldownActive = Number.isFinite(lastDiscoveryAt) && Date.now() - lastDiscoveryAt < TRANSACTION_DISCOVERY_COOLDOWN_MS
   if (velocity?.salesOrderId && !transactionTrace && !discoveryCooldownActive) {
-    try {
-      const discoveryStartedAt = new Date().toISOString()
-      const discovered = await findVelocityTransaction({
-        salesOrderId: velocity?.salesOrderId,
-        amount: order.totalAmount,
-        paymentProcessor: velocity.paymentProcessor,
-        debitPhone: order.guestPhone,
-        debitRef: order.id,
-      })
-      if (discovered?.trace) {
-        const discoveredAt = discoveryStartedAt
-        const discoveredObservation = String(discovered.pollStatus ?? "").toUpperCase() === "SUCCESS"
-          ? {
-              transactionTrace: discovered.trace,
-              transactionId: discovered.id ?? null,
-              amount: Number(discovered.orderAmount ?? discovered.amount ?? discovered.totalAmount ?? order.totalAmount),
-              pollStatus: "SUCCESS",
-              paymentStatus: String(discovered.paymentStatus ?? discovered.status ?? "SUCCESS").toUpperCase(),
-              state: "done",
-              httpStatus: 200,
-              errorMessage: null,
-              observedAt: discoveredAt,
+    const discoveryStartedAt = new Date()
+    const [claimed] = await db.update(orders).set({
+      metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity,lastTransactionDiscoveryAt}', ${JSON.stringify(discoveryStartedAt.toISOString())}::jsonb)`,
+      updatedAt: discoveryStartedAt,
+    }).where(and(
+      eq(orders.id, order.id),
+      inArray(orders.status, SETTLEABLE_ORDER_STATUSES),
+      sql`COALESCE(${orders.metadata}->'velocity'->>'salesOrderId', '') = ${velocity.salesOrderId}`,
+      sql`COALESCE(${orders.metadata}->'velocity'->>'transactionTrace', '') = ''`,
+      sql`COALESCE(${orders.metadata}->'velocity'->>'lastTransactionDiscoveryAt', '') < ${new Date(discoveryStartedAt.getTime() - TRANSACTION_DISCOVERY_COOLDOWN_MS).toISOString()}`,
+    )).returning({ id: orders.id })
+
+    if (claimed) {
+      try {
+        const discovered = await findVelocityTransaction({
+          salesOrderId: velocity.salesOrderId,
+          amount: order.totalAmount,
+          paymentProcessor: velocity.paymentProcessor,
+          debitPhone: order.guestPhone,
+          debitRef: order.id,
+        })
+        if (discovered?.trace) {
+          const persistedVelocity = await db.transaction(async (tx) => {
+            await lockOrderMutation(tx, order.id)
+            const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).limit(1)
+            if (!current || protectedFromRecovery(current)) return null
+
+            const currentMetadata = asMetadata(current.metadata)
+            const currentVelocity = currentMetadata.velocity
+            if (!currentVelocity || currentVelocity.salesOrderId !== velocity?.salesOrderId || currentVelocity.transactionTrace) {
+              return null
             }
-          : null
-        const nextVelocity: VelocityOrderMetadata = {
-          ...velocity,
-          transactionTrace: discovered.trace,
-          transactionId: discovered.id ?? null,
-          transactionTraces: Array.from(new Set([...(velocity.transactionTraces ?? []), discovered.trace])),
-          transactionAttempts: [
-            ...(velocity.transactionAttempts ?? []),
-            {
+
+            const discoveredAt = discoveryStartedAt.toISOString()
+            const successful = isVelocityTransactionSuccessful(discovered)
+            const discoveredObservation = successful
+              ? {
+                  transactionTrace: discovered.trace!,
+                  transactionId: discovered.id ?? null,
+                  amount: Number(discovered.orderAmount ?? discovered.amount ?? discovered.totalAmount ?? order.totalAmount),
+                  pollStatus: "SUCCESS",
+                  paymentStatus: "SUCCESS",
+                  state: "done",
+                  httpStatus: 200,
+                  errorMessage: null,
+                  observedAt: discoveredAt,
+                }
+              : null
+            const nextVelocity: VelocityOrderMetadata = {
+              ...currentVelocity,
               transactionTrace: discovered.trace,
               transactionId: discovered.id ?? null,
-              transactionSessionId: null,
-              initiatedAt: discovered.createdAt ?? discoveredAt,
-              source: "transaction_discovery",
-            },
-          ],
-          ...(discoveredObservation
-            ? { transactionObservations: [...(velocity.transactionObservations ?? []), discoveredObservation] }
-            : {}),
-          paymentStatus: String(discovered.paymentStatus ?? discovered.status ?? velocity.paymentStatus ?? "UNKNOWN").toUpperCase(),
-          pollStatus: String(discovered.pollStatus ?? velocity.pollStatus ?? "UNKNOWN").toUpperCase() as VelocityPollStatus,
-          lastTransactionDiscoveryAt: discoveredAt,
-          lastProviderError: null,
-          manualReviewRequired: false,
-          manualReviewReason: null,
+              transactionTraces: Array.from(new Set([...(currentVelocity.transactionTraces ?? []), discovered.trace])),
+              transactionAttempts: [
+                ...(currentVelocity.transactionAttempts ?? []),
+                {
+                  transactionTrace: discovered.trace,
+                  transactionId: discovered.id ?? null,
+                  transactionSessionId: null,
+                  initiatedAt: discovered.createdAt ?? discoveredAt,
+                  source: "transaction_discovery",
+                },
+              ],
+              ...(discoveredObservation
+                ? { transactionObservations: [...(currentVelocity.transactionObservations ?? []), discoveredObservation] }
+                : {}),
+              paymentStatus: String(discovered.paymentStatus ?? discovered.status ?? currentVelocity.paymentStatus ?? "UNKNOWN").toUpperCase(),
+              pollStatus: String(discovered.pollStatus ?? currentVelocity.pollStatus ?? "UNKNOWN").toUpperCase() as VelocityPollStatus,
+              lastTransactionDiscoveryAt: discoveredAt,
+              lastProviderError: null,
+              manualReviewRequired: false,
+              manualReviewReason: null,
+            }
+            const [updated] = await tx.update(orders).set({
+              metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{velocity}', ${JSON.stringify(nextVelocity)}::jsonb)`,
+              updatedAt: new Date(),
+            }).where(and(
+              eq(orders.id, order.id),
+              inArray(orders.status, SETTLEABLE_ORDER_STATUSES),
+            )).returning({ id: orders.id })
+            return updated ? nextVelocity : null
+          })
+
+          if (persistedVelocity) {
+            velocity = persistedVelocity
+            transactionTrace = discovered.trace
+            log.info("velocity reconciliation - recovered transaction after initiation timeout", {
+              orderId: order.id,
+              salesOrderId: persistedVelocity.salesOrderId,
+              transactionId: discovered.id,
+              transactionTrace: discovered.trace,
+              pollStatus: discovered.pollStatus ?? null,
+            })
+          }
         }
-        await db.update(orders).set({
-          metadata: { ...metadata, velocity: nextVelocity },
-          updatedAt: new Date(),
-        }).where(eq(orders.id, order.id))
-        velocity = nextVelocity
-        transactionTrace = discovered.trace
-        log.info("velocity reconciliation - recovered transaction after initiation timeout", {
+      } catch (error) {
+        // The atomic claim already records the attempt. A provider list outage
+        // is inconclusive, so keep the order pending and retry after cooldown.
+        log.warn("velocity reconciliation - transaction discovery failed", {
           orderId: order.id,
-          salesOrderId: nextVelocity.salesOrderId,
-          transactionId: discovered.id,
-          transactionTrace: discovered.trace,
-          pollStatus: discovered.pollStatus ?? null,
+          salesOrderId: velocity.salesOrderId,
+          error: String(error),
         })
       }
-      if (!discovered) {
-        await db.update(orders).set({
-          metadata: { ...metadata, velocity: { ...velocity, lastTransactionDiscoveryAt: discoveryStartedAt } },
-          updatedAt: new Date(),
-        }).where(eq(orders.id, order.id))
-      }
-    } catch (error) {
-      // A provider list outage is inconclusive. Keep the order pending so a
-      // later poll/recheck can retry discovery without sending a second debit.
-      const discoveryFailedAt = new Date().toISOString()
-      await db.update(orders).set({
-        metadata: { ...metadata, velocity: { ...velocity, lastTransactionDiscoveryAt: discoveryFailedAt } },
-        updatedAt: new Date(),
-      }).where(eq(orders.id, order.id)).catch(() => {})
-      log.warn("velocity reconciliation - transaction discovery failed", {
-        orderId: order.id,
-        salesOrderId: velocity.salesOrderId,
-        error: String(error),
-      })
     }
   }
 
@@ -355,10 +398,6 @@ export async function reconcileVelocityOrder(
     providerHttpStatus: null,
   }
 
-  if (protectedFromRecovery(order)) {
-    const paid = order.status === "paid" || order.status === "completed"
-    return { ...baseResult, paid, state: paid ? "PAID" : "INVALID", message: "Existing completion or protected order preserved." }
-  }
   if (velocity?.salesOrderId) {
     try {
       const recovery = await recoverPaidSalesOrder(order.id, options.source)
@@ -401,6 +440,7 @@ export async function reconcileVelocityOrder(
   const successfulObservation = velocity.transactionObservations?.find((entry) =>
     entry.transactionTrace === transactionTrace &&
     entry.pollStatus === "SUCCESS" &&
+    entry.paymentStatus === "SUCCESS" &&
     Number.isFinite(Number(entry.amount)),
   )
   if (!successfulObservation && isAutomaticPoll(options.source)) {
@@ -634,7 +674,7 @@ export async function reconcileVelocityOrder(
       }
 
       const alreadyPaid = current.status === "paid" || current.status === "completed"
-      if (!alreadyPaid && !SETTLEABLE_ORDER_STATUSES.includes(current.status ?? "")) {
+      if (!alreadyPaid && !SETTLEABLE_ORDER_STATUSES.some((status) => status === current.status)) {
         throw new Error(`Order status ${current.status ?? "unknown"} cannot be settled automatically`)
       }
 
