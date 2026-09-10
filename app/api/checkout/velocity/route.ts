@@ -8,6 +8,8 @@ import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefau
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
 import { lockOrderMutation, withLock } from "@/lib/velocity/idempotency"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
+import { cancelUnpaidOrderAndReleaseInventory } from "@/lib/order-expiry"
+import { isDefinitiveRejection, VelocityApiError } from "@/lib/velocity/api-error"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
@@ -903,31 +905,9 @@ export async function POST(req: Request) {
   // Cancels the order AND releases the inventory reservation so seats aren't
   // locked forever. Called on any Phase 2 failure (validation, config, API error).
   const cancelWithInventoryRelease = async () => {
-    try {
-      const items = await db
-        .select({ tierId: orderItems.tierId, quantity: orderItems.quantity })
-        .from(orderItems)
-        .where(eq(orderItems.orderId, orderId))
-      for (const item of items) {
-        if (item.tierId) {
-          await db
-            .update(ticketTiers)
-            .set({ soldQuantity: sql`GREATEST(0, ${ticketTiers.soldQuantity} - ${item.quantity})` })
-            .where(eq(ticketTiers.id, item.tierId))
-        }
-      }
-      // Revert promo usedCount if a promo code was applied
-      if (appliedPromo) {
-        await db
-          .update(promoCodes)
-          .set({ usedCount: sql`GREATEST(0, ${promoCodes.usedCount} - 1)` })
-          .where(eq(promoCodes.id, appliedPromo.id))
-      }
-    } catch (releaseErr) {
-      log.error("checkout - inventory release failed during cancel", { orderId, error: String(releaseErr) })
-    }
-    await db.update(orders).set({ status: "cancelled", updatedAt: new Date() }).where(eq(orders.id, orderId))
+    await cancelUnpaidOrderAndReleaseInventory(orderId)
   }
+  let initiationStage = "sales_order"
 
   const sessionId = req.headers.get("x-session-id") ?? crypto.randomUUID()
   const referrer = req.headers.get("referer")
@@ -1106,7 +1086,9 @@ export async function POST(req: Request) {
     // VMC_REDIRECT_RETRIES times if Velocity returns no hosted checkout URL.
     // Velocity's card gateway is known to intermittently omit the redirect,
     // so a fresh transaction against the same sales order usually succeeds.
+    initiationStage = "initiate_transaction"
     let transaction = await initiateTransaction(transactionPayload)
+    initiationStage = "persist_transaction_response"
     let redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
     let transactionBody = transaction.body ?? null
     let transactionTrace = getVelocityTransactionTrace(transaction)
@@ -1342,7 +1324,11 @@ export async function POST(req: Request) {
     // webhook callback (app/api/payments/velocity/callback/route.ts) or the
     // recheck-velocity cron reconcile the order once Velocity's real status
     // is known, instead of orphaning it.
-    const isAmbiguous = message.startsWith("Network error communicating with Velocity Africa")
+    const isAmbiguous = !isDefinitiveRejection(err)
+    await db.update(orders).set({
+      metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{initiationError}', ${JSON.stringify({ stage: initiationStage, ambiguous: isAmbiguous, httpStatus: err instanceof VelocityApiError ? err.httpStatus : null, occurredAt: new Date().toISOString(), message: message.slice(0, 300) })}::jsonb)`,
+      updatedAt: new Date(),
+    }).where(and(eq(orders.id, orderId), inArray(orders.status, ["pending", "awaiting_verification"]))).catch((error) => log.error("checkout - failed to persist initiation diagnostic", { orderId, error: String(error) }))
 
     alertPaymentAnomaly({
       type: "TRANSACTION_API_ERROR",
@@ -1360,6 +1346,10 @@ export async function POST(req: Request) {
 
     if (!isAmbiguous) {
       await cancelWithInventoryRelease()
+    }
+    if (isAmbiguous && parsed.paymentMethod === "velocity-ecocash") {
+      return NextResponse.json({ success: true, orderId, paymentMethod: "ECOCASH", flow: "velocity-seamless", pollRequired: true, awaitingConfirmation: true, amount: total, currency,
+        message: "Payment confirmation is delayed. Please do not pay again; we are checking your order." })
     }
     return NextResponse.json({ error: message }, { status: 502 })
   }

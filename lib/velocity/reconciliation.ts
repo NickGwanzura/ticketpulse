@@ -268,7 +268,12 @@ export async function reconcileVelocityOrder(
       const recovery = await recoverPaidSalesOrder(order.id, options.source)
       if (recovery.paid) return { ...baseResult, paid: true, newlySettled: recovery.newlySettled, orderStatus: recovery.status, state: "PAID", message: "Velocity sales order confirms full payment." }
     } catch (error) {
-      return { ...baseResult, state: "PROVIDER_ERROR", message: error instanceof Error ? error.message : String(error) }
+      // A read endpoint outage must not block an otherwise valid transaction
+      // check. The expiry path still requires its own successful verification.
+      if (!velocity.transactionTrace || order.status === "expired" || paymentWindowExpired(order.createdAt)) {
+        return { ...baseResult, state: "PROVIDER_ERROR", message: error instanceof Error ? error.message : String(error) }
+      }
+      log.warn("velocity sales-order lookup deferred", { orderId: order.id, error: String(error) })
     }
   }
   if (isAutomaticPoll(options.source)) {

@@ -130,7 +130,7 @@ export default function CheckoutPage() {
         clearPollingSession()
         setPollingOrderId(null)
         setSubmitting(false)
-        router.replace(`/checkout/expired?ref=${pollingOrderId}`)
+        router.replace(`/checkout/expired?ref=${pollingOrderId}&pending=1`)
         return
       }
 

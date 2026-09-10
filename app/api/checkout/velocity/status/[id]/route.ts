@@ -9,6 +9,7 @@ import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
 import { alertFinalizeNonPaid, alertPollUnknownStatus } from "@/lib/payment-alerts"
 import { rateLimit } from "@/lib/rate-limit"
 import { paymentWindowExpired } from "@/lib/velocity/poll-policy"
+import { recoverPaidSalesOrder } from "@/lib/velocity/sales-order-recovery"
 import {
   reconcileVelocityOrder,
   reconcileVelocityOrderBeforeExpiry,
@@ -44,7 +45,16 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   if (PAID_STATUSES.has(order.status ?? "")) {
     return NextResponse.json({ orderId: id, status: order.status, paid: true, sentTo: order.guestEmail })
   }
-  if (["cancelled", "refunded", "expired"].includes(order.status ?? "")) {
+  if (order.status === "expired") {
+    try {
+      const recovery = await recoverPaidSalesOrder(id, "buyer_expired_order_check")
+      if (recovery.newlySettled) await deliverTicketForPaidOrder(id, { notifyOrganizers: false })
+      return NextResponse.json({ orderId: id, status: recovery.status, paid: recovery.paid })
+    } catch {
+      return NextResponse.json({ orderId: id, status: "expired", paid: false, message: "Contact support if money was deducted." })
+    }
+  }
+  if (["cancelled", "refunded"].includes(order.status ?? "")) {
     return NextResponse.json({ orderId: id, status: order.status, paid: false })
   }
 
@@ -111,7 +121,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     })
   }
 
-  if (result.state === "FAILED" && (eventEnded || timedOut) && order.status !== "expired") {
+  if (result.state === "FAILED" && (eventEnded || timedOut)) {
     await expireOrderAndReleaseInventory(id, eventEnded ? "event_ended_payment_failed" : "payment_timeout")
     return NextResponse.json({
       orderId: id,

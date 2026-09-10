@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { Suspense } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Clock, ArrowRight, Mail } from "lucide-react"
 
@@ -8,6 +8,17 @@ function ExpiredInner() {
   const params = useSearchParams()
   const orderId = params.get("ref")
   const ref = orderId ? orderId.slice(0, 8).toUpperCase() : null
+  const [status, setStatus] = useState<string | null>(null)
+  useEffect(() => {
+    if (!orderId) return
+    const controller = new AbortController()
+    fetch(`/api/checkout/velocity/status/${encodeURIComponent(orderId)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => { if (response.ok) setStatus((await response.json()).status ?? null) })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [orderId])
+  const paid = status === "paid" || status === "completed"
+  const closed = status === "expired" || status === "cancelled"
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-5">
@@ -17,10 +28,10 @@ function ExpiredInner() {
         </span>
 
         <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
-          Payment window expired
+          {paid ? "Payment confirmed" : closed ? "Order closed" : "Awaiting payment confirmation"}
         </h1>
         <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">
-          We didn&apos;t receive payment confirmation in time. Your reservation has been released back into the pool.
+          {paid ? "Your payment is confirmed. View your order for your tickets." : closed ? "This order is closed. If money was deducted, contact us before paying again." : "Confirmation is taking longer than expected. Your payment may still complete. Please do not pay again while we check."}
         </p>
 
         {ref && (
@@ -35,7 +46,7 @@ function ExpiredInner() {
         <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-left space-y-1.5">
           <p className="text-[13px] font-semibold text-amber-800">Was money deducted?</p>
           <p className="text-[13px] text-amber-700">
-            If your EcoCash or card was charged, your tickets will be delivered automatically once the payment clears — you don&apos;t need to do anything.
+            If money was deducted and your ticket hasn&apos;t arrived, WhatsApp 0777 816 368 with your reference. We&apos;ll review the payment.
           </p>
           <p className="text-[13px] text-amber-700">
             Contact us with your reference number and we&apos;ll sort it out promptly.
@@ -44,16 +55,16 @@ function ExpiredInner() {
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            href="/events"
+            href={orderId ? `/orders/${orderId}` : "/orders/lookup"}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
           >
-            Try again <ArrowRight size={14} />
+            View order <ArrowRight size={14} />
           </Link>
           <Link
-            href="/contact"
+            href="https://wa.me/263777816368"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition"
           >
-            <Mail size={14} /> Contact support
+            <Mail size={14} /> WhatsApp support
           </Link>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import "server-only"
+import { VelocityApiError } from "@/lib/velocity/api-error"
 import { log } from "@/lib/logger"
 import { alertPaymentAnomaly } from "@/lib/payment-alerts"
 import type {
@@ -167,7 +168,7 @@ async function velocityRequest<T>(
         }).catch(() => {})
       }
 
-      throw new Error(errorMessage)
+      throw new VelocityApiError(errorMessage, response.status, path)
     }
 
     const responseText = await response.text()

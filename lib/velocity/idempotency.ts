@@ -60,7 +60,7 @@ const heldSessionLocks = new Map<string, PoolClient>()
 export async function acquireLock(key: string): Promise<boolean> {
   if (!dbPool) {
     log.error("idempotency acquireLock error", { key, error: "DATABASE_URL is not configured" })
-    return false
+    throw new Error("Payment coordination unavailable: DATABASE_URL is not configured")
   }
 
   let client: PoolClient | null = null
@@ -81,7 +81,7 @@ export async function acquireLock(key: string): Promise<boolean> {
   } catch (err) {
     client?.release()
     log.error("idempotency acquireLock error", { key, error: String(err) })
-    return false
+    throw new Error("Payment coordination unavailable; retry shortly", { cause: err })
   }
 }
 

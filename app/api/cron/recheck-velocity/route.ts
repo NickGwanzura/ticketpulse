@@ -10,6 +10,7 @@ import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
 import { PAYMENT_WINDOW_MS } from "@/lib/velocity/poll-policy"
 import { alertRecheckHighErrorRate, alertVelocityManualReviewRequired } from "@/lib/payment-alerts"
 import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
+import { recoverPaidSalesOrder } from "@/lib/velocity/sales-order-recovery"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { newPaymentAlert } from "@/lib/whatsapp-templates"
 import type { VelocityOrderMetadata } from "@/types/velocity"
@@ -23,6 +24,24 @@ export async function POST(request: Request) {
 
   const startedAt = Date.now()
   const cutoff = new Date(startedAt - RECHECK_COOLDOWN_MS)
+  const historical = await db.select({ id: orders.id }).from(orders).where(and(
+    eq(orders.status, "expired"),
+    sql`${orders.createdAt} >= now() - interval '30 days'`,
+    sql`${orders.metadata}->'velocity'->>'salesOrderId' IS NOT NULL`,
+    sql`${orders.metadata}->'manualCompletion' IS NULL`,
+    sql`${orders.metadata}->'recoveryReview' IS NULL`,
+    sql`COALESCE(${orders.metadata}->>'salesOrderCheckRequestedAt', '') < ${new Date(startedAt - 15 * 60_000).toISOString()}`,
+  )).orderBy(sql`COALESCE(${orders.metadata}->>'salesOrderCheckRequestedAt', '') ASC`).limit(10)
+  let historicalRecovered = 0
+  for (const order of historical) {
+    try {
+      const result = await recoverPaidSalesOrder(order.id, "historical_sales_order_recovery")
+      if (result.newlySettled) {
+        historicalRecovered++
+        await deliverTicketForPaidOrder(order.id, { notifyOrganizers: false })
+      }
+    } catch (error) { log.warn("historical payment recovery deferred", { orderId: order.id, error: String(error) }) }
+  }
   // Sweep stopped and missing-reference orders too: they never enter the poll batch.
   const staleOrders = await db.select({ id: orders.id }).from(orders).where(and(
     inArray(orders.status, ["pending", "awaiting_verification"]),
@@ -169,6 +188,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     checked: targetOrders.length,
+    historicalRecovered,
     expired: expiredCount,
     fixed: fixedCount,
     retried: retriedCount,

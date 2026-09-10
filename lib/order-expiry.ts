@@ -87,16 +87,29 @@ export async function restoreExpiredOrderInventory(
  * already moved it out of 'pending' (paid, cancelled, or expired).
  */
 export async function expireOrderAndReleaseInventory(orderId: string, reason = "payment_timeout"): Promise<boolean> {
-  try {
     const { recoverPaidSalesOrder } = await import("@/lib/velocity/sales-order-recovery")
     const verification = await recoverPaidSalesOrder(orderId, "expiry_sales_order_check")
     if (!verification.safeToExpire) return false
+    return closeUnpaidOrder(orderId, reason, "expired")
+}
+
+/** Only use after a definitive rejection or before initiation was attempted. */
+export async function cancelUnpaidOrderAndReleaseInventory(orderId: string): Promise<boolean> {
+  return closeUnpaidOrder(orderId, "checkout_rejected", "cancelled")
+}
+
+async function closeUnpaidOrder(orderId: string, reason: string, status: "expired" | "cancelled"): Promise<boolean> {
+  try {
     return await db.transaction(async (tx) => {
       await lockOrderMutation(tx, orderId)
+      const [current] = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1)
+      if (!current) return false
+      const { protectedFromRecovery } = await import("@/lib/velocity/sales-order-recovery")
+      if (protectedFromRecovery(current)) return false
 
       const [claimed] = await tx
         .update(orders)
-        .set({ status: "expired", updatedAt: new Date() })
+        .set({ status, updatedAt: new Date() })
         .where(and(eq(orders.id, orderId), inArray(orders.status, ["pending", "awaiting_verification"])))
         .returning({ id: orders.id, metadata: orders.metadata })
 
