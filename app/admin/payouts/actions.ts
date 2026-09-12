@@ -32,6 +32,8 @@ const ManualPayoutSchema = z.object({
   confirmOverage: z.string().nullish().transform((v) => v === "true"),
 })
 
+export type ManualPayoutInput = z.infer<typeof ManualPayoutSchema>
+
 export type AdminPayoutActionResult = {
   ok: boolean
   message: string
@@ -252,30 +254,12 @@ export async function getPayouts(status?: string) {
  * immediately "paid" so balances and reconciliation reflect the money that
  * has actually left TicketPulse.
  */
-export async function recordManualPayoutAction(formData: FormData): Promise<AdminPayoutActionResult> {
-  const session = await requireAdmin().catch(() => null)
-  if (!session) {
-    log.warn("[manual-payout] Unauthorized attempt")
-    return adminPayoutResult(false, "You are not authorized to record payouts.")
-  }
+export async function recordManualPayoutForAdmin(input: ManualPayoutInput, performedBy: string): Promise<AdminPayoutActionResult> {
+  const { userId, eventId, amount, currency, method, paidDate: paidDateRaw, proofReference, notes, confirmOverage } = input
 
-  const parsed = ManualPayoutSchema.safeParse({
-    userId: formData.get("userId"),
-    eventId: formData.get("eventId"),
-    amount: formData.get("amount"),
-    currency: formData.get("currency"),
-    method: formData.get("method"),
-    paidDate: formData.get("paidDate"),
-    proofReference: formData.get("proofReference"),
-    notes: formData.get("notes"),
-    confirmOverage: formData.get("confirmOverage"),
-  })
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Invalid payout details."
-    log.warn("[manual-payout] Validation failed", { issues: parsed.error.issues })
-    return adminPayoutResult(false, message)
+  if (currency !== "USD") {
+    return adminPayoutResult(false, "Manual organiser payouts are currently recorded in USD.")
   }
-  const { userId, eventId, amount, currency, method, paidDate: paidDateRaw, proofReference, notes, confirmOverage } = parsed.data
 
   const paidDate = paidDateRaw ? new Date(paidDateRaw) : new Date()
   if (Number.isNaN(paidDate.getTime())) { log.warn("[manual-payout] Invalid date"); return adminPayoutResult(false, "Choose a valid payout date.") }
@@ -314,7 +298,7 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
     }
   }
 
-  const admin = session.user.email ?? session.user.id
+  const admin = performedBy
   const cleanAmount = Number(amount.toFixed(2))
 
   try {
@@ -357,6 +341,32 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
     log.error("[manual-payout] Failed to record", { error: String(err) })
     return adminPayoutResult(false, "The payout could not be recorded. Check the details and try again.")
   }
+}
+
+export async function recordManualPayoutAction(formData: FormData): Promise<AdminPayoutActionResult> {
+  const session = await requireAdmin().catch(() => null)
+  if (!session) {
+    log.warn("[manual-payout] Unauthorized attempt")
+    return adminPayoutResult(false, "You are not authorized to record payouts.")
+  }
+
+  const parsed = ManualPayoutSchema.safeParse({
+    userId: formData.get("userId"),
+    eventId: formData.get("eventId"),
+    amount: formData.get("amount"),
+    currency: formData.get("currency"),
+    method: formData.get("method"),
+    paidDate: formData.get("paidDate"),
+    proofReference: formData.get("proofReference"),
+    notes: formData.get("notes"),
+    confirmOverage: formData.get("confirmOverage"),
+  })
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Invalid payout details."
+    log.warn("[manual-payout] Validation failed", { issues: parsed.error.issues })
+    return adminPayoutResult(false, message)
+  }
+  return recordManualPayoutForAdmin(parsed.data, session.user.email ?? session.user.id)
 }
 
 export async function approvePayoutAction(payoutId: string): Promise<void> {

@@ -393,6 +393,31 @@ class OrganizerApi extends ChangeNotifier {
       ...?proofReference == null ? null : {'proofReference': proofReference},
     },
   );
+  Future<Json> adminPayoutOptions() => request('/api/mobile/admin/payouts');
+  Future<Json> adminRecordManualPayout({
+    required String userId,
+    String? eventId,
+    required double amount,
+    String currency = 'USD',
+    required String method,
+    required String paidDate,
+    required String proofReference,
+    String? notes,
+    bool confirmOverage = false,
+  }) => request(
+    '/api/mobile/admin/payouts',
+    body: {
+      'userId': userId,
+      if (eventId != null && eventId.trim().isNotEmpty) 'eventId': eventId,
+      'amount': amount,
+      'currency': currency,
+      'method': method,
+      'paidDate': paidDate,
+      'proofReference': proofReference,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      'confirmOverage': confirmOverage,
+    },
+  );
   Future<Json> adminOrganizerAction(String id, String action) => request(
     '/api/mobile/admin/organizers/${Uri.encodeComponent(id)}',
     body: {'action': action},

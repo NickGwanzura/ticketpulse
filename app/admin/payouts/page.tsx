@@ -19,6 +19,7 @@ import ManualPayoutForm from "./ManualPayoutForm"
 import DataTable, { type DataTableColumn } from "@/components/ui/DataTable"
 import PayoutsBulkActions from "./PayoutsBulkActions"
 import Badge, { type BadgeTone } from "@/components/ui/Badge"
+import { getEventRevenueSummaries, type EventRevenueSummary } from "@/lib/revenue-summary"
 
 type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
@@ -225,6 +226,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
   let stats = { pending: 0, approved: 0, processing: 0, paid: 0, held: 0, rejected: 0, failed: 0, cancelled: 0, pendingTotal: 0 }
   let organizerRows: { id: string; name: string | null; email: string | null }[] = []
   let eventRows: { id: string; title: string; organizerId: string }[] = []
+  let eventBalances = new Map<string, EventRevenueSummary>()
 
   try {
     const result = await getPayouts(active === "all" ? undefined : active)
@@ -250,6 +252,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
     ])
     organizerRows = orgs
     eventRows = evts
+    eventBalances = await getEventRevenueSummaries(eventRows.map((event) => event.id))
   } catch (err) {
     console.error("[admin/payouts] Failed to load organizers/events:", err)
   }
@@ -322,6 +325,35 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
             </div>
           </div>
           <ManualPayoutForm organizers={organizerRows} events={eventRows} />
+        </div>
+
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+          <div className="px-5 py-4 border-b border-line">
+            <p className="text-[14px] font-bold tracking-tight text-ink">Event balances</p>
+            <p className="mt-1 text-[12px] text-ink-3">Use these available balances when recording money already given to an organiser.</p>
+          </div>
+          {eventRows.length > 0 ? (
+            <div className="divide-y divide-line">
+              {eventRows.slice(0, 50).map((event) => {
+                const balance = eventBalances.get(event.id)
+                const organizer = organizerRows.find((row) => row.id === event.organizerId)
+                return (
+                  <div key={event.id} className="px-5 py-3.5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold text-ink">{event.title}</p>
+                      <p className="text-[11px] text-ink-3">{organizer?.name ?? organizer?.email ?? "Organizer"}</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-right text-[12px]">
+                      <span className="text-ink-3">Paid {formatCurrency(balance?.paidOut ?? 0, "USD")}</span>
+                      <span className="font-bold tabular-nums text-emerald-700">Available {formatCurrency(balance?.availableBalance ?? 0, "USD")}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="px-5 py-5 text-[13px] text-ink-2">No events available yet.</p>
+          )}
         </div>
 
         {/* Tabs */}

@@ -825,6 +825,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       }
       final data = snapshot.data!, summary = data['summary'] as Json;
       final payouts = (data['payouts'] as List).cast<Json>();
+      final eventBalances = ((data['eventBalances'] as List?) ?? const []).cast<Json>();
       final currency = data['currency'] as String;
       return RefreshIndicator(
         onRefresh: _reload,
@@ -868,6 +869,25 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 ),
               ),
             ),
+            if (eventBalances.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text('Balances by event', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 10),
+              for (final event in eventBalances)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    title: Text(event['title']?.toString() ?? 'Event'),
+                    subtitle: Text(
+                      'Paid out ${money((event['summary'] as Json)['paidOut'], currency)} · Pending ${money((event['summary'] as Json)['pendingPayouts'], currency)}',
+                    ),
+                    trailing: Text(
+                      money((event['summary'] as Json)['availableBalance'], currency),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+            ],
             const SizedBox(height: 16),
             Card(
               child: Padding(
@@ -1145,6 +1165,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       ],
                     ),
             ),
+            _buildManualPayoutCard(context, widget.api, onChanged: _reload),
             _buildPayoutQueue(context, widget.api, payouts, onChanged: _reload),
             _buildOrganizerApprovals(
               context,
@@ -1276,6 +1297,181 @@ class _RevenueCard extends StatelessWidget {
       ),
     ),
   );
+}
+
+Widget _buildManualPayoutCard(
+  BuildContext context,
+  OrganizerApi api, {
+  required VoidCallback onChanged,
+}) => _AdminSection(
+  title: 'Record organiser payment',
+  child: Card(
+    child: ListTile(
+      leading: const Icon(Icons.payments_outlined),
+      title: const Text('Record money already given to an organiser'),
+      subtitle: const Text(
+        'Save cash, EcoCash, or bank disbursements against an event balance with an audit reference.',
+      ),
+      trailing: FilledButton(
+        onPressed: () async {
+          final saved = await _showManualPayoutDialog(context, api);
+          if (saved) onChanged();
+        },
+        child: const Text('Record payment'),
+      ),
+    ),
+  ),
+);
+
+Future<bool> _showManualPayoutDialog(
+  BuildContext context,
+  OrganizerApi api,
+) async {
+  Json? options;
+  try {
+    options = await api.adminPayoutOptions();
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+    }
+    return false;
+  }
+  if (!context.mounted) return false;
+  if (options == null) return false;
+  final organizers = ((options['organizers'] as List?) ?? const []).cast<Json>();
+  final events = ((options['events'] as List?) ?? const []).cast<Json>();
+  String? organizerId;
+  String? eventId;
+  String method = 'cash';
+  bool confirmOverage = false;
+  final amount = TextEditingController();
+  final paidDate = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
+  final reference = TextEditingController();
+  final notes = TextEditingController();
+
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) {
+        final organizerEvents = events
+            .where((event) => event['organizerId'] == organizerId)
+            .toList();
+        final selectedEvent = organizerEvents.where((event) => event['id'] == eventId).firstOrNull;
+        final available = selectedEvent == null ? null : number(selectedEvent['balance']);
+        return AlertDialog(
+          title: const Text('Record organiser payment'),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: organizerId,
+                    decoration: const InputDecoration(labelText: 'Organiser'),
+                    items: [
+                      for (final organizer in organizers)
+                        DropdownMenuItem(
+                          value: organizer['id']?.toString(),
+                          child: Text(organizer['name']?.toString() ?? organizer['email']?.toString() ?? 'Organizer'),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() {
+                      organizerId = value;
+                      eventId = null;
+                    }),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: eventId,
+                    decoration: const InputDecoration(labelText: 'Event'),
+                    items: [
+                      for (final event in organizerEvents)
+                        DropdownMenuItem(
+                          value: event['id']?.toString(),
+                          child: Text('${event['title'] ?? 'Event'} · ${money(event['balance'], 'USD')} available'),
+                        ),
+                    ],
+                    onChanged: organizerId == null ? null : (value) => setState(() => eventId = value),
+                  ),
+                  if (available != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Available event balance: ${money(available, 'USD')}'),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextField(controller: amount, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount', prefixText: 'USD ')),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: method,
+                    decoration: const InputDecoration(labelText: 'Method'),
+                    items: const [
+                      DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                      DropdownMenuItem(value: 'ecocash', child: Text('EcoCash')),
+                      DropdownMenuItem(value: 'bank_usd', child: Text('Bank transfer')),
+                    ],
+                    onChanged: (value) => setState(() => method = value ?? 'cash'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(controller: paidDate, decoration: const InputDecoration(labelText: 'Date paid (YYYY-MM-DD)')),
+                  const SizedBox(height: 12),
+                  TextField(controller: reference, decoration: const InputDecoration(labelText: 'Receipt / transfer reference')),
+                  const SizedBox(height: 12),
+                  TextField(controller: notes, maxLength: 500, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: confirmOverage,
+                    onChanged: (value) => setState(() => confirmOverage = value ?? false),
+                    title: const Text('Allow amount above event balance', style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: organizerId == null || eventId == null
+                  ? null
+                  : () async {
+                      final value = double.tryParse(amount.text.trim());
+                      if (value == null || value <= 0 || reference.text.trim().length < 3) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter an amount and a valid reference.')));
+                        return;
+                      }
+                      try {
+                        await api.adminRecordManualPayout(
+                          userId: organizerId!,
+                          eventId: eventId,
+                          amount: value,
+                          method: method,
+                          paidDate: paidDate.text.trim(),
+                          proofReference: reference.text.trim(),
+                          notes: notes.text.trim(),
+                          confirmOverage: confirmOverage,
+                        );
+                        if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                      } catch (error) {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+                      }
+                    },
+              child: const Text('Save payment'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  amount.dispose();
+  paidDate.dispose();
+  reference.dispose();
+  notes.dispose();
+  if (saved == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Organizer payment recorded.')));
+  }
+  return saved == true;
 }
 
 Widget _buildPayoutQueue(

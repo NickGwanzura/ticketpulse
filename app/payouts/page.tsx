@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { eq, count, and } from "drizzle-orm"
+import { eq, count, and, desc } from "drizzle-orm"
 import {
   Wallet, CheckCircle2,
   Send, Smartphone, Building2, Inbox, Banknote, ReceiptText,
@@ -11,8 +11,9 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getOrganizerPayouts, getOrganizerBalance } from "./actions"
 import { db } from "@/db"
-import { users, payouts } from "@/db/schema"
+import { events, users, payouts } from "@/db/schema"
 import TrustJourney from "./TrustJourney"
+import { getEventRevenueSummaries } from "@/lib/revenue-summary"
 
 type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
@@ -75,6 +76,13 @@ export default async function PayoutsDashboardPage() {
     platformFee,
     confirmedTicketCount,
   } = await getOrganizerBalance(userId)
+  const eventRows = await db
+    .select({ id: events.id, title: events.title, startsAt: events.startsAt, status: events.status })
+    .from(events)
+    .where(eq(events.organizerId, userId))
+    .orderBy(desc(events.startsAt))
+    .limit(50)
+  const eventSummaries = await getEventRevenueSummaries(eventRows.map((event) => event.id))
 
   // Trust journey data
   const [userRow, paidPayoutCount] = await Promise.all([
@@ -238,6 +246,35 @@ export default async function PayoutsDashboardPage() {
             </p>
           </div>
         )}
+
+        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-2">
+          <div className="px-5 md:px-6 py-4 border-b border-line">
+            <h2 className="text-[18px] font-semibold tracking-tight text-ink">Balances by event</h2>
+            <p className="mt-1 text-[13px] text-ink-2">See what has been earned, paid, and remains available for each event.</p>
+          </div>
+          {eventRows.length > 0 ? (
+            <div className="divide-y divide-line">
+              {eventRows.map((event) => {
+                const summary = eventSummaries.get(event.id)
+                return (
+                  <div key={event.id} className="px-5 md:px-6 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-semibold text-ink">{event.title}</p>
+                      <p className="mt-1 text-[12px] text-ink-3">{summary?.confirmedTicketCount ?? 0} confirmed tickets · {summary?.paidOut ? `${formatCurrency(summary.paidOut, "USD")} paid` : "No payouts recorded"}</p>
+                    </div>
+                    <dl className="grid grid-cols-3 gap-4 text-right text-[12px]">
+                      <div><dt className="text-ink-3">Net</dt><dd className="font-bold tabular-nums text-ink">{formatCurrency(summary?.netRevenue ?? 0, "USD")}</dd></div>
+                      <div><dt className="text-ink-3">Pending</dt><dd className="font-bold tabular-nums text-amber-700">{formatCurrency(summary?.pendingPayouts ?? 0, "USD")}</dd></div>
+                      <div><dt className="text-ink-3">Available</dt><dd className="font-bold tabular-nums text-emerald-700">{formatCurrency(summary?.availableBalance ?? 0, "USD")}</dd></div>
+                    </dl>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="px-5 md:px-6 py-6 text-[13px] text-ink-2">Your event balances will appear here after you publish an event.</p>
+          )}
+        </div>
 
         {/* Payout history */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
