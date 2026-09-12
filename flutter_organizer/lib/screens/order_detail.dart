@@ -49,13 +49,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _act(String action, Json order) async {
     if (_busy) return;
-    final complete = action == 'complete';
+    final complete = action == 'complete' || action == 'complete_and_send';
+    final completeAndSend = action == 'complete_and_send';
     final paymentRefController = TextEditingController();
     final noteController = TextEditingController();
     final input = await showDialog<Json>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(complete ? 'Confirm payment received' : 'Resend tickets?'),
+        title: Text(completeAndSend ? 'Complete order and send tickets' : complete ? 'Confirm payment received' : 'Resend tickets?'),
         content: complete
             ? SingleChildScrollView(
                 child: Column(
@@ -99,7 +100,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               'paymentRef': paymentRefController.text.trim(),
               'note': noteController.text.trim(),
             }),
-            child: Text(complete ? 'Payment received' : 'Send tickets'),
+            child: Text(completeAndSend ? 'Complete & send' : complete ? 'Payment received' : 'Send tickets'),
           ),
         ],
       ),
@@ -682,9 +683,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _busy
                                   ? null
-                                  : () => _act('complete', order),
+                                  : () => _act('complete_and_send', order),
                               icon: const Icon(Icons.verified_outlined),
-                              label: const Text('Mark payment received'),
+                              label: const Text('Complete & send tickets'),
                             ),
                           ),
                         ),

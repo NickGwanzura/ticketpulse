@@ -353,7 +353,7 @@ class OrganizerApi extends ChangeNotifier {
     '/api/mobile/organizer/orders/${Uri.encodeComponent(id)}',
     body: {
       'action': action,
-      if (action == 'complete') 'confirmPayment': true,
+      if (action == 'complete' || action == 'complete_and_send') 'confirmPayment': true,
       if (paymentRef != null && paymentRef.trim().isNotEmpty)
         'paymentRef': paymentRef.trim(),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
