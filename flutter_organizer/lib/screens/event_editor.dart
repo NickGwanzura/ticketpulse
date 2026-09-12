@@ -139,6 +139,22 @@ class _EventEditorScreenState extends State<EventEditorScreen> {
     }
   }
 
+  Future<void> _submitReview() async {
+    if (widget.event == null) return;
+    setState(() => _saving = true);
+    try {
+      await widget.api.submitEventForReview(widget.event!.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event submitted for review.')));
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final editing = widget.event != null;
@@ -163,7 +179,7 @@ class _EventEditorScreenState extends State<EventEditorScreen> {
                   Text(
                     editing
                         ? 'Keep the details current for your team and buyers.'
-                        : 'Your event starts as a draft. Add ticket tiers and submit it for review from the web dashboard.',
+                        : 'Your event starts as a draft. Add ticket tiers from the full dashboard, then submit it for review here.',
                   ),
                   const SizedBox(height: 24),
                   _sectionLabel(context, 'Event basics'),
@@ -335,10 +351,18 @@ class _EventEditorScreenState extends State<EventEditorScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Ticket pricing and publishing controls remain in the full TicketPulse dashboard.',
+                    'Ticket pricing and cover images remain in the full TicketPulse dashboard.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  if (editing && widget.event!.status == 'draft') ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : _submitReview,
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('Submit for review'),
+                    ),
+                  ],
                 ],
               ),
             ),

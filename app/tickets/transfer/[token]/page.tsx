@@ -122,7 +122,7 @@ export default function ClaimTransferPage() {
           <Ticket size={26} className="text-navy" />
         </span>
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Ticket transfer</p>
-        <h1 className="text-[26px] font-bold tracking-tight text-ink">You've been sent a ticket</h1>
+        <h1 className="text-[26px] font-bold tracking-tight text-ink">You&apos;ve been sent a ticket</h1>
         <p className="mt-2 text-[14px] text-ink-2">
           Claim it below to add it to your name.
         </p>

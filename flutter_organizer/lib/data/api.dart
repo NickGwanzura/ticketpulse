@@ -65,7 +65,12 @@ class OrganizerApi extends ChangeNotifier {
   Future<void>? _refreshing;
   int _generation = 0;
 
-  String get _scanQueueKey => 'ticketpulse.organizer.scan-queue.$baseUrl';
+  // Offline scans are private to the signed-in operator. Including the user
+  // id prevents a second account on the same phone from inheriting a queue.
+  String get _scanQueueKey {
+    final operatorId = (user?['id'] as String?)?.trim();
+    return 'ticketpulse.organizer.scan-queue.$baseUrl.${operatorId?.isNotEmpty == true ? operatorId : 'anonymous'}';
+  }
 
   Future<Json> _send(
     String path, {
@@ -249,6 +254,12 @@ class OrganizerApi extends ChangeNotifier {
     '/api/mobile/organizer/events/${Uri.encodeComponent(id)}/monitor',
   );
 
+  Future<Json> adminReport({String status = 'all', String? query}) {
+    final params = <String, String>{'status': status, if (query != null && query.trim().isNotEmpty) 'q': query.trim()};
+    final suffix = Uri(queryParameters: params).query;
+    return request('/api/mobile/admin/orders/report${suffix.isEmpty ? '' : '?$suffix'}');
+  }
+
   Future<OrganizerEvent> createEvent({
     required String title,
     required String category,
@@ -314,6 +325,12 @@ class OrganizerApi extends ChangeNotifier {
     }
     return OrganizerEvent.fromJson(event);
   }
+
+  Future<Json> submitEventForReview(String id) => request(
+    '/api/mobile/organizer/events/${Uri.encodeComponent(id)}',
+    method: 'POST',
+    body: {'action': 'submit_review'},
+  );
 
   Future<OrderPage> orders({
     int offset = 0,
@@ -496,6 +513,14 @@ class OrganizerApi extends ChangeNotifier {
 
   Future<void> signOut() async {
     ++_generation;
+    final refresh = _refresh;
+    if (refresh != null) {
+      try {
+        await _send('/api/mobile/auth/revoke', body: {'refreshToken': refresh});
+      } catch (_) {
+        // Local sign-out must still complete when the device is offline.
+      }
+    }
     await store.clear();
     _access = _refresh = null;
     user = null;

@@ -61,3 +61,20 @@ export async function PATCH(request: Request, context: Context) {
     startsAt: updated.startsAt?.toISOString() ?? null, endsAt: updated.endsAt?.toISOString() ?? null,
   } }, { headers: privateHeaders })
 }
+
+export async function POST(request: Request, context: Context) {
+  const auth = await authenticateOrganizer(request)
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status })
+  const { id } = await context.params
+  if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ ok: false, error: "Invalid event ID" }, { status: 400 })
+  const parsed = z.object({ action: z.literal("submit_review") }).safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ ok: false, error: "Invalid event action" }, { status: 400 })
+  const [current] = await db.select({ id: events.id, status: events.status }).from(events)
+    .where(and(eq(events.id, id), organizerEventScope(auth.userId, auth.role))).limit(1)
+  if (!current) return NextResponse.json({ ok: false, error: "Event not found or access unavailable" }, { status: 404 })
+  if (auth.role !== "admin" && !["draft", "cancelled"].includes(current.status ?? "")) {
+    return NextResponse.json({ ok: false, error: "Only draft events can be submitted for review." }, { status: 409 })
+  }
+  const [updated] = await db.update(events).set({ status: "pending_review", updatedAt: new Date() }).where(eq(events.id, id)).returning({ id: events.id, status: events.status })
+  return NextResponse.json({ ok: true, event: updated, message: "Event submitted for review." }, { headers: privateHeaders })
+}

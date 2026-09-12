@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/purity */
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"

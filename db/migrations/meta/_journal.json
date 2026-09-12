@@ -22,6 +22,13 @@
       "when": 1784969110464,
       "tag": "0002_add_notification_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784970000000,
+      "tag": "0003_mobile_sessions_support_cases",
+      "breakpoints": true
     }
   ]
 }

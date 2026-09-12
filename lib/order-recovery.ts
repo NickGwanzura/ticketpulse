@@ -45,7 +45,10 @@ export type CompleteAndSendResult = {
   details?: Record<string, unknown>
 }
 
-export type CompletionOptions = DeliveryOptions
+export type CompletionOptions = DeliveryOptions & {
+  paymentRef?: string
+  note?: string
+}
 
 export type AuditLogEntry = {
   id: string
@@ -567,7 +570,7 @@ export async function completeAndSendAction(
   // 2. Mark order completed (only if not already)
   let completed = order.status === "completed"
   if (!completed) {
-    const completion = await markOrderCompleteAction(orderId, userId, userEmail)
+    const completion = await markOrderCompleteAction(orderId, userId, userEmail, options)
     if (!completion.success) {
       return {
         success: false,

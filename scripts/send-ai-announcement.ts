@@ -37,7 +37,7 @@ function groqAiAnnouncementEmail(name?: string | null): { html: string; text: st
       "<": "<",
       ">": ">",
       "&": "&",
-      '"': """,
+      '"': "&quot;",
       "'": "'",
     }
     return s.replace(/[<>&"']/g, (c) => m[c])

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"

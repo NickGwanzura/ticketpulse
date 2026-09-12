@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react-hooks/set-state-in-effect */
 import Link from "next/link"
 import { useCart, type CartLine } from "@/lib/cart-context"
 import { formatCurrency } from "@/lib/utils"

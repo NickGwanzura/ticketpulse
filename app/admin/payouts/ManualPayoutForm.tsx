@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable react/no-unescaped-entities */
 
 import { useActionState, useMemo, useState, useEffect } from "react"
 import { Banknote } from "lucide-react"

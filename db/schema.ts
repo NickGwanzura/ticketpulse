@@ -185,6 +185,21 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
   index("email_verification_tokens_user_id_idx").on(table.userId),
 ])
 
+// Mobile refresh sessions are persisted so a refresh token can be rotated and
+// revoked after logout or a suspected compromise.
+export const mobileSessions = pgTable("mobile_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  refreshTokenHash: text("refresh_token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("mobile_sessions_user_id_idx").on(table.userId),
+  index("mobile_sessions_expires_at_idx").on(table.expiresAt),
+])
+
 // ─── Events ──────────────────────────────────────────────────────────────────
 
 export const events = pgTable("events", {
@@ -466,6 +481,38 @@ export const photoDownloads = pgTable("photo_downloads", {
   downloadedAt: timestamp("downloaded_at").defaultNow(),
 })
 
+export const supportCases = pgTable("support_cases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(),
+  priority: text("priority").notNull().default("normal"),
+  status: text("status").notNull().default("open"),
+  note: text("note"),
+  assignedTo: text("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  openedBy: text("opened_by").notNull().references(() => users.id),
+  resolvedBy: text("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  openedAt: timestamp("opened_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNote: text("resolution_note"),
+}, (table) => [
+  index("support_cases_order_id_idx").on(table.orderId),
+  index("support_cases_event_status_idx").on(table.eventId, table.status),
+  index("support_cases_assigned_to_idx").on(table.assignedTo),
+])
+
+export const supportCaseEvents = pgTable("support_case_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  caseId: uuid("case_id").notNull().references(() => supportCases.id, { onDelete: "cascade" }),
+  actorId: text("actor_id").notNull().references(() => users.id),
+  action: text("action").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("support_case_events_case_id_idx").on(table.caseId),
+])
+
 // ─── Waitlist ─────────────────────────────────────────────────────────────────
 
 export const eventWaitlist = pgTable("event_waitlist", {
@@ -618,6 +665,11 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
 
 export const usersRelations = relations(users, ({ many }) => ({
   orders: many(orders),
+  mobileSessions: many(mobileSessions),
+  openedSupportCases: many(supportCases, { relationName: "openedSupportCases" }),
+  assignedSupportCases: many(supportCases, { relationName: "assignedSupportCases" }),
+  resolvedSupportCases: many(supportCases, { relationName: "resolvedSupportCases" }),
+  supportCaseEvents: many(supportCaseEvents),
   organizedEvents: many(events),
   transportBookings: many(transportBookings),
   invitedOrganisers: many(eventOrganisers),
@@ -639,6 +691,25 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   event: one(events, { fields: [orders.eventId], references: [events.id] }),
   items: many(orderItems),
   questionResponses: many(ticketQuestionResponses),
+  supportCases: many(supportCases),
+}))
+
+export const mobileSessionsRelations = relations(mobileSessions, ({ one }) => ({
+  user: one(users, { fields: [mobileSessions.userId], references: [users.id] }),
+}))
+
+export const supportCasesRelations = relations(supportCases, ({ one, many }) => ({
+  order: one(orders, { fields: [supportCases.orderId], references: [orders.id] }),
+  event: one(events, { fields: [supportCases.eventId], references: [events.id] }),
+  openedByUser: one(users, { relationName: "openedSupportCases", fields: [supportCases.openedBy], references: [users.id] }),
+  assignedToUser: one(users, { relationName: "assignedSupportCases", fields: [supportCases.assignedTo], references: [users.id] }),
+  resolvedByUser: one(users, { relationName: "resolvedSupportCases", fields: [supportCases.resolvedBy], references: [users.id] }),
+  events: many(supportCaseEvents),
+}))
+
+export const supportCaseEventsRelations = relations(supportCaseEvents, ({ one }) => ({
+  supportCase: one(supportCases, { fields: [supportCaseEvents.caseId], references: [supportCases.id] }),
+  actor: one(users, { fields: [supportCaseEvents.actorId], references: [users.id] }),
 }))
 
 export const ticketTiersRelations = relations(ticketTiers, ({ one }) => ({

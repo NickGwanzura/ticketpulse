@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { events, ticketTiers, tickets } from "@/db/schema"
-import { eq, and, sql, isNotNull, desc } from "drizzle-orm"
+import { eq, and, sql, isNotNull, desc, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
 import { generateUniqueSlug } from "@/lib/slug"
@@ -68,36 +68,22 @@ export async function GET(request: Request) {
     )
     .orderBy(desc(events.startsAt))
 
-  // For each event, fetch ticket & check-in counts
-  const enriched = await Promise.all(
-    rows.map(async (event) => {
-      const [capacityAgg] = await db
-        .select({
-          totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
-        })
-        .from(ticketTiers)
-        .where(eq(ticketTiers.eventId, event.id))
-
-      const [soldAgg] = await db
-        .select({
-          totalSold: sql<number>`COUNT(*)::int`,
-        })
-        .from(tickets)
-        .where(
-          and(
-            eq(tickets.eventId, event.id),
-            eq(tickets.isStaffTicket, false),
-            sql`${tickets.status} IN ('sold', 'used')`,
-          ),
-        )
-
-      const [checkinAgg] = await db
-        .select({
-          checkedIn: sql<number>`COUNT(*)::int`,
-        })
-        .from(tickets)
-        .where(and(eq(tickets.eventId, event.id), isNotNull(tickets.scannedAt)))
-
+  const eventIds = rows.map((event) => event.id)
+  const [capacityRows, soldRows, checkinRows] = eventIds.length === 0
+    ? [[], [], []]
+    : await Promise.all([
+      db.select({ eventId: ticketTiers.eventId, totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)` })
+        .from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)).groupBy(ticketTiers.eventId),
+      db.select({ eventId: tickets.eventId, totalSold: sql<number>`COUNT(*)::int` })
+        .from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), sql`${tickets.status} IN ('sold', 'used')`)).groupBy(tickets.eventId),
+      db.select({ eventId: tickets.eventId, checkedIn: sql<number>`COUNT(*)::int` })
+        .from(tickets).where(and(inArray(tickets.eventId, eventIds), isNotNull(tickets.scannedAt))).groupBy(tickets.eventId),
+    ])
+  const capacities = new Map(capacityRows.map((row) => [row.eventId, Number(row.totalCapacity ?? 0)]))
+  const sold = new Map(soldRows.map((row) => [row.eventId, Number(row.totalSold ?? 0)]))
+  const checkedIn = new Map(checkinRows.map((row) => [row.eventId, Number(row.checkedIn ?? 0)]))
+  const now = new Date()
+  const enriched = rows.map((event) => {
       return {
         id: event.id,
         title: event.title,
@@ -112,16 +98,15 @@ export async function GET(request: Request) {
         country: event.country,
         address: event.address,
         description: event.description,
-        totalCapacity: Number(capacityAgg?.totalCapacity ?? 0),
-        totalSold: Number(soldAgg?.totalSold ?? 0),
-        checkedIn: Number(checkinAgg?.checkedIn ?? 0),
-        isFinished: event.endsAt != null && event.endsAt <= new Date(),
+        totalCapacity: capacities.get(event.id) ?? 0,
+        totalSold: sold.get(event.id) ?? 0,
+        checkedIn: checkedIn.get(event.id) ?? 0,
+        isFinished: event.endsAt != null && event.endsAt <= now,
         canScan:
           (event.status === "published" || event.status === "sold_out") &&
-          (event.endsAt == null || event.endsAt > new Date()),
+          (event.endsAt == null || event.endsAt > now),
       }
-    }),
-  )
+    })
 
   return NextResponse.json({ ok: true, events: enriched }, { headers: privateHeaders })
 }

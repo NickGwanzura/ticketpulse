@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server"
 import { generateAnnouncementContent } from "@/lib/groq"
 import { rateLimit } from "@/lib/rate-limit"

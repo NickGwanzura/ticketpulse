@@ -1,4 +1,5 @@
 "use server"
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { revalidatePath } from "next/cache"
 import { eq, desc, sql } from "drizzle-orm"

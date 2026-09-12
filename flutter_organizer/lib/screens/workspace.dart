@@ -8,6 +8,7 @@ import 'order_detail.dart';
 import 'overview_widgets.dart';
 import 'event_monitor.dart';
 import 'event_editor.dart';
+import 'report.dart';
 import '../design.dart';
 import 'package:intl/intl.dart';
 
@@ -1168,11 +1169,10 @@ class _AdminScreenState extends State<AdminScreen> {
                       leading: const Icon(Icons.file_download_outlined),
                       title: const Text('Orders and reconciliation'),
                       subtitle: const Text(
-                        'Download sales and payment reports as PDF or CSV.',
+                        'Open a secure, authenticated orders report in the app.',
                       ),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () =>
-                          openWebsite(context, widget.api, '/admin/orders'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdminReportScreen(api: widget.api))),
                     ),
                     const Divider(height: 1),
                     ListTile(

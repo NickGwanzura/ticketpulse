@@ -34,7 +34,7 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _refresh());
+    _schedulePolling();
   }
 
   @override
@@ -46,7 +46,26 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refresh();
+    if (state == AppLifecycleState.resumed) {
+      _refresh();
+      _schedulePolling();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _timer?.cancel();
+    }
+  }
+
+  void _schedulePolling() {
+    _timer?.cancel();
+    final now = DateTime.now();
+    final startsAt = _event.startsAt;
+    final endsAt = _event.endsAt;
+    final nearEvent = startsAt != null && startsAt.difference(now).inHours.abs() <= 6;
+    final interval = endsAt != null && !endsAt.isAfter(now)
+        ? const Duration(minutes: 2)
+        : nearEvent
+            ? const Duration(seconds: 15)
+            : const Duration(seconds: 45);
+    _timer = Timer.periodic(interval, (_) => _refresh());
   }
 
   Future<void> _refresh() async {
@@ -65,6 +84,7 @@ class _EventMonitorScreenState extends State<EventMonitorScreen>
           _updatedAt = DateTime.now();
           _error = null;
         });
+        _schedulePolling();
       }
     } catch (error) {
       if (mounted) setState(() => _error = '$error');

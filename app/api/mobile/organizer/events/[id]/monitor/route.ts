@@ -41,7 +41,9 @@ export async function GET(request: Request, context: Context) {
   if (event.endsAt && event.endsAt <= new Date()) alerts.push("Event has finished; gate scanning is closed.")
   if (totalCapacity > 0 && remaining <= Math.ceil(totalCapacity * 0.1) && remaining > 0) alerts.push(`${remaining} ticket${remaining === 1 ? "" : "s"} remaining.`)
   if ((orderSummary.awaiting_verification ?? 0) > 0) alerts.push(`${orderSummary.awaiting_verification} payment${orderSummary.awaiting_verification === 1 ? "" : "s"} awaiting verification.`)
-  if ((orderSummary.expired ?? 0) + (orderSummary.cancelled ?? 0) > 0) alerts.push(`${(orderSummary.expired ?? 0) + (orderSummary.cancelled ?? 0)} failed or cancelled payment${(orderSummary.expired ?? 0) + (orderSummary.cancelled ?? 0) === 1 ? "" : "s"}.`)
+  const expiredOrders = orderSummary.expired ?? 0
+  const cancelledOrders = orderSummary.cancelled ?? 0
+  if (expiredOrders + cancelledOrders > 0) alerts.push(`${expiredOrders + cancelledOrders} expired or cancelled order${expiredOrders + cancelledOrders === 1 ? "" : "s"}.`)
 
   return NextResponse.json({ ok: true,
     event: { ...event, startsAt: event.startsAt?.toISOString() ?? null, endsAt: event.endsAt?.toISOString() ?? null,
@@ -49,7 +51,7 @@ export async function GET(request: Request, context: Context) {
       isFinished: event.endsAt != null && event.endsAt <= new Date(),
       canScan: (event.status === "published" || event.status === "sold_out") && (event.endsAt == null || event.endsAt > new Date()),
     },
-    orderSummary, scanSummary, alerts,
+    orderSummary, scanSummary, expiredOrders, cancelledOrders, alerts,
     recentScans: recentScans.map(row => ({ ...row, createdAt: row.createdAt?.toISOString() ?? null })),
   }, { headers: privateHeaders })
 }
