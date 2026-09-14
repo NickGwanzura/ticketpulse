@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 
 import PageHeader from "@/components/dashboard/PageHeader"
 import NewEventForm from "./NewEventForm"
+import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
 
 export const metadata = {
   title: "Create event",
@@ -13,6 +14,10 @@ export default async function NewEventPage() {
   if (!session) redirect("/auth/signin?callbackUrl=/organizer/events/new")
   if (session.user.role !== "organizer" && session.user.role !== "admin") {
     redirect("/dashboard")
+  }
+  if (session.user.role === "organizer") {
+    const eligibility = await requireApprovedOrganizer()
+    if (!eligibility.ok && eligibility.error.includes("frozen")) redirect("/organizer")
   }
   if (session.user.role === "organizer" && !session.user.approvedAt) {
     redirect("/dashboard?error=pending_approval")

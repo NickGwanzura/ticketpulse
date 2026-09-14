@@ -8,10 +8,13 @@ export async function authenticateOrganizer(request: Request) {
   const identity = await authenticateRequest(request)
   if (!identity.ok) return identity
   // Read the current role so revoking organizer access takes effect immediately.
-  const [user] = await db.select({ role: users.role }).from(users)
+  const [user] = await db.select({ role: users.role, organizerFrozenAt: users.organizerFrozenAt }).from(users)
     .where(eq(users.id, identity.userId)).limit(1)
   if (!user || (user.role !== "organizer" && user.role !== "admin")) {
     return { ok: false as const, status: 403, error: "Organizer access required" }
+  }
+  if (user.role === "organizer" && user.organizerFrozenAt) {
+    return { ok: false as const, status: 403, error: "Organizer access is temporarily frozen" }
   }
   return { ...identity, role: user.role }
 }

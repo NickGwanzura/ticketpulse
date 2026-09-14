@@ -2,7 +2,7 @@ import "server-only"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { events, eventOrganisers } from "@/db/schema"
+import { events, eventOrganisers, users } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
 
 export type EventAccess =
@@ -34,6 +34,17 @@ export async function requireEventAccessForUser(
   eventId: string,
   user: { id: string; role?: string | null },
 ): Promise<EventAccess> {
+  if (user.role === "organizer") {
+    const [account] = await db
+      .select({ frozenAt: users.organizerFrozenAt })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1)
+    if (account?.frozenAt) {
+      return { allowed: false, redirectTo: "/organizer" }
+    }
+  }
+
   const [event] = await db
     .select({ id: events.id, organizerId: events.organizerId })
     .from(events)

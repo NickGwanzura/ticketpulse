@@ -73,7 +73,7 @@ export default function ReviewForm({
       <div>
         <p className="text-[11px] font-semibold tracking-[0.16em] text-blue uppercase">Review</p>
         <h1 className="mt-1 text-[24px] md:text-[28px] font-bold tracking-tight text-ink">
-          {eventTitle ? `How was ${eventTitle}?` : "How was your TicketPulse experience?"}
+          {eventTitle ? `How was your TicketPulse experience at ${eventTitle}?` : "How was your TicketPulse experience?"}
         </h1>
       </div>
 
@@ -132,13 +132,13 @@ export default function ReviewForm({
         <input
           name="title"
           maxLength={120}
-          placeholder="Smooth checkout, great event"
+          placeholder="Easy checkout and fast ticket delivery"
           className="mt-1.5 w-full rounded-xl border border-line bg-paper-2 px-3.5 py-3 text-[14px] outline-none focus:border-blue"
         />
       </label>
 
       <label className="block">
-        <span className="text-[13px] font-semibold text-ink">Your review</span>
+        <span className="text-[13px] font-semibold text-ink">Your TicketPulse service review</span>
         <textarea
           name="body"
           required

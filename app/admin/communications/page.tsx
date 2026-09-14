@@ -3,10 +3,10 @@
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
-  Sparkles, Send, Loader, CheckCircle, AlertCircle, RefreshCw,
-  Mail, MessageSquare, Users, UserCheck, LayoutList, Megaphone,
-  Eye, X,
+  Sparkles, Send, Loader, CheckCircle, AlertCircle,
+  Mail, MessageSquare, Users, Megaphone, Eye,
 } from "lucide-react"
+import WhatsAppReviewCampaign from "./WhatsAppReviewCampaign"
 
 type Audience = "attendees" | "organizers" | "all_users"
 
@@ -79,7 +79,7 @@ export default function AdminCommunicationsPage() {
   }, [topic, audience, tone])
 
   // ── Send ────────────────────────────────────────────────────────────────
-  const handleSend = useCallback(async (formData: FormData) => {
+  const handleSend = useCallback(async () => {
     setSending(true)
     setError(null)
     setResults(null)
@@ -131,6 +131,8 @@ export default function AdminCommunicationsPage() {
       </div>
 
       <div className="px-5 md:px-8 pb-10 max-w-3xl space-y-6">
+        <WhatsAppReviewCampaign />
+
         {error && (
           <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
             <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
@@ -327,8 +329,7 @@ export default function AdminCommunicationsPage() {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault()
-                  const formData = new FormData(e.currentTarget)
-                  await handleSend(formData)
+                  await handleSend()
                 }}
                 className="flex-1"
               >

@@ -3,7 +3,7 @@ import { eq, inArray, or } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { eventOrganisers, events } from "@/db/schema"
+import { eventOrganisers, events, users } from "@/db/schema"
 import { generateOrdersReconPdfBuffer } from "@/lib/pdf/orders-report"
 import { getOrdersReconReport } from "@/lib/orders-recon-report"
 
@@ -14,6 +14,14 @@ export async function GET(request: Request) {
   }
 
   const isAdmin = session.user.role === "admin"
+  if (!isAdmin && session.user.role === "organizer") {
+    const [account] = await db
+      .select({ frozenAt: users.organizerFrozenAt })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+    if (account?.frozenAt) return NextResponse.json({ error: "Organizer access is temporarily frozen" }, { status: 403 })
+  }
   const invitedEventIds = isAdmin ? [] : await db
     .select({ eventId: eventOrganisers.eventId })
     .from(eventOrganisers)

@@ -2,16 +2,8 @@ import { NextResponse } from "next/server"
 import { eq, and, inArray, desc, asc } from "drizzle-orm"
 
 import { db } from "@/db"
-import { events, orders, tickets, ticketTiers } from "@/db/schema"
+import { events, orders, tickets, ticketTiers, users } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: Record<string, unknown>) => jsPDF
-    lastAutoTable: { finalY: number }
-  }
-}
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -24,7 +16,7 @@ export async function GET(_req: Request, ctx: RouteParams) {
   }
 
   const [event] = await db
-    .select({ title: events.title })
+    .select({ title: events.title, venue: events.venue, startsAt: events.startsAt, organizerId: events.organizerId })
     .from(events)
     .where(eq(events.id, id))
     .limit(1)
@@ -56,47 +48,32 @@ export async function GET(_req: Request, ctx: RouteParams) {
     )
     .orderBy(desc(orders.createdAt), asc(tickets.createdAt))
 
-  // Build PDF
-  const jsPDF = (await import("jspdf")).default
-  await import("jspdf-autotable")
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const [organizer] = await db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, event.organizerId))
+    .limit(1)
 
-  // Title
-  doc.setFontSize(16)
-  doc.text(event.title, 14, 20)
-  doc.setFontSize(10)
-  doc.text(`Total attendees: ${ticketRows.length}`, 14, 28)
-  doc.setFontSize(9)
-  doc.text(`Generated: ${new Date().toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
-  })}`, 14, 34)
-
-  // Table
-  const tableColumn = ["Name", "Email", "Phone", "Ticket Type", "Checked In", "Holder"]
-  const tableRows = ticketRows.map((r) => [
-    r.guestName ?? "",
-    r.guestEmail ?? "",
-    r.guestPhone ?? "",
-    r.tierName ?? "N/A",
-    r.scannedAt ? "Yes" : "No",
-    r.holderName ?? "",
-  ])
-
-  doc.autoTable({
-    startY: 38,
-    head: [tableColumn],
-    body: tableRows,
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [11, 18, 50] },
-    alternateRowStyles: { fillColor: [246, 249, 252] },
-    margin: { top: 38 },
+  const { generateAttendeeListPdfBuffer } = await import("@/lib/pdf/attendee-list-document")
+  const pdfBuffer = await generateAttendeeListPdfBuffer({
+    eventTitle: event.title,
+    organizerName: organizer?.name ?? "TicketPulse organiser",
+    venue: event.venue,
+    startsAt: event.startsAt,
+    generatedAt: new Date(),
+    attendees: ticketRows.map((r) => ({
+      name: r.guestName ?? "Guest",
+      email: r.guestEmail ?? "",
+      phone: r.guestPhone ?? "",
+      ticketType: r.tierName ?? "Ticket",
+      checkedIn: Boolean(r.scannedAt),
+      holderName: r.holderName ?? "",
+    })),
   })
-
-  const pdfBuffer = Buffer.from(doc.output("arraybuffer"))
 
   const filename = `${event.title.replace(/[^a-zA-Z0-9]/g, "_")}_attendees.pdf`
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(new Uint8Array(pdfBuffer), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

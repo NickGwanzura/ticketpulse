@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation"
 import { eq, and } from "drizzle-orm"
 
 import { db } from "@/db"
-import { events, eventOrganisers } from "@/db/schema"
+import { events, eventOrganisers, users } from "@/db/schema"
 import EventSidebar from "./_components/EventSidebar"
 import Breadcrumbs from "@/components/dashboard/Breadcrumbs"
 
@@ -18,6 +18,15 @@ export default async function EventLayout({
 
   const session = await auth()
   if (!session) redirect(`/auth/signin?callbackUrl=/organizer/events/${id}`)
+
+  if (session.user.role === "organizer") {
+    const [account] = await db
+      .select({ frozenAt: users.organizerFrozenAt })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+    if (account?.frozenAt) redirect("/organizer")
+  }
 
   const [event] = await db
     .select({

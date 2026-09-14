@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 
 import { signIn } from "@/auth"
 import { requireAdmin } from "@/lib/auth-guard"
@@ -259,6 +259,57 @@ export async function rejectOrganizerAction(userId: string) {
   revalidatePath("/admin/users")
   revalidatePath("/admin/organizers")
   revalidatePath("/admin")
+}
+
+/**
+ * Freeze an approved organiser who has not created an event yet.
+ * This is intentionally silent: it changes access control and does not send
+ * an email or notification. Admins can reverse it with unfreezeOrganizerAction.
+ */
+export async function freezeOrganizerWithoutEventsAction(userId: string) {
+  await requireAdmin()
+
+  const [organizer] = await db
+    .select({
+      id: users.id,
+      role: users.role,
+      frozenAt: users.organizerFrozenAt,
+      eventCount: sql<number>`COUNT(${events.id})::int`,
+    })
+    .from(users)
+    .leftJoin(events, eq(events.organizerId, users.id))
+    .where(eq(users.id, userId))
+    .groupBy(users.id)
+    .limit(1)
+
+  if (!organizer || organizer.role !== "organizer") throw new Error("Organizer not found")
+  if (Number(organizer.eventCount ?? 0) > 0) throw new Error("Only organizers with no events can be frozen")
+  if (organizer.frozenAt) return
+
+  await db
+    .update(users)
+    .set({
+      organizerFrozenAt: new Date(),
+      organizerFreezeReason: "Frozen by admin: no event created",
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+
+  revalidatePath("/admin/organizers")
+  revalidatePath("/admin/users")
+}
+
+/** Reverse an organiser freeze without changing approval state. */
+export async function unfreezeOrganizerAction(userId: string) {
+  await requireAdmin()
+
+  await db
+    .update(users)
+    .set({ organizerFrozenAt: null, organizerFreezeReason: null, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+
+  revalidatePath("/admin/organizers")
+  revalidatePath("/admin/users")
 }
 
 /**

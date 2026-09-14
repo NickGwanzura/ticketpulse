@@ -131,6 +131,8 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash"),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("6.00"),
   approvedAt: timestamp("approved_at", { mode: "date" }),
+  organizerFrozenAt: timestamp("organizer_frozen_at", { mode: "date" }),
+  organizerFreezeReason: text("organizer_freeze_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 })

@@ -1,10 +1,31 @@
 import "server-only"
+import { randomUUID } from "node:crypto"
 import { log } from "@/lib/logger"
+import { uploadPublicObject } from "@/lib/r2"
 
 type OpenWAConfig = {
   baseUrl: string
   apiKey: string
   defaultSessionId: string
+}
+
+type WhatsAppProvider = "openwa" | "wacrm"
+
+type WacrmConfig = {
+  baseUrl: string
+  apiKey: string
+}
+
+type WacrmMessageResponse = {
+  message_id?: string
+  whatsapp_message_id?: string
+  created_at?: string
+}
+
+function provider(): WhatsAppProvider {
+  const value = (process.env.WHATSAPP_PROVIDER ?? "openwa").trim().toLowerCase()
+  if (value === "openwa" || value === "wacrm") return value
+  throw new Error(`Unsupported WhatsApp provider "${value}". Use "openwa" or "wacrm".`)
 }
 
 function config(): OpenWAConfig {
@@ -19,6 +40,76 @@ function config(): OpenWAConfig {
   }
 
   return { baseUrl, apiKey, defaultSessionId }
+}
+
+function wacrmConfig(): WacrmConfig {
+  const baseUrl = process.env.WACRM_URL
+  const apiKey = process.env.WACRM_API_KEY
+  if (!baseUrl || !apiKey) {
+    throw new Error("Missing WACRM configuration. Set WACRM_URL and WACRM_API_KEY in the environment.")
+  }
+  return { baseUrl, apiKey }
+}
+
+function wacrmApiBase(): string {
+  const { baseUrl } = wacrmConfig()
+  const root = baseUrl.replace(/\/+$/, "")
+  return root.endsWith("/api/v1") ? root : `${root}/api/v1`
+}
+
+async function wacrmFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
+  const { apiKey } = wacrmConfig()
+  const res = await fetch(`${wacrmApiBase()}${path}`, {
+    ...options,
+    signal: options.signal ?? AbortSignal.timeout(20_000),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      ...options.headers,
+    },
+  })
+
+  const payload = await res.json().catch(() => null) as {
+    data?: T
+    error?: { code?: string; message?: string }
+  } | null
+
+  if (!res.ok || payload?.error) {
+    const code = payload?.error?.code ? ` ${payload.error.code}` : ""
+    const message = payload?.error?.message ?? `HTTP ${res.status}`
+    throw new Error(`WACRM API error${code}: ${message}`)
+  }
+
+  return (payload?.data ?? payload) as T
+}
+
+function toE164(chatId: string): string {
+  let digits = chatId.replace(/@[^@]+$/, "").replace(/\D/g, "")
+  const countryCode = (process.env.WHATSAPP_COUNTRY_CODE ?? "263").replace(/\D/g, "")
+  if (digits.startsWith("00")) digits = digits.slice(2)
+  if (digits.startsWith("0")) digits = `${countryCode}${digits.slice(1)}`
+  else if (digits.length === 9 && digits.startsWith("7")) digits = `${countryCode}${digits}`
+  if (!digits) throw new Error("WhatsApp recipient phone number is empty")
+  return `+${digits}`
+}
+
+function messageResult(data: WacrmMessageResponse): SendTextResponse {
+  return {
+    messageId: data.message_id ?? data.whatsapp_message_id ?? `wacrm-${randomUUID()}`,
+    timestamp: data.created_at ? Date.parse(data.created_at) || Date.now() : Date.now(),
+  }
+}
+
+async function wacrmMediaUrl(options: SendMediaOptions, extension: string): Promise<string> {
+  if (options.url) return options.url
+  if (!options.base64) throw new Error("WACRM media requires a public URL or base64 payload")
+  const contentType = options.mimetype ?? "application/octet-stream"
+  const key = `whatsapp/wacrm/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`
+  return uploadPublicObject({
+    key,
+    body: Buffer.from(options.base64, "base64"),
+    contentType,
+  })
 }
 
 async function openwaFetch<T = unknown>(
@@ -88,6 +179,18 @@ export type SessionInfo = {
  * Get the current status and details of a WhatsApp session.
  */
 export async function getSession(sessionId?: string): Promise<SessionInfo> {
+  if (provider() === "wacrm") {
+    const account = await wacrmFetch<{ id?: string; name?: string }>("/me")
+    return {
+      id: account.id ?? "wacrm",
+      name: account.name ?? "WACRM",
+      status: "ready",
+      phone: null,
+      pushName: null,
+      connectedAt: null,
+      lastActive: new Date().toISOString(),
+    }
+  }
   const sid = sessionId ?? config().defaultSessionId
   return openwaFetch(`/sessions/${sid}`)
 }
@@ -110,6 +213,13 @@ export async function sendText(
   text: string,
   sessionId?: string,
 ): Promise<SendTextResponse> {
+  if (provider() === "wacrm") {
+    const data = await wacrmFetch<WacrmMessageResponse>("/messages", {
+      method: "POST",
+      body: JSON.stringify({ to: toE164(chatId), type: "text", text }),
+    })
+    return messageResult(data)
+  }
   const sid = sessionId ?? config().defaultSessionId
   return openwaFetch(`/sessions/${sid}/messages/send-text`, {
     method: "POST",
@@ -141,6 +251,20 @@ export async function sendImage(
   options: SendMediaOptions,
   sessionId?: string,
 ): Promise<SendTextResponse> {
+  if (provider() === "wacrm") {
+    const mediaUrl = await wacrmMediaUrl(options, "jpg")
+    const data = await wacrmFetch<WacrmMessageResponse>("/messages", {
+      method: "POST",
+      body: JSON.stringify({
+        to: toE164(options.chatId),
+        type: "image",
+        media_url: mediaUrl,
+        text: options.caption,
+        filename: options.filename,
+      }),
+    })
+    return messageResult(data)
+  }
   const sid = sessionId ?? config().defaultSessionId
   return openwaFetch(`/sessions/${sid}/messages/send-image`, {
     method: "POST",
@@ -157,6 +281,20 @@ export async function sendDocument(
   options: SendMediaOptions,
   sessionId?: string,
 ): Promise<SendTextResponse> {
+  if (provider() === "wacrm") {
+    const mediaUrl = await wacrmMediaUrl(options, "pdf")
+    const data = await wacrmFetch<WacrmMessageResponse>("/messages", {
+      method: "POST",
+      body: JSON.stringify({
+        to: toE164(options.chatId),
+        type: "document",
+        media_url: mediaUrl,
+        text: options.caption,
+        filename: options.filename,
+      }),
+    })
+    return messageResult(data)
+  }
   const sid = sessionId ?? config().defaultSessionId
   return openwaFetch(`/sessions/${sid}/messages/send-document`, {
     method: "POST",
@@ -206,6 +344,9 @@ export async function sendBulk(
   options?: BulkMessageOptions,
   sessionId?: string,
 ): Promise<BulkMessageResponse> {
+  if (provider() !== "openwa") {
+    throw new Error("WhatsApp bulk messaging is available only when WHATSAPP_PROVIDER is set to openwa")
+  }
   const sid = sessionId ?? config().defaultSessionId
   return openwaFetch(`/sessions/${sid}/messages/send-bulk`, {
     method: "POST",

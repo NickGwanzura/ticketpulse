@@ -13,10 +13,11 @@ export default function CheckoutPaymentNotice() {
         aria-hidden="true"
       />
       <div className="min-w-0 text-[12px] leading-5 md:text-[13px]">
-        <p className="font-semibold">EcoCash service notice</p>
+        <p className="font-semibold">EcoCash payment notice</p>
         <p>
-          Card payments are stable, but EcoCash may be unreliable. If money is
-          deducted and no ticket arrives, WhatsApp{" "}
+          Confirmations may be delayed. Approve the USSD prompt and wait for
+          confirmation. Please don&apos;t pay again if your wallet was debited.
+          For help, WhatsApp{" "}
           <a
             href="https://wa.me/263777816368"
             target="_blank"

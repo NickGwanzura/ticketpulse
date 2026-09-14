@@ -6,7 +6,7 @@ import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
   Ticket, DollarSign, TrendingUp, Users,
   Activity, Tag, Mail, MailCheck, HelpCircle, Zap,
-  CheckCircle2, ClipboardList, Wallet, Calendar,
+  CheckCircle2, ClipboardList, Wallet, ReceiptText,
 } from "lucide-react"
 
 import { formatCurrency } from "@/lib/utils"
@@ -99,6 +99,29 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const session = await auth()
   if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/organizer")
   const isAdmin = session.user.role === "admin"
+
+  if (!isAdmin && session.user.role === "organizer") {
+    const [account] = await db
+      .select({ frozenAt: users.organizerFrozenAt })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+
+    if (account?.frozenAt) {
+      return (
+        <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-5 py-20 tp-fade-up">
+          <div className="max-w-md w-full text-center">
+            <div className="inline-flex w-16 h-16 items-center justify-center rounded-2xl bg-sky-50 border border-sky-200 mb-6">
+              <ClipboardList size={28} className="text-sky-600" />
+            </div>
+            <h1 className="text-[24px] font-bold tracking-tight text-ink mb-3">Organizer access is temporarily frozen.</h1>
+            <p className="text-[15px] text-ink-2 leading-relaxed mb-2">Your organizer account has not created an event yet, so access to organizer tools is paused.</p>
+            <p className="text-[14px] text-ink-3 leading-relaxed">Contact TicketPulse support if you need your organizer access restored.</p>
+          </div>
+        </div>
+      )
+    }
+  }
 
   // Unverified organizers see a verification gate — they must click the link
   // in the verification email before they can proceed.
@@ -450,10 +473,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
         {/* Quick Actions */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tp-fade-up-2">
           {[
-            { label: "New event",     href: "/organizer/events/new", icon: Plus },
-            { label: "Scan tickets",  href: "/organizer/scan",       icon: ScanLine },
-            { label: "View payouts",  href: "/payouts",              icon: Wallet },
-            { label: "Browse events", href: "/events",               icon: Calendar },
+            { label: "New event",      href: "/organizer/events/new", icon: Plus },
+            { label: "Scan tickets",   href: "/organizer/scan",       icon: ScanLine },
+            { label: "Payout report",  href: "/api/payouts/statement", icon: ReceiptText },
+            { label: "Manage orders",  href: "/organizer/orders",      icon: Zap },
           ].map(({ label, href, icon: Icon }) => (
             <Link
               key={label}
@@ -640,6 +663,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               ) : (
                 <p className="text-center text-[13px] text-ink-3 py-2">No balance available to withdraw.</p>
               )}
+              <a href="/api/payouts/statement" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-paper py-2.5 text-[13px] font-semibold text-ink-2 hover:bg-paper-2 transition-colors">
+                <ReceiptText size={13} /> Download payout report
+              </a>
             </div>
 
             {/* AI insight */}

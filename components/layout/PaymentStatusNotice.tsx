@@ -31,7 +31,7 @@ export default function PaymentStatusNotice() {
       <div className="mx-auto flex min-h-12 max-w-7xl items-center gap-3 px-4 py-2 md:px-8">
         <AlertTriangle size={18} className="shrink-0 text-amber-600" aria-hidden="true" />
         <p className="min-w-0 flex-1 text-[12px] leading-5 md:text-[13px]">
-          <strong>Payment notice:</strong> Visa/Mastercard are stable, but EcoCash remains unreliable. For questions or missing tickets, WhatsApp&nbsp;
+          <strong>EcoCash payment notice:</strong> Confirmations may be delayed. Approve the USSD prompt and wait for confirmation—please don’t pay again if your wallet was debited. For help, WhatsApp&nbsp;
           <a
             href="https://wa.me/263777816368"
             className="inline-flex min-h-8 items-center gap-1 font-bold text-amber-800 underline decoration-amber-400 underline-offset-2 hover:text-amber-700"

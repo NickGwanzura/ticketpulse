@@ -91,6 +91,33 @@ export function buildKey({ prefix, ext }: { prefix: string; ext: string }): stri
   return `${cleanPrefix}/${yyyy}-${mm}/${randomUUID()}.${ext}`
 }
 
+/**
+ * Upload a server-generated object and return its public URL.
+ * Used for providers (such as WACRM) that accept media URLs rather than
+ * inline base64 payloads.
+ */
+export async function uploadPublicObject({
+  key,
+  body,
+  contentType,
+}: {
+  key: string
+  body: Uint8Array | Buffer | string
+  contentType: string
+}): Promise<string> {
+  if (!R2_BUCKET_NAME) throw new Error("R2_BUCKET is not configured.")
+  if (!R2_PUBLIC_BASE) throw new Error("NEXT_PUBLIC_R2_PUBLIC_URL is not configured.")
+
+  await r2.send(new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  }))
+
+  return `${R2_PUBLIC_BASE}/${key}`
+}
+
 // ─── Presign ─────────────────────────────────────────────────────────────────
 
 export type PresignArgs = {

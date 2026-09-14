@@ -112,7 +112,7 @@ export function newEventAlert(
 
 export function newSignupAlert(name: string, email: string, role: string): string {
   return [
-    `*New Signup — ${role}*`,
+    role === "organizer" ? `*New Organizer Registration*` : `*New Signup — ${role}*`,
     ``,
     name,
     email,
@@ -172,6 +172,31 @@ export function ticketConfirmationMessage(
   ]
     .filter(Boolean)
     .join("\n")
+}
+
+/**
+ * Follow-up sent to a confirmed ticket buyer after an event, with a
+ * recipient-specific review link so the review can be tied back to the order.
+ */
+export function reviewRequestMessage(
+  eventTitle: string,
+  buyerName: string,
+  reviewUrl: string,
+): string {
+  return [
+    `*Thanks for using TicketPulse!*`,
+    ``,
+    `Hi ${buyerName}, thanks for booking *${eventTitle}* through TicketPulse.`,
+    ``,
+    `How was the TicketPulse service — checkout, EcoCash or card payment, ticket delivery, and support?`,
+    ``,
+    `Please take a minute to review your TicketPulse experience.`,
+    ``,
+    `Leave a review: ${reviewUrl}`,
+    ``,
+    `Thank you for supporting live events!`,
+    footer(false),
+  ].join("\\n")
 }
 
 export function organizerSaleNotification(

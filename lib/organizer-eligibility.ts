@@ -29,7 +29,7 @@ export async function requireApprovedOrganizer(): Promise<OrganizerEligibility> 
   if (!session?.user?.id) return { ok: false, error: "You must be signed in." }
 
   const [user] = await db
-    .select({ role: users.role, approvedAt: users.approvedAt, emailVerified: users.emailVerified })
+    .select({ role: users.role, approvedAt: users.approvedAt, emailVerified: users.emailVerified, organizerFrozenAt: users.organizerFrozenAt })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1)
@@ -37,6 +37,10 @@ export async function requireApprovedOrganizer(): Promise<OrganizerEligibility> 
   if (user?.role === "admin") return { ok: true, session }
   if (user?.role !== "organizer") {
     return { ok: false, error: "Only organizers can create events." }
+  }
+
+  if (user.organizerFrozenAt) {
+    return { ok: false, error: "Your organizer account is temporarily frozen. Contact TicketPulse support." }
   }
 
   if (!user?.emailVerified) {

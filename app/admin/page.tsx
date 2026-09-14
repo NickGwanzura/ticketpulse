@@ -69,6 +69,11 @@ export default async function AdminOverviewPage() {
     [velocityCountRow],
     [pendingPayoutsRow],
     [pendingReviewsRow],
+    [staleDraftsRow],
+    [staleReviewsRow],
+    [noEventOrganizersRow],
+    [frozenOrganizersRow],
+    [stalePaymentRow],
     moneyPathIssueRows,
   ] = await Promise.all([
     db.select({ count: sql<number>`COUNT(*)::int` })
@@ -161,6 +166,38 @@ export default async function AdminOverviewPage() {
       .from(reviews)
       .where(eq(reviews.status, "pending")),
 
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(events)
+      .where(and(
+        eq(events.status, "draft"),
+        sql`${events.createdAt} < NOW() - INTERVAL '14 days'`,
+      )),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(events)
+      .where(and(
+        eq(events.status, "pending_review"),
+        sql`${events.createdAt} < NOW() - INTERVAL '24 hours'`,
+      )),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(users)
+      .where(and(
+        eq(users.role, "organizer"),
+        sql`NOT EXISTS (SELECT 1 FROM events e_without_event WHERE e_without_event.organizer_id = ${users.id})`,
+      )),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(users)
+      .where(and(eq(users.role, "organizer"), sql`${users.organizerFrozenAt} IS NOT NULL`)),
+
+    db.select({ count: sql<number>`COUNT(*)::int` })
+      .from(orders)
+      .where(and(
+        sql`${orders.status} IN ('pending', 'awaiting_verification')`,
+        sql`${orders.createdAt} < NOW() - INTERVAL '30 minutes'`,
+      )),
+
     db.execute(sql`
       WITH confirmed_orders AS (
         SELECT id, metadata
@@ -210,14 +247,24 @@ export default async function AdminOverviewPage() {
   const pendingOrganizerCount = Number(pendingOrganizers[0]?.total ?? 0)
   const unverifiedUserCount = Number(unverifiedUsers[0]?.total ?? 0)
   const pendingReviewCount = pendingEventCount + pendingOrganizerCount + unverifiedUserCount
+  const staleDraftCount = staleDraftsRow?.count ?? 0
+  const staleReviewCount = staleReviewsRow?.count ?? 0
+  const noEventOrganizerCount = noEventOrganizersRow?.count ?? 0
+  const frozenOrganizerCount = frozenOrganizersRow?.count ?? 0
+  const stalePaymentCount = stalePaymentRow?.count ?? 0
 
   const operationsQueue = [
+    { label: "Stale payment checks", value: stalePaymentCount, href: "/admin/orders?status=awaiting_verification", icon: CreditCard, tone: "rose" as const, detail: "Pending or verification orders older than 30 minutes" },
     { label: "Paid, no tickets", value: paidNoTickets, href: "/admin/orders?q=paid", icon: Ticket, tone: "rose" as const, detail: "Confirmed payment without issued tickets" },
     { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders", icon: FileWarning, tone: "amber" as const, detail: "Ticket or email delivery needs action" },
     { label: "Duplicate ledgers", value: duplicateLedgers, href: "/admin/reconciliation", icon: AlertTriangle, tone: "rose" as const, detail: "Multiple settled payment records" },
     { label: "Velocity pending", value: velocityPending, href: "/admin/velocity?status=pending", icon: Zap, tone: "amber" as const, detail: "Gateway confirmations unresolved" },
     { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "amber" as const, detail: `${formatCurrency(pendingPayoutTotal, "USD")} awaiting review` },
     { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue" as const, detail: "Customer reviews awaiting moderation" },
+    { label: "Stale event drafts", value: staleDraftCount, href: "/admin/events?status=draft", icon: FileWarning, tone: "amber" as const, detail: "Draft events untouched for 14+ days" },
+    { label: "Old event reviews", value: staleReviewCount, href: "/admin/events?status=pending_review", icon: CalendarCheck, tone: "amber" as const, detail: "Publish requests waiting over 24 hours" },
+    { label: "Frozen organisers", value: frozenOrganizerCount, href: "/admin/organizers?status=frozen", icon: Users, tone: "blue" as const, detail: "No-event accounts paused from organiser tools" },
+    { label: "No-event organisers", value: noEventOrganizerCount, href: "/admin/organizers?status=no_event", icon: Users, tone: "blue" as const, detail: "Accounts needing onboarding follow-up" },
     { label: "Approvals & verification", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events, organisers, and accounts needing review" },
   ].filter((item) => item.value > 0)
 

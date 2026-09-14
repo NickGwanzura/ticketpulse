@@ -1,4 +1,37 @@
-import { APP_URL, BRAND, escape, formatMoney, layout, type LayoutOpts } from "./shared"
+import { APP_URL, BRAND, escape, formatMoney, layout } from "./shared"
+
+export function reviewRequestEmail(opts: {
+  name?: string | null
+  eventTitle: string
+  reviewUrl: string
+}): { html: string; text: string } {
+  const first = opts.name?.split(" ")[0]?.trim() || "there"
+  const heading = "How was your TicketPulse experience?"
+  const body = `
+    <p style="margin:0 0 14px;">Hi ${escape(first)},</p>
+    <p style="margin:0 0 14px;">Thank you for booking <strong>${escape(opts.eventTitle)}</strong> through TicketPulse.</p>
+    <p style="margin:0;">How was the TicketPulse service — checkout, EcoCash or card payment, ticket delivery, and support? Please take a minute to share your experience.</p>`
+  const html = layout({
+    preheader: `Tell us how ${opts.eventTitle} went.`,
+    heading,
+    body,
+    cta: { label: "Leave a review", href: opts.reviewUrl },
+  })
+  const text = [
+    heading,
+    "",
+    `Hi ${first},`,
+    "",
+    `Thank you for booking ${opts.eventTitle} through TicketPulse.`,
+    "",
+    "How was the TicketPulse service — checkout, EcoCash or card payment, ticket delivery, and support? Please take a minute to share your experience.",
+    "",
+    `Leave a review: ${opts.reviewUrl}`,
+    "",
+    "TicketPulse",
+  ].join("\n")
+  return { html, text }
+}
 
 export function welcomeEmail(opts: { name?: string | null }): { html: string; text: string } {
   const first = opts.name?.split(" ")[0]?.trim()
@@ -574,4 +607,3 @@ export function magicLinkEmail(opts: { url: string; host: string }): {
 }
 
 // ─── Sale notification (organiser / admin) ────────────────────────────────────
-
