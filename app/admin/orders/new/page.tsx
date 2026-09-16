@@ -14,7 +14,7 @@ export default async function NewOfflineOrderPage() {
   }
 
   const eventRows = await db
-    .select({ id: events.id, title: events.title, status: events.status })
+    .select({ id: events.id, title: events.title, status: events.status, platformFeePercent: events.platformFeePercent })
     .from(events)
     .where(inArray(events.status, ["published", "sold_out", "completed"]))
     .orderBy(desc(events.startsAt))

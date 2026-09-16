@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "platform_fee_percent" numeric(5, 2) DEFAULT '5.00';

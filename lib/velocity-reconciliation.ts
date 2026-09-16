@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { events, orders, paymentLedger, payouts, tickets, users, velocitySettlements } from "@/db/schema"
-import { PLATFORM_FEE_RATE } from "@/lib/platform-fee"
+import { calculatePlatformFee, normalizePlatformFeePercent, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const PAID_ORDER_STATUSES = new Set(["paid", "completed"])
@@ -29,6 +29,7 @@ type OrderRow = {
   organizerId: string | null
   organizerName: string | null
   organizerEmail: string | null
+  platformFeePercent: string | null
 }
 
 type LedgerRow = {
@@ -72,6 +73,7 @@ export type VelocityReconciliationEvent = {
   organizerId: string | null
   organizerName: string | null
   organizerEmail: string | null
+  platformFeePercent: number
   currency: string
   velocityReceived: number
   velocityPaidToTicketPulse: number
@@ -238,6 +240,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       organizerId: events.organizerId,
       organizerName: users.name,
       organizerEmail: users.email,
+      platformFeePercent: events.platformFeePercent,
     })
     .from(orders)
     .leftJoin(events, eq(events.id, orders.eventId))
@@ -458,6 +461,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       organizerId: order.organizerId,
       organizerName: order.organizerName,
       organizerEmail: order.organizerEmail,
+      platformFeePercent: normalizePlatformFeePercent(order.platformFeePercent),
       currency,
       velocityReceived: 0,
       velocityPaidToTicketPulse: 0,
@@ -513,7 +517,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
 
   const eventsReport = [...eventMap.values()].map((event) => {
     const payoutsForEvent = payoutsByEvent.get(event.eventId) ?? { paid: 0, pending: 0 }
-    const platformFee = money(event.velocityReceived * PLATFORM_FEE_RATE)
+    const platformFee = calculatePlatformFee(event.velocityReceived, event.platformFeePercent / 100)
     const organizerNet = money(event.velocityReceived - platformFee)
     const availableBalance = money(Math.max(0, organizerNet - payoutsForEvent.paid - payoutsForEvent.pending))
     const issues = [...orderReports]
@@ -610,7 +614,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
 
   return {
     generatedAt: new Date(),
-    feeRate: PLATFORM_FEE_RATE,
+    feeRate: totalsBase.velocityReceived > 0 ? totalsBase.platformFee / totalsBase.velocityReceived : PLATFORM_FEE_RATE,
     totals,
     events: eventsReport,
     orders: orderReports,

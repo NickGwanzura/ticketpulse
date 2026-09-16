@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { db } from "@/db"
 import { events } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
+import { normalizePlatformFeePercent } from "@/lib/platform-fee"
 import PageHeader from "@/components/dashboard/PageHeader"
 import FeeSwitcher from "./_components/FeeSwitcher"
 
@@ -30,6 +31,7 @@ export default async function PlatformFeesPage({
       id: events.id,
       title: events.title,
       absorbFee: events.absorbFee,
+      platformFeePercent: events.platformFeePercent,
     })
     .from(events)
     .where(eq(events.id, id))
@@ -61,7 +63,11 @@ export default async function PlatformFeesPage({
               Fee configuration applies to all ticket tiers for this event.
             </p>
           </div>
-          <FeeSwitcher eventId={id} currentlyAbsorb={event.absorbFee ?? false} />
+          <FeeSwitcher
+            eventId={id}
+            currentlyAbsorb={event.absorbFee ?? false}
+            platformFeePercent={normalizePlatformFeePercent(event.platformFeePercent)}
+          />
         </div>
       </div>
     </div>

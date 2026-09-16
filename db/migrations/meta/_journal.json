@@ -29,6 +29,20 @@
       "when": 1789368094779,
       "tag": "0003_freeze_organizers_without_events",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789545600000,
+      "tag": "0004_payment_ledger_single_settlement",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789563183839,
+      "tag": "0005_bizarre_riptide",
+      "breakpoints": true
     }
   ]
 }

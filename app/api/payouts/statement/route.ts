@@ -4,7 +4,7 @@ import { eq, desc } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { payouts, users, events } from "@/db/schema"
-import { getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT } from "@/lib/revenue-summary"
+import { getOrganizerRevenueSummary } from "@/lib/revenue-summary"
 import { log } from "@/lib/logger"
 
 /**
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       generatedAt: new Date(),
       grossRevenue: summary.grossRevenue,
       platformFee: summary.platformFee,
-      platformFeePercent: PLATFORM_FEE_PERCENT,
+      platformFeePercent: summary.commissionRate,
       netRevenue: summary.netRevenue,
       paidOut: summary.paidOut,
       pendingPayouts: summary.pendingPayouts,

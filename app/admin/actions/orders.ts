@@ -450,7 +450,7 @@ export async function createDirectPayOrderAction(input: OfflineOrderInput) {
   const session = await requireAdmin()
 
   const [event] = await db
-    .select({ organizerId: events.organizerId })
+    .select({ organizerId: events.organizerId, platformFeePercent: events.platformFeePercent })
     .from(events)
     .where(eq(events.id, input.eventId))
     .limit(1)
@@ -468,8 +468,9 @@ export async function createDirectPayOrderAction(input: OfflineOrderInput) {
   // markOrderCompleteAction (called inside combinedAction) auto-creates the
   // organizer_fee_dues row for any direct-sale payment method, including
   // "organizer_direct" — read it back rather than inserting a second one.
-  const { calculatePlatformFee } = await import("@/lib/platform-fee")
-  const feeAmount = calculatePlatformFee(total)
+  const { calculatePlatformFee, normalizePlatformFeePercent } = await import("@/lib/platform-fee")
+  const platformFeePercent = normalizePlatformFeePercent(event.platformFeePercent)
+  const feeAmount = calculatePlatformFee(total, platformFeePercent / 100)
   const [feeDue] = await db
     .select({ id: organizerFeeDues.id })
     .from(organizerFeeDues)

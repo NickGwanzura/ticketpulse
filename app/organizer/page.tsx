@@ -12,7 +12,7 @@ import {
 import { formatCurrency } from "@/lib/utils"
 import { db } from "@/db"
 import { events, eventOrganisers, orders, ticketTiers, tickets, users } from "@/db/schema"
-import { getEventRevenueSummaries, getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT as SHARED_FEE_PERCENT } from "@/lib/revenue-summary"
+import { getEventRevenueSummaries, getOrganizerRevenueSummary } from "@/lib/revenue-summary"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import SplitCTA from "@/components/ui/SplitCTA"
@@ -36,8 +36,6 @@ const STATUS: Record<string, { dot: string; label: string }> = {
   cancelled: { dot: "bg-rose-500",    label: "Cancelled" },
   completed: { dot: "bg-ink-3",       label: "Ended" },
 }
-
-const PLATFORM_FEE_PERCENT = SHARED_FEE_PERCENT
 
 function hasValidWhatsappContact(phone: string | null | undefined) {
   if (!phone) return false
@@ -383,7 +381,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               {firstName}&apos;s events
             </h1>
             <span className="mt-2 inline-flex text-[12px] text-ink-3">
-              {PLATFORM_FEE_PERCENT}% TicketPulse fee on confirmed paid tickets
+              Event-specific TicketPulse fee on confirmed paid tickets
             </span>
           </div>
           <div className="flex items-center gap-2">

@@ -3,22 +3,22 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, Users, Building2 } from "lucide-react"
-import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 import { updateAbsorbFeeAction } from "../actions"
 
 interface FeeSwitcherProps {
   eventId: string
   currentlyAbsorb: boolean
+  platformFeePercent: number
 }
 
-export default function FeeSwitcher({ eventId, currentlyAbsorb }: FeeSwitcherProps) {
+export default function FeeSwitcher({ eventId, currentlyAbsorb, platformFeePercent }: FeeSwitcherProps) {
   const router = useRouter()
   const [absorb, setAbsorb] = useState(currentlyAbsorb)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const feeRate = PLATFORM_FEE_PERCENT / 100
+  const feeRate = platformFeePercent / 100
   const examplePrice = 10
   const exampleFee = Number((examplePrice * feeRate).toFixed(2))
   const exampleBuyerPays = Number((examplePrice + exampleFee).toFixed(2))
@@ -77,7 +77,7 @@ export default function FeeSwitcher({ eventId, currentlyAbsorb }: FeeSwitcherPro
             </div>
           </div>
           <p className="text-[13px] text-ink-2 leading-relaxed">
-            The {PLATFORM_FEE_PERCENT}% platform fee is added on top of your ticket price. Buyers see the total at checkout.
+            The {platformFeePercent}% platform fee is added on top of your ticket price. Buyers see the total at checkout.
           </p>
           <div className="rounded-lg bg-paper-2 px-3 py-2.5 text-[12px] text-ink-3 border border-line">
             For a ${examplePrice} ticket, buyer pays{" "}

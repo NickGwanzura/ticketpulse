@@ -150,7 +150,7 @@ export async function markOrderCompleteAction(
   let velocityTraces = getVelocityTraces(order.metadata)
 
   try {
-    const { PLATFORM_FEE_RATE, calculatePlatformFee } = await import("@/lib/platform-fee")
+    const { calculatePlatformFee, normalizePlatformFeePercent } = await import("@/lib/platform-fee")
     await db.transaction(async (tx) => {
       await lockOrderMutation(tx, orderId)
       const [current] = await tx.select().from(orders).where(eq(orders.id, orderId)).limit(1)
@@ -197,19 +197,21 @@ export async function markOrderCompleteAction(
           .limit(1)
         if (!existingDue) {
           const [event] = await tx
-            .select({ organizerId: events.organizerId })
+            .select({ organizerId: events.organizerId, platformFeePercent: events.platformFeePercent })
             .from(events)
             .where(eq(events.id, current.eventId))
             .limit(1)
           if (event) {
             const gross = Number(current.totalAmount ?? 0)
+            const platformFeePercent = normalizePlatformFeePercent(event.platformFeePercent)
+            const platformFeeRate = platformFeePercent / 100
             await tx.insert(organizerFeeDues).values({
               orderId,
               eventId: current.eventId,
               organizerId: event.organizerId,
               grossAmount: gross.toFixed(2),
-              feeRate: PLATFORM_FEE_RATE.toFixed(4),
-              feeAmount: calculatePlatformFee(gross).toFixed(2),
+              feeRate: platformFeeRate.toFixed(4),
+              feeAmount: calculatePlatformFee(gross, platformFeeRate).toFixed(2),
               currency: current.currency ?? "USD",
               createdBy: userEmail,
               note: `Auto-created for direct sale (payment_method: ${current.paymentMethod})`,

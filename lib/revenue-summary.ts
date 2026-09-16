@@ -1,10 +1,11 @@
 import { eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { payouts, payoutClawbacks } from "@/db/schema"
+import { events, payouts, payoutClawbacks } from "@/db/schema"
 import {
-  calculateOrganizerNet,
   calculatePlatformFee,
+  normalizePlatformFeePercent,
+  PLATFORM_FEE_PERCENT,
 } from "@/lib/platform-fee"
 import { DIRECT_PAYMENT_METHODS } from "@/lib/direct-sale"
 
@@ -19,7 +20,7 @@ export { PLATFORM_FEE_PERCENT, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
  *
  *   gross      = issued buyer tickets on paid/completed orders, prorated
  *                from the order item total (matches what was delivered)
- *   fee        = PLATFORM_FEE_RATE × gross
+ *   fee        = event.platformFeePercent × gross (default 5%)
  *   net        = gross − fee
  *   paidOut    = payouts with status "paid" (incl. manual payouts)
  *   pending    = payouts in pending/approved/processing
@@ -28,7 +29,7 @@ export { PLATFORM_FEE_PERCENT, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
  *                recordRefundClawback below)
  *   available  = max(0, net − paidOut − pending − clawbacks)
  *
- * The fee policy lives in lib/platform-fee.ts and is fixed system-wide.
+ * The default fee policy lives in lib/platform-fee.ts. Events may override it.
  */
 
 export const ACTIVE_PAYOUT_STATUSES = ["pending", "approved", "processing"] as const
@@ -43,6 +44,8 @@ export type RevenueSummary = {
   availableBalance: number
   confirmedOrderCount: number
   confirmedTicketCount: number
+  /** Effective fee percentage across the revenue included in this summary. */
+  commissionRate: number
 }
 
 export type EventRevenueSummary = RevenueSummary & { eventId: string }
@@ -54,6 +57,8 @@ function money(value: unknown): number {
 
 function summarize(base: {
   grossRevenue: number
+  platformFee?: number
+  commissionRate?: number
   paidOut: number
   pendingPayouts: number
   outstandingClawbacks?: number
@@ -61,8 +66,8 @@ function summarize(base: {
   confirmedTicketCount: number
 }): RevenueSummary {
   const grossRevenue = money(base.grossRevenue)
-  const platformFee = calculatePlatformFee(grossRevenue)
-  const netRevenue = calculateOrganizerNet(grossRevenue)
+  const platformFee = money(base.platformFee ?? calculatePlatformFee(grossRevenue))
+  const netRevenue = money(grossRevenue - platformFee)
   const paidOut = money(base.paidOut)
   const pendingPayouts = money(base.pendingPayouts)
   const outstandingClawbacks = money(base.outstandingClawbacks ?? 0)
@@ -76,6 +81,7 @@ function summarize(base: {
     availableBalance: money(Math.max(0, netRevenue - paidOut - pendingPayouts - outstandingClawbacks)),
     confirmedOrderCount: base.confirmedOrderCount,
     confirmedTicketCount: base.confirmedTicketCount,
+    commissionRate: Number((base.commissionRate ?? (grossRevenue > 0 ? (platformFee / grossRevenue) * 100 : PLATFORM_FEE_PERCENT)).toFixed(2)),
   }
 }
 
@@ -137,6 +143,7 @@ export async function recordRefundClawback(opts: {
 type GrossRow = {
   eventId: string
   grossRevenue: number
+  platformFeePercent: number
   confirmedOrderCount: number
   confirmedTicketCount: number
 }
@@ -159,6 +166,7 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
         oi.id,
         oi.order_id,
         o.event_id,
+        e.platform_fee_percent,
         oi.quantity,
         oi.total,
         COUNT(t.id)::int AS issued_count
@@ -179,10 +187,11 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
         -- for. Excluded here; tracked instead in organizer_fee_dues. Covers every
         -- direct-payment method string, not just the literal "organizer_direct".
         AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join([...DIRECT_PAYMENT_METHODS, "complimentary"].map((m) => sql`${m}`), sql`, `)}))
-      GROUP BY oi.id, oi.order_id, o.event_id, oi.quantity, oi.total
+      GROUP BY oi.id, oi.order_id, o.event_id, e.platform_fee_percent, oi.quantity, oi.total
     )
     SELECT
       event_id,
+      COALESCE(MAX(platform_fee_percent), 5.00)::numeric AS platform_fee_percent,
       COALESCE(SUM(LEAST(issued_count, quantity) * (total::numeric / NULLIF(quantity, 0))), 0)::numeric AS gross_revenue,
       COALESCE(SUM(LEAST(issued_count, quantity)), 0)::int AS confirmed_ticket_count,
       COUNT(DISTINCT CASE WHEN LEAST(issued_count, quantity) > 0 THEN order_id END)::int AS confirmed_order_count
@@ -192,6 +201,7 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
 
   return (result.rows as Record<string, unknown>[]).map((row) => ({
     eventId: String(row.event_id),
+    platformFeePercent: normalizePlatformFeePercent(String(row.platform_fee_percent ?? "")),
     grossRevenue: Number(row.gross_revenue ?? 0),
     confirmedOrderCount: Number(row.confirmed_order_count ?? 0),
     confirmedTicketCount: Number(row.confirmed_ticket_count ?? 0),
@@ -205,8 +215,12 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
 export async function getEventRevenueSummaries(eventIds: string[]): Promise<Map<string, EventRevenueSummary>> {
   if (eventIds.length === 0) return new Map()
 
-  const [grossRows, payoutRows, clawbacksByEvent] = await Promise.all([
+  const [grossRows, feeRows, payoutRows, clawbacksByEvent] = await Promise.all([
     getGrossByEvent({ eventIds }),
+    db
+      .select({ id: events.id, platformFeePercent: events.platformFeePercent })
+      .from(events)
+      .where(inArray(events.id, eventIds)),
     db
       .select({
         eventId: payouts.eventId,
@@ -220,15 +234,19 @@ export async function getEventRevenueSummaries(eventIds: string[]): Promise<Map<
   ])
 
   const grossByEvent = new Map(grossRows.map((row) => [row.eventId, row]))
+  const feeByEvent = new Map(feeRows.map((row) => [row.id, normalizePlatformFeePercent(row.platformFeePercent)]))
   const payoutsByEvent = new Map(payoutRows.map((row) => [row.eventId ?? "", row]))
 
   return new Map(eventIds.map((eventId) => {
     const gross = grossByEvent.get(eventId)
     const payout = payoutsByEvent.get(eventId)
+    const commissionRate = feeByEvent.get(eventId) ?? gross?.platformFeePercent ?? PLATFORM_FEE_PERCENT
     return [eventId, {
       eventId,
       ...summarize({
         grossRevenue: gross?.grossRevenue ?? 0,
+        platformFee: calculatePlatformFee(gross?.grossRevenue ?? 0, commissionRate / 100),
+        commissionRate,
         paidOut: Number(payout?.paid ?? 0),
         pendingPayouts: Number(payout?.pending ?? 0),
         outstandingClawbacks: clawbacksByEvent.get(eventId) ?? 0,
@@ -262,8 +280,16 @@ export async function getOrganizerRevenueSummary(userId: string): Promise<Revenu
       .where(sql`${payoutClawbacks.organizerId} = ${userId} AND ${payoutClawbacks.status} = 'outstanding'`),
   ])
 
+  const grossRevenue = grossRows.reduce((sum, row) => sum + row.grossRevenue, 0)
+  const platformFee = grossRows.reduce(
+    (sum, row) => sum + calculatePlatformFee(row.grossRevenue, row.platformFeePercent / 100),
+    0,
+  )
+
   return summarize({
-    grossRevenue: grossRows.reduce((sum, row) => sum + row.grossRevenue, 0),
+    grossRevenue,
+    platformFee,
+    commissionRate: grossRevenue > 0 ? (platformFee / grossRevenue) * 100 : PLATFORM_FEE_PERCENT,
     paidOut: Number(payoutRows[0]?.paid ?? 0),
     pendingPayouts: Number(payoutRows[0]?.pending ?? 0),
     outstandingClawbacks: Number(clawbackRows[0]?.amount ?? 0),

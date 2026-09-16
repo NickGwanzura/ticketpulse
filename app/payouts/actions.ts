@@ -89,6 +89,7 @@ function payoutRequestEmailHtml(opts: {
   organizerEmail?: string | null
   amount: number
   grossRevenue: number
+  commissionRate: number
   platformFee: number
   availableBalance: number
   method: string
@@ -99,7 +100,7 @@ function payoutRequestEmailHtml(opts: {
   const rows = [
     ["Requested payout", money(opts.amount)],
     ["Confirmed ticket revenue", money(opts.grossRevenue)],
-    [`TicketPulse fee (${PLATFORM_FEE_PERCENT}%)`, money(opts.platformFee)],
+    [`TicketPulse fee (${opts.commissionRate}%)`, money(opts.platformFee)],
     ["Available before request", money(opts.availableBalance)],
     ["Method", opts.method],
     ["Destination", opts.destination],
@@ -134,6 +135,7 @@ function payoutRequestEmailText(opts: {
   payoutId: string
   amount: number
   grossRevenue: number
+  commissionRate: number
   platformFee: number
   availableBalance: number
   method: string
@@ -143,7 +145,7 @@ function payoutRequestEmailText(opts: {
     `Payout request: ${opts.payoutId}`,
     `Requested payout: ${money(opts.amount)}`,
     `Confirmed ticket revenue: ${money(opts.grossRevenue)}`,
-    `TicketPulse fee (${PLATFORM_FEE_PERCENT}%): ${money(opts.platformFee)}`,
+    `TicketPulse fee (${opts.commissionRate}%): ${money(opts.platformFee)}`,
     `Available before request: ${money(opts.availableBalance)}`,
     `Method: ${opts.method}`,
     `Destination: ${opts.destination}`,
@@ -233,7 +235,7 @@ async function fetchBalanceForUser(userId: string) {
     totalPaidOut: summary.paidOut,
     pendingTotal: summary.pendingPayouts,
     outstandingClawbacks: summary.outstandingClawbacks,
-    commissionRate: PLATFORM_FEE_PERCENT,
+    commissionRate: summary.commissionRate,
     grossRevenue: summary.grossRevenue,
     platformFee: summary.platformFee,
     confirmedOrderCount: summary.confirmedOrderCount,
@@ -356,7 +358,7 @@ export async function requestPayoutAction(formData: FormData): Promise<PayoutAct
           bankName: method === "ecocash" ? "EcoCash" : bankName,
           balanceSnapshot: {
             grossRevenue: Number(balance.grossRevenue.toFixed(2)),
-            platformFeePercent: PLATFORM_FEE_PERCENT,
+            platformFeePercent: balance.commissionRate,
             platformFee: balance.platformFee,
             netRevenue: balance.totalEarned,
             paidOut: balance.totalPaidOut,
@@ -374,7 +376,7 @@ export async function requestPayoutAction(formData: FormData): Promise<PayoutAct
         action: "requested",
         toStatus: "pending",
         performedBy: session.user.email ?? userId,
-        notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested via ${methodName}. Gross tickets ${balance.grossRevenue.toFixed(2)} less ${PLATFORM_FEE_PERCENT}% fee.`,
+        notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested via ${methodName}. Gross tickets ${balance.grossRevenue.toFixed(2)} less ${balance.commissionRate}% fee.`,
       })
 
       return result
@@ -401,6 +403,7 @@ export async function requestPayoutAction(formData: FormData): Promise<PayoutAct
     organizerEmail: organizer?.email,
     amount: cleanAmount,
     grossRevenue: balance.grossRevenue,
+    commissionRate: balance.commissionRate,
     platformFee: balance.platformFee,
     availableBalance,
     method: methodName,

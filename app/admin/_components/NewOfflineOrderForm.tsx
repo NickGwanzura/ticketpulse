@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2, XCircle } from "lucide-react"
 import { createOfflineOrderAction, createDirectPayOrderAction } from "@/app/admin/actions/orders"
 import { formatCurrency } from "@/lib/utils"
-import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
+import { normalizePlatformFeePercent } from "@/lib/platform-fee"
 
 type Tier = {
   id: string
@@ -19,6 +19,7 @@ type EventOption = {
   id: string
   title: string
   status: string | null
+  platformFeePercent: string | null
   tiers: Tier[]
 }
 
@@ -47,6 +48,7 @@ export default function NewOfflineOrderForm({ events }: { events: EventOption[] 
 
   const selectedEvent = useMemo(() => events.find((e) => e.id === eventId), [events, eventId])
   const selectedTier = useMemo(() => selectedEvent?.tiers.find((t) => t.id === tierId), [selectedEvent, tierId])
+  const selectedFeePercent = normalizePlatformFeePercent(selectedEvent?.platformFeePercent)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async () => {
@@ -227,7 +229,7 @@ export default function NewOfflineOrderForm({ events }: { events: EventOption[] 
           <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-[12px] text-amber-900 space-y-0.5">
             <p>Gross (kept by organizer): {formatCurrency(Number(selectedTier.price) * quantity, selectedTier.currency)}</p>
             <p className="font-semibold">
-              Fee owed to us ({PLATFORM_FEE_PERCENT}%): {formatCurrency(Number(selectedTier.price) * quantity * (PLATFORM_FEE_PERCENT / 100), selectedTier.currency)}
+              Fee owed to us ({selectedFeePercent}%): {formatCurrency(Number(selectedTier.price) * quantity * (selectedFeePercent / 100), selectedTier.currency)}
             </p>
           </div>
         )
