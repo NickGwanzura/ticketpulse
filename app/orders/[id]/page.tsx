@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
+import { orderAuthHeaders, orderOwnerQuery, rememberOrderOwner } from "@/lib/order-auth-client"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet } from "lucide-react"
 import QrCode from "@/components/QrCode"
@@ -55,7 +56,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/transfer`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...orderAuthHeaders(id) },
         body: JSON.stringify({ recipientName: t.name, recipientEmail: t.email, orderId: id }),
       })
       const data = await res.json()
@@ -68,7 +69,10 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
 
   async function cancelTransfer(ticketId: string) {
     try {
-      await fetch(`/api/tickets/${ticketId}/transfer`, { method: "DELETE" })
+      await fetch(`/api/tickets/${ticketId}/transfer`, {
+        method: "DELETE",
+        headers: orderAuthHeaders(id),
+      })
       setTransfer(ticketId, { open: false, done: false, note: null, name: "", email: "" })
     } catch { /* ignore */ }
   }
@@ -86,9 +90,10 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
 
     // Fall back to server-side API
     setFetching(true)
-    fetch(`/api/orders/${id}/data`)
+    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
+        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
         setOrder(data)
         setFetching(false)
       })
@@ -121,7 +126,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
           if (data.paid) {
             setPollingForCard(false)
             // Re-fetch the order from the server to get the updated status
-            const fresh = await fetch(`/api/orders/${id}/data`)
+            const fresh = await fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
             if (fresh.ok) {
               const updated: OrderRecord = await fresh.json()
               setOrder(updated)
@@ -158,7 +163,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     setResendingTickets(true)
     setResendTicketNote(null)
     try {
-      const res = await fetch(`/api/orders/${id}/resend-tickets`, { method: "POST" })
+      const res = await fetch(`/api/orders/${id}/resend-tickets`, { method: "POST", headers: orderAuthHeaders(id) })
       if (res.status === 429) setResendTicketNote("Please wait a moment before resending.")
       else if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Couldn't resend. Try again shortly." }))
@@ -506,7 +511,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 {/* Wallet buttons */}
                 <div className="flex gap-2 pt-1">
                   <a
-                    href={`/api/orders/${order.id}/wallet/apple`}
+                    href={`/api/orders/${order.id}/wallet/apple${orderOwnerQuery(order.id)}`}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink hover:border-line-2 transition"
                   >
                     <Wallet size={13} /> Apple Wallet
@@ -530,7 +535,7 @@ function GoogleWalletButton({ orderId }: { orderId: string }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/orders/${orderId}/wallet/google`)
+      const res = await fetch(`/api/orders/${orderId}/wallet/google`, { headers: orderAuthHeaders(orderId) })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? "Not available"); return }
       window.open(data.url, "_blank")

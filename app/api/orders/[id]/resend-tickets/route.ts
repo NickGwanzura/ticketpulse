@@ -4,6 +4,8 @@ import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers, users } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
 import { rateLimit } from "@/lib/rate-limit"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
+import { log } from "@/lib/logger"
 
 type Params = { id: string }
 
@@ -19,6 +21,20 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.json(
       { error: "Too many resend requests for this order. Please wait before trying again." },
       { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    )
+  }
+
+  // This handler is also re-exported by the organizer mobile route, which has
+  // already enforced an organizer+event-scoped predicate. That caller marks
+  // itself with an internal header; otherwise the caller must prove ownership.
+  const organizerScoped = req.headers.get("x-organizer-scoped") === "1"
+  const creds = orderAccessCredsFrom(req)
+  const access = await authorizeOrderAccess(id, { ...creds, organizerScoped })
+  if (!access.ok) {
+    log.warn("resend tickets — unauthorised attempt", { orderId: id, reason: access.reason })
+    return NextResponse.json(
+      { error: access.reason === "not_found" ? "Order not found" : "Not authorised to resend these tickets" },
+      { status: access.reason === "not_found" ? 404 : 403 },
     )
   }
 

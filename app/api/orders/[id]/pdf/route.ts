@@ -4,12 +4,24 @@ import { db } from "@/db"
 import { orders, events, tickets, ticketTiers } from "@/db/schema"
 import { generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { formatDate } from "@/lib/utils"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
+import { log } from "@/lib/logger"
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: orderId } = await params
+
+  // This PDF embeds every ticket's QR image, so it needs proof of ownership.
+  const access = await authorizeOrderAccess(orderId, orderAccessCredsFrom(request))
+  if (!access.ok) {
+    log.warn("order pdf — unauthorised read", { orderId, reason: access.reason })
+    return NextResponse.json(
+      { error: access.reason === "not_found" ? "Order not found" : "Not authorised to download this ticket" },
+      { status: access.reason === "not_found" ? 404 : 403 },
+    )
+  }
 
   // Load order with event
   const [order] = await db

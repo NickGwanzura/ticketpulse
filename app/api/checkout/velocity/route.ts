@@ -799,16 +799,19 @@ export async function POST(req: Request) {
       await tx.insert(orderItems).values(orderItemValues)
 
       // ── Inventory reservation ─────────────────────────────────────────────
-      // The event-level advisory lock above serializes checkout reservations.
-      // We store the fresh computed usage back into soldQuantity so legacy
-      // admin views stay close to the source-of-truth availability calculation.
+      // Conditional atomic increment, mirroring the merch branch below.
+      // The WHERE clause is what enforces the cap: a plain `WHERE id = ?` with
+      // a JS-computed absolute value would let concurrent writers (cron expiry,
+      // admin refunds, recovery) clobber each other and oversell the tier.
       for (const item of ticketItems) {
         const tier = tierById.get(item.tierId)!
-        const baselineUsed = latestAvailability.get(item.tierId)?.usedQuantity ?? Number(tier.soldQuantity ?? 0)
         const [reserved] = await tx
           .update(ticketTiers)
-          .set({ soldQuantity: baselineUsed + item.quantity })
-          .where(eq(ticketTiers.id, item.tierId))
+          .set({ soldQuantity: sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${item.quantity}` })
+          .where(and(
+            eq(ticketTiers.id, item.tierId),
+            sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${item.quantity} <= ${ticketTiers.totalQuantity}`,
+          ))
           .returning({ id: ticketTiers.id })
 
         if (!reserved) {

@@ -3,11 +3,26 @@ import { and, asc, eq, notInArray } from "drizzle-orm"
 import { db } from "@/db"
 import { tickets, ticketTiers } from "@/db/schema"
 import { generateTicketVerifyUrl } from "@/lib/tickets"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
+import { log } from "@/lib/logger"
 
 type Params = { id: string }
 
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
+
+  // A QR code is a bearer admission credential, so this endpoint requires
+  // proof of ownership (see lib/order-access.ts).
+  const creds = orderAccessCredsFrom(req)
+  const access = await authorizeOrderAccess(id, creds)
+  if (!access.ok) {
+    log.warn("order tickets — unauthorised read", { orderId: id, reason: access.reason })
+    return NextResponse.json(
+      { error: access.reason === "not_found" ? "Order not found" : "Not authorised to view these tickets" },
+      { status: access.reason === "not_found" ? 404 : 403 },
+    )
+  }
+
   const rows = await db
     .select({
       id: tickets.id,

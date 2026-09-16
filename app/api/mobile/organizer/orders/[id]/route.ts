@@ -57,7 +57,13 @@ export async function POST(request: Request, context: Context) {
   if (parsed.data.action === "complete" && identity.role !== "admin") return respond({ ok: false, error: "Admin access required" }, 403)
   if (!limiter.check(`${identity.userId}:${id}`).allowed) return respond({ ok: false, error: "Too many attempts. Please wait a minute." }, 429)
   if (parsed.data.action === "resend") {
-    const response = await resendTickets(request, context)
+    // Mark the forward as organizer-authorised: `access()` above already
+    // enforced authenticateOrganizer + organizerEventScope for this order.
+    const forwarded = new Request(request.url, {
+      method: "POST",
+      headers: new Headers({ ...Object.fromEntries(request.headers), "x-organizer-scoped": "1" }),
+    })
+    const response = await resendTickets(forwarded, context)
     const data = await response.json()
     return respond({ ...data, ok: response.ok, message: response.ok ? `Tickets sent to ${data.sentTo}` : undefined }, response.status)
   }

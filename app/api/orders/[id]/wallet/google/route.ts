@@ -19,11 +19,22 @@ import { db } from "@/db"
 import { orders, tickets, ticketTiers, events } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { SignJWT, importPKCS8 } from "jose"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
 
 type Params = { id: string }
 
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
+
+  // The pass embeds the holder name and every ticket QR — require ownership.
+  const access = await authorizeOrderAccess(id, orderAccessCredsFrom(req))
+  if (!access.ok) {
+    log.warn("google wallet pass — unauthorised read", { orderId: id, reason: access.reason })
+    return NextResponse.json(
+      { error: access.reason === "not_found" ? "Order not found" : "Not authorised" },
+      { status: access.reason === "not_found" ? 404 : 403 },
+    )
+  }
 
   const issuerId = process.env.GOOGLE_WALLET_ISSUER_ID
   const serviceEmail = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL

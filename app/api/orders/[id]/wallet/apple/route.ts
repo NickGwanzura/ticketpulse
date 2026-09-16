@@ -19,11 +19,22 @@ import { and, eq, notInArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, tickets, ticketTiers, events } from "@/db/schema"
 import { log } from "@/lib/logger"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
 
 type Params = { id: string }
 
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
+
+  // The pass embeds the holder name and every ticket QR — require ownership.
+  const access = await authorizeOrderAccess(id, orderAccessCredsFrom(req))
+  if (!access.ok) {
+    log.warn("apple wallet pass — unauthorised read", { orderId: id, reason: access.reason })
+    return NextResponse.json(
+      { error: access.reason === "not_found" ? "Order not found" : "Not authorised" },
+      { status: access.reason === "not_found" ? 404 : 403 },
+    )
+  }
 
   const passTypeId = process.env.APPLE_PASS_TYPE_IDENTIFIER
   const teamId = process.env.APPLE_TEAM_IDENTIFIER

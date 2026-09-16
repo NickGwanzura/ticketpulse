@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
+import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
 import { formatDate } from "@/lib/utils"
 import {
   ArrowLeft, Download, Calendar, MapPin, ShieldCheck,
@@ -58,9 +59,10 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     }
 
     setFetching(!local)
-    fetch(`/api/orders/${id}/data`)
+    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
+        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
         setOrder(data)
         setFetching(false)
       })
@@ -70,7 +72,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!ready) return
 
-    fetch(`/api/orders/${id}/tickets`)
+    fetch(`/api/orders/${id}/tickets`, { headers: orderAuthHeaders(id) })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: CanonicalTicket[]) => setCanonicalTickets(Array.isArray(rows) ? rows : []))
       .catch(() => setCanonicalTickets([]))
@@ -91,7 +93,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   const downloadAllPdf = async () => {
     setDownloading(true)
     try {
-      const res = await fetch(`/api/orders/${id}/pdf`)
+      const res = await fetch(`/api/orders/${id}/pdf`, { headers: orderAuthHeaders(id) })
       if (!res.ok) throw new Error(`PDF API returned ${res.status}`)
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)

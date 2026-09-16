@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import { orderAuthHeaders } from "@/lib/order-auth-client"
 
 export type TicketRecord = {
   id: string
@@ -41,7 +42,9 @@ export function useOrderTickets(orderId: string, enabled: boolean) {
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/orders/${orderId}/tickets`)
+        const res = await fetch(`/api/orders/${orderId}/tickets`, {
+          headers: orderAuthHeaders(orderId),
+        })
         const data: TicketRecord[] = res.ok ? await res.json() : []
         if (cancelled) return
         if (Array.isArray(data) && data.length > 0) {

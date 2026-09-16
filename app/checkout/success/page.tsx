@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
+import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import {
   ArrowRight, Mail, Smartphone, Calendar, Download, ArrowUpRight, Sparkles, Share2, CalendarPlus, Loader2,
@@ -45,9 +46,10 @@ function CheckoutSuccessInner() {
 
     // Fall back to server-side API
     setFetching(true)
-    fetch(`/api/orders/${id}/data`)
+    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
+        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
         setOrder(data)
         setFetching(false)
       })

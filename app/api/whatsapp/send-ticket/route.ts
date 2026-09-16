@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { and, eq, inArray, notInArray } from "drizzle-orm"
+import { timingSafeEqual } from "crypto"
 import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -17,6 +18,12 @@ const SendTicketSchema = z.object({
 })
 
 const whatsappTicketLimiter = rateLimit({ windowMs: 60_000 * 10, max: 2 })
+
+function constantTimeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB)
+}
 
 /**
  * POST /api/whatsapp/send-ticket
@@ -40,10 +47,18 @@ export async function POST(req: Request) {
     const { orderId, mode } = parsed.data
     const session = await auth()
     const internalKey = process.env.INTERNAL_API_KEY
-    const isInternal = Boolean(internalKey && req.headers.get("x-internal-key") === internalKey)
+    const isInternal = Boolean(
+      internalKey &&
+      req.headers.get("x-internal-key") &&
+      constantTimeEqual(req.headers.get("x-internal-key")!, internalKey),
+    )
     const isAdmin = session?.user?.role === "admin"
 
-    if (mode === "initial" && !isInternal && !isAdmin) {
+    // Every mode requires authorization. Previously only `initial` was gated,
+    // so an anonymous caller could pass mode=manual_resend and have the ticket
+    // PDF sent for any order UUID.
+    if (!isInternal && !isAdmin) {
+      log.warn("whatsapp send-ticket — rejected unauthorised request", { orderId, mode })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
