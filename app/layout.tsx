@@ -145,7 +145,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className={bare ? "" : "min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]"}>{children}</div>
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}
-          {!bare && <WhatsAppWidget phone="263777816368" label="Support" />}
+          {!bare && <WhatsAppWidget phone="263788689923" label="Support" />}
           <CommandPalette />
           <MobileNav />
         </Providers>

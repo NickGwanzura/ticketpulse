@@ -46,7 +46,7 @@ function ExpiredInner() {
         <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-left space-y-1.5">
           <p className="text-[13px] font-semibold text-amber-800">Was money deducted?</p>
           <p className="text-[13px] text-amber-700">
-            If money was deducted and your ticket hasn&apos;t arrived, WhatsApp 0777 816 368 with your reference. We&apos;ll review the payment.
+            If money was deducted and your ticket hasn&apos;t arrived, WhatsApp +263 78 868 9923 with your reference. We&apos;ll review the payment.
           </p>
           <p className="text-[13px] text-amber-700">
             Contact us with your reference number and we&apos;ll sort it out promptly.
@@ -61,7 +61,7 @@ function ExpiredInner() {
             View order <ArrowRight size={14} />
           </Link>
           <Link
-            href="https://wa.me/263777816368"
+            href="https://wa.me/263788689923"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition"
           >
             <Mail size={14} /> WhatsApp support

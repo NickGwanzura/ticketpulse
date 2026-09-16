@@ -33,13 +33,13 @@ export default function PaymentStatusNotice() {
         <p className="min-w-0 flex-1 text-[12px] leading-5 md:text-[13px]">
           <strong>EcoCash payment notice:</strong> Confirmations may be delayed. Approve the USSD prompt and wait for confirmation—please don’t pay again if your wallet was debited. For help, WhatsApp&nbsp;
           <a
-            href="https://wa.me/263777816368"
+            href="https://wa.me/263788689923"
             className="inline-flex min-h-8 items-center gap-1 font-bold text-amber-800 underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
             target="_blank"
             rel="noreferrer"
           >
             <MessageCircle size={13} aria-hidden="true" />
-            0777 816 368
+            +263 78 868 9923
           </a>
           &nbsp;for help.
         </p>

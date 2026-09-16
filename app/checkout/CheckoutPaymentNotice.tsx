@@ -19,13 +19,13 @@ export default function CheckoutPaymentNotice() {
           confirmation. Please don&apos;t pay again if your wallet was debited.
           For help, WhatsApp{" "}
           <a
-            href="https://wa.me/263777816368"
+            href="https://wa.me/263788689923"
             target="_blank"
             rel="noreferrer"
             className="inline-flex min-h-8 items-center gap-1 font-bold underline decoration-amber-400 underline-offset-2 transition-colors hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-amber-50"
           >
             <MessageCircle size={13} aria-hidden="true" />
-            0777 816 368
+            +263 78 868 9923
           </a>
           . Please don&apos;t pay twice.
         </p>

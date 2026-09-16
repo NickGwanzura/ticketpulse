@@ -21,7 +21,7 @@ const COMING_SOON_CATEGORY_VISUAL: Record<string, { emoji: string; gradient: str
   expedition: { emoji: "⛰️", gradient: "from-lime-50 to-green-50",     accent: "text-green-800" },
 }
 
-const WHATSAPP_PHONE = "263777816368"
+const WHATSAPP_PHONE = "263788689923"
 
 async function unlock(formData: FormData) {
   "use server"
