@@ -46,7 +46,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   return (
     <header
       className={isHome
-        ? "absolute left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 rounded-[1.35rem] border border-black/10 bg-white/90 shadow-[0_18px_55px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"
+        ? "absolute inset-x-0 top-0 z-50 border-b border-[#0a2540]/10 bg-[#f6f0e7] text-[#0a2540]"
         : `sticky top-0 z-50 border-b transition-all duration-300 ${
           scrolled
             ? "border-line bg-paper/92 shadow-[0_10px_30px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"
@@ -57,9 +57,9 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent" aria-hidden />
       )}
 
-      <nav className={`mx-auto flex max-w-7xl items-center gap-4 px-4 md:px-6 ${isHome ? "h-16 md:h-[72px]" : "h-16 md:h-[72px]"}`}>
+      <nav className={`mx-auto flex max-w-7xl items-center gap-4 px-5 md:px-8 ${isHome ? "h-[72px] md:h-[82px]" : "h-16 md:h-[72px]"}`}>
         <Link href="/" className="mr-auto inline-flex items-center gap-2.5" aria-label="TicketPulse home">
-          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 w-12 md:h-14 md:w-14" />
+          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-14 md:h-16 md:w-16" />
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
@@ -69,7 +69,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               <Link
                 key={href}
                 href={href}
-                className={`rounded-full px-4 py-2 text-[14px] font-semibold transition-colors ${
+                className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors ${
                   active ? "bg-accent/10 text-accent" : "text-ink-2 hover:bg-paper-2 hover:text-ink"
                 }`}
               >
@@ -83,7 +83,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
           <Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-paper text-ink transition hover:border-accent/30 hover:text-accent"
+                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${isHome ? "border-[#0a2540]/15 bg-transparent" : "border-line bg-paper"} text-ink hover:border-accent/30 hover:text-accent`}
           >
             <ShoppingBag size={16} />
             {ready && totalCount > 0 && (
@@ -98,32 +98,32 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               {canCreateEvent && (
                 <Link
                   href="/organizer/events/new"
-                  className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-[14px] font-bold text-white shadow-sm shadow-accent/20 transition hover:bg-accent-hover active:scale-[0.99]"
+                  className={`inline-flex h-10 items-center gap-2 rounded-sm px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-[#0a2540] hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
                 >
                   <Plus size={15} /> Create Event
                 </Link>
               )}
               <Link
                 href={dashboardHref}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-paper px-4 text-[14px] font-semibold text-ink transition hover:border-accent/30 hover:text-accent"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-paper px-4 text-[12px] font-semibold text-ink transition hover:border-accent/30 hover:text-accent"
               >
                 <LayoutDashboard size={15} /> Dashboard
               </Link>
               <button
                 onClick={() => signOut()}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-white transition hover:bg-accent"
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[12px] font-semibold text-white transition hover:bg-accent"
               >
                 <LogOut size={15} /> Sign out
               </button>
             </>
           ) : (
             <>
-              <Link href="/auth/signin" className="rounded-full px-4 py-2 text-[14px] font-semibold text-ink-2 transition hover:text-ink">
+              <Link href="/auth/signin" className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] transition ${isHome ? "text-ink hover:text-accent" : "text-ink-2 hover:text-ink"}`}>
                 Login
               </Link>
               <Link
                 href="/auth/signup?role=organizer"
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-5 text-[14px] font-bold text-white shadow-sm shadow-accent/20 transition hover:bg-accent-hover active:scale-[0.99]"
+                className={`inline-flex h-10 items-center gap-2 rounded-sm px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-[#0a2540] hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
               >
                 Get Started <ArrowRight size={14} />
               </Link>

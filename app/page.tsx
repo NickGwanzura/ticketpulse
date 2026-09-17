@@ -73,38 +73,38 @@ export default async function Home() {
   return (
     <main>
       {/* HERO */}
-      <section className="relative isolate overflow-hidden bg-navy text-white">
+      <section className="relative isolate min-h-[720px] overflow-hidden bg-[#081522] text-[#fbf2e4] md:min-h-[820px]">
         <HeroBackgroundSlideshow />
 
-        <div className="mx-auto max-w-7xl px-5 pb-14 pt-28 sm:pb-20 sm:pt-32 md:px-8 md:pt-36 md:pb-24">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="tp-fade-up text-[11px] font-bold uppercase tracking-[0.2em] text-white/65">
-              TicketPulse · Zimbabwe
+        <div className="mx-auto flex min-h-[720px] max-w-7xl items-center px-5 pb-16 pt-36 sm:pb-20 md:min-h-[820px] md:px-8 md:pt-40">
+          <div className="mx-auto max-w-5xl text-center">
+            <p className="tp-fade-up text-[11px] font-bold uppercase tracking-[0.28em] text-[#f6c995]">
+              Zimbabwe's home for live moments
             </p>
-            <div className="tp-fade-up-1 mx-auto mt-5 inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-[12px] font-bold text-ink shadow-sm ring-1 ring-ink/10 backdrop-blur">
-              <span className="inline-block h-2 w-2 rounded-full bg-accent" aria-hidden />
-              Sell online. Run the gate. Know your numbers.
+            <div className="tp-fade-up-1 mx-auto mt-7 inline-flex items-center gap-3 rounded-full border border-[#fbf2e4]/25 bg-[#081522]/45 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#fbf2e4]/85 backdrop-blur-sm">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#f47b4b]" aria-hidden />
+              Sell tickets · fill the room · know your numbers
             </div>
-            <h1 className="tp-fade-up-2 mx-auto mt-7 max-w-4xl font-bold tracking-[-0.065em] text-[48px] leading-[0.94] text-white sm:text-[68px] md:mt-8 md:text-[96px]">
-              Bring your next <span className="text-orange-300">big moment</span> to life.
+            <h1 className="tp-fade-up-2 mx-auto mt-7 max-w-5xl font-display text-[66px] font-black uppercase leading-[0.82] tracking-[-0.045em] text-[#fbf2e4] drop-shadow-[0_8px_30px_rgba(0,0,0,0.3)] sm:text-[92px] md:mt-8 md:text-[142px]">
+              Make it a <span className="text-[#f47b4b]">moment.</span>
             </h1>
-            <p className="tp-fade-up-3 mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-white/78 md:text-[18px]">
-              TicketPulse gives Zimbabwean organizers a simple way to sell tickets, deliver QR entry passes, manage guests, and track payouts from one place.
+            <p className="tp-fade-up-3 mx-auto mt-7 max-w-2xl text-[16px] leading-relaxed text-[#fbf2e4]/78 md:text-[18px]">
+              Discover the nights worth remembering and give your guests a seamless way in. TicketPulse brings tickets, QR entry, guest lists and payouts together.
             </p>
             <div className="tp-fade-up-4 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/auth/signup?role=organizer"
-                className="group inline-flex h-13 overflow-hidden rounded-xl bg-ink text-[14px] font-bold text-white shadow-[0_18px_45px_-22px_rgba(10,37,64,0.65)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-22px_rgba(10,37,64,0.7)] active:scale-[0.99]"
+                className="group inline-flex h-13 overflow-hidden rounded-sm bg-[#f47b4b] text-[12px] font-bold uppercase tracking-[0.14em] text-[#081522] shadow-[0_18px_45px_-22px_rgba(0,0,0,0.65)] transition hover:-translate-y-0.5 hover:bg-[#ff9c6e] active:scale-[0.99]"
               >
-                <span className="inline-flex items-center px-6">Start selling tickets</span>
-                <span className="inline-flex w-12 items-center justify-center bg-accent text-white transition group-hover:bg-accent-hover"><ArrowUpRight size={16} /></span>
+                <span className="inline-flex items-center px-6">Start selling</span>
+                <span className="inline-flex w-12 items-center justify-center bg-[#e9683b] text-[#081522] transition group-hover:bg-[#ffb08c]"><ArrowUpRight size={16} /></span>
               </Link>
               <Link
                 href="/events"
-                className="group inline-flex h-13 overflow-hidden rounded-xl bg-white/85 text-[14px] font-bold text-ink shadow-sm ring-1 ring-ink/15 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white active:scale-[0.99]"
+                className="group inline-flex h-13 overflow-hidden rounded-sm border border-[#fbf2e4]/45 bg-[#081522]/35 text-[12px] font-bold uppercase tracking-[0.14em] text-[#fbf2e4] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-[#fbf2e4]/10 active:scale-[0.99]"
               >
-                <span className="inline-flex items-center px-6">Find your next event</span>
-                <span className="inline-flex w-12 items-center justify-center border-l border-ink/10 text-accent transition group-hover:bg-accent/10"><ArrowUpRight size={16} /></span>
+                <span className="inline-flex items-center px-6">Find an event</span>
+                <span className="inline-flex w-12 items-center justify-center border-l border-[#fbf2e4]/20 text-[#f6c995] transition group-hover:bg-[#fbf2e4]/10"><ArrowUpRight size={16} /></span>
               </Link>
             </div>
             <HeroEventTypesSlider />
@@ -114,10 +114,11 @@ export default async function Home() {
 
       {/* FEATURED */}
       {featuredEvents.length > 0 && (
-        <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24">
+        <section className="bg-[#f6f0e7] px-5 py-16 md:px-8 md:py-24">
+          <div className="mx-auto max-w-7xl">
           <div className="tp-reveal mb-8 md:mb-10 max-w-2xl">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">On sale now</p>
-            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">
+            <p className="text-[11px] font-bold tracking-[0.22em] text-accent uppercase mb-2">On sale now</p>
+            <h2 className="font-display font-black uppercase tracking-[-0.03em] text-[42px] md:text-[66px] leading-[0.9] text-ink">
               {featuredEvents.length === 1 ? "Featured event." : "What's on."}
             </h2>
             <p className="mt-3 text-[15px] text-ink-2">
@@ -159,11 +160,13 @@ export default async function Home() {
               ))}
             </div>
           )}
+          </div>
         </section>
       )}
 
       {pastEvents.length > 0 && (
-        <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-18 border-t border-line">
+        <section className="bg-[#f6f0e7] px-5 py-14 md:px-8 md:py-18 border-t border-[#0a2540]/10">
+          <div className="mx-auto max-w-7xl">
           <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-4 md:p-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -198,14 +201,16 @@ export default async function Home() {
               ))}
             </div>
           </div>
+          </div>
         </section>
       )}
       {/* HOW IT WORKS */}
-      <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-24 border-t border-line">
+      <section className="bg-[#0a2540] px-5 py-16 text-[#fbf2e4] md:px-8 md:py-24">
+        <div className="mx-auto max-w-7xl">
         <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">How it works · end to end</p>
-          <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">From discovery to the gate. All on TicketPulse.</h2>
-          <p className="mt-3 text-[15px] text-ink-2">We serve the client and the organizer: checkout, ticket delivery, order recovery, reviews, attendee messaging, gate scanning, and payout tracking all live in one place. One platform, one log, one payout.</p>
+          <p className="text-[11px] font-bold tracking-[0.22em] text-[#f6c995] uppercase mb-2">How it works · end to end</p>
+          <h2 className="font-display font-black uppercase tracking-[-0.03em] text-[42px] md:text-[66px] leading-[0.9] text-[#fbf2e4]">From discovery to the gate.</h2>
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#fbf2e4]/68">One place to sell tickets, welcome guests, scan the gate and track every payout.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -263,10 +268,11 @@ export default async function Home() {
             </div>
           ))}
         </div>
+        </div>
       </section>
 
       {/* FAQ */}
-      <section className="bg-paper-2 border-y border-line">
+      <section className="bg-[#f6f0e7] border-y border-[#0a2540]/10">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-24">
           <script
             type="application/ld+json"
@@ -287,7 +293,7 @@ export default async function Home() {
           />
           <div className="tp-reveal mb-10 max-w-xl">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">FAQ</p>
-            <h2 className="font-bold tracking-tight text-[28px] md:text-[40px] leading-tight text-ink">Quick answers.</h2>
+            <h2 className="font-display font-black uppercase tracking-[-0.03em] text-[42px] md:text-[60px] leading-[0.9] text-ink">Quick answers.</h2>
             <p className="mt-3 text-[15px] text-ink-2">Still wondering? <Link href="/help" className="text-navy font-semibold hover:underline">Browse the help center</Link> or <Link href="/contact" className="text-navy font-semibold hover:underline">talk to a human</Link>.</p>
           </div>
 
