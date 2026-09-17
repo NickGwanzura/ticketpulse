@@ -276,7 +276,7 @@ export default function EventCard({
               <span className="text-[13px] font-semibold text-green-700">Free entry</span>
             )}
           </div>
-          <span className="inline-flex h-10 min-w-[118px] items-center justify-center gap-2 rounded-xl border border-line-2 bg-paper px-4 text-[12px] font-semibold text-navy shadow-sm transition-all group-hover:border-orange-600 group-hover:bg-orange-600 group-hover:text-white group-hover:shadow-orange-900/15">
+          <span className="inline-flex h-10 min-w-[118px] items-center justify-center gap-2 rounded-sm border border-line-2 bg-paper px-4 text-[11px] font-bold uppercase tracking-[0.08em] text-navy shadow-sm transition-all group-hover:border-orange-600 group-hover:bg-orange-600 group-hover:text-white group-hover:shadow-orange-900/15">
             {isPast ? "Summary" : "Buy tickets"} <ArrowUpRight size={13} strokeWidth={2.2} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </span>
         </div>
