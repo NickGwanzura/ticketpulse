@@ -580,3 +580,70 @@ Write a brief narrative summary.`
     return "Analytics data is populating as the platform grows. Check back after more events and ticket sales."
   }
 }
+
+/* ─── 11. Reconciliation Summary ────────────────────────────────────────── */
+
+export interface ReconciliationSummaryInput {
+  velocityReceived: number
+  localPaidRevenue: number
+  platformFee: number
+  organizerNet: number
+  paidOut: number
+  pendingPayouts: number
+  availableBalance: number
+  paidOrders: number
+  confirmedTickets: number
+  criticalIssues: number
+  warningIssues: number
+  issues: Array<{ severity: string; title: string; detail: string }>
+}
+
+/**
+ * Explain reconciliation results for an authenticated organiser. This is
+ * narration only: balances and financial decisions always come from the
+ * reconciliation ledger, never from the model response.
+ */
+export async function generateReconciliationSummary(input: ReconciliationSummaryInput): Promise<string> {
+  const systemPrompt = `You are a careful reconciliation assistant for TicketPulse, a Zimbabwe-based ticketing platform.
+Summarise the supplied payment reconciliation in 2-4 concise sentences for the event organiser.
+State what is reconciled, call out any exceptions, and give one practical next step when needed.
+Never invent transactions, change balances, or claim a payout is approved. If there are no issues, say the report has no flagged exceptions.
+Use UK English spelling. Output only plain text, with no markdown or headings.`
+
+  const issueSummary = input.issues
+    .slice(0, 8)
+    .map((item) => `${item.severity}: ${item.title} — ${item.detail}`)
+    .join("\n") || "No flagged exceptions."
+  const userPrompt = `Velocity receipts: $${input.velocityReceived.toFixed(2)}
+Local paid revenue: $${input.localPaidRevenue.toFixed(2)}
+TicketPulse fee: $${input.platformFee.toFixed(2)}
+Organiser net: $${input.organizerNet.toFixed(2)}
+Paid out: $${input.paidOut.toFixed(2)}
+Pending payouts: $${input.pendingPayouts.toFixed(2)}
+Available balance: $${input.availableBalance.toFixed(2)}
+Paid orders: ${input.paidOrders}
+Confirmed tickets: ${input.confirmedTickets}
+Critical issues: ${input.criticalIssues}
+Warnings: ${input.warningIssues}
+Exceptions:
+${issueSummary}`
+
+  try {
+    return await groqCompletion(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      0.2,
+      300,
+    )
+  } catch {
+    if (input.criticalIssues > 0) {
+      return `There are ${input.criticalIssues} critical reconciliation issue(s) requiring review before settlement. Check the flagged exceptions and contact TicketPulse support with the affected order references.`
+    }
+    if (input.warningIssues > 0) {
+      return `The report reconciles ${input.paidOrders} paid order(s) and flags ${input.warningIssues} warning(s). Review the exceptions before requesting settlement.`
+    }
+    return `The report reconciles ${input.paidOrders} paid order(s) and ${input.confirmedTickets} confirmed ticket(s) with no flagged exceptions.`
+  }
+}

@@ -8,6 +8,7 @@ import { db } from "@/db"
 import { events, orderItems, orders, paymentLedger, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import AiReconciliationCard from "@/components/ai/AiReconciliationCard"
 import { deleteVelocitySettlementAction, recordVelocitySettlementAction, sendVelocityReconciliationAction } from "@/app/admin/reconciliation/actions"
 import { auditOrderPaymentLedger, type AuditableLedgerEntry, type PaymentAuditIssue } from "@/lib/payment-ledger-audit"
 import { getVelocityReconciliationReport } from "@/lib/velocity-reconciliation"
@@ -339,6 +340,8 @@ export default async function AdminReconciliationPage({
               Velocity deposit recorded. The CSV/PDF export and email report now include it.
             </div>
           )}
+
+          <AiReconciliationCard />
 
           <div className="rounded-2xl border border-line bg-paper p-5">
             <div className="mb-4 flex items-center gap-2">
