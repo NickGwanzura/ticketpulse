@@ -4,7 +4,7 @@ import {
   Wallet, Clock, CheckCircle2, Send,
   Smartphone, Building2, Inbox, XCircle, Banknote,
 } from "lucide-react"
-import { desc, eq, isNotNull, or } from "drizzle-orm"
+import { desc, eq, isNotNull, or, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -239,7 +239,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
       db
         .selectDistinct({ id: users.id, name: users.name, email: users.email })
         .from(users)
-        .leftJoin(events, eq(events.organizerId, users.id))
+        .leftJoin(events, sql`${events.organizerId}::text = ${users.id}::text`)
         .where(or(eq(users.role, "organizer"), isNotNull(events.id)))
         .orderBy(users.name),
       db

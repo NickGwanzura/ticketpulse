@@ -69,7 +69,7 @@ export default async function AdminOrganizersPage({
   const conditions = [eq(users.role, "organizer")]
   const noEventCondition = sql`NOT EXISTS (
     SELECT 1 FROM events e_without_event
-    WHERE e_without_event.organizer_id = ${users.id}
+    WHERE e_without_event.organizer_id::text = ${users.id}::text
   )`
   if (searchQuery) {
     conditions.push(or(
@@ -115,7 +115,7 @@ export default async function AdminOrganizersPage({
       isNew: sql<boolean>`${users.createdAt} >= NOW() - INTERVAL '${sql.raw(String(NEW_DAYS))} days'`,
     })
       .from(users)
-      .leftJoin(events, eq(events.organizerId, users.id))
+      .leftJoin(events, sql`${events.organizerId}::text = ${users.id}::text`)
       .where(whereClause)
       .groupBy(users.id)
       .orderBy(status === "no_event" || status === "stalled" ? asc(users.createdAt) : desc(users.createdAt))
@@ -127,8 +127,8 @@ export default async function AdminOrganizersPage({
       newCount: sql<number>`COUNT(*) FILTER (WHERE ${users.createdAt} >= NOW() - INTERVAL '${sql.raw(String(NEW_DAYS))} days')::int`,
       pending: sql<number>`COUNT(*) FILTER (WHERE ${users.approvedAt} IS NULL)::int`,
       contactable: sql<number>`COUNT(*) FILTER (WHERE NULLIF(TRIM(${users.phone}), '') IS NOT NULL OR NULLIF(TRIM(${users.email}), '') IS NOT NULL)::int`,
-      noEvent: sql<number>`COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM events e_without_event WHERE e_without_event.organizer_id = ${users.id}))::int`,
-      stalled: sql<number>`COUNT(*) FILTER (WHERE ${users.createdAt} < NOW() - INTERVAL '${sql.raw(String(NO_EVENT_DAYS))} days' AND NOT EXISTS (SELECT 1 FROM events e_stalled WHERE e_stalled.organizer_id = ${users.id}))::int`,
+      noEvent: sql<number>`COUNT(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM events e_without_event WHERE e_without_event.organizer_id::text = ${users.id}::text))::int`,
+      stalled: sql<number>`COUNT(*) FILTER (WHERE ${users.createdAt} < NOW() - INTERVAL '${sql.raw(String(NO_EVENT_DAYS))} days' AND NOT EXISTS (SELECT 1 FROM events e_stalled WHERE e_stalled.organizer_id::text = ${users.id}::text))::int`,
       frozen: sql<number>`COUNT(*) FILTER (WHERE ${users.organizerFrozenAt} IS NOT NULL)::int`,
       missingPhone: sql<number>`COUNT(*) FILTER (WHERE NULLIF(TRIM(${users.phone}), '') IS NULL)::int`,
     }).from(users).where(eq(users.role, "organizer")),

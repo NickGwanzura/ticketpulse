@@ -106,7 +106,9 @@ export default async function AdminOverviewPage() {
       organizerEmail: users.email,
     })
       .from(events)
-      .leftJoin(users, eq(events.organizerId, users.id))
+      // Cast both sides so this remains safe when an older deployment has a
+      // UUID organizer column while the current schema uses text IDs.
+      .leftJoin(users, sql`${events.organizerId}::text = ${users.id}::text`)
       .where(and(eq(events.status, "published"), liveEventWindow))
       .orderBy(desc(events.createdAt))
       .limit(6),
@@ -121,7 +123,7 @@ export default async function AdminOverviewPage() {
       total: sql<number>`COUNT(*) OVER()::int`,
     })
       .from(events)
-      .leftJoin(users, eq(events.organizerId, users.id))
+      .leftJoin(users, sql`${events.organizerId}::text = ${users.id}::text`)
       .where(eq(events.status, "pending_review"))
       .orderBy(desc(events.createdAt))
       .limit(5),
@@ -185,7 +187,7 @@ export default async function AdminOverviewPage() {
       .from(users)
       .where(and(
         eq(users.role, "organizer"),
-        sql`NOT EXISTS (SELECT 1 FROM events e_without_event WHERE e_without_event.organizer_id = ${users.id})`,
+        sql`NOT EXISTS (SELECT 1 FROM events e_without_event WHERE e_without_event.organizer_id::text = ${users.id}::text)`,
       )),
 
     db.select({ count: sql<number>`COUNT(*)::int` })

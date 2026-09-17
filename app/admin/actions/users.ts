@@ -285,7 +285,7 @@ export async function freezeOrganizerWithoutEventsAction(userId: string) {
       eventCount: sql<number>`COUNT(${events.id})::int`,
     })
     .from(users)
-    .leftJoin(events, eq(events.organizerId, users.id))
+    .leftJoin(events, sql`${events.organizerId}::text = ${users.id}::text`)
     .where(eq(users.id, userId))
     .groupBy(users.id)
     .limit(1)

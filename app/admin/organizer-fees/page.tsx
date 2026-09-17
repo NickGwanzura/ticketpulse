@@ -62,7 +62,7 @@ export default async function OrganizerFeeDuesPage({
       eventTitle: events.title,
     })
     .from(organizerFeeDues)
-    .leftJoin(users, eq(organizerFeeDues.organizerId, users.id))
+    .leftJoin(users, sql`${organizerFeeDues.organizerId}::text = ${users.id}::text`)
     .leftJoin(events, eq(organizerFeeDues.eventId, events.id))
     .orderBy(desc(organizerFeeDues.createdAt))
 

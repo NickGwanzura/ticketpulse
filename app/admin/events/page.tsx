@@ -80,7 +80,7 @@ export default async function AdminEventsPage({
       capacity:  sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)::int`,
     })
     .from(events)
-    .leftJoin(users, eq(events.organizerId, users.id))
+    .leftJoin(users, sql`${events.organizerId}::text = ${users.id}::text`)
     .leftJoin(ticketTiers, eq(ticketTiers.eventId, events.id))
     .groupBy(events.id, users.id)
     .orderBy(desc(events.createdAt))
