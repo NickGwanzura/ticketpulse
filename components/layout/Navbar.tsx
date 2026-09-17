@@ -46,7 +46,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   return (
     <header
       className={isHome
-        ? "absolute inset-x-0 top-0 z-50 border-b border-[#0a2540]/10 bg-[#f6f0e7] text-[#0a2540]"
+        ? "absolute inset-x-0 top-0 z-50 border-b border-[#0a2540]/10 bg-white text-[#0a2540]"
         : `sticky top-0 z-50 border-b transition-all duration-300 ${
           scrolled
             ? "border-line bg-paper/92 shadow-[0_10px_30px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"

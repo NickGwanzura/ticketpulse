@@ -114,7 +114,7 @@ export default async function Home() {
 
       {/* FEATURED */}
       {featuredEvents.length > 0 && (
-        <section className="bg-[#f6f0e7] px-5 py-16 md:px-8 md:py-24">
+        <section className="bg-white px-5 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
           <div className="tp-reveal mb-8 md:mb-10 max-w-2xl">
             <p className="text-[11px] font-bold tracking-[0.22em] text-accent uppercase mb-2">On sale now</p>
@@ -165,7 +165,7 @@ export default async function Home() {
       )}
 
       {pastEvents.length > 0 && (
-        <section className="bg-[#f6f0e7] px-5 py-14 md:px-8 md:py-18 border-t border-[#0a2540]/10">
+        <section className="bg-white px-5 py-14 md:px-8 md:py-18 border-t border-[#0a2540]/10">
           <div className="mx-auto max-w-7xl">
           <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-4 md:p-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -272,7 +272,7 @@ export default async function Home() {
       </section>
 
       {/* FAQ */}
-      <section className="bg-[#f6f0e7] border-y border-[#0a2540]/10">
+      <section className="bg-white border-y border-[#0a2540]/10">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-24">
           <script
             type="application/ld+json"

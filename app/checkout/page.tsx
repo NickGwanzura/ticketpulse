@@ -357,7 +357,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f0e7] text-[#0a2540]">
+    <div className="min-h-screen bg-white text-[#0a2540]">
       {pollingOrderId && (
         <PaymentWaitingOverlay
           method={form.payment}
@@ -373,7 +373,7 @@ export default function CheckoutPage() {
       )}
 
       {/* Header */}
-      <div className="border-b border-[#0a2540]/10 bg-[#f6f0e7]">
+      <div className="border-b border-[#0a2540]/10 bg-white">
         <div className="mx-auto max-w-5xl px-5 pb-8 pt-12 md:px-8 md:pb-12 md:pt-16">
           <Link
             href="/cart"
