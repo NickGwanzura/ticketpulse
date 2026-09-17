@@ -6,12 +6,46 @@ import { authConfig } from "@/auth.config"
 // import lib/password (node:crypto) or other Node-only deps.
 const { auth } = NextAuth(authConfig)
 
-const protectedRoutes = ["/dashboard", "/organizer", "/account", "/payouts"]
+const protectedRoutes = ["/dashboard", "/organizer", "/admin", "/account", "/payouts"]
 const authRoutes = ["/auth/signin", "/auth/signup"]
 const ACCESS_COOKIE = "tp_access"
+const ROLE_HOSTS = {
+  organizer: "organizer.ticketpulse.tech",
+  admin: "admin.ticketpulse.tech",
+} as const
+const APP_HOSTS = new Set(["ticketpulse.tech", "www.ticketpulse.tech", ...Object.values(ROLE_HOSTS)])
 
 function isLocalPath(value: string | null): value is string {
   return !!value && value.startsWith("/") && !value.startsWith("//")
+}
+
+function roleLandingPath(role: string | null | undefined, requestedPath: string): string | null {
+  if (role !== "organizer" && role !== "admin") return null
+  if (requestedPath === "/" || requestedPath === "/dashboard") {
+    return role === "admin" ? "/admin" : "/organizer"
+  }
+  if (role === "admin" && requestedPath.startsWith("/admin")) return requestedPath
+  if (role === "organizer" && requestedPath.startsWith("/organizer")) return requestedPath
+  return role === "admin" ? "/admin" : "/organizer"
+}
+
+function roleHostRedirect(
+  nextUrl: URL,
+  role: string | null | undefined,
+  requestedPath: string,
+): NextResponse | null {
+  if (!APP_HOSTS.has(nextUrl.hostname)) return null
+  const targetHost = role === "organizer" || role === "admin" ? ROLE_HOSTS[role] : null
+  const destinationPath = roleLandingPath(role, requestedPath)
+  if (!targetHost || !destinationPath) return null
+
+  const isRoleArea = requestedPath === "/" || requestedPath === "/dashboard" || requestedPath.startsWith("/organizer") || requestedPath.startsWith("/admin")
+  if (!isRoleArea) return null
+  if (nextUrl.hostname === targetHost && nextUrl.pathname === destinationPath) return null
+
+  const destination = new URL(destinationPath, `https://${targetHost}`)
+  destination.search = nextUrl.search
+  return NextResponse.redirect(destination)
 }
 
 export default auth((req) => {
@@ -55,6 +89,8 @@ export default auth((req) => {
   if (isAuthRoute && isLoggedIn) {
     const callbackUrl = nextUrl.searchParams.get("callbackUrl")
     if (isLocalPath(callbackUrl)) {
+      const roleRedirect = roleHostRedirect(nextUrl, req.auth?.user?.role, callbackUrl)
+      if (roleRedirect) return roleRedirect
       return NextResponse.redirect(new URL(callbackUrl, nextUrl))
     }
 
@@ -67,8 +103,13 @@ export default auth((req) => {
       }
     }
 
+    const roleRedirect = roleHostRedirect(nextUrl, req.auth?.user?.role, "/dashboard")
+    if (roleRedirect) return roleRedirect
     return NextResponse.redirect(new URL("/dashboard", nextUrl))
   }
+
+  const roleRedirect = roleHostRedirect(nextUrl, req.auth?.user?.role, path)
+  if (roleRedirect) return roleRedirect
 
   const requestHeaders = new Headers(req.headers)
   requestHeaders.set("x-pathname", path)
