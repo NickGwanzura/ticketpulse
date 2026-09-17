@@ -951,7 +951,8 @@ button,
 a[class*="inline-flex"],
 a[class*="bg-brand-"],
 a[class*="bg-accent"],
-a[class*="bg-navy"] {
+a[class*="bg-navy"],
+a[class*="border"][class*="px-"] {
   border-radius: 2px !important;
   letter-spacing: 0.08em;
   text-transform: uppercase;
