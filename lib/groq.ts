@@ -1,14 +1,20 @@
 /**
- * GROQ API client for AI-powered features.
- * Uses the OpenAI-compatible Chat Completions endpoint.
+ * Shared AI client for all TicketPulse AI routes.
  *
- * Environment variable: GROQ_API_KEY
- * Endpoint: https://api.groq.com/openai/v1/chat/completions
+ * OpenAI is preferred when OPENAI_API_KEY is configured. Groq remains a
+ * compatible fallback for environments that have not migrated yet.
  */
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? ""
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? ""
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-const MODEL = "llama-3.3-70b-versatile"
+const AI_API_KEY = OPENAI_API_KEY || GROQ_API_KEY
+const AI_API_URL = OPENAI_API_KEY
+  ? process.env.OPENAI_API_URL ?? "https://api.openai.com/v1/chat/completions"
+  : process.env.GROQ_API_URL ?? "https://api.groq.com/openai/v1/chat/completions"
+const MODEL = OPENAI_API_KEY
+  ? process.env.OPENAI_MODEL ?? "gpt-4o-mini"
+  : process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile"
+const AI_PROVIDER = OPENAI_API_KEY ? "OPENAI" : "GROQ"
 
 interface GroqMessage {
   role: "system" | "user" | "assistant"
@@ -28,15 +34,15 @@ async function groqCompletion(
   temperature = 0.7,
   maxTokens = 512,
 ): Promise<string> {
-  if (!GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is not set")
+  if (!AI_API_KEY) {
+    throw new Error("OPENAI_API_KEY or GROQ_API_KEY is not set")
   }
 
-  const res = await fetch(GROQ_API_URL, {
+  const res = await fetch(AI_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${GROQ_API_KEY}`,
+      Authorization: `Bearer ${AI_API_KEY}`,
     },
     body: JSON.stringify({
       model: MODEL,
@@ -49,7 +55,7 @@ async function groqCompletion(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "")
-    throw new Error(`GROQ API error ${res.status}: ${body}`)
+    throw new Error(`${AI_PROVIDER} API error ${res.status}: ${body}`)
   }
 
   const data: GroqResponse = await res.json()
