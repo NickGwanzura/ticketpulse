@@ -19,6 +19,12 @@ function isLocalPath(value: string | null): value is string {
   return !!value && value.startsWith("/") && !value.startsWith("//")
 }
 
+function roleHostForPath(path: string): string | null {
+  if (path === "/admin" || path.startsWith("/admin/")) return ROLE_HOSTS.admin
+  if (path === "/organizer" || path.startsWith("/organizer/")) return ROLE_HOSTS.organizer
+  return null
+}
+
 function roleLandingPath(role: string | null | undefined, requestedPath: string): string | null {
   if (role !== "organizer" && role !== "admin") return null
   if (requestedPath === "/" || requestedPath === "/dashboard") {
@@ -80,7 +86,13 @@ export default auth((req) => {
 
   // Redirect unauthenticated users to sign-in
   if (isProtected && !isLoggedIn) {
-    const signInUrl = new URL("/auth/signin", nextUrl)
+    // Auth.js can normalize the request URL from deployment environment
+    // settings. Build role-area sign-in URLs from the canonical host so an
+    // admin or organizer never falls back to the public site during login.
+    const roleHost = roleHostForPath(path)
+    const signInUrl = roleHost
+      ? new URL("/auth/signin", `https://${roleHost}`)
+      : new URL("/auth/signin", nextUrl)
     signInUrl.searchParams.set("callbackUrl", `${nextUrl.pathname}${nextUrl.search}`)
     return NextResponse.redirect(signInUrl)
   }
