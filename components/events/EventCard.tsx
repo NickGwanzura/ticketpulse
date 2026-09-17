@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Calendar, MapPin, ArrowUpRight, Flame } from "lucide-react"
+import { Activity, ArrowUpRight, Building2, Calendar, Film, Flame, Footprints, MapPin, Mountain, Music2, Ticket as TicketIcon, type LucideIcon } from "lucide-react"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 interface EventCardProps {
@@ -24,7 +24,7 @@ interface EventCardProps {
 
 interface CategoryVisual {
   gradient: string
-  emoji: string
+  icon: LucideIcon
   tint: string
   ring: string
   pattern: React.ReactElement
@@ -97,12 +97,12 @@ const PATTERNS = {
 }
 
 const CATEGORY_VISUAL: Record<string, CategoryVisual> = {
-  concert:    { gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  emoji: "🎵", tint: "text-violet-700",    ring: "ring-violet-200/60",   pattern: PATTERNS.concert },
-  marathon:   { gradient: "from-sky-100 via-blue-50 to-cyan-50",        emoji: "🏃", tint: "text-sky-700",       ring: "ring-sky-200/60",      pattern: PATTERNS.marathon },
-  walkathon:  { gradient: "from-green-100 via-teal-50 to-cyan-50",    emoji: "🚶", tint: "text-green-700",   ring: "ring-green-200/60",  pattern: PATTERNS.walkathon },
-  film:       { gradient: "from-amber-100 via-orange-50 to-rose-50",    emoji: "🎬", tint: "text-amber-700",     ring: "ring-amber-200/60",    pattern: PATTERNS.film },
-  exhibition: { gradient: "from-slate-100 via-blue-50 to-indigo-50",    emoji: "🏢", tint: "text-slate-700",     ring: "ring-slate-200/60",    pattern: PATTERNS.exhibition },
-  expedition: { gradient: "from-lime-100 via-green-50 to-teal-50",    emoji: "⛰️", tint: "text-green-800",   ring: "ring-lime-200/60",     pattern: PATTERNS.expedition },
+  concert:    { gradient: "from-violet-100 via-fuchsia-50 to-pink-50",  icon: Music2,     tint: "text-violet-700", ring: "ring-violet-200/60", pattern: PATTERNS.concert },
+  marathon:   { gradient: "from-sky-100 via-blue-50 to-cyan-50",        icon: Activity,   tint: "text-sky-700",    ring: "ring-sky-200/60",    pattern: PATTERNS.marathon },
+  walkathon:  { gradient: "from-green-100 via-teal-50 to-cyan-50",      icon: Footprints, tint: "text-green-700",  ring: "ring-green-200/60",  pattern: PATTERNS.walkathon },
+  film:       { gradient: "from-amber-100 via-orange-50 to-rose-50",    icon: Film,       tint: "text-amber-700",  ring: "ring-amber-200/60",  pattern: PATTERNS.film },
+  exhibition: { gradient: "from-slate-100 via-blue-50 to-indigo-50",   icon: Building2,  tint: "text-slate-700",  ring: "ring-slate-200/60",  pattern: PATTERNS.exhibition },
+  expedition: { gradient: "from-lime-100 via-green-50 to-teal-50",     icon: Mountain,   tint: "text-green-800",  ring: "ring-lime-200/60",   pattern: PATTERNS.expedition },
 }
 
 function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" } | null {
@@ -128,7 +128,7 @@ export default function EventCard({
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
     gradient: "from-slate-100 to-slate-50",
-    emoji: "🎫",
+    icon: TicketIcon,
     tint: "text-slate-700",
     ring: "ring-slate-200/60",
     pattern: PATTERNS.default,
@@ -138,11 +138,12 @@ export default function EventCard({
   const remaining = timeUntil(date)
   const soldOut = status === "sold_out"
   const sellingFast = tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy"
+  const CategoryIcon = visual.icon
 
   return (
     <Link
       href={`/events/${slug}`}
-      className="tp-premium-card group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_24px_60px_-28px_rgba(201,82,42,0.34)]"
+      className="tp-premium-card group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_24px_60px_-28px_rgba(201,82,42,0.34)]"
     >
       <span className="pointer-events-none absolute inset-x-5 top-0 z-20 h-px bg-gradient-to-r from-transparent via-orange-300/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
       {/* Category header */}
@@ -163,7 +164,7 @@ export default function EventCard({
             <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             {/* Category label */}
             <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white backdrop-blur-sm ring-1 ring-white/20">
-              {visual.emoji} {category}
+              <CategoryIcon size={12} strokeWidth={2.3} /> {category}
             </span>
           </>
         ) : (
@@ -180,10 +181,10 @@ export default function EventCard({
             {/* Hover shine */}
             <div className="absolute inset-0 bg-gradient-to-t from-paper/0 via-transparent to-paper/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-            {/* Emoji */}
+            {/* Category icon */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[60px] leading-none drop-shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
-                {visual.emoji}
+              <span className={`inline-flex h-20 w-20 items-center justify-center rounded-[28px] bg-white/55 ${visual.tint} shadow-sm ring-1 ${visual.ring} backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}>
+                <CategoryIcon size={38} strokeWidth={1.7} />
               </span>
             </div>
           </>
@@ -240,7 +241,7 @@ export default function EventCard({
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${visual.tint}`}>{category}</p>
 
-        <h3 className="mb-2.5 line-clamp-2 text-[17px] font-semibold leading-snug tracking-[-0.01em] text-ink transition-colors group-hover:text-navy-700">
+        <h3 className="mb-2.5 min-h-[2.75rem] line-clamp-2 text-[17px] font-semibold leading-snug tracking-[-0.01em] text-ink transition-colors group-hover:text-navy-700">
           {title}
         </h3>
 
@@ -267,7 +268,7 @@ export default function EventCard({
             ) : lowestPrice != null ? (
               <>
                 <span className="text-[11px] text-ink-3">From</span>
-                <span className="ml-1.5 text-[17px] font-bold tracking-tight text-ink">
+                <span className="ml-1.5 text-[23px] font-bold tracking-[-0.02em] text-accent sm:text-[25px]">
                   {formatCurrency(lowestPrice, currency)}
                 </span>
               </>

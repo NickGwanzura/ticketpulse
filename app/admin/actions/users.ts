@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 import { signIn } from "@/auth"
 import { requireAdmin } from "@/lib/auth-guard"
@@ -195,15 +195,19 @@ export async function approveOrganizerAction(userId: string) {
   await requireAdmin()
 
   const [organizer] = await db
-    .select({ email: users.email, name: users.name, approvedAt: users.approvedAt })
+    .select({ email: users.email, name: users.name, role: users.role, approvedAt: users.approvedAt })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
 
+  if (!organizer || organizer.role !== "organizer") {
+    throw new Error("Only organizer accounts can be approved")
+  }
+
   await db
     .update(users)
     .set({ approvedAt: new Date(), updatedAt: new Date() })
-    .where(eq(users.id, userId))
+    .where(and(eq(users.id, userId), eq(users.role, "organizer")))
 
   // Send approval email (fire-and-forget — don't block the admin action)
   if (organizer?.email && !organizer.approvedAt) {
@@ -232,15 +236,19 @@ export async function rejectOrganizerAction(userId: string) {
   await requireAdmin()
 
   const [organizer] = await db
-    .select({ email: users.email, name: users.name })
+    .select({ email: users.email, name: users.name, role: users.role })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
 
+  if (!organizer || organizer.role !== "organizer") {
+    throw new Error("Only organizer accounts can be rejected")
+  }
+
   await db
     .update(users)
     .set({ approvedAt: null, updatedAt: new Date() })
-    .where(eq(users.id, userId))
+    .where(and(eq(users.id, userId), eq(users.role, "organizer")))
 
   if (organizer?.email) {
     const { sendEmail } = await import("@/lib/email")

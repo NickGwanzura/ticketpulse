@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutGrid, Receipt, QrCode, Wallet } from "lucide-react"
+import { LayoutGrid, CalendarDays, Receipt, QrCode, Wallet } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/organizer", icon: LayoutGrid },
+  { label: "Events", href: "/organizer/events", icon: CalendarDays },
   { label: "Orders", href: "/organizer/orders", icon: Receipt },
   { label: "Scan", href: "/organizer/scan", icon: QrCode },
   { label: "Payouts", href: "/payouts", icon: Wallet },
@@ -26,7 +27,7 @@ export default function OrganizerTopNav() {
     href === "/organizer" ? pathname === href : pathname === href || pathname.startsWith(href + "/")
 
   return (
-    <nav className="sticky top-0 z-40 bg-[#0a2540] border-b border-white/10">
+    <nav className="hidden lg:block sticky top-0 z-40 bg-[#0a2540] border-b border-white/10">
       <div className="max-w-7xl mx-auto px-5 md:px-8 flex items-center gap-1 overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)

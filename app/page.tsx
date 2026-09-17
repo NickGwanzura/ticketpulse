@@ -18,16 +18,16 @@ export const metadata: Metadata = {
 }
 import {
   ArrowRight, ArrowUpRight, Ticket, Smartphone, Wallet,
-  Calendar, MapPin, FileText, ScanLine, DoorOpen, ShieldCheck,
-  PhoneCall, ReceiptText,
+  Calendar, MapPin, FileText, ScanLine, DoorOpen,
+  ReceiptText,
 } from "lucide-react"
-import SplitCTA from "@/components/ui/SplitCTA"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
 import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
+import HeroEventTypesSlider from "@/components/home/HeroEventTypesSlider"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
-import { getFeaturedEvents, type FeaturedEvent } from "@/lib/events"
+import { getFeaturedEvents } from "@/lib/events"
 import { db } from "@/db"
 import { events as eventsTable } from "@/db/schema"
 import { and, desc, inArray, sql } from "drizzle-orm"
@@ -39,15 +39,6 @@ const FAQ = [
   { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse deducts the 5% fee from confirmed ticket sales and shows gross, fee, paid out, pending, and available balance before withdrawal." },
 ]
 
-function buildStats(eventsOnSale: number) {
-  return [
-    { value: "5%",      label: "Organizer fee" },
-    { value: "2 ways",  label: "EcoCash · Visa" },
-    { value: "QR",      label: "Scanner included" },
-    { value: String(eventsOnSale), label: eventsOnSale === 1 ? "Event on sale today" : "Events on sale today" },
-  ]
-}
-
 const STEPS = [
   { icon: Ticket,      title: "Create ticket tiers",  body: "Build general admission, VIP, early bird, promo codes, staff tickets, merch, and event pages from one dashboard." },
   { icon: Wallet,      title: "Accept real payments", body: "EcoCash and card checkout create a traceable order, ledger entry, ticket record, and payout calculation." },
@@ -55,16 +46,8 @@ const STEPS = [
   { icon: ReceiptText, title: "Reconcile and pay out", body: "Track gross sales, confirmed tickets, platform fees, Velocity settlements, paid out, and available balance." },
 ]
 
-const HERO_TRUST_ITEMS = [
-  { icon: ShieldCheck, label: "Secure checkout", tone: "bg-emerald-50", accent: "text-emerald-700", ring: "ring-emerald-200/70" },
-  { icon: Wallet, label: "EcoCash + Visa", tone: "bg-orange-50", accent: "text-orange-700", ring: "ring-orange-200/80" },
-  { icon: Smartphone, label: "Instant QR delivery", tone: "bg-sky-50", accent: "text-sky-700", ring: "ring-sky-200/70" },
-  { icon: FileText, label: "Easy payouts", tone: "bg-amber-50", accent: "text-amber-700", ring: "ring-amber-200/70" },
-]
-
 export default async function Home() {
   const featuredEvents = await getFeaturedEvents(6)
-  const eventsOnSale = featuredEvents.length
 
   const pastEvents = await db
     .select({
@@ -92,151 +75,39 @@ export default async function Home() {
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-navy text-white">
         <HeroBackgroundSlideshow />
-        <div className="hidden" aria-hidden>
-        {/* Base surface: bright, structured, and quiet enough for the product UI to lead. */}
-        <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background: [
-              "linear-gradient(135deg, rgba(246,249,252,0.96) 0%, rgba(255,255,255,0.98) 42%, rgba(238,243,248,0.9) 100%)",
-              "linear-gradient(90deg, rgba(5,112,222,0.06) 0%, transparent 35%, rgba(19,17,50,0.04) 100%)",
-              "linear-gradient(150deg, rgba(16,185,129,0.1) 0%, transparent 34%, rgba(245,158,11,0.1) 100%)",
-              "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(5,112,222,0.045) 100%)",
-            ].join(", "),
-          }}
-          aria-hidden
-        />
-        <div className="absolute inset-y-0 right-0 -z-10 hidden w-[48%] skew-x-[-8deg] bg-gradient-to-b from-sky-50/90 via-paper/55 to-amber-50/60 lg:block" aria-hidden />
-        <div className="absolute left-1/2 top-12 -z-10 hidden h-64 w-[110vw] -translate-x-1/2 -rotate-6 bg-gradient-to-r from-transparent via-sky-100/50 to-transparent lg:block" aria-hidden />
-        <div className="absolute left-1/2 top-44 -z-10 hidden h-40 w-[95vw] -translate-x-1/2 rotate-3 bg-gradient-to-r from-transparent via-emerald-100/38 to-transparent lg:block" aria-hidden />
-        <div className="absolute left-0 right-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-sky-300/80 to-transparent" aria-hidden />
-        <div className="absolute left-0 right-0 top-0 -z-10 h-24 bg-[linear-gradient(180deg,rgba(14,165,233,0.08),transparent)]" aria-hidden />
 
-        {/* Dotted pattern, softly fading */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[560px] opacity-60"
-          style={{
-            backgroundImage: "radial-gradient(rgba(10,37,64,0.13) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-            maskImage: "radial-gradient(80% 70% at 50% 0%, black 0%, transparent 80%)",
-            WebkitMaskImage: "radial-gradient(80% 70% at 50% 0%, black 0%, transparent 80%)",
-          }}
-          aria-hidden
-        />
-
-        {/* Faint grid for structure */}
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[420px] opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #0a2540 1px, transparent 1px), linear-gradient(to bottom, #0a2540 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-            maskImage: "linear-gradient(to bottom, black, transparent)",
-            WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
-          }}
-          aria-hidden
-        />
-
-        <div
-          className="absolute inset-x-0 top-0 -z-10 h-[520px] opacity-[0.08]"
-          style={{
-            backgroundImage: "repeating-linear-gradient(115deg, #0a2540 0 1px, transparent 1px 36px)",
-            maskImage: "linear-gradient(to bottom, black, transparent 75%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black, transparent 75%)",
-          }}
-          aria-hidden
-        />
-
-        {/* Bottom curve fade */}
-        <svg
-          className="absolute bottom-0 left-0 right-0 -z-10 w-full h-12 pointer-events-none"
-          viewBox="0 0 1200 60"
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          <path d="M0 60 Q 300 0, 600 30 T 1200 60 Z" fill="rgba(5,112,222,0.06)" />
-        </svg>
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-          <div className="tp-live-glow absolute left-[8%] top-20 h-44 w-44 rounded-full bg-orange-500/28 blur-3xl" />
-          <div className="tp-live-glow tp-live-glow-delay absolute right-[10%] top-32 h-52 w-52 rounded-full bg-[#b8e448]/16 blur-3xl" />
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-orange-950/35 to-transparent" />
-          <div className="absolute left-1/2 top-16 h-px w-[78vw] -translate-x-1/2 bg-gradient-to-r from-transparent via-orange-300/60 to-transparent" />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-8 md:pb-20">
-          <div className="mx-auto max-w-5xl text-center">
-            <div className="tp-fade-up inline-flex items-center gap-2.5 rounded-full border border-orange-300/35 bg-navy/55 px-3.5 py-1.5 shadow-sm shadow-orange-950/20 backdrop-blur-md">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inset-0 rounded-full bg-orange-400 animate-ping opacity-75" />
-                <span className="relative block h-2 w-2 rounded-full bg-orange-400" />
-              </span>
-              <span className="text-[12px] font-semibold tracking-[0.04em] text-orange-50">
-                Built for Zimbabwe events, gates, and payouts
-              </span>
-            </div>
-
-            <h1 className="tp-fade-up-1 mx-auto mt-6 max-w-4xl font-bold tracking-[-0.035em] text-[42px] leading-[1.03] text-white drop-shadow-sm sm:mt-8 sm:text-[64px] sm:leading-[0.98] md:text-[82px] md:leading-[0.94]">
-              Sell tickets.<br />
-              <span className="text-orange-300">Scan guests.</span><br />
-              Get paid.
-            </h1>
-
-            <p className="tp-fade-up-2 mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-white/82 md:mt-7 md:text-[18px]">
-              The event platform built for Zimbabwean organizers. Sell tickets online, deliver instant QR tickets, manage attendees, reconcile payments, and request payouts. Buyers get secure checkout and support without needing an account.
+        <div className="mx-auto max-w-7xl px-5 pb-14 pt-28 sm:pb-20 sm:pt-32 md:px-8 md:pt-36 md:pb-24">
+          <div className="mx-auto max-w-4xl text-center">
+            <p className="tp-fade-up text-[11px] font-bold uppercase tracking-[0.2em] text-white/65">
+              TicketPulse · Zimbabwe
             </p>
-
-            <div className="tp-fade-up-3 mt-7 flex flex-col items-stretch justify-center gap-3 sm:mt-9 sm:flex-row sm:items-center">
-              <SplitCTA href="/auth/signup?role=organizer" label="Start selling" size="lg" />
+            <div className="tp-fade-up-1 mx-auto mt-5 inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-[12px] font-bold text-ink shadow-sm ring-1 ring-ink/10 backdrop-blur">
+              <span className="inline-block h-2 w-2 rounded-full bg-accent" aria-hidden />
+              Sell online. Run the gate. Know your numbers.
+            </div>
+            <h1 className="tp-fade-up-2 mx-auto mt-7 max-w-4xl font-bold tracking-[-0.065em] text-[48px] leading-[0.94] text-white sm:text-[68px] md:mt-8 md:text-[96px]">
+              Bring your next <span className="text-orange-300">big moment</span> to life.
+            </h1>
+            <p className="tp-fade-up-3 mx-auto mt-6 max-w-2xl text-[16px] leading-relaxed text-white/78 md:text-[18px]">
+              TicketPulse gives Zimbabwean organizers a simple way to sell tickets, deliver QR entry passes, manage guests, and track payouts from one place.
+            </p>
+            <div className="tp-fade-up-4 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                href="/auth/signup?role=organizer"
+                className="group inline-flex h-13 overflow-hidden rounded-xl bg-ink text-[14px] font-bold text-white shadow-[0_18px_45px_-22px_rgba(10,37,64,0.65)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_50px_-22px_rgba(10,37,64,0.7)] active:scale-[0.99]"
+              >
+                <span className="inline-flex items-center px-6">Start selling tickets</span>
+                <span className="inline-flex w-12 items-center justify-center bg-accent text-white transition group-hover:bg-accent-hover"><ArrowUpRight size={16} /></span>
+              </Link>
               <Link
                 href="/events"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-7 text-[15px] font-semibold text-white shadow-sm shadow-black/10 backdrop-blur-md transition hover:border-orange-300/55 hover:bg-orange-400/15 hover:text-orange-100 active:scale-[0.99]"
+                className="group inline-flex h-13 overflow-hidden rounded-xl bg-white/85 text-[14px] font-bold text-ink shadow-sm ring-1 ring-ink/15 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white active:scale-[0.99]"
               >
-                Buy tickets <ArrowUpRight size={15} />
+                <span className="inline-flex items-center px-6">Find your next event</span>
+                <span className="inline-flex w-12 items-center justify-center border-l border-ink/10 text-accent transition group-hover:bg-accent/10"><ArrowUpRight size={16} /></span>
               </Link>
             </div>
-
-            <Link
-              href="/contact"
-              className="tp-fade-up-4 mt-4 inline-flex items-center justify-center gap-2 text-[13px] font-semibold text-white/65 transition hover:text-orange-200"
-            >
-              <PhoneCall size={13} /> Prefer help? Book a setup call
-            </Link>
-
-            <p className="tp-fade-up-5 mx-auto mt-4 max-w-2xl text-[13px] font-medium text-white/65 md:mt-5">
-              One platform for ticket sales, QR delivery, gate scanning, reconciliation, and payouts.
-            </p>
-          </div>
-        </div>
-
-        {/* Stats strip */}
-        <div className="border-t border-white/15 bg-navy/70 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-5 md:px-8 py-5 md:py-9">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 md:gap-x-0 md:gap-y-0 md:divide-x md:divide-white/15">
-              {buildStats(eventsOnSale).map((s, i) => (
-                <div
-                  key={i}
-                  style={{ animationDelay: `${300 + i * 70}ms` }}
-                  className="tp-fade-up md:px-6 md:first:pl-0 md:last:pr-0"
-                >
-                  <p className="pb-0.5 text-[26px] font-bold leading-none tracking-tight text-white md:text-[32px]">
-                    {s.value}
-                  </p>
-                  <p className="mt-1.5 text-[13px] text-white/60">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="tp-fade-up-5 mx-auto mt-5 flex max-w-3xl flex-wrap justify-center gap-2 md:mt-7">
-              {HERO_TRUST_ITEMS.map(({ icon: Icon, label, tone, accent, ring }, index) => (
-                <span key={label} className={`${index === 1 ? "hidden sm:inline-flex" : "inline-flex"} items-center gap-2 rounded-full border border-white/15 bg-navy/55 px-3 py-2 text-[12px] font-semibold text-white/90 ring-1 ${ring} backdrop-blur-md`}>
-                  <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${tone}`}>
-                    <Icon size={12} className={accent} />
-                  </span>
-                  {label}
-                </span>
-              ))}
-            </div>
+            <HeroEventTypesSlider />
           </div>
         </div>
       </section>
@@ -276,12 +147,12 @@ export default async function Home() {
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
               {featuredEvents.map((e, i) => (
                 <div
                   key={e.id}
                   style={{ animationDelay: `${i * 90}ms` }}
-                  className="tp-fade-up"
+                  className="tp-fade-up h-full"
                 >
                   <EventCard {...e} />
                 </div>

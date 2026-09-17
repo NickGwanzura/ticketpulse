@@ -3,7 +3,6 @@ import { headers } from "next/headers"
 import "./globals.css"
 import Providers from "@/components/layout/Providers"
 import TopBar from "@/components/layout/TopBar"
-import PaymentStatusNotice from "@/components/layout/PaymentStatusNotice"
 import Navbar, { type NavbarFeaturedItem } from "@/components/layout/Navbar"
 import Footer from "@/components/layout/Footer"
 import CookiesNotice from "@/components/CookiesNotice"
@@ -71,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const h = await headers()
   const path = h.get("x-pathname") ?? ""
   const bare = path.startsWith("/coming-soon")
-  const showGlobalPaymentNotice = !bare && !path.startsWith("/checkout")
+  const isHome = path === "/"
 
   let featured: NavbarFeaturedItem[] = []
   if (!bare) {
@@ -139,9 +138,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
         <Providers>
-          {!bare && <TopBar />}
+          {!bare && !isHome && <TopBar />}
           {!bare && <Navbar featured={featured} />}
-          {showGlobalPaymentNotice && <PaymentStatusNotice />}
           <div className={bare ? "" : "min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]"}>{children}</div>
           {!bare && <Footer />}
           {!bare && <CookiesNotice />}

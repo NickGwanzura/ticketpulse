@@ -198,13 +198,16 @@ export default async function EventsPage({
   return (
     <div>
       {/* ── Page header ────────────────────────────────────────────────── */}
-      <div className="border-b border-line bg-paper-2">
-        <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 md:py-14">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Discover</p>
-          <h1 className="text-[32px] md:text-[44px] font-bold tracking-tight leading-tight text-ink">
+      <div className="relative isolate overflow-hidden border-b border-navy/20 bg-navy text-white">
+        <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-36 left-1/3 h-72 w-72 rounded-full bg-sky-400/10 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-orange-300/70 to-transparent" aria-hidden />
+        <div className="relative max-w-7xl mx-auto px-5 md:px-8 py-11 md:py-16">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-orange-300 uppercase mb-2">Discover Zimbabwe</p>
+          <h1 className="text-[32px] md:text-[48px] font-bold tracking-[-0.03em] leading-tight text-white">
             {isPastView ? "Past events" : "Upcoming events"}
           </h1>
-          <p className="mt-3 text-[15px] text-ink-2 max-w-xl">
+          <p className="mt-3 text-[15px] text-white/72 max-w-xl">
             {eventCards.length === 0
               ? isPastView ? "No past events yet." : "No upcoming events live yet. Check back soon."
               : eventCards.length === 1
@@ -318,7 +321,7 @@ export default async function EventsPage({
             </div>
 
             {eventCards.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5">
+              <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 md:gap-5">
                 {eventCards.map((event) => (
                   <EventCard key={event.id} {...event} />
                 ))}

@@ -3,15 +3,15 @@ import Link from "next/link"
 import {
   ArrowUpRight, ArrowDownRight, MapPin, CreditCard, TrendingUp, BarChart2, Users, PieChart,
 } from "lucide-react"
-import { eq, sql, and, or, gte, lt } from "drizzle-orm"
+import { eq, sql, and, gte, lt } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events, orderItems, users } from "@/db/schema"
+import { orders, events, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
-import { confirmedOrderStatus, paymentTimeSince } from "@/lib/revenue"
+import { getPlatformAnalyticsOrders } from "@/lib/platform-analytics"
 import AiNarrativeSummary from "@/components/ai/AiNarrativeSummary"
 
 const PERIODS = [
@@ -47,67 +47,22 @@ export default async function AdminAnalyticsPage({
   const period = sp.period ?? "30d"
   const { since, previousSince, previousEnd } = periodDateRange(period)
 
-  // ── Revenue (paid + completed orders) ───────────────────────────────────
-  const [revenueRow] = await db
-    .select({
-      revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-      count:   sql<number>`COUNT(*)::int`,
-    })
-    .from(orders)
-    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
+  // ── Canonical confirmed revenue and issued tickets ─────────────────────
+  // Keep analytics on the same issued-ticket, direct-sale and payout rules as
+  // organizer balances and reconciliation.
+  const [currentOrders, previousOrders] = await Promise.all([
+    getPlatformAnalyticsOrders({ since }),
+    getPlatformAnalyticsOrders({ since: previousSince, until: previousEnd }),
+  ])
 
-  const currentRevenue = Number(revenueRow?.revenue ?? 0)
-  const paidOrderCount = revenueRow?.count ?? 0
-
-  // Previous period revenue for MoM comparison
-  const [prevRevenueRow] = await db
-    .select({
-      revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-      count:   sql<number>`COUNT(*)::int`,
-    })
-    .from(orders)
-    .where(
-      and(
-        confirmedOrderStatus,
-        or(
-          and(gte(orders.paidAt, previousSince), lt(orders.paidAt, previousEnd)),
-          and(gte(orders.completedAt, previousSince), lt(orders.completedAt, previousEnd)),
-        ),
-      ),
-    )
-
-  const prevRevenue = Number(prevRevenueRow?.revenue ?? 0)
-  const prevOrderCount = prevRevenueRow?.count ?? 0
+  const currentRevenue = currentOrders.reduce((sum, order) => sum + order.grossRevenue, 0)
+  const paidOrderCount = currentOrders.length
+  const prevRevenue = previousOrders.reduce((sum, order) => sum + order.grossRevenue, 0)
+  const prevOrderCount = previousOrders.length
   const revenueDelta = prevRevenue > 0 ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : 0
 
-  // ── Tickets sold this period ────────────────────────────────────────────
-  const [ticketsRow] = await db
-    .select({
-      count: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int`,
-    })
-    .from(orderItems)
-    .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(and(confirmedOrderStatus, paymentTimeSince(since), eq(orderItems.type, "ticket")))
-
-  const ticketsSold = ticketsRow?.count ?? 0
-
-  // Previous period tickets
-  const [prevTicketsRow] = await db
-    .select({ count: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int` })
-    .from(orderItems)
-    .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(
-      and(
-        confirmedOrderStatus,
-        eq(orderItems.type, "ticket"),
-        or(
-          and(gte(orders.paidAt, previousSince), lt(orders.paidAt, previousEnd)),
-          and(gte(orders.completedAt, previousSince), lt(orders.completedAt, previousEnd)),
-        ),
-      ),
-    )
-
-  const prevTickets = prevTicketsRow?.count ?? 0
+  const ticketsSold = currentOrders.reduce((sum, order) => sum + order.issuedTickets, 0)
+  const prevTickets = previousOrders.reduce((sum, order) => sum + order.issuedTickets, 0)
   const ticketsDelta = prevTickets > 0 ? ((ticketsSold - prevTickets) / prevTickets) * 100 : 0
 
   // ── Refunded amount this period ─────────────────────────────────────────
@@ -177,80 +132,42 @@ export default async function AdminAnalyticsPage({
     },
   ]
 
-  // ── Sales mix by event category ─────────────────────────────────────────
-  const salesMixRows = await db
-    .select({
-      category: events.category,
-      revenue:  sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .innerJoin(events, eq(orders.eventId, events.id))
-    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
-    .groupBy(events.category)
-    .orderBy(sql`SUM(${orders.totalAmount}) DESC`)
+  // ── Breakdowns from the same canonical order rows ───────────────────────
+  const salesMixByCategory = new Map<string, number>()
+  const organizerById = new Map<string, { name: string; events: Set<string>; revenue: number }>()
+  const cityByName = new Map<string, number>()
+  const paymentByMethod = new Map<string, number>()
+  for (const order of currentOrders) {
+    salesMixByCategory.set(order.category, (salesMixByCategory.get(order.category) ?? 0) + order.grossRevenue)
+    cityByName.set(order.city, (cityByName.get(order.city) ?? 0) + order.grossRevenue)
+    if (order.paymentMethod) paymentByMethod.set(order.paymentMethod, (paymentByMethod.get(order.paymentMethod) ?? 0) + 1)
+    const organizer = organizerById.get(order.organizerId) ?? {
+      name: order.organizerName ?? order.organizerEmail ?? "—",
+      events: new Set<string>(),
+      revenue: 0,
+    }
+    organizer.events.add(order.eventId)
+    organizer.revenue += order.grossRevenue
+    organizerById.set(order.organizerId, organizer)
+  }
 
-  const salesMixTotal = salesMixRows.reduce((s, r) => s + Number(r.revenue ?? 0), 0)
-  const salesMix: { label: string; revenue: number; pct: number }[] = salesMixRows.map((r) => ({
-    label: r.category,
-    revenue: Number(r.revenue ?? 0),
-    pct: salesMixTotal > 0 ? (Number(r.revenue ?? 0) / salesMixTotal) * 100 : 0,
-  }))
+  const salesMixTotal = Array.from(salesMixByCategory.values()).reduce((sum, value) => sum + value, 0)
+  const salesMix: { label: string; revenue: number; pct: number }[] = Array.from(salesMixByCategory.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, revenue]) => ({ label, revenue, pct: salesMixTotal > 0 ? (revenue / salesMixTotal) * 100 : 0 }))
 
-  // ── Top organizers ──────────────────────────────────────────────────────
-  const organizerRows = await db
-    .select({
-      organizerId: events.organizerId,
-      organizerName: users.name,
-      organizerEmail: users.email,
-      eventsCount: sql<number>`COUNT(DISTINCT ${events.id})::int`,
-      revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .innerJoin(events, eq(orders.eventId, events.id))
-    .innerJoin(users, eq(events.organizerId, users.id))
-    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
-    .groupBy(events.organizerId, users.name, users.email)
-    .orderBy(sql`SUM(${orders.totalAmount}) DESC`)
-    .limit(10)
+  const ORGANIZERS: { name: string; events: number; revenue: number }[] = Array.from(organizerById.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10)
+    .map((organizer) => ({ name: organizer.name, events: organizer.events.size, revenue: organizer.revenue }))
 
-  const ORGANIZERS: { name: string; events: number; revenue: number }[] = organizerRows.map((r) => ({
-    name: r.organizerName ?? r.organizerEmail ?? "—",
-    events: r.eventsCount,
-    revenue: Number(r.revenue ?? 0),
-  }))
+  const cityTotal = Array.from(cityByName.values()).reduce((sum, value) => sum + value, 0)
+  const CITIES: { name: string; revenue: number; pct: number }[] = Array.from(cityByName.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, revenue]) => ({ name, revenue, pct: cityTotal > 0 ? (revenue / cityTotal) * 100 : 0 }))
 
-  // ── Cities by revenue ───────────────────────────────────────────────────
-  const cityRows = await db
-    .select({
-      city: events.city,
-      revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .innerJoin(events, eq(orders.eventId, events.id))
-    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
-    .groupBy(events.city)
-    .orderBy(sql`SUM(${orders.totalAmount}) DESC`)
-    .limit(10)
-
-  const cityTotal = cityRows.reduce((s, r) => s + Number(r.revenue ?? 0), 0)
-  const CITIES: { name: string; revenue: number; pct: number }[] = cityRows.map((r) => ({
-    name: r.city,
-    revenue: Number(r.revenue ?? 0),
-    pct: cityTotal > 0 ? (Number(r.revenue ?? 0) / cityTotal) * 100 : 0,
-  }))
-
-  // ── Payment method mix ──────────────────────────────────────────────────
-  const paymentRows = await db
-    .select({
-      method: orders.paymentMethod,
-      count:   sql<number>`COUNT(*)::int`,
-    })
-    .from(orders)
-    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
-    .groupBy(orders.paymentMethod)
-    .orderBy(sql`COUNT(*) DESC`)
-
-  const totalPayments = paymentRows.reduce((s, r) => s + r.count, 0)
+  const totalPayments = Array.from(paymentByMethod.values()).reduce((sum, value) => sum + value, 0)
   const COLORS = [
     "bg-navy",
     "bg-green-500",
@@ -259,11 +176,11 @@ export default async function AdminAnalyticsPage({
     "bg-rose-500",
     "bg-indigo-500",
   ]
-  const PAYMENTS: { label: string; pct: number; color: string }[] = paymentRows
-    .filter((r) => r.method)
-    .map((r, i) => ({
-      label: r.method!,
-      pct: totalPayments > 0 ? (r.count / totalPayments) * 100 : 0,
+  const PAYMENTS: { label: string; pct: number; color: string }[] = Array.from(paymentByMethod.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count], i) => ({
+      label,
+      pct: totalPayments > 0 ? (count / totalPayments) * 100 : 0,
       color: COLORS[i % COLORS.length],
     }))
 
@@ -294,18 +211,17 @@ export default async function AdminAnalyticsPage({
     .orderBy(sql`COUNT(*) DESC`)
     .limit(1)
 
-  // ── Revenue over time (daily aggregates for the period) ─────────────────
-  const revenueOverTimeRows = await db
-    .select({
-      day: sql<string>`DATE(COALESCE(${orders.paidAt}, ${orders.completedAt}))`,
-      revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    })
-    .from(orders)
-    .where(and(confirmedOrderStatus, paymentTimeSince(since)))
-    .groupBy(sql`DATE(COALESCE(${orders.paidAt}, ${orders.completedAt}))`)
-    .orderBy(sql`DATE(COALESCE(${orders.paidAt}, ${orders.completedAt}))`)
-
-  const revenueOverTime = revenueOverTimeRows.map((r) => Number(r.revenue ?? 0))
+  // ── Revenue over time (daily aggregates from canonical order rows) ──────
+  const revenueByDay = new Map<string, number>()
+  for (const order of currentOrders) {
+    const timestamp = order.paidAt ?? order.completedAt
+    if (!timestamp) continue
+    const day = timestamp.toISOString().slice(0, 10)
+    revenueByDay.set(day, (revenueByDay.get(day) ?? 0) + order.grossRevenue)
+  }
+  const revenueOverTime = Array.from(revenueByDay.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, revenue]) => revenue)
 
   return (
     <div className="tp-fade-up">

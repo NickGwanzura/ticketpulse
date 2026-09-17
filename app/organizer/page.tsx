@@ -351,7 +351,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const closedSalesCount = EVENTS.filter((e) => e.status === "published" && e.salesEnded).length
   const missingTierCount = EVENTS.filter((e) => !e.hasTiers).length
   const missingTierEvent = EVENTS.find(e => !e.hasTiers)
-  const lowCheckinEvent = EVENTS.find(e => e.status === "published" && e.sold > 0 && e.checkedIn < e.sold && !e.isPast)
+  const checkinWindowCutoff = now + 24 * 60 * 60 * 1000
+  const lowCheckinEvent = EVENTS.find((e) => {
+    const activeWindow = e.status === "published" && !e.isPast && e.startsAt.getTime() <= checkinWindowCutoff
+    const rate = e.sold > 0 ? e.checkedIn / e.sold : 1
+    return activeWindow && e.sold >= 20 && rate < 0.5
+  })
   const needsAttention = [
     { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
     { label: "Missing tiers", value: missingTierCount, href: missingTierEvent ? `/organizer/events/${missingTierEvent.id}/tiers` : "/organizer/events/new", icon: Ticket, tone: "rose" },
@@ -361,7 +366,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     { label: "Sales closed", value: closedSalesCount, href: "/organizer", icon: AlertCircle, tone: "rose" },
     { label: "Low inventory", value: lowInventoryCount, href: "/organizer?filter=live", icon: Ticket, tone: "amber" },
     { label: "Payout available", value: availableBalance > 0 ? 1 : 0, href: "/payouts/request", icon: Wallet, tone: "green", amount: availableBalance },
-    ...(lowCheckinEvent ? [{ label: "Low check-in rate", value: Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100), href: `/organizer/events/${lowCheckinEvent.id}/live`, icon: Activity, tone: "amber" as const }] : []),
+    ...(lowCheckinEvent ? [{
+      label: "Low check-in rate",
+      value: Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100),
+      display: `${Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100)}%`,
+      href: `/organizer/events/${lowCheckinEvent.id}/live`,
+      icon: Activity,
+      tone: "amber" as const,
+    }] : []),
   ].filter((item) => item.value > 0)
 
   const insightEvent = EVENTS.find(e => e.status === "published" && !e.isPast && e.sold > 0) || EVENTS.find(e => e.status === "published" && !e.isPast) || EVENTS[0]
@@ -430,7 +442,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-x-0 lg:divide-x divide-line">
-              {needsAttention.map(({ label, value, href, icon: Icon, tone, amount }) => (
+              {needsAttention.map(({ label, value, display, href, icon: Icon, tone, amount }) => (
                 <Link key={label} href={href} className="px-5 py-4 hover:bg-paper-2 transition-colors">
                   <div className="flex items-center justify-between gap-3">
                     <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ring-1 ${
@@ -442,7 +454,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                     </span>
                     <ArrowUpRight size={12} className="text-ink-3" />
                   </div>
-                  <p className="mt-3 text-[20px] font-bold text-ink tabular-nums">{amount ? formatCurrency(amount, "USD") : value.toLocaleString()}</p>
+                  <p className="mt-3 text-[20px] font-bold text-ink tabular-nums">{display ?? (amount ? formatCurrency(amount, "USD") : value.toLocaleString())}</p>
                   <p className="mt-1 text-[12px] font-medium text-ink-2">{label}</p>
                 </Link>
               ))}

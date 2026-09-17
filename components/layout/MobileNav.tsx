@@ -17,9 +17,12 @@ const ORGANIZER_TABS = [
 
 export default function MobileNav() {
   const pathname = usePathname()
+  // Event pages have their own event-context navigation. Keeping the global
+  // bottom bar there creates two competing nav systems on small screens.
+  const eventDetailRoute = pathname?.startsWith("/organizer/events/") && pathname.split("/")[3] !== "new"
 
   // Only show on organizer money/workflow routes
-  if (!pathname?.startsWith("/organizer") && !pathname?.startsWith("/payouts")) return null
+  if (eventDetailRoute || (!pathname?.startsWith("/organizer") && !pathname?.startsWith("/payouts"))) return null
 
   const isActive = (href: string) => {
     if (href === "/organizer") return pathname === "/organizer"

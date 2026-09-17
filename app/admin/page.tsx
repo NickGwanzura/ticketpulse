@@ -13,12 +13,13 @@ import {
   Users,
   Zap,
 } from "lucide-react"
-import { and, desc, eq, gte, isNull, or, sql } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
+import { ACTIVE_PAYOUT_STATUSES } from "@/lib/revenue-summary"
 import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import { approveOrganizerAction, rejectOrganizerAction, verifyUserEmailAction } from "@/app/admin/actions/users"
 import RejectEventButton from "@/app/admin/actions/RejectEventButton"
@@ -160,7 +161,7 @@ export default async function AdminOverviewPage() {
       total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)`,
     })
       .from(payouts)
-      .where(eq(payouts.status, "pending")),
+      .where(inArray(payouts.status, [...ACTIVE_PAYOUT_STATUSES])),
 
     db.select({ count: sql<number>`COUNT(*)::int` })
       .from(reviews)
@@ -170,7 +171,7 @@ export default async function AdminOverviewPage() {
       .from(events)
       .where(and(
         eq(events.status, "draft"),
-        sql`${events.createdAt} < NOW() - INTERVAL '14 days'`,
+        sql`COALESCE(${events.updatedAt}, ${events.createdAt}) < NOW() - INTERVAL '14 days'`,
       )),
 
     db.select({ count: sql<number>`COUNT(*)::int` })
@@ -254,7 +255,7 @@ export default async function AdminOverviewPage() {
   const stalePaymentCount = stalePaymentRow?.count ?? 0
 
   const operationsQueue = [
-    { label: "Stale payment checks", value: stalePaymentCount, href: "/admin/orders?status=awaiting_verification", icon: CreditCard, tone: "rose" as const, detail: "Pending or verification orders older than 30 minutes" },
+    { label: "Stale payment checks", value: stalePaymentCount, href: "/admin/orders?status=pending", icon: CreditCard, tone: "rose" as const, detail: "Pending or verification orders older than 30 minutes" },
     { label: "Paid, no tickets", value: paidNoTickets, href: "/admin/orders?q=paid", icon: Ticket, tone: "rose" as const, detail: "Confirmed payment without issued tickets" },
     { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders", icon: FileWarning, tone: "amber" as const, detail: "Ticket or email delivery needs action" },
     { label: "Duplicate ledgers", value: duplicateLedgers, href: "/admin/reconciliation", icon: AlertTriangle, tone: "rose" as const, detail: "Multiple settled payment records" },

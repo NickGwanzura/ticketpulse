@@ -24,6 +24,7 @@ const LINKS = [
 export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   const { data: session } = useSession()
   const pathname = usePathname()
+  const isHome = pathname === "/"
   const { totalCount, ready } = useCart()
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -44,18 +45,20 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b transition-all duration-300 ${
-        scrolled
-          ? "border-line bg-paper/92 shadow-[0_10px_30px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"
-          : "border-transparent bg-paper/82 backdrop-blur-xl"
-      }`}
+      className={isHome
+        ? "absolute left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 rounded-[1.35rem] border border-black/10 bg-white/90 shadow-[0_18px_55px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"
+        : `sticky top-0 z-50 border-b transition-all duration-300 ${
+          scrolled
+            ? "border-line bg-paper/92 shadow-[0_10px_30px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"
+            : "border-transparent bg-paper/82 backdrop-blur-xl"
+        }`}
     >
-      {scrolled && (
+      {scrolled && !isHome && (
         <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent" aria-hidden />
       )}
 
-      <nav className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-5 md:h-[72px] md:px-8">
-        <Link href="/" className="mr-auto inline-flex items-center" aria-label="TicketPulse home">
+      <nav className={`mx-auto flex max-w-7xl items-center gap-4 px-4 md:px-6 ${isHome ? "h-16 md:h-[72px]" : "h-16 md:h-[72px]"}`}>
+        <Link href="/" className="mr-auto inline-flex items-center gap-2.5" aria-label="TicketPulse home">
           <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-12 w-12 md:h-14 md:w-14" />
         </Link>
 

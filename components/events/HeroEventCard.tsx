@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { Calendar, MapPin, Flame } from "lucide-react"
+import { Activity, Building2, Calendar, Film, Flame, Footprints, MapPin, Mountain, Music2, Ticket as TicketIcon, type LucideIcon } from "lucide-react"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import SplitCTA from "@/components/ui/SplitCTA"
 
@@ -19,13 +18,13 @@ interface HeroEventProps {
   tags?: string[] | null
 }
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  concert: "🎵",
-  marathon: "🏃",
-  walkathon: "🚶",
-  film: "🎬",
-  exhibition: "🏢",
-  expedition: "⛰️",
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  concert: Music2,
+  marathon: Activity,
+  walkathon: Footprints,
+  film: Film,
+  exhibition: Building2,
+  expedition: Mountain,
 }
 
 const CATEGORY_GRADIENT: Record<string, string> = {
@@ -59,7 +58,7 @@ export default function HeroEventCard({
 }: HeroEventProps) {
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
-  const emoji = CATEGORY_EMOJI[category.toLowerCase()] ?? "🎫"
+  const CategoryIcon = CATEGORY_ICON[category.toLowerCase()] ?? TicketIcon
   const gradient = CATEGORY_GRADIENT[category.toLowerCase()] ?? "from-navy via-blue-800 to-indigo-900"
   const sellingFast = tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy"
 
@@ -101,7 +100,7 @@ export default function HeroEventCard({
           {/* Category badge + Sponsored badge */}
           <div className="flex items-center gap-2 mb-4">
             <div className="inline-flex items-center gap-1.5 backdrop-blur-sm bg-white/15 text-white text-[10px] font-semibold tracking-wide px-3 py-1.5 rounded-full ring-1 ring-white/20">
-              <span>{emoji}</span>
+              <CategoryIcon size={13} strokeWidth={2.2} />
               <span>{category}</span>
             </div>
             {sponsored && (
