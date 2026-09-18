@@ -265,7 +265,7 @@ export default async function AdminOrganizersPage({
                                 Last: {organizer.lastEventTitle ?? "Unknown"}
                               </p>
                               <p className="text-[11px] text-ink-3">
-                                {organizer.lastEventCreatedAt ? `Created ${organizer.lastEventCreatedAt.toLocaleDateString("en-GB")}` : "Date unknown"}
+                                {organizer.lastEventCreatedAt ? `Created ${new Date(organizer.lastEventCreatedAt).toLocaleDateString("en-GB")}` : "Date unknown"}
                                 {organizer.lastEventStatus ? ` · ${organizer.lastEventStatus.replace("_", " ")}` : ""}
                               </p>
                             </div>
