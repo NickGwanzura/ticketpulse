@@ -967,6 +967,26 @@ a[class*="rounded-"][class*="border"],
   border-radius: 0 !important;
 }
 
+/* Content sections use the same editorial square silhouette even when their
+   background is carrying the surface treatment instead of a visible border.
+   Keep small status indicators and avatars (usually spans) free to retain
+   their compact shape; this targets structural containers only. */
+div[class*="rounded-2xl"],
+section[class*="rounded-2xl"],
+article[class*="rounded-2xl"],
+aside[class*="rounded-2xl"],
+a[class*="rounded-2xl"],
+div[class*="rounded-xl"][class*="bg-paper"],
+div[class*="rounded-xl"][class*="bg-white"],
+section[class*="rounded-xl"][class*="bg-paper"],
+section[class*="rounded-xl"][class*="bg-white"],
+article[class*="rounded-xl"][class*="bg-paper"],
+article[class*="rounded-xl"][class*="bg-white"],
+aside[class*="rounded-xl"][class*="bg-paper"],
+aside[class*="rounded-xl"][class*="bg-white"] {
+  border-radius: 0 !important;
+}
+
 .tp-btn-split__cap {
   display: flex;
   align-items: center;
