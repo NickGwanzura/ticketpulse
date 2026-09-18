@@ -958,6 +958,25 @@ a[class*="border"][class*="px-"] {
   text-transform: uppercase;
 }
 
+/* Form controls and their selectable option rows share the same crisp edge
+   treatment. Native radios/checkboxes keep their platform affordance. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea,
+label[class*="rounded-"][class*="border"] {
+  border-radius: 2px !important;
+}
+
+/* Small icon tiles inside forms should read as square system markers rather
+   than rounded decorative bubbles. Status pills use rounded-full and are
+   intentionally left unchanged. */
+span[class*="rounded-lg"],
+span[class*="rounded-xl"],
+span[class*="rounded-2xl"],
+span[class*="rounded-["] {
+  border-radius: 2px !important;
+}
+
 div[class*="rounded-"][class*="border"],
 section[class*="rounded-"][class*="border"],
 article[class*="rounded-"][class*="border"],
