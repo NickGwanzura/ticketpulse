@@ -288,6 +288,12 @@ export default async function EventOverviewPage({
           </div>
         )}
 
+        {sp.publishError === "past_start" && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
+            This event cannot be published because its start time has passed. Update the schedule and try again.
+          </div>
+        )}
+
         <div className="rounded-2xl border border-line bg-paper overflow-hidden">
           <div className="grid lg:grid-cols-[1.25fr_1fr_1fr] divide-y lg:divide-y-0 lg:divide-x divide-line">
             <div className="p-5 md:p-6">

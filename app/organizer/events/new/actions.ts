@@ -9,6 +9,7 @@ import { events } from "@/db/schema"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug } from "@/lib/slug"
 import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
+import { isFutureEventStart, parseHarareDateTimeLocal } from "@/lib/event-schedule"
 
 const CreateSchema = z.object({
   title:         z.string().trim().min(1, "Title is required").max(160),
@@ -32,20 +33,6 @@ export type CreateEventState = {
   ok: boolean
   error?: string
   fieldErrors?: Record<string, string>
-}
-
-function parseDateTimeLocal(value: string): Date | null {
-  if (!value) return null
-  // <input type="datetime-local"> emits "YYYY-MM-DDTHH:MM" (no timezone).
-  // We treat this as Africa/Harare (CAT, UTC+2) since that's the app's timezone.
-  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
-  if (!m) return null
-  const [, year, month, day, hour, minute] = m
-  // CAT is UTC+2. Zimbabwe does not observe DST.
-  const catOffsetMs = 2 * 60 * 60 * 1000
-  const utcMs = Date.UTC(+year, +month - 1, +day, +hour, +minute) - catOffsetMs
-  const d = new Date(utcMs)
-  return Number.isNaN(d.getTime()) ? null : d
 }
 
 export async function createEventAction(
@@ -85,13 +72,16 @@ export async function createEventAction(
   }
 
   const data = parsed.data
-  const startsAt = parseDateTimeLocal(data.startsAt)
+  const startsAt = parseHarareDateTimeLocal(data.startsAt)
   if (!startsAt) {
     return { ok: false, error: "Invalid start date.", fieldErrors: { startsAt: "Invalid date" } }
   }
+  if (!isFutureEventStart(startsAt)) {
+    return { ok: false, error: "Start time must be in the future.", fieldErrors: { startsAt: "Must be in the future" } }
+  }
   let endsAt: Date | null = null
   if (data.endsAt) {
-    endsAt = parseDateTimeLocal(data.endsAt)
+    endsAt = parseHarareDateTimeLocal(data.endsAt)
     if (!endsAt) {
       return { ok: false, error: "Invalid end date.", fieldErrors: { endsAt: "Invalid date" } }
     }

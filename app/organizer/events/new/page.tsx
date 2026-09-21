@@ -17,10 +17,12 @@ export default async function NewEventPage() {
   }
   if (session.user.role === "organizer") {
     const eligibility = await requireApprovedOrganizer()
-    if (!eligibility.ok && eligibility.error.includes("frozen")) redirect("/organizer")
-  }
-  if (session.user.role === "organizer" && !session.user.approvedAt) {
-    redirect("/dashboard?error=pending_approval")
+    if (!eligibility.ok) {
+      if (eligibility.error.includes("pending approval")) {
+        redirect("/dashboard?error=pending_approval")
+      }
+      redirect("/organizer")
+    }
   }
 
   return (

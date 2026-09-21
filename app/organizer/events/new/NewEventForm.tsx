@@ -14,6 +14,7 @@ import AiSocialButton from "@/components/ai/AiSocialButton"
 import AiPricingButton from "@/components/ai/AiPricingButton"
 import AiDescriptionButton from "@/components/ai/AiDescriptionButton"
 import AiLocationSuggestButton from "@/components/ai/AiLocationSuggestButton"
+import { reportStepValidity } from "@/lib/form-step-validation"
 
 const INITIAL: CreateEventState = { ok: true }
 
@@ -93,11 +94,11 @@ export default function NewEventForm() {
   const [step, setStep] = useState(0)
   const formRef = useRef<HTMLFormElement>(null)
 
-  // Advancing re-validates only the currently-visible step's required fields —
-  // fields on hidden (display:none) steps are excluded from constraint
-  // validation by the browser, so this never blocks on a future step's fields.
+  // CSS-hidden controls still participate in native form validation. Scope the
+  // check to the active step so future required fields cannot block progress.
   function goNext() {
-    if (formRef.current && !formRef.current.reportValidity()) return
+    const currentStep = formRef.current?.querySelector(`[data-event-step="${step}"]`) ?? null
+    if (!reportStepValidity(currentStep)) return
     setStep((s) => Math.min(s + 1, STEPS.length - 1))
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
@@ -119,6 +120,23 @@ export default function NewEventForm() {
   const [city, setCity] = useState("")
   const [country, setCountry] = useState("Zimbabwe")
   const [address, setAddress] = useState("")
+
+  // Server-only checks (for example end-before-start or a past start) run
+  // after the review submit. Return the organizer to the relevant step so the
+  // highlighted field is visible immediately.
+  useEffect(() => {
+    const fields = Object.keys(state.fieldErrors ?? {})
+    if (fields.length === 0) return
+
+    const errorStep = fields.some((field) => ["title", "category"].includes(field))
+      ? 0
+      : fields.some((field) => ["venue", "city", "country", "googleMapsUrl", "lat", "lng"].includes(field))
+        ? 1
+        : 2
+
+    const timer = setTimeout(() => setStep(errorStep), 0)
+    return () => clearTimeout(timer)
+  }, [state.fieldErrors])
 
   // Live-geocoded coordinates (from client-side Nominatim call)
   const [liveLat, setLiveLat] = useState<string | null>(null)
@@ -186,7 +204,7 @@ export default function NewEventForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* ── Step 1: Basics ── */}
-        <div className={step === 0 ? "contents" : "hidden"}>
+        <div data-event-step="0" className={step === 0 ? "contents" : "hidden"}>
         <div className="md:col-span-2">
           <label htmlFor="title" className="block text-[13px] font-medium text-ink mb-1.5">Title</label>
           <input
@@ -296,7 +314,7 @@ export default function NewEventForm() {
 
         </div>
         {/* ── Step 2: Location ── */}
-        <div className={step === 1 ? "contents" : "hidden"}>
+        <div data-event-step="1" className={step === 1 ? "contents" : "hidden"}>
         <div className="md:col-span-2 mt-2">
           <p className="text-[11px] font-semibold tracking-[0.12em] text-ink-3 uppercase">Location</p>
         </div>
@@ -433,7 +451,7 @@ export default function NewEventForm() {
 
         </div>
         {/* ── Step 3: Schedule ── */}
-        <div className={step === 2 ? "contents" : "hidden"}>
+        <div data-event-step="2" className={step === 2 ? "contents" : "hidden"}>
         <div>
           <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at</label>
           <input

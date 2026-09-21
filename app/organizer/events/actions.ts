@@ -10,6 +10,7 @@ import { requireOwnerAccess } from "@/lib/event-access"
 import { sendEmail, adminEmail } from "@/lib/email"
 import { eventSubmittedForReviewAdminEmail, eventSubmittedForReviewOrganizerEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
+import { isFutureEventStart } from "@/lib/event-schedule"
 
 export async function publishOrganizerEventAction(eventId: string) {
   const access = await requireOwnerAccess(eventId)
@@ -21,6 +22,7 @@ export async function publishOrganizerEventAction(eventId: string) {
       title: events.title,
       status: events.status,
       organizerId: events.organizerId,
+      startsAt: events.startsAt,
     })
     .from(events)
     .where(eq(events.id, eventId))
@@ -31,6 +33,9 @@ export async function publishOrganizerEventAction(eventId: string) {
   if (event.status === "pending_review") redirect(`/organizer/events/${eventId}?published=pending`)
   if (event.status === "cancelled" || event.status === "completed") {
     redirect(`/organizer/events/${eventId}?publishError=locked`)
+  }
+  if (!isFutureEventStart(event.startsAt)) {
+    redirect(`/organizer/events/${eventId}?publishError=past_start`)
   }
 
   const [tierCount] = await db
