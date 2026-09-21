@@ -12,24 +12,54 @@
 
   --color-ink: #0a2540;
   --color-ink-2: #425466;
-  --color-ink-3: #697386;
+  /* Muted text. Darkened from #697386 so it stays >= 4.5:1 on paper-2/paper-3. */
+  --color-ink-3: #5f6b7e;
 
   --color-line: #e3e8ee;
   --color-line-2: #d0d9e2;
+  /* Border for form controls (>= 3:1 against paper, WCAG 1.4.11). */
+  --color-input: #8492a6;
 
   --color-navy: #0a2540;
   --color-navy-700: #143d6b;
   --color-navy-600: #1a4f8c;
 
-  /* Split-button accent — burnt sienna used for the arrow cap */
-  --color-accent: #c9522a;
-  --color-accent-hover: #b84820;
+  /* Large brand-dark panels (banners, hero backdrops, app chrome). Unlike
+   * `navy`, which is a fill for buttons/chips and lifts to a brighter blue in
+   * dark mode, `chrome` stays a deep navy in both themes. */
+  --color-chrome: #0a2540;
+
+  /* Split-button accent — burnt sienna used for the arrow cap.
+   * #ba4926 (was #c9522a, 4.45:1): >= 4.6:1 as text on paper/paper-2/paper-3,
+   * and 5.2:1 with white text on it. Hover steps darker still. */
+  --color-accent: #ba4926;
+  --color-accent-hover: #a53f1c;
+
+  /* Bright CTA orange used on the checkout/marketing surfaces. Fixed in both
+   * themes; always pair with navy text (5.2:1) — never white. */
+  --color-cta: #f06d43;
+  --color-cta-hover: #ff8a62;
+
+  /* WhatsApp brand green with a dark-green label (7.5:1; white on it is 2.0:1). */
+  --color-whatsapp: #25d366;
+  --color-whatsapp-hover: #1fba59;
+  --color-on-whatsapp: #052e16;
 
   --color-success: #10B981;
   --color-emerald: #10B981;
   --color-emerald-50: #ECFDF5;
-  --color-emerald-600: #059669;
-  --color-emerald-700: #047857;
+  /* Solid fills that carry white text. Tailwind's defaults for these steps are
+   * 3.2–4.1:1 with white; these are the next shade down (>= 4.5:1). Steps
+   * used only as tints/text are unaffected (those are remapped separately). */
+  --color-emerald-600: #047857;
+  --color-emerald-700: #065f46;
+  --color-sky-600: #0369a1;
+  --color-sky-700: #075985;
+  --color-orange-600: #c2410c;
+  --color-orange-700: #9a3412;
+  --color-amber-600: #b45309;
+  --color-amber-700: #92400e;
+  --color-rose-500: #e11d48;
 
   --color-green: #131132;
   --color-green-50: #EEEDF3;
@@ -44,17 +74,46 @@
   --color-green-900: #030207;
 
   /* Brand tokens — orange is the action/accent color; navy remains structural. */
-  --color-brand: #c9522a;
+  --color-brand: #ba4926;
   --color-brand-50: #fff3ed;
   --color-brand-100: #ffe1d2;
   --color-brand-200: #ffc3a8;
   --color-brand-300: #ff9a70;
   --color-brand-400: #f4723f;
   --color-brand-500: #dc5f30;
-  --color-brand-600: #c9522a;
+  --color-brand-600: #ba4926;
   --color-brand-700: #a93f1d;
   --color-brand-800: #87351d;
   --color-brand-900: #6d2f1d;
+}
+
+/* ─── Semantic tokens ───────────────────────────────────────────────────────
+ * The design-system vocabulary (background/foreground/card/popover/primary/
+ * secondary/muted/accent/border/input/ring/destructive) expressed on top of
+ * the existing paper/ink/line tokens, so both naming schemes always agree and
+ * both re-theme automatically. New code should prefer these names;
+ * `--color-accent` predates them and keeps its original meaning (the brand
+ * action colour), so `accent-foreground` is its on-colour.
+ */
+@theme {
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-card: var(--color-paper);
+  --color-card-foreground: var(--color-ink);
+  --color-popover: var(--color-paper);
+  --color-popover-foreground: var(--color-ink);
+  --color-primary: var(--color-brand-600);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-paper-2);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted: var(--color-paper-2);
+  --color-muted-foreground: var(--color-ink-3);
+  --color-accent-foreground: #ffffff;
+  --color-border: var(--color-line);
+  --color-link: var(--tp-link);
+  --color-ring: var(--tp-accent-text);
+  --color-destructive: var(--color-rose-600);
+  --color-destructive-foreground: #ffffff;
 }
 
 /* Semantic colors used by utility classes that predate the theme tokens.
@@ -91,66 +150,58 @@
   --tp-lime-surface: #f7fee7;
   --tp-slate-text: #334155;
   --tp-slate-surface: #f8fafc;
+
+  /* Effects that used hardcoded navy rgba() and vanished on dark surfaces. */
+  --tp-shadow-rgb: 10 37 64;
+  --tp-shimmer-a: rgb(10 37 64 / 0.04);
+  --tp-shimmer-b: rgb(10 37 64 / 0.07);
+  --tp-glow-rgb: 19 17 50;
+  --tp-header-from: #ffffff;
+  --tp-header-to: #f6f9fc;
+  --tp-header-glow-a: #dbe8fb;
+  --tp-header-glow-b: #eaf2fa;
+  --tp-wash-warm: rgb(254 235 200 / 0.4);
+  --tp-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  --tp-select-chevron-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23425466' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
 }
 
 html { color-scheme: light; }
 
+/* `dark:` utilities follow the app's theme attribute (not the OS media query),
+ * so an explicit in-app choice always wins over the system setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ThemeToggle icons/labels: exactly one is shown, chosen from the preference
+ * attribute the head script sets before first paint (see components/ui/ThemeToggle).
+ * Without JS (no attribute) the "system" glyph is shown. */
+.tp-theme-icon { display: none; }
+.tp-theme-label { display: none; }
+:root[data-theme-pref="light"] :is(.tp-theme-icon, .tp-theme-label)[data-for="light"],
+:root[data-theme-pref="dark"] :is(.tp-theme-icon, .tp-theme-label)[data-for="dark"],
+:root[data-theme-pref="system"] :is(.tp-theme-icon, .tp-theme-label)[data-for="system"],
+:root:not([data-theme-pref]) :is(.tp-theme-icon, .tp-theme-label)[data-for="system"] { display: inline; }
+:root[data-theme-pref="light"] .tp-theme-icon[data-for="light"],
+:root[data-theme-pref="dark"] .tp-theme-icon[data-for="dark"],
+:root[data-theme-pref="system"] .tp-theme-icon[data-for="system"],
+:root:not([data-theme-pref]) .tp-theme-icon[data-for="system"] { display: block; }
+
 /*
- * Dark mode — the dashboard tokens above (--color-paper/ink/line/...) are
- * referenced by every `bg-paper`/`text-ink`/`border-line` utility class
- * across the app, so redefining them here is enough to re-theme everything
- * that already uses the token system, with zero component changes.
+ * Dark mode — the dashboard tokens (--color-paper/ink/line/...) are referenced
+ * by every `bg-paper`/`text-ink`/`border-line` utility, so redefining them here
+ * re-themes everything that already uses the token system.
  *
- * `prefers-color-scheme` follows the OS; `[data-theme]` lets the in-app
- * toggle (admin sidebar) override it explicitly either direction.
+ * The theme is always resolved to an explicit `data-theme` attribute by the
+ * blocking script in <head> (see lib/theme.ts), *before first paint*, from the
+ * stored preference or — for "system" — prefers-color-scheme. That is what
+ * prevents a flash of the wrong theme, and it means this is the only place the
+ * dark values live (there is no duplicated prefers-color-scheme copy to drift).
+ * Without JavaScript the page stays in the light theme.
  */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-paper: #0f1620;
-    --color-paper-2: #161d28;
-    --color-paper-3: #1c2430;
-
-    --color-ink: #eef2f6;
-    --color-ink-2: #b7c1cc;
-    --color-ink-3: #8892a0;
-
-    --color-line: #2a3441;
-    --color-line-2: #384252;
-    --tp-link: #b7c1cc;
-    --tp-link-hover: #eef2f6;
-    --tp-accent-text: #ffb38f;
-    --tp-accent-strong-text: #ffb38f;
-    --tp-info-text: #93c5fd;
-    --tp-info-surface: #17263b;
-    --tp-sky-text: #7dd3fc;
-    --tp-sky-surface: #122a3d;
-    --tp-success-text: #6ee7b7;
-    --tp-success-surface: #112a24;
-    --tp-green-text: #86efac;
-    --tp-green-surface: #17261f;
-    --tp-warning-text: #fcd34d;
-    --tp-warning-surface: #2f2612;
-    --tp-danger-text: #fda4af;
-    --tp-danger-surface: #2e1720;
-    --tp-error-text: #fca5a5;
-    --tp-error-surface: #311719;
-    --tp-orange-text: #ffb38f;
-    --tp-orange-surface: #321d16;
-    --tp-purple-text: #c4b5fd;
-    --tp-purple-surface: #241b35;
-    --tp-pink-text: #f9a8d4;
-    --tp-pink-surface: #321c2a;
-    --tp-cyan-text: #67e8f9;
-    --tp-cyan-surface: #102a35;
-    --tp-lime-text: #bef264;
-    --tp-lime-surface: #293318;
-    --tp-slate-text: #cbd5e1;
-    --tp-slate-surface: #26313f;
-    color-scheme: dark;
-  }
-}
-
+/* Dark values never apply to print output: paper is always light. */
+@media not print {
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   --color-paper: #0f1620;
   --color-paper-2: #161d28;
   --color-paper-3: #1c2430;
@@ -159,8 +210,18 @@ html { color-scheme: light; }
   --color-ink-2: #b7c1cc;
   --color-ink-3: #8892a0;
 
-  --color-line: #2a3441;
-  --color-line-2: #384252;
+  --color-line: #303c4c;
+  --color-line-2: #4a596f;
+  --color-input: #5b6b82;
+
+  /* `navy` is a fill for buttons/chips/progress bars: it lifts to a brighter
+   * blue so those controls keep a 3:1 edge against the dark page (#0a2540 was
+   * 1.2:1). White on it is 5.8:1. Large deep panels use `chrome` instead. */
+  --color-navy: #2a66ad;
+  --color-navy-700: #3878c4;
+  --color-navy-600: #3272ba;
+  --color-chrome: #0a1626;
+
   --tp-link: #b7c1cc;
   --tp-link-hover: #eef2f6;
   --tp-accent-text: #ffb38f;
@@ -191,7 +252,121 @@ html { color-scheme: light; }
   --tp-lime-surface: #293318;
   --tp-slate-text: #cbd5e1;
   --tp-slate-surface: #26313f;
-  color-scheme: dark;
+
+  --tp-shadow-rgb: 0 0 0;
+  --tp-shimmer-a: rgb(255 255 255 / 0.03);
+  --tp-shimmer-b: rgb(255 255 255 / 0.08);
+  --tp-glow-rgb: 255 179 143;
+  --tp-header-from: #0f1620;
+  --tp-header-to: #161d28;
+  --tp-header-glow-a: #1a2c46;
+  --tp-header-glow-b: #152337;
+  --tp-wash-warm: rgb(255 179 143 / 0.05);
+  --tp-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23b7c1cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  --tp-select-chevron-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23eef2f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+
+  /* ── Tailwind palette, re-tinted for dark surfaces ──────────────────────
+   * Every utility that reads a light step of a colour family (bg-/border-/
+   * ring-/divide-/from-/via-/to-/shadow- with 50–300, with or without an
+   * opacity suffix or hover:/focus: variant) resolves through these
+   * variables, so redefining them re-themes all of it at the source — no
+   * per-class overrides. Steps 400–950 are left alone: they are solid fills
+   * (bg-emerald-600 text-white) and must not change. Family → role tokens:
+   * rose→danger, red→error, amber/yellow→warning, orange→orange,
+   * emerald/teal→success, lime→lime, sky→sky, blue/indigo→info, cyan→cyan,
+   * violet/purple→purple, pink/fuchsia→pink, neutrals→paper/line. `brand`
+   * is deliberately not touched; `green` is the bespoke indigo family, re-tinted to the green role.
+   * Text on tinted surfaces is handled by the class-based layer below.
+   */
+  --color-rose-50: var(--tp-danger-surface);
+  --color-rose-100: color-mix(in srgb, var(--tp-danger-text) 12%, var(--tp-danger-surface));
+  --color-rose-200: color-mix(in srgb, var(--tp-danger-text) 28%, var(--tp-danger-surface));
+  --color-rose-300: color-mix(in srgb, var(--tp-danger-text) 46%, var(--tp-danger-surface));
+  --color-red-50: var(--tp-error-surface);
+  --color-red-100: color-mix(in srgb, var(--tp-error-text) 12%, var(--tp-error-surface));
+  --color-red-200: color-mix(in srgb, var(--tp-error-text) 28%, var(--tp-error-surface));
+  --color-red-300: color-mix(in srgb, var(--tp-error-text) 46%, var(--tp-error-surface));
+  --color-amber-50: var(--tp-warning-surface);
+  --color-amber-100: color-mix(in srgb, var(--tp-warning-text) 12%, var(--tp-warning-surface));
+  --color-amber-200: color-mix(in srgb, var(--tp-warning-text) 28%, var(--tp-warning-surface));
+  --color-amber-300: color-mix(in srgb, var(--tp-warning-text) 46%, var(--tp-warning-surface));
+  --color-yellow-50: var(--tp-warning-surface);
+  --color-yellow-100: color-mix(in srgb, var(--tp-warning-text) 12%, var(--tp-warning-surface));
+  --color-yellow-200: color-mix(in srgb, var(--tp-warning-text) 28%, var(--tp-warning-surface));
+  --color-yellow-300: color-mix(in srgb, var(--tp-warning-text) 46%, var(--tp-warning-surface));
+  --color-orange-50: var(--tp-orange-surface);
+  --color-orange-100: color-mix(in srgb, var(--tp-orange-text) 12%, var(--tp-orange-surface));
+  --color-orange-200: color-mix(in srgb, var(--tp-orange-text) 28%, var(--tp-orange-surface));
+  --color-orange-300: color-mix(in srgb, var(--tp-orange-text) 46%, var(--tp-orange-surface));
+  --color-emerald-50: var(--tp-success-surface);
+  --color-emerald-100: color-mix(in srgb, var(--tp-success-text) 12%, var(--tp-success-surface));
+  --color-emerald-200: color-mix(in srgb, var(--tp-success-text) 28%, var(--tp-success-surface));
+  --color-emerald-300: color-mix(in srgb, var(--tp-success-text) 46%, var(--tp-success-surface));
+  --color-teal-50: var(--tp-success-surface);
+  --color-teal-100: color-mix(in srgb, var(--tp-success-text) 12%, var(--tp-success-surface));
+  --color-teal-200: color-mix(in srgb, var(--tp-success-text) 28%, var(--tp-success-surface));
+  --color-teal-300: color-mix(in srgb, var(--tp-success-text) 46%, var(--tp-success-surface));
+  --color-lime-50: var(--tp-lime-surface);
+  --color-lime-100: color-mix(in srgb, var(--tp-lime-text) 12%, var(--tp-lime-surface));
+  --color-lime-200: color-mix(in srgb, var(--tp-lime-text) 28%, var(--tp-lime-surface));
+  --color-lime-300: color-mix(in srgb, var(--tp-lime-text) 46%, var(--tp-lime-surface));
+  --color-sky-50: var(--tp-sky-surface);
+  --color-sky-100: color-mix(in srgb, var(--tp-sky-text) 12%, var(--tp-sky-surface));
+  --color-sky-200: color-mix(in srgb, var(--tp-sky-text) 28%, var(--tp-sky-surface));
+  --color-sky-300: color-mix(in srgb, var(--tp-sky-text) 46%, var(--tp-sky-surface));
+  --color-blue-50: var(--tp-info-surface);
+  --color-blue-100: color-mix(in srgb, var(--tp-info-text) 12%, var(--tp-info-surface));
+  --color-blue-200: color-mix(in srgb, var(--tp-info-text) 28%, var(--tp-info-surface));
+  --color-blue-300: color-mix(in srgb, var(--tp-info-text) 46%, var(--tp-info-surface));
+  --color-indigo-50: var(--tp-info-surface);
+  --color-indigo-100: color-mix(in srgb, var(--tp-info-text) 12%, var(--tp-info-surface));
+  --color-indigo-200: color-mix(in srgb, var(--tp-info-text) 28%, var(--tp-info-surface));
+  --color-indigo-300: color-mix(in srgb, var(--tp-info-text) 46%, var(--tp-info-surface));
+  --color-cyan-50: var(--tp-cyan-surface);
+  --color-cyan-100: color-mix(in srgb, var(--tp-cyan-text) 12%, var(--tp-cyan-surface));
+  --color-cyan-200: color-mix(in srgb, var(--tp-cyan-text) 28%, var(--tp-cyan-surface));
+  --color-cyan-300: color-mix(in srgb, var(--tp-cyan-text) 46%, var(--tp-cyan-surface));
+  --color-violet-50: var(--tp-purple-surface);
+  --color-violet-100: color-mix(in srgb, var(--tp-purple-text) 12%, var(--tp-purple-surface));
+  --color-violet-200: color-mix(in srgb, var(--tp-purple-text) 28%, var(--tp-purple-surface));
+  --color-violet-300: color-mix(in srgb, var(--tp-purple-text) 46%, var(--tp-purple-surface));
+  --color-purple-50: var(--tp-purple-surface);
+  --color-purple-100: color-mix(in srgb, var(--tp-purple-text) 12%, var(--tp-purple-surface));
+  --color-purple-200: color-mix(in srgb, var(--tp-purple-text) 28%, var(--tp-purple-surface));
+  --color-purple-300: color-mix(in srgb, var(--tp-purple-text) 46%, var(--tp-purple-surface));
+  --color-pink-50: var(--tp-pink-surface);
+  --color-pink-100: color-mix(in srgb, var(--tp-pink-text) 12%, var(--tp-pink-surface));
+  --color-pink-200: color-mix(in srgb, var(--tp-pink-text) 28%, var(--tp-pink-surface));
+  --color-pink-300: color-mix(in srgb, var(--tp-pink-text) 46%, var(--tp-pink-surface));
+  --color-fuchsia-50: var(--tp-pink-surface);
+  --color-fuchsia-100: color-mix(in srgb, var(--tp-pink-text) 12%, var(--tp-pink-surface));
+  --color-fuchsia-200: color-mix(in srgb, var(--tp-pink-text) 28%, var(--tp-pink-surface));
+  --color-fuchsia-300: color-mix(in srgb, var(--tp-pink-text) 46%, var(--tp-pink-surface));
+  --color-green-50: var(--tp-green-surface);
+  --color-green-100: color-mix(in srgb, var(--tp-green-text) 12%, var(--tp-green-surface));
+  --color-green-200: color-mix(in srgb, var(--tp-green-text) 28%, var(--tp-green-surface));
+  --color-green-300: color-mix(in srgb, var(--tp-green-text) 46%, var(--tp-green-surface));
+  --color-slate-50: var(--color-paper-2);
+  --color-slate-100: var(--color-paper-3);
+  --color-slate-200: var(--color-line);
+  --color-slate-300: var(--color-line-2);
+  --color-gray-50: var(--color-paper-2);
+  --color-gray-100: var(--color-paper-3);
+  --color-gray-200: var(--color-line);
+  --color-gray-300: var(--color-line-2);
+  --color-zinc-50: var(--color-paper-2);
+  --color-zinc-100: var(--color-paper-3);
+  --color-zinc-200: var(--color-line);
+  --color-zinc-300: var(--color-line-2);
+  --color-neutral-50: var(--color-paper-2);
+  --color-neutral-100: var(--color-paper-3);
+  --color-neutral-200: var(--color-line);
+  --color-neutral-300: var(--color-line-2);
+  --color-stone-50: var(--color-paper-2);
+  --color-stone-100: var(--color-paper-3);
+  --color-stone-200: var(--color-line);
+  --color-stone-300: var(--color-line-2);
+}
 }
 
 /* Contrast guardrails for legacy Tailwind color utilities. These selectors
@@ -265,6 +440,43 @@ html { color-scheme: light; }
 [class~="hover:text-brand-600"]:hover, [class~="hover:text-brand-700"]:hover,
 [class~="hover:text-brand-600/80"]:hover { color: var(--tp-accent-text) !important; }
 
+/* Neutral text (gray/slate/zinc/neutral/stone 400–900) maps onto the ink scale in BOTH themes:
+ * Tailwind's gray-400/500 are 2.5–4.8:1 on white; the ink scale is >= 5.4:1. */
+:is([class~="text-gray-400"], [class~="text-slate-400"], [class~="text-zinc-400"], [class~="text-neutral-400"], [class~="text-stone-400"]) { color: var(--color-ink-3) !important; }
+:is([class~="text-gray-500"], [class~="text-slate-500"], [class~="text-zinc-500"], [class~="text-neutral-500"], [class~="text-stone-500"]) { color: var(--color-ink-3) !important; }
+:is([class~="text-gray-600"], [class~="text-slate-600"], [class~="text-zinc-600"], [class~="text-neutral-600"], [class~="text-stone-600"]) { color: var(--color-ink-2) !important; }
+:is([class~="text-gray-700"], [class~="text-slate-700"], [class~="text-zinc-700"], [class~="text-neutral-700"], [class~="text-stone-700"]) { color: var(--color-ink-2) !important; }
+:is([class~="text-gray-800"], [class~="text-slate-800"], [class~="text-zinc-800"], [class~="text-neutral-800"], [class~="text-stone-800"]) { color: var(--color-ink) !important; }
+:is([class~="text-gray-900"], [class~="text-slate-900"], [class~="text-zinc-900"], [class~="text-neutral-900"], [class~="text-stone-900"]) { color: var(--color-ink) !important; }
+
+/* ─── Dark-mode text on tinted surfaces ────────────────────────────────────────
+ * Text steps 500–900 of every Tailwind colour family map to a legible role
+ * colour on dark surfaces. Fills/borders/rings/gradients are handled at the
+ * source by the palette variables in the dark block above. Scoped to dark so
+ * light mode keeps Tailwind's native colours. Generated; edit the role tokens,
+ * not these selectors. */
+@media not print {
+:root[data-theme="dark"] :is([class~="text-rose-500"], [class~="text-rose-600"], [class~="text-rose-700"], [class~="text-rose-800"], [class~="text-rose-900"]) { color: var(--tp-danger-text) !important; }
+:root[data-theme="dark"] :is([class~="text-red-500"], [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-800"], [class~="text-red-900"]) { color: var(--tp-error-text) !important; }
+:root[data-theme="dark"] :is([class~="text-amber-500"], [class~="text-amber-600"], [class~="text-amber-700"], [class~="text-amber-800"], [class~="text-amber-900"], [class~="text-yellow-500"], [class~="text-yellow-600"], [class~="text-yellow-700"], [class~="text-yellow-800"], [class~="text-yellow-900"]) { color: var(--tp-warning-text) !important; }
+:root[data-theme="dark"] :is([class~="text-orange-500"], [class~="text-orange-600"], [class~="text-orange-700"], [class~="text-orange-800"], [class~="text-orange-900"]) { color: var(--tp-orange-text) !important; }
+:root[data-theme="dark"] :is([class~="text-emerald-500"], [class~="text-emerald-600"], [class~="text-emerald-700"], [class~="text-emerald-800"], [class~="text-emerald-900"], [class~="text-teal-500"], [class~="text-teal-600"], [class~="text-teal-700"], [class~="text-teal-800"], [class~="text-teal-900"]) { color: var(--tp-success-text) !important; }
+:root[data-theme="dark"] :is([class~="text-green-500"], [class~="text-green-600"], [class~="text-green-700"], [class~="text-green-800"], [class~="text-green-900"]) { color: var(--tp-green-text) !important; }
+:root[data-theme="dark"] :is([class~="text-lime-500"], [class~="text-lime-600"], [class~="text-lime-700"], [class~="text-lime-800"], [class~="text-lime-900"]) { color: var(--tp-lime-text) !important; }
+:root[data-theme="dark"] :is([class~="text-sky-500"], [class~="text-sky-600"], [class~="text-sky-700"], [class~="text-sky-800"], [class~="text-sky-900"]) { color: var(--tp-sky-text) !important; }
+:root[data-theme="dark"] :is([class~="text-blue-500"], [class~="text-blue-600"], [class~="text-blue-700"], [class~="text-blue-800"], [class~="text-blue-900"], [class~="text-indigo-500"], [class~="text-indigo-600"], [class~="text-indigo-700"], [class~="text-indigo-800"], [class~="text-indigo-900"]) { color: var(--tp-info-text) !important; }
+:root[data-theme="dark"] :is([class~="text-cyan-500"], [class~="text-cyan-600"], [class~="text-cyan-700"], [class~="text-cyan-800"], [class~="text-cyan-900"]) { color: var(--tp-cyan-text) !important; }
+:root[data-theme="dark"] :is([class~="text-violet-500"], [class~="text-violet-600"], [class~="text-violet-700"], [class~="text-violet-800"], [class~="text-violet-900"], [class~="text-purple-500"], [class~="text-purple-600"], [class~="text-purple-700"], [class~="text-purple-800"], [class~="text-purple-900"]) { color: var(--tp-purple-text) !important; }
+:root[data-theme="dark"] :is([class~="text-pink-500"], [class~="text-pink-600"], [class~="text-pink-700"], [class~="text-pink-800"], [class~="text-pink-900"], [class~="text-fuchsia-500"], [class~="text-fuchsia-600"], [class~="text-fuchsia-700"], [class~="text-fuchsia-800"], [class~="text-fuchsia-900"]) { color: var(--tp-pink-text) !important; }
+/* `text-accent` is a fixed orange (4.7:1 on white) that drops to 4.1:1 on dark surfaces. */
+:root[data-theme="dark"] :is([class~="text-accent"], [class~="text-brand"]) { color: var(--tp-accent-text) !important; }
+:root[data-theme="dark"] :is([class~="hover:text-accent"], [class~="hover:text-brand"]):hover { color: var(--tp-accent-text) !important; }
+}
+
+/* The canvas behind <body> (overscroll, rubber-banding, the frame before first
+ * paint) takes the theme colour too, so navigating never flashes white. */
+html { background-color: var(--color-paper); }
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);
@@ -275,6 +487,37 @@ body {
 ::selection {
   background: var(--color-brand-600);
   color: white;
+}
+
+/* Form-control defaults. Any control that does not set its own colours gets a
+ * themed surface, text colour and legible placeholder instead of the browser's
+ * light default. `:where()` keeps specificity at zero and the rules sit in the
+ * base layer, so every utility class (including error/focus states) still wins.
+ */
+@layer base {
+  :where(input, textarea, select) { color: var(--color-ink); }
+  :where(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"],
+      [type="button"], [type="submit"], [type="reset"], [type="image"], [type="hidden"]),
+    textarea,
+    select
+  ) { background-color: var(--color-paper); }
+  :where(input, textarea)::placeholder { color: var(--color-ink-3); opacity: 1; }
+  :where(option, optgroup) { background-color: var(--color-paper); color: var(--color-ink); }
+  :where(input[type="checkbox"], input[type="radio"], input[type="range"], progress) {
+    accent-color: var(--color-brand-600);
+  }
+}
+
+/* Browser autofill paints its own light/yellow background and dark text; hold
+ * the themed colours instead (the long transition defeats the UA background
+ * without touching box-shadow, which the focus ring uses). */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-ink);
+  caret-color: var(--color-ink);
+  transition: background-color 600000s 0s, color 600000s 0s;
 }
 
 /* Prevent iOS Safari zoom-on-focus by enforcing 16px minimum on form fields below the md breakpoint. */
@@ -319,34 +562,20 @@ button, a, input, select, textarea, [role="button"] {
 /* Custom select arrow — replaces the native one with a clean chevron. */
 select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: var(--tp-select-chevron);
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 14px;
   padding-right: 36px;
 }
 select:hover {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23425466' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23b7c1cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  }
-  :root:not([data-theme="light"]) select:hover {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23eef2f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  }
-}
-:root[data-theme="dark"] select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23b7c1cc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-}
-:root[data-theme="dark"] select:hover {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23eef2f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: var(--tp-select-chevron-hover);
 }
 
 /* Disabled state pattern — subtle diagonal cross-hatch overlay to make
    disabled controls visually distinct from enabled ones without relying
-   purely on opacity. */
+   purely on opacity. The hatch is shadow-coloured (navy in light, black in
+   dark), and disabled selects keep their chevron as a first background layer. */
 input:disabled, select:disabled, textarea:disabled, button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -354,9 +583,23 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
     45deg,
     transparent,
     transparent 4px,
-    rgba(10, 37, 64, 0.02) 4px,
-    rgba(10, 37, 64, 0.02) 8px
+    rgb(var(--tp-shadow-rgb) / 0.04) 4px,
+    rgb(var(--tp-shadow-rgb) / 0.04) 8px
   );
+}
+select:disabled {
+  background-image:
+    var(--tp-select-chevron),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgb(var(--tp-shadow-rgb) / 0.04) 4px,
+      rgb(var(--tp-shadow-rgb) / 0.04) 8px
+    );
+  background-repeat: no-repeat, repeat;
+  background-position: right 12px center, 0 0;
+  background-size: 14px, auto;
 }
 
 /* Number-tabular look on prices, counts, dates. */
@@ -595,8 +838,8 @@ html { scroll-padding-top: 5.5rem; }
 .tp-lift:hover {
   transform: translateY(-2px);
   box-shadow:
-    0 12px 24px -16px rgba(10, 37, 64, 0.22),
-    0 4px 8px -4px rgba(10, 37, 64, 0.08),
+    0 12px 24px -16px rgb(var(--tp-shadow-rgb) / 0.22),
+    0 4px 8px -4px rgb(var(--tp-shadow-rgb) / 0.08),
     0 0 0 1px var(--color-line-2);
   border-color: var(--color-line-2);
 }
@@ -604,10 +847,10 @@ html { scroll-padding-top: 5.5rem; }
 /* Active-press for cards and buttons — subtle inward push. */
 .tp-press:active {
   transform: scale(0.99) translateY(0);
-  box-shadow: 0 2px 8px -6px rgba(10, 37, 64, 0.15);
+  box-shadow: 0 2px 8px -6px rgb(var(--tp-shadow-rgb) / 0.15);
 }
 
-/* Subtle blue-glow ring for focused or active interactive cards. */
+/* Subtle glow ring for focused or active interactive cards. */
 .tp-glow-ring {
   transition: box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1),
               border-color 200ms ease;
@@ -615,7 +858,7 @@ html { scroll-padding-top: 5.5rem; }
 .tp-glow-ring:focus-visible,
 .tp-glow-ring:hover {
   border-color: var(--tp-accent-text);
-  box-shadow: 0 0 0 3px rgba(19, 17, 50, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tp-accent-text) 22%, transparent);
 }
 
 /* Animated progress fill — apply origin-left so transform: scaleX animates
@@ -637,9 +880,9 @@ html { scroll-padding-top: 5.5rem; }
   background-image: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(10, 37, 64, 0.04) 30%,
-    rgba(10, 37, 64, 0.07) 50%,
-    rgba(10, 37, 64, 0.04) 70%,
+    var(--tp-shimmer-a) 30%,
+    var(--tp-shimmer-b) 50%,
+    var(--tp-shimmer-a) 70%,
     transparent 100%
   );
   background-size: 240% 100%;
@@ -648,8 +891,8 @@ html { scroll-padding-top: 5.5rem; }
 
 /* Soft pulse glow — for active indicators, live dots, scan feedback. */
 @keyframes tp-glow-pulse {
-  0%, 100% { box-shadow: 0 0 6px 2px rgba(19, 17, 50, 0.15); }
-  50%      { box-shadow: 0 0 14px 4px rgba(19, 17, 50, 0.25); }
+  0%, 100% { box-shadow: 0 0 6px 2px rgb(var(--tp-glow-rgb) / 0.15); }
+  50%      { box-shadow: 0 0 14px 4px rgb(var(--tp-glow-rgb) / 0.25); }
 }
 .tp-glow-pulse {
   animation: tp-glow-pulse 2.4s ease-in-out infinite;
@@ -736,11 +979,30 @@ html { scroll-padding-top: 5.5rem; }
    inside an overflow-hidden header band. Matches the vendors hero. */
 .tp-header-bg {
   background:
-    radial-gradient(900px 280px at 90% -30%, #DBE8FB 0%, transparent 60%),
-    radial-gradient(600px 240px at 0% 50%, #EAF2FA 0%, transparent 60%),
-    linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%);
+    radial-gradient(900px 280px at 90% -30%, var(--tp-header-glow-a) 0%, transparent 60%),
+    radial-gradient(600px 240px at 0% 50%, var(--tp-header-glow-b) 0%, transparent 60%),
+    linear-gradient(180deg, var(--tp-header-from) 0%, var(--tp-header-to) 100%);
 }
 
+/* Page-level background washes (were inline styles with hardcoded #FFFFFF /
+   #F6F9FC / #DBE8FB stops, which stayed light in dark mode under light text). */
+.tp-page-wash {
+  background:
+    radial-gradient(900px 360px at 80% -20%, var(--tp-header-glow-a) 0%, transparent 55%),
+    linear-gradient(180deg, var(--tp-header-from) 0%, var(--tp-header-to) 100%);
+}
+.tp-auth-wash {
+  background:
+    radial-gradient(800px 400px at 80% -10%, var(--tp-header-glow-a) 0%, transparent 55%),
+    radial-gradient(600px 300px at 0% 100%, var(--tp-wash-warm) 0%, transparent 55%),
+    linear-gradient(180deg, var(--tp-header-to) 0%, var(--tp-header-from) 100%);
+}
+.tp-success-wash {
+  background:
+    radial-gradient(800px 320px at 50% -20%, var(--tp-header-glow-a) 0%, transparent 60%),
+    radial-gradient(600px 240px at 50% 100%, rgb(var(--tp-glow-rgb) / 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, var(--tp-header-from) 0%, var(--tp-header-to) 100%);
+}
 /* Hide horizontal scrollbars on filter rows / sidebar tabs. */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }

@@ -141,7 +141,7 @@ export default async function AdminKeyStatsPage() {
         {stats.topEvents.length > 0 && (
           <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
             <p className="text-[11px] font-semibold tracking-widest text-ink-3 uppercase px-5 pt-5 pb-3">Top events by gross sales</p>
-            <table className="w-full">
+            <div className="overflow-x-auto"><table className="w-full min-w-[460px]">
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                   <th className="text-left px-5 py-3 font-semibold">Event</th>
@@ -167,7 +167,7 @@ export default async function AdminKeyStatsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
+import Logo from "@/components/ui/Logo"
 import { Check, User, CalendarCog, Store, Mail, ArrowRight, Ticket, QrCode, Wallet, BarChart3, MessageSquare, Zap, Smartphone } from "lucide-react"
 import PasswordInput from "@/components/PasswordInput"
 import { redirect } from "next/navigation"
@@ -64,17 +65,13 @@ export default async function SignUpPage({
 
   return (
     <div
-      className="relative min-h-[calc(100vh-4rem)] px-4 py-10 md:py-16"
-      style={{
-        background:
-          "radial-gradient(800px 400px at 80% -10%, #DBE8FB 0%, transparent 55%), radial-gradient(600px 300px at 0% 100%, rgba(254,235,200,0.4) 0%, transparent 55%), linear-gradient(180deg, #F6F9FC 0%, #FFFFFF 100%)",
-      }}>
+      className="relative min-h-[calc(100vh-4rem)] px-4 py-10 md:py-16 tp-auth-wash">
       <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[1fr_448px] lg:gap-16 lg:items-start">
 
         {/* ── Feature highlights panel (desktop only) ── */}
         <div className="hidden lg:flex flex-col pt-4 sticky top-24">
           <Link href="/" className="inline-flex items-center mb-10" aria-label="TicketPulse home">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-auto" />
+            <Logo className="h-14 w-auto" />
           </Link>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-3">Built for Zimbabwe</p>
           <h2 className="text-[28px] font-bold tracking-tight text-ink leading-snug mb-2">
@@ -108,7 +105,7 @@ export default async function SignUpPage({
         <div className="max-w-md mx-auto lg:mx-0 lg:max-w-none">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center" aria-label="TicketPulse home">
-            <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-auto" />
+            <Logo className="h-14 w-auto" />
           </Link>
           <h1 className="mt-6 text-[24px] md:text-[28px] font-bold tracking-tight text-ink">Create your account</h1>
           <p className="text-[14px] text-ink mt-1.5">Free forever for attendees. Pay-as-you-sell for organizers.</p>
@@ -286,7 +283,7 @@ export default async function SignUpPage({
                     defaultChecked={initialRole === value}
                     className="sr-only peer"
                   />
-                  <Icon size={16} className="mx-auto text-ink-2 peer-checked:text-navy mb-1.5" />
+                  <Icon size={16} className="mx-auto text-ink-2 peer-checked:text-link mb-1.5" />
                   <span className="block text-[13px] font-semibold text-ink">{label}</span>
                   <span className="block text-[10px] text-ink-3 mt-0.5 leading-tight">{body}</span>
                 </label>

@@ -13,6 +13,7 @@ import MobileNav from "@/components/layout/MobileNav"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
 import { grift, mona } from "@/lib/fonts"
+import { THEME_CHROME_COLOR, THEME_INIT_SCRIPT } from "@/lib/theme"
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"),
@@ -63,7 +64,13 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0a2540",
+  // Both schemes are supported; the head script (lib/theme.ts) narrows this to
+  // the resolved in-app theme before first paint, and ThemeSync keeps it current.
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_CHROME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_CHROME_COLOR.dark },
+  ],
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -90,7 +97,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" className={`${mona.variable} ${grift.variable}`}>
+    // suppressHydrationWarning: the head script sets data-theme / data-theme-pref /
+    // style.colorScheme on <html> before React hydrates, by design.
+    <html lang="en" className={`${mona.variable} ${grift.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="font-body bg-paper text-ink antialiased">
         <script
           type="application/ld+json"

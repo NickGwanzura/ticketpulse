@@ -226,7 +226,7 @@ export default async function AdminOrderDetailPage({
                 </p>
                 <ul className="mt-3 space-y-2">
                   {paymentAuditIssues.map((issue) => (
-                    <li key={issue.code} className="rounded-xl border border-rose-200 bg-white/60 px-3.5 py-2.5">
+                    <li key={issue.code} className="rounded-xl border border-rose-200 bg-paper/60 px-3.5 py-2.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[13px] font-semibold text-rose-950">{issue.title}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${

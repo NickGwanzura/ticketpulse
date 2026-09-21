@@ -54,7 +54,7 @@ export default function HelpVendorsPage() {
   return (
     <div>
       <section className="relative overflow-hidden border-b border-line">
-        <div className="absolute inset-0 -z-10" style={{ background: "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)" }} />
+        <div className="absolute inset-0 -z-10 tp-page-wash" />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-10 md:pb-14">
           <Link href="/help" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors mb-6">
             <ArrowLeft size={13} /> All help topics

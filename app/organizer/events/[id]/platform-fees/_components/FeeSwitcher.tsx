@@ -62,7 +62,7 @@ export default function FeeSwitcher({ eventId, currentlyAbsorb, platformFeePerce
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ${!absorb ? "bg-ink text-white" : "bg-paper-2 text-ink-3"}`}>
+              <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ${!absorb ? "bg-ink text-paper" : "bg-paper-2 text-ink-3"}`}>
                 <Users size={15} />
               </span>
               <p className="text-[14px] font-semibold text-ink">Buyer pays fees</p>
@@ -97,7 +97,7 @@ export default function FeeSwitcher({ eventId, currentlyAbsorb, platformFeePerce
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ${absorb ? "bg-ink text-white" : "bg-paper-2 text-ink-3"}`}>
+              <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ${absorb ? "bg-ink text-paper" : "bg-paper-2 text-ink-3"}`}>
                 <Building2 size={15} />
               </span>
               <p className="text-[14px] font-semibold text-ink">You absorb fees</p>
@@ -130,7 +130,7 @@ export default function FeeSwitcher({ eventId, currentlyAbsorb, platformFeePerce
           type="button"
           onClick={handleSave}
           disabled={isPending || absorb === currentlyAbsorb}
-          className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-ink/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-[14px] font-semibold text-paper shadow-sm hover:bg-ink/85 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isPending ? "Saving…" : "Save changes"}
         </button>

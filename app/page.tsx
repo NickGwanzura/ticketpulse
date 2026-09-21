@@ -114,7 +114,7 @@ export default async function Home() {
 
       {/* FEATURED */}
       {featuredEvents.length > 0 && (
-        <section className="bg-white px-5 py-16 md:px-8 md:py-24">
+        <section className="bg-paper px-5 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
           <div className="tp-reveal mb-8 md:mb-10 max-w-2xl">
             <p className="text-[11px] font-bold tracking-[0.22em] text-accent uppercase mb-2">On sale now</p>
@@ -165,9 +165,9 @@ export default async function Home() {
       )}
 
       {pastEvents.length > 0 && (
-        <section className="bg-white px-5 py-14 md:px-8 md:py-18 border-t border-[#0a2540]/10">
+        <section className="bg-paper px-5 py-14 md:px-8 md:py-18 border-t border-line">
           <div className="mx-auto max-w-7xl">
-          <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50 via-white to-rose-50 p-4 md:p-5">
+          <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50 via-paper to-rose-50 p-4 md:p-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-700">Past events</p>
@@ -179,7 +179,7 @@ export default async function Home() {
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               {pastEvents.slice(0, 3).map((event) => (
-                  <Link key={event.id} href={`/events/${event.slug}`} className="tp-premium-card overflow-hidden rounded-xl border border-white/80 bg-white/85 shadow-sm shadow-ink/[0.03] transition hover:border-violet-200 hover:bg-white">
+                  <Link key={event.id} href={`/events/${event.slug}`} className="tp-premium-card overflow-hidden rounded-xl border border-paper/80 bg-paper/85 shadow-sm shadow-ink/[0.03] transition hover:border-violet-200 hover:bg-paper">
                     <div className="relative h-24 bg-gradient-to-br from-violet-100 to-rose-100">
                       {event.coverImage ? (
                         <>
@@ -205,7 +205,7 @@ export default async function Home() {
         </section>
       )}
       {/* HOW IT WORKS */}
-      <section className="bg-[#0a2540] px-5 py-16 text-[#fbf2e4] md:px-8 md:py-24">
+      <section className="bg-chrome px-5 py-16 text-[#fbf2e4] md:px-8 md:py-24">
         <div className="mx-auto max-w-7xl">
         <div className="tp-reveal mb-10 md:mb-14 max-w-2xl">
           <p className="text-[11px] font-bold tracking-[0.22em] text-[#f6c995] uppercase mb-2">How it works · end to end</p>
@@ -216,10 +216,10 @@ export default async function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {STEPS.map(({ icon: Icon, title, body }, i) => {
             const stepTone = [
-              { bg: "from-sky-50 to-white", icon: "bg-sky-100 ring-sky-200/70", text: "text-sky-700", number: "text-sky-100" },
-              { bg: "from-emerald-50 to-white", icon: "bg-emerald-100 ring-emerald-200/70", text: "text-emerald-700", number: "text-emerald-100" },
-              { bg: "from-violet-50 to-white", icon: "bg-violet-100 ring-violet-200/70", text: "text-violet-700", number: "text-violet-100" },
-              { bg: "from-amber-50 to-white", icon: "bg-amber-100 ring-amber-200/70", text: "text-amber-700", number: "text-amber-100" },
+              { bg: "from-sky-50 to-paper", icon: "bg-sky-100 ring-sky-200/70", text: "text-sky-700", number: "text-sky-100" },
+              { bg: "from-emerald-50 to-paper", icon: "bg-emerald-100 ring-emerald-200/70", text: "text-emerald-700", number: "text-emerald-100" },
+              { bg: "from-violet-50 to-paper", icon: "bg-violet-100 ring-violet-200/70", text: "text-violet-700", number: "text-violet-100" },
+              { bg: "from-amber-50 to-paper", icon: "bg-amber-100 ring-amber-200/70", text: "text-amber-700", number: "text-amber-100" },
             ][i]
             return (
             <div
@@ -272,7 +272,7 @@ export default async function Home() {
       </section>
 
       {/* FAQ */}
-      <section className="bg-white border-y border-[#0a2540]/10">
+      <section className="bg-paper border-y border-line">
         <div className="max-w-4xl mx-auto px-5 md:px-8 py-16 md:py-24">
           <script
             type="application/ld+json"
@@ -304,7 +304,7 @@ export default async function Home() {
       </section>
 
       <section className="px-5 md:px-8 py-14 md:py-18">
-        <div className="mx-auto max-w-4xl rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/10 via-white to-paper-2 p-7 text-center md:p-10">
+        <div className="mx-auto max-w-4xl rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/10 via-paper to-paper-2 p-7 text-center md:p-10">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Ready to launch?</p>
           <h2 className="mt-3 text-[28px] font-bold tracking-tight text-ink md:text-[40px]">Start selling tickets on TicketPulse.</h2>
           <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">

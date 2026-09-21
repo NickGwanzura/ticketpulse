@@ -208,7 +208,7 @@ export default async function DashboardPage() {
               <p className="text-[15px] font-semibold text-ink">No tickets yet</p>
               <p className="text-[13px] text-ink-2 mt-1 mb-5">Find an event and get your first ticket.</p>
               <Link href="/events"
-                className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors">
+                className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/85 transition-colors">
                 <Calendar size={14} /> Browse events
               </Link>
             </div>

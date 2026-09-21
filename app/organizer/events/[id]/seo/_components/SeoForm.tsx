@@ -118,7 +118,7 @@ export default function SeoForm({
         <button
           type="submit"
           disabled={isPending || title.length > MAX_TITLE || description.length > MAX_DESC}
-          className="inline-flex items-center rounded-xl bg-ink px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+          className="inline-flex items-center rounded-xl bg-ink px-5 py-2.5 text-[13px] font-semibold text-paper hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
           {isPending ? "Saving…" : "Save SEO settings"}
         </button>

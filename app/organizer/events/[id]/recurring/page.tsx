@@ -86,7 +86,7 @@ export default async function RecurringPage({
                   </p>
                   <Link
                     href="/organizer/events/new"
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/85 transition-colors"
                   >
                     Create new event <ArrowRight size={13} />
                   </Link>

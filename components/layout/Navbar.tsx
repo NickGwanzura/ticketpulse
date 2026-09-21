@@ -1,10 +1,12 @@
 "use client"
 
 import Link from "next/link"
+import Logo from "@/components/ui/Logo"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import { ArrowRight, LayoutDashboard, LogOut, Menu, Plus, ShoppingBag, X } from "lucide-react"
 import { useEffect, useState } from "react"
+import ThemeToggle from "@/components/ui/ThemeToggle"
 import { useCart } from "@/lib/cart-context"
 import { getDashboardPathForRole } from "@/lib/role-routes"
 
@@ -46,7 +48,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   return (
     <header
       className={isHome
-        ? "absolute inset-x-0 top-0 z-50 border-b border-[#0a2540]/10 bg-white text-[#0a2540]"
+        ? "absolute inset-x-0 top-0 z-50 border-b border-line bg-paper text-ink"
         : `sticky top-0 z-50 border-b transition-all duration-300 ${
           scrolled
             ? "border-line bg-paper/92 shadow-[0_10px_30px_-24px_rgba(10,37,64,0.34)] backdrop-blur-xl"
@@ -59,7 +61,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
 
       <nav className={`mx-auto flex max-w-7xl items-center gap-4 px-5 md:px-8 ${isHome ? "h-[72px] md:h-[82px]" : "h-16 md:h-[72px]"}`}>
         <Link href="/" className="mr-auto inline-flex items-center gap-2.5" aria-label="TicketPulse home">
-          <img src="/ticketpulse-logo.svg" alt="TicketPulse" className="h-14 w-14 md:h-16 md:w-16" />
+          <Logo className="h-14 w-14 md:h-16 md:w-16" />
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
@@ -70,7 +72,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
                 key={href}
                 href={href}
                 className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors ${
-                  active ? "bg-accent/10 text-accent" : "text-ink-2 hover:bg-paper-2 hover:text-ink"
+                  active ? "bg-accent/10 text-brand-700" : "text-ink-2 hover:bg-paper-2 hover:text-ink"
                 }`}
               >
                 {label}
@@ -80,10 +82,11 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          <ThemeToggle className="rounded-full" />
           <Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
-                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${isHome ? "border-[#0a2540]/15 bg-transparent" : "border-line bg-paper"} text-ink hover:border-accent/30 hover:text-accent`}
+                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${isHome ? "border-line bg-transparent" : "border-line bg-paper"} text-ink hover:border-accent/30 hover:text-accent`}
           >
             <ShoppingBag size={16} />
             {ready && totalCount > 0 && (
@@ -98,7 +101,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               {canCreateEvent && (
                 <Link
                   href="/organizer/events/new"
-                  className={`inline-flex h-10 items-center gap-2 rounded-sm px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-[#0a2540] hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
+                  className={`inline-flex h-10 items-center gap-2 rounded-sm px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-navy hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
                 >
                   <Plus size={15} /> Create Event
                 </Link>
@@ -111,7 +114,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               </Link>
               <button
                 onClick={() => signOut()}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[12px] font-semibold text-white transition hover:bg-accent"
+                className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-[12px] font-semibold text-white transition hover:bg-accent"
               >
                 <LogOut size={15} /> Sign out
               </button>
@@ -123,7 +126,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               </Link>
               <Link
                 href="/auth/signup?role=organizer"
-                className={`inline-flex h-10 items-center gap-2 rounded-sm px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-[#0a2540] hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
+                className={`inline-flex h-10 items-center gap-2 rounded-sm px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-navy hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
               >
                 Get Started <ArrowRight size={14} />
               </Link>
@@ -132,6 +135,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle className="rounded-full border-transparent bg-transparent" />
           <Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
@@ -174,7 +178,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
                   <Link href={dashboardHref} className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-[14px] font-semibold text-ink">
                     <LayoutDashboard size={15} /> Dashboard
                   </Link>
-                  <button onClick={() => signOut()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-[14px] font-semibold text-white">
+                  <button onClick={() => signOut()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[14px] font-semibold text-white">
                     <LogOut size={15} /> Sign out
                   </button>
                 </>

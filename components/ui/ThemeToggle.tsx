@@ -1,47 +1,81 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Moon, Sun } from "lucide-react"
+import { useSyncExternalStore } from "react"
+import { Monitor, Moon, Sun } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  THEME_CHANGE_EVENT,
+  nextPreference,
+  readStoredPreference,
+  setThemePreference,
+  type ThemePreference,
+} from "@/lib/theme"
 
-type Theme = "light" | "dark"
+const NAME: Record<ThemePreference, string> = { light: "Light", dark: "Dark", system: "System" }
 
-const STORAGE_KEY = "ticketpulse-theme"
+function subscribe(onChange: () => void) {
+  window.addEventListener(THEME_CHANGE_EVENT, onChange)
+  window.addEventListener("storage", onChange)
+  return () => {
+    window.removeEventListener(THEME_CHANGE_EVENT, onChange)
+    window.removeEventListener("storage", onChange)
+  }
+}
+const getServerSnapshot = (): ThemePreference => "system"
+
+const VARIANT = {
+  /** For paper/card surfaces (public navbar, dashboards, checkout). */
+  default: "border border-line bg-paper text-ink-2 hover:border-line-2 hover:bg-paper-2 hover:text-ink",
+  /** For the deep-navy admin sidebar chrome. */
+  onDark: "text-white/70 hover:bg-white/10 hover:text-white",
+} as const
 
 /**
- * Explicit override for the CSS-variable dark mode defined in globals.css.
- * Scoped to the admin area for now — the public/checkout pages weren't part
- * of this dashboard audit and haven't been visually verified in dark mode.
+ * Cycles light → dark → system. The icon (and the optional label) are chosen in
+ * CSS from `<html data-theme-pref>`, which the pre-paint script in <head> has
+ * already set — so the control is correct on first paint, never flickers
+ * between icons during hydration, and its box never changes size. Only the
+ * accessible name reads React state.
  */
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme | null>(null)
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
-    if (stored) {
-      setTheme(stored)
-      document.documentElement.dataset.theme = stored
-    } else {
-      setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-    }
-  }, [])
-
-  function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark"
-    setTheme(next)
-    document.documentElement.dataset.theme = next
-    localStorage.setItem(STORAGE_KEY, next)
-  }
-
-  if (!theme) return <div className="w-8 h-8" aria-hidden />
+export default function ThemeToggle({
+  variant = "default",
+  showLabel = false,
+  className,
+}: {
+  variant?: keyof typeof VARIANT
+  /** Render a "Theme: …" text label next to the icon (for menus). */
+  showLabel?: boolean
+  className?: string
+}) {
+  const preference = useSyncExternalStore(subscribe, readStoredPreference, getServerSnapshot)
+  const next = nextPreference(preference)
 
   return (
     <button
       type="button"
-      onClick={toggle}
-      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+      onClick={() => setThemePreference(next)}
+      aria-label={`Theme: ${NAME[preference]}. Switch to ${NAME[next]}.`}
+      title={`Theme: ${NAME[preference]}`}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center gap-3 rounded-lg transition-colors",
+        showLabel ? "h-11 w-full justify-start px-3 text-[14px] font-medium" : "h-10 w-10",
+        VARIANT[variant],
+        className,
+      )}
     >
-      {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+      <span className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+        <Sun size={16} className="tp-theme-icon" data-for="light" />
+        <Moon size={16} className="tp-theme-icon" data-for="dark" />
+        <Monitor size={16} className="tp-theme-icon" data-for="system" />
+      </span>
+      {showLabel && (
+        <span aria-hidden>
+          Theme:{" "}
+          <span className="tp-theme-label" data-for="light">Light</span>
+          <span className="tp-theme-label" data-for="dark">Dark</span>
+          <span className="tp-theme-label" data-for="system">System</span>
+        </span>
+      )}
     </button>
   )
 }

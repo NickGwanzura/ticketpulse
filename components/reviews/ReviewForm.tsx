@@ -163,7 +163,7 @@ export default function ReviewForm({
       <button
         type="submit"
         disabled={state.status === "loading"}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[14px] font-semibold text-white hover:bg-ink disabled:opacity-60 transition"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[14px] font-semibold text-white hover:bg-navy-700 disabled:opacity-60 transition"
       >
         <Send size={16} />
         {state.status === "loading" ? "Sending..." : "Send review"}

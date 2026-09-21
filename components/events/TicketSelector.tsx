@@ -171,12 +171,12 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
               }`}
             >
               {ep.isEarlyBird && (
-                <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950 shadow-sm">
                   <Zap size={9} /> EARLY BIRD
                 </span>
               )}
               {ep.isGroupDiscount && (
-                <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-sky-700 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                   <Users size={9} /> GROUP RATE
                 </span>
               )}

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 export type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger" | "violet"
 
 const TONE_STYLE: Record<BadgeTone, string> = {
-  neutral: "bg-gray-100 text-gray-700",
+  neutral: "bg-paper-3 text-ink-2",
   info: "bg-sky-50 text-sky-700",
   success: "bg-emerald-50 text-emerald-700",
   warning: "bg-amber-50 text-amber-700",

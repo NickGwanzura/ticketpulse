@@ -75,7 +75,7 @@ export default async function TicketVerifyPage({
           </dl>
         )}
 
-        <Link href="/organizer/scan" className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white hover:bg-ink/90">
+        <Link href="/organizer/scan" className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-paper hover:bg-ink/90">
           Open gate scanner
         </Link>
       </div>

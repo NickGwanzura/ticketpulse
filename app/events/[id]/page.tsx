@@ -439,7 +439,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   </span>
                 )}
                 {isPastEvent && (
-                  <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+                  <span className="inline-flex rounded-full bg-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-paper">
                     Past event
                   </span>
                 )}
@@ -450,7 +450,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </h1>
 
               <div className="mt-7 grid gap-4 md:grid-cols-2">
-                <div className="group relative overflow-hidden rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-5 shadow-sm shadow-orange-950/[0.04]">
+                <div className="group relative overflow-hidden rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50 via-paper to-amber-50 p-5 shadow-sm shadow-orange-950/[0.04]">
                   <div className="absolute right-4 top-4 text-[72px] font-bold leading-none tracking-tighter text-orange-100 transition-transform duration-300 group-hover:scale-110" aria-hidden>
                     {dayDisplay}
                   </div>
@@ -462,7 +462,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   <p className="mt-3 inline-flex rounded-full bg-white/75 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-orange-700 ring-1 ring-orange-200/70">{monthDisplay}</p>
                 </div>
 
-                <div className="group relative overflow-hidden rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-5 shadow-sm shadow-sky-950/[0.04]">
+                <div className="group relative overflow-hidden rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 via-paper to-cyan-50 p-5 shadow-sm shadow-sky-950/[0.04]">
                   <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-200/35 blur-2xl transition-transform duration-300 group-hover:scale-125" aria-hidden />
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-navy text-white shadow-sm shadow-navy/20">
                     <Clock size={22} />

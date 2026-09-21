@@ -225,7 +225,7 @@ export default function SampleTicket({ eventId, eventTitle, eventStartsAt, event
               <p className="font-semibold mb-0.5">Scan to test</p>
               <p className="text-green-700">
                 Open the scan page on your phone and point it at the QR code above. It encodes{" "}
-                <code className="text-[11px] bg-white/60 px-1 py-0.5 rounded font-mono">{testCode}</code>
+                <code className="text-[11px] bg-paper/60 px-1 py-0.5 rounded font-mono">{testCode}</code>
                 — the same format real tickets use.
               </p>
             </div>

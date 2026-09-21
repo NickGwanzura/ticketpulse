@@ -79,7 +79,7 @@ function EventHealthBadges({
   if (!hasTiers) badges.push({ label: "Needs tiers", className: "bg-rose-50 text-rose-700 ring-rose-200" })
   if (salesEnded) badges.push({ label: "Sales closed", className: "bg-rose-50 text-rose-700 ring-rose-200" })
   if (capacity > 0 && remaining <= 10 && remaining > 0) badges.push({ label: `${remaining} left`, className: "bg-amber-50 text-amber-700 ring-amber-200" })
-  if (capacity > 0 && remaining === 0) badges.push({ label: "Sold out", className: "bg-ink text-white ring-ink" })
+  if (capacity > 0 && remaining === 0) badges.push({ label: "Sold out", className: "bg-ink text-paper ring-ink" })
   if (netRevenue > 0) badges.push({ label: "Earning", className: "bg-blue/10 text-blue ring-blue/20" })
 
   return (
@@ -397,7 +397,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/organizer/scan" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm hover:bg-ink/85 transition-colors">
+            <Link href="/organizer/scan" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-paper shadow-sm hover:bg-ink/85 transition-colors">
               <ScanLine size={14} /> Scan tickets
             </Link>
             <SplitCTA href="/organizer/events/new" label="New event" size="sm" />
@@ -408,7 +408,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 space-y-8">
         <Link
           href="/organizer/scan"
-          className="lg:hidden sticky top-24 z-20 flex items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-[14px] font-bold text-white shadow-lg shadow-ink/15"
+          className="lg:hidden sticky top-24 z-20 flex items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-[14px] font-bold text-paper shadow-lg shadow-ink/15"
         >
           <ScanLine size={16} /> Open gate scanner
           {EVENTS.some(e => e.status === "published" && !e.isPast && e.sold > 0) && (
@@ -667,7 +667,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               </div>
               {availableBalance > 0 ? (
                 <Link href="/payouts/request"
-                  className="block w-full rounded-xl bg-ink text-center py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors">
+                  className="block w-full rounded-xl bg-ink text-center py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/85 transition-colors">
                   Request {formatCurrency(availableBalance, "USD")}
                 </Link>
               ) : (
@@ -751,7 +751,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
         {/* Gate scanner CTA + quick links */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 tp-fade-up-3">
           <Link href="/organizer/scan"
-            className="sm:col-span-2 lg:col-span-2 rounded-2xl bg-ink text-white p-5 flex items-start gap-4 hover:bg-ink/90 transition-colors">
+            className="sm:col-span-2 lg:col-span-2 rounded-2xl bg-ink text-paper p-5 flex items-start gap-4 hover:bg-ink/90 transition-colors">
             <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-white/10 shrink-0">
               <ScanLine size={18} className="text-white" />
             </span>

@@ -360,7 +360,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-[#0a2540]">
+    <div className="min-h-screen bg-paper text-ink">
       {pollingOrderId && (
         <PaymentWaitingOverlay
           method={form.payment}
@@ -376,21 +376,21 @@ export default function CheckoutPage() {
       )}
 
       {/* Header */}
-      <div className="border-b border-[#0a2540]/10 bg-white">
+      <div className="border-b border-line bg-paper">
         <div className="mx-auto max-w-5xl px-5 pb-8 pt-12 md:px-8 md:pb-12 md:pt-16">
           <Link
             href="/cart"
-            className="mb-8 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#0a2540]/55 transition-colors hover:text-[#f06d43]"
+            className="mb-8 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.16em] text-ink-3 transition-colors hover:text-accent"
           >
             <ChevronLeft size={12} /> Back to cart
           </Link>
           <div className="max-w-2xl">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#0a2540]/55">TicketPulse checkout</p>
-            <h1 className="mt-4 font-display text-[58px] font-black uppercase leading-[0.84] tracking-[-0.04em] text-[#0a2540] sm:text-[76px] md:text-[104px]">
-              Your event.<br /><span className="text-[#f06d43]">Your ticket.</span>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-3">TicketPulse checkout</p>
+            <h1 className="mt-4 font-display text-[58px] font-black uppercase leading-[0.84] tracking-[-0.04em] text-ink sm:text-[76px] md:text-[104px]">
+              Your event.<br /><span className="text-cta">Your ticket.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-[14px] leading-relaxed text-[#0a2540]/65 md:text-[15px]">
-              {firstEventTitle ? <>You&apos;re booking <strong className="font-semibold text-[#0a2540]">{firstEventTitle}</strong>. Complete your details below and choose how you&apos;d like to pay.</> : "Complete your details below and choose how you&apos;d like to pay."}
+            <p className="mt-5 max-w-xl text-[14px] leading-relaxed text-ink-2 md:text-[15px]">
+              {firstEventTitle ? <>You&apos;re booking <strong className="font-semibold text-ink">{firstEventTitle}</strong>. Complete your details below and choose how you&apos;d like to pay.</> : "Complete your details below and choose how you&apos;d like to pay."}
             </p>
           </div>
         </div>
@@ -400,13 +400,13 @@ export default function CheckoutPage() {
         {/* Left: form fields */}
         <div className="space-y-5">
           {/* Contact */}
-          <div className="rounded-[1.25rem] border border-[#0a2540]/15 bg-white p-5 shadow-[0_12px_35px_-28px_rgba(10,37,64,0.45)] md:p-7">
-            <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0a2540]/60">Your details</h2>
-            <p className="mb-5 text-[13px] text-[#0a2540]/55">Where should we send your ticket?</p>
+          <div className="rounded-[1.25rem] border border-line-2 bg-paper p-5 shadow-[0_12px_35px_-28px_rgba(10,37,64,0.45)] md:p-7">
+            <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Your details</h2>
+            <p className="mb-5 text-[13px] text-ink-3">Where should we send your ticket?</p>
 
             <div className="space-y-3.5">
               <div>
-                    <label htmlFor="checkout-name" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0a2540]/70">Full name</label>
+                    <label htmlFor="checkout-name" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">Full name</label>
                 <div className="relative">
                   <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                   <input
@@ -418,14 +418,14 @@ export default function CheckoutPage() {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Tendai Moyo"
-                    className="w-full rounded-md border border-[#0a2540]/20 bg-white py-3 pl-9 pr-4 text-[15px] text-[#0a2540] placeholder:text-[#0a2540]/35 transition focus:border-[#f06d43] focus:outline-none focus:ring-4 focus:ring-[#f06d43]/10"
+                    className="w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                   />
                 </div>
               </div>
 
               <div className={`grid grid-cols-1 gap-3.5 ${!isFree && form.payment === "velocity-ecocash" ? "sm:grid-cols-2" : ""}`}>
                 <div>
-                  <label htmlFor="checkout-email" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0a2540]/70">Email for your ticket</label>
+                  <label htmlFor="checkout-email" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">Email for your ticket</label>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                     <input
@@ -437,13 +437,13 @@ export default function CheckoutPage() {
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       placeholder="you@example.com"
-                      className="w-full rounded-md border border-[#0a2540]/20 bg-white py-3 pl-9 pr-4 text-[15px] text-[#0a2540] placeholder:text-[#0a2540]/35 transition focus:border-[#f06d43] focus:outline-none focus:ring-4 focus:ring-[#f06d43]/10"
+                      className="w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                     />
                   </div>
                 </div>
                 {!isFree && form.payment === "velocity-ecocash" && (
                   <div>
-                    <label htmlFor="checkout-phone" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0a2540]/70">EcoCash number</label>
+                    <label htmlFor="checkout-phone" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">EcoCash number</label>
                     <div className="relative">
                       <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                       <input
@@ -455,7 +455,7 @@ export default function CheckoutPage() {
                         value={form.phone}
                         onChange={(e) => setForm({ ...form, phone: e.target.value })}
                         placeholder="+263 77…"
-                        className="w-full rounded-md border border-[#0a2540]/20 bg-white py-3 pl-9 pr-4 text-[15px] text-[#0a2540] placeholder:text-[#0a2540]/35 transition focus:border-[#f06d43] focus:outline-none focus:ring-4 focus:ring-[#f06d43]/10"
+                        className="w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                       />
                     </div>
                   </div>
@@ -466,14 +466,14 @@ export default function CheckoutPage() {
 
           {/* Event questions */}
           {eventQuestions.length > 0 && (
-            <div className="rounded-[1.25rem] border border-[#0a2540]/15 bg-white p-5 md:p-7">
-              <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0a2540]/60">A few quick questions</h2>
-              <p className="mb-4 text-[12px] text-[#0a2540]/55">The organiser would like to know a bit more about you.</p>
+            <div className="rounded-[1.25rem] border border-line-2 bg-paper p-5 md:p-7">
+              <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">A few quick questions</h2>
+              <p className="mb-4 text-[12px] text-ink-3">The organiser would like to know a bit more about you.</p>
 
               <div className="space-y-3.5">
                 {eventQuestions.map((q) => (
                   <div key={q.id}>
-                    <label htmlFor={`checkout-question-${q.id}`} className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-[#0a2540]/70">
+                    <label htmlFor={`checkout-question-${q.id}`} className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">
                       {q.question}
                       {q.required && <span className="text-red-500 ml-0.5">*</span>}
                     </label>
@@ -484,7 +484,7 @@ export default function CheckoutPage() {
                       value={questionAnswers[q.id] ?? ""}
                       onChange={(e) => setQuestionAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                       placeholder="Your answer"
-                      className="w-full rounded-md border border-[#0a2540]/20 bg-white px-4 py-3 text-[15px] text-[#0a2540] placeholder:text-[#0a2540]/35 transition focus:border-[#f06d43] focus:outline-none focus:ring-4 focus:ring-[#f06d43]/10"
+                      className="w-full rounded-md border border-input bg-paper px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                     />
                   </div>
                 ))}
@@ -493,8 +493,8 @@ export default function CheckoutPage() {
           )}
 
           {/* Payment method — hidden for free orders */}
-          {!isFree && <div className="rounded-[1.25rem] border border-[#0a2540]/15 bg-white p-5 md:p-7">
-            <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#0a2540]/60">Choose how to pay</h2>
+          {!isFree && <div className="rounded-[1.25rem] border border-line-2 bg-paper p-5 md:p-7">
+            <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Choose how to pay</h2>
             <CheckoutPaymentNotice />
             <div className="space-y-2">
               {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
@@ -505,8 +505,8 @@ export default function CheckoutPage() {
                     key={value}
                     className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                       checked
-                        ? "border-[#f06d43] bg-[#fff3ed] ring-1 ring-[#f06d43]/20"
-                        : "border-[#0a2540]/15 bg-white hover:border-[#0a2540]/30 hover:bg-[#fbf7f0]"
+                        ? "border-cta bg-brand-50 ring-1 ring-cta/20"
+                        : "border-line-2 bg-paper hover:border-ink/40 hover:bg-paper-2"
                     }`}
                   >
                     <input
@@ -518,7 +518,7 @@ export default function CheckoutPage() {
                       className="sr-only"
                     />
                     <span className={`inline-flex w-9 h-9 items-center justify-center rounded-lg shrink-0 ${
-                      checked ? "bg-[#f06d43] text-[#0a2540]" : "bg-[#f3eee5] text-[#0a2540]/65"
+                      checked ? "bg-cta text-chrome" : "bg-paper-3 text-ink-2"
                     }`}>
                       <Icon size={15} />
                     </span>
@@ -526,14 +526,14 @@ export default function CheckoutPage() {
                       <p className="flex flex-wrap items-center gap-2 text-[13px] font-semibold text-ink">
                         {label}
                         {isEcoCash && (
-                          <span className="tp-fast-badge inline-flex items-center rounded-full bg-[#fff0e7] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#c9522a] ring-1 ring-[#f06d43]/25">
+                          <span className="tp-fast-badge inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent ring-1 ring-cta/25">
                             Fast
                           </span>
                         )}
                       </p>
                       <p className="text-[12px] text-ink-3">{body}</p>
                     </div>
-                    {checked && <Check size={14} className="shrink-0 text-[#f06d43]" />}
+                    {checked && <Check size={14} className="shrink-0 text-cta" />}
                   </label>
                 )
               })}
@@ -559,7 +559,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-[#f06d43] px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-[#0a2540] shadow-sm transition hover:bg-[#ff8a62] active:scale-[0.99] disabled:opacity-80 lg:hidden"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-cta px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-chrome shadow-sm transition hover:bg-cta-hover active:scale-[0.99] disabled:opacity-80 lg:hidden"
           >
             {submitting ? (
               <><Loader2 size={14} className="animate-spin" /> Processing…</>
@@ -575,13 +575,13 @@ export default function CheckoutPage() {
 
         {/* Right: order summary */}
         <aside className="order-first lg:order-none">
-          <div className="rounded-[1.25rem] border border-[#0a2540]/15 bg-white p-5 shadow-[0_12px_35px_-28px_rgba(10,37,64,0.45)] lg:sticky lg:top-8 md:p-7">
-            <div className="flex items-start justify-between gap-4 border-b border-[#0a2540]/15 pb-5">
+          <div className="rounded-[1.25rem] border border-line-2 bg-paper p-5 shadow-[0_12px_35px_-28px_rgba(10,37,64,0.45)] lg:sticky lg:top-8 md:p-7">
+            <div className="flex items-start justify-between gap-4 border-b border-line-2 pb-5">
               <div>
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#0a2540]/60">Order summary</h2>
-                <p className="mt-1 text-[12px] text-[#0a2540]/55">{lineCount} {lineCount === 1 ? "ticket" : "tickets"}</p>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Order summary</h2>
+                <p className="mt-1 text-[12px] text-ink-3">{lineCount} {lineCount === 1 ? "ticket" : "tickets"}</p>
               </div>
-              <span className="font-display text-[32px] font-black leading-none tracking-[-0.04em] text-[#0a2540]">{formatCurrency(finalTotal, firstCurrency)}</span>
+              <span className="font-display text-[32px] font-black leading-none tracking-[-0.04em] text-ink">{formatCurrency(finalTotal, firstCurrency)}</span>
             </div>
 
             <ul className="space-y-2.5 mb-4 max-h-64 overflow-y-auto">
@@ -701,7 +701,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-5 hidden w-full items-center justify-center gap-2 rounded-sm bg-[#f06d43] px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-[#0a2540] shadow-sm transition hover:bg-[#ff8a62] active:scale-[0.99] disabled:opacity-80 lg:inline-flex"
+              className="mt-5 hidden w-full items-center justify-center gap-2 rounded-sm bg-cta px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-chrome shadow-sm transition hover:bg-cta-hover active:scale-[0.99] disabled:opacity-80 lg:inline-flex"
             >
               {submitting ? (
                 <><Loader2 size={14} className="animate-spin" /> Processing…</>
@@ -762,7 +762,7 @@ function PaymentWaitingOverlay({
   const isLow = timeLeftMs < 120_000
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a2540]/95 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-chrome/95 backdrop-blur-sm px-4">
       <div className="relative w-full max-w-sm text-center">
         {/* Pulse rings */}
         <div className="relative mx-auto mb-7 w-20 h-20">

@@ -120,7 +120,7 @@ export default async function OrganizerPublicPage({ params }: Props) {
   return (
     <main className="min-h-screen bg-paper">
       {/* ── Nav bar ── */}
-      <div className="border-b border-white/10 bg-[#0a2540]">
+      <div className="border-b border-white/10 bg-chrome">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-3 flex items-center justify-between">
           <Link href="/" className="text-[13px] font-semibold text-white/60 hover:text-white transition-colors">
             ← TicketPulse
@@ -129,7 +129,7 @@ export default async function OrganizerPublicPage({ params }: Props) {
       </div>
 
       {/* ── Profile header ── */}
-      <div className="bg-[#0a2540]">
+      <div className="bg-chrome">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">
           {/* Eyebrow */}
           <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-white/40 mb-6">

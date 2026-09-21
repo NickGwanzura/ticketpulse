@@ -25,7 +25,7 @@ export default function PageHeader({
   className,
 }: Props) {
   return (
-    <div className={cn("relative bg-[#0a2540] overflow-hidden", className)}>
+    <div className={cn("relative bg-chrome overflow-hidden", className)}>
       {/* Subtle radial glow in top-right */}
       <div
         className="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full opacity-20"
@@ -50,14 +50,14 @@ export default function PageHeader({
         )}
       >
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold tracking-[0.2em] text-white/40 uppercase mb-2">
+          <p className="text-[10px] font-semibold tracking-[0.2em] text-white/65 uppercase mb-2">
             {eyebrow}
           </p>
           <h1 className="text-[24px] md:text-[32px] font-bold tracking-tight leading-[1.1] text-white">
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-1.5 text-[13px] text-white/50">{subtitle}</p>
+            <p className="mt-1.5 text-[13px] text-white/75">{subtitle}</p>
           )}
         </div>
         {actions && (

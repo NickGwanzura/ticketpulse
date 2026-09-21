@@ -60,7 +60,7 @@ export default function LegalLayout({ kicker, title, lastUpdated, intro, section
                   {String(i + 1).padStart(2, "0")} · {s.title.split(" ").slice(0, 2).join(" ")}
                 </p>
                 <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight leading-tight text-ink mb-4">{s.title}</h2>
-                <div className="text-[15px] leading-relaxed text-ink-2 space-y-3 [&_a]:text-navy [&_a]:font-semibold [&_a:hover]:underline [&_strong]:text-ink [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:marker:text-ink-3">
+                <div className="text-[15px] leading-relaxed text-ink-2 space-y-3 [&_a]:text-link [&_a]:font-semibold [&_a:hover]:underline [&_strong]:text-ink [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:marker:text-ink-3">
                   {s.body}
                 </div>
               </section>

@@ -288,7 +288,7 @@ export default async function AdminOverviewPage() {
             <Link href="/admin/reconciliation" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
               <Zap size={13} className="text-amber-500" /> Reconciliation
             </Link>
-            <Link href="/admin/orders" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/90 transition-colors">
+            <Link href="/admin/orders" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-3.5 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/90 transition-colors">
               <Activity size={13} /> All orders
             </Link>
           </div>
@@ -436,7 +436,7 @@ export default async function AdminOverviewPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <RejectEventButton eventId={event.id} action={rejectEventAction} compact />
                     <form action={approveEventAction.bind(null, event.id)}>
-                      <button type="submit" className="min-h-10 rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">Approve</button>
+                      <button type="submit" className="min-h-10 rounded-lg bg-ink text-paper px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">Approve</button>
                     </form>
                   </div>
                 </li>
@@ -453,7 +453,7 @@ export default async function AdminOverviewPage() {
                       <button type="submit" className="min-h-10 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-2 text-[13px] font-semibold hover:bg-rose-100 transition-colors">Reject</button>
                     </form>
                     <form action={approveOrganizerAction.bind(null, organizer.id)}>
-                      <button type="submit" className="min-h-10 rounded-lg bg-ink text-white px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">Approve</button>
+                      <button type="submit" className="min-h-10 rounded-lg bg-ink text-paper px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">Approve</button>
                     </form>
                   </div>
                 </li>

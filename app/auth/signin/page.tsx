@@ -1,5 +1,6 @@
 import { signIn } from "@/auth"
 import Link from "next/link"
+import Logo from "@/components/ui/Logo"
 import Image from "next/image"
 import {
   CheckCircle2, ChevronDown, Sparkles, Smartphone, ShieldCheck,
@@ -52,11 +53,7 @@ export default async function SignInPage({
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center justify-center gap-2.5">
-              <img
-                src="/ticketpulse-logo.svg"
-                alt="TicketPulse"
-                className="h-10 w-10"
-              />
+              <Logo className="h-10 w-10" />
             </Link>
             <h1 className="mt-8 text-[28px] font-bold tracking-tight text-ink">Welcome back</h1>
             <p className="text-[14px] text-ink-2 mt-2">

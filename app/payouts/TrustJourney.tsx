@@ -62,7 +62,7 @@ export default function TrustJourney({ status, totalPaidPayouts }: TrustJourneyP
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors ${
                     isComplete
-                      ? "bg-ink border-ink text-white"
+                      ? "bg-ink border-ink text-paper"
                       : isCurrent
                       ? "bg-paper border-ink text-ink"
                       : "bg-paper border-line text-ink-3"

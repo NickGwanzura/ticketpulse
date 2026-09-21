@@ -153,11 +153,7 @@ export default function HelpOrganizersPage() {
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-line">
         <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
-          }}
+          className="absolute inset-0 -z-10 tp-page-wash"
         />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-10 md:pb-14">
           <Link

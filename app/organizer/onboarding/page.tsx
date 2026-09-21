@@ -25,7 +25,7 @@ function StepIndicator({ current }: { current: number }) {
           <div key={n} className="flex items-center gap-2">
             <div className={`flex items-center gap-2 ${active ? "text-ink" : done ? "text-brand-600" : "text-ink-3"}`}>
               <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold shrink-0 ${
-                done ? "bg-brand-600 text-white" : active ? "bg-ink text-white" : "bg-paper-3 text-ink-3"
+                done ? "bg-brand-600 text-white" : active ? "bg-ink text-paper" : "bg-paper-3 text-ink-3"
               }`}>
                 {done ? <CheckCircle2 size={14} className="text-white" /> : n}
               </span>
@@ -70,11 +70,7 @@ export default async function OnboardingPage({
 
   return (
     <div
-      className="min-h-screen px-4 py-10 md:py-16"
-      style={{
-        background:
-          "radial-gradient(800px 400px at 80% -10%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #F6F9FC 0%, #FFFFFF 100%)",
-      }}
+      className="min-h-screen px-4 py-10 md:py-16 tp-auth-wash"
     >
       <div className="max-w-lg mx-auto">
         {/* Logo */}

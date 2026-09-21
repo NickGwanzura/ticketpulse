@@ -152,7 +152,7 @@ export default function EmailPage() {
               <button
                 type="submit"
                 disabled={!canSend}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-5 py-3 text-[13px] font-semibold text-white hover:bg-ink-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-5 py-3 text-[13px] font-semibold text-paper hover:bg-ink-2 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 <Send size={14} />
                 {bulkPending ? "Sending..." : bulkState.ok ? `Sent to ${bulkState.sent} / ${bulkState.total}` : "Send to all attendees"}

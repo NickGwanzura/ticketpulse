@@ -140,7 +140,7 @@ export default function ManualPayoutForm({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? (
             <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />

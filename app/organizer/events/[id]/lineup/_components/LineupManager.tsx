@@ -164,7 +164,7 @@ function MemberForm({ eventId, member, onDone }: MemberFormProps) {
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/90 transition disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/90 transition disabled:opacity-60"
         >
           {isPending ? "Saving…" : isEdit ? "Save changes" : "Add member"}
         </button>
@@ -375,7 +375,7 @@ export default function LineupManager({ members: initialMembers, eventId }: Prop
             setShowAddForm((v) => !v)
             setEditingId(null)
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/90 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/90 transition"
         >
           {showAddForm ? (
             <>

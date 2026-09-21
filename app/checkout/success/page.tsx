@@ -108,9 +108,7 @@ function CheckoutSuccessInner() {
       <Confetti count={70} />
       {/* Success hero */}
       <section className="relative overflow-hidden border-b border-line">
-        <div className="absolute inset-0 -z-10" style={{
-          background: "radial-gradient(800px 320px at 50% -20%, #DBE8FB 0%, transparent 60%), radial-gradient(600px 240px at 50% 100%, rgba(19,17,50,0.08) 0%, transparent 60%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
-        }} />
+        <div className="absolute inset-0 -z-10 tp-success-wash" />
         <div className="max-w-3xl mx-auto px-5 md:px-8 pt-14 md:pt-20 pb-12 md:pb-16 text-center">
           <div className="mb-6 tp-pop-in">
             <AnimatedCheck size={72} />

@@ -284,7 +284,7 @@ export default async function EventsPage({
                     aria-current={active ? "page" : undefined}
                     className={`text-sm px-4 py-2 rounded-full border transition-all ${
                       active
-                        ? "bg-ink text-white border-ink shadow-sm"
+                        ? "bg-ink text-paper border-ink shadow-sm"
                         : "border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2"
                     }`}
                   >

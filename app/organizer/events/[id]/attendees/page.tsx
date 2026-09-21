@@ -173,7 +173,7 @@ export default async function AttendeesPage({
             <a
               href={`/api/events/${id}/attendees/pdf`}
               download
-              className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white hover:bg-ink-2 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-paper hover:bg-ink-2 transition"
             >
               <Download size={14} />
               Download PDF

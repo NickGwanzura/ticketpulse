@@ -314,7 +314,7 @@ export default async function AdminReconciliationPage({
               </Link>
               <Link
                 href="/api/admin/reconciliation/velocity/export"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-navy-700"
               >
                 <Download size={14} /> Download CSV
               </Link>
@@ -374,7 +374,7 @@ export default async function AdminReconciliationPage({
                   className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy"
                 />
               </label>
-              <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-ink">
+              <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-5 py-3 text-[13px] font-semibold text-white transition hover:bg-navy-700">
                 <Send size={14} /> Send PDF + CSV
               </button>
             </form>
@@ -457,7 +457,7 @@ export default async function AdminReconciliationPage({
                   Notes
                   <textarea name="notes" rows={2} placeholder="Optional note for finance/audit" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
                 </label>
-                <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[13px] font-semibold text-white transition hover:bg-ink">
+                <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[13px] font-semibold text-white transition hover:bg-navy-700">
                   <ReceiptText size={14} /> Save Velocity deposit
                 </button>
               </form>
@@ -706,7 +706,7 @@ export default async function AdminReconciliationPage({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[12px] font-bold">{issue.title}</p>
-                          <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                          <span className="rounded-full bg-paper/70 px-2 py-0.5 text-[10px] font-semibold uppercase">
                             {issue.area}
                           </span>
                         </div>

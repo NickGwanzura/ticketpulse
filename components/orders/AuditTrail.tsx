@@ -157,7 +157,7 @@ export default function AuditTrail({ order }: Props) {
             return (
               <li key={i} className="relative pl-8">
                 <span
-                  className={`absolute left-0 top-0.5 w-7 h-7 rounded-full ${event.iconBg} flex items-center justify-center ring-4 ring-white`}
+                  className={`absolute left-0 top-0.5 w-7 h-7 rounded-full ${event.iconBg} flex items-center justify-center ring-4 ring-paper`}
                 >
                   <Icon size={14} className={event.iconColor} />
                 </span>

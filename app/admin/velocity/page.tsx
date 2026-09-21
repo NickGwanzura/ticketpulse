@@ -151,7 +151,7 @@ export default async function AdminVelocityPage({
         actions={
           <Link
             href="/admin/reconciliation#velocity-deposits"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-ink"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-navy-700"
           >
             <ReceiptText size={14} /> Record Velocity deposit
           </Link>

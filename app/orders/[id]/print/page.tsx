@@ -11,6 +11,7 @@ import {
   DownloadCloud, Loader2, UserRound,
 } from "lucide-react"
 import QRCode from "qrcode"
+import ForceLightTheme from "@/components/layout/ForceLightTheme"
 
 function shortCode(orderId: string, idx: number) {
   return `${orderId.slice(-6)}-${(idx + 1).toString().padStart(2, "0")}`
@@ -147,6 +148,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
   return (
     <main className="bg-[#f4f7fa] min-h-screen">
+      <ForceLightTheme />
       <style>{`
         @page { size: A6 portrait; margin: 0; }
         @media print {

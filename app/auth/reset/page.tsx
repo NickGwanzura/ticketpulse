@@ -12,11 +12,7 @@ export default async function ResetPasswordPage({
 
   return (
     <div
-      className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12"
-      style={{
-        background:
-          "radial-gradient(800px 400px at 80% -10%, #DBE8FB 0%, transparent 55%), radial-gradient(600px 300px at 0% 100%, rgba(254,235,200,0.4) 0%, transparent 55%), linear-gradient(180deg, #F6F9FC 0%, #FFFFFF 100%)",
-      }}>
+      className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 tp-auth-wash">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">

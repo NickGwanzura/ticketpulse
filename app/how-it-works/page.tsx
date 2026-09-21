@@ -127,11 +127,7 @@ export default function HowItWorksPage() {
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-line">
         <div
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "radial-gradient(900px 360px at 80% -20%, #DBE8FB 0%, transparent 55%), linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
-          }}
+          className="absolute inset-0 -z-10 tp-page-wash"
         />
         <div className="max-w-5xl mx-auto px-5 md:px-8 pt-14 md:pt-24 pb-12 md:pb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/80 backdrop-blur px-3 py-1.5 mb-6 shadow-sm shadow-ink/5">
@@ -224,11 +220,7 @@ export default function HowItWorksPage() {
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-16 md:py-20">
         <div className="rounded-3xl border border-line bg-paper p-8 md:p-12 relative overflow-hidden">
           <div
-            className="absolute inset-0 -z-10"
-            style={{
-              background:
-                "radial-gradient(600px 240px at 100% 0%, #DBE8FB 0%, transparent 60%), radial-gradient(500px 200px at 0% 100%, #EAF2FA 0%, transparent 60%)",
-            }}
+            className="absolute inset-0 -z-10 tp-page-wash"
           />
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             <div>

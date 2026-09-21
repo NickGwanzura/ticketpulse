@@ -117,7 +117,7 @@ export default async function CapacityPage({
               </p>
               <Link
                 href={`/organizer/events/${id}/tiers`}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-white hover:opacity-90 transition-opacity"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-paper hover:opacity-90 transition-opacity"
               >
                 <Ticket size={13} /> Manage tiers
               </Link>

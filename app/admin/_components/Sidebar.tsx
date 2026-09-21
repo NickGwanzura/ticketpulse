@@ -98,7 +98,7 @@ export default function Sidebar({
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden lg:flex sticky top-24 self-start h-[calc(100vh-6rem)] w-[240px] shrink-0 flex-col bg-[#0a2540]">
+      <aside className="hidden lg:flex sticky top-24 self-start h-[calc(100vh-6rem)] w-[240px] shrink-0 flex-col border-r border-white/10 bg-chrome">
 
         {/* Admin identity */}
         <div className="px-4 pt-5 pb-4 border-b border-white/10">
@@ -144,7 +144,7 @@ export default function Sidebar({
                       <Icon size={14} className={active ? "text-white" : "text-white/60"} />
                       {label}
                       {!!badge && (
-                        <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-[10px] font-bold text-[#0a2540]">
+                        <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-[10px] font-bold text-chrome">
                           {badge}
                         </span>
                       )}
@@ -163,14 +163,14 @@ export default function Sidebar({
             onClick={() => signOut({ callbackUrl: "/" })}
             className="flex min-h-11 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
           >
-            <LogOut size={14} className="text-white/30" /> Sign out
+            <LogOut size={14} className="text-white/70" /> Sign out
           </button>
-          <ThemeToggle />
+          <ThemeToggle variant="onDark" />
         </div>
       </aside>
 
       {/* ── Mobile tab strip ── */}
-      <div className="lg:hidden sticky top-24 z-30 bg-[#0a2540]">
+      <div className="lg:hidden sticky top-24 z-30 bg-chrome">
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-white/10 text-white text-[11px] font-bold shrink-0">
@@ -209,7 +209,7 @@ export default function Sidebar({
                 <Icon size={13} className={active ? "text-white" : "text-white/60"} />
                 {label}
                 {!!badge && (
-                  <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-[9px] font-bold text-[#0a2540]">
+                  <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-[9px] font-bold text-chrome">
                     {badge}
                   </span>
                 )}
@@ -220,7 +220,7 @@ export default function Sidebar({
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white">
               More
             </summary>
-            <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-xl border border-white/15 bg-[#0a2540] p-2 shadow-xl">
+            <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-xl border border-white/15 bg-chrome p-2 shadow-xl">
               {MOBILE_MORE.map(({ label, href, icon: Icon, badgeKey }) => {
                 const active = isActive(href)
                 const badge = badgeValue(badgeKey)
@@ -233,7 +233,7 @@ export default function Sidebar({
                   >
                     <Icon size={14} className={active ? "text-white" : "text-white/60"} />
                     <span className="flex-1">{label}</span>
-                    {!!badge && <span className="inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-[#0a2540]">{badge}</span>}
+                    {!!badge && <span className="inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold text-chrome">{badge}</span>}
                   </Link>
                 )
               })}

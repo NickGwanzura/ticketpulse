@@ -78,10 +78,10 @@ export default async function ComingSoonPage({
       style={{
         background: [
           "radial-gradient(1200px 540px at 88% -8%, #C7DBF5 0%, transparent 58%)",
-          "radial-gradient(900px 460px at -6% 8%, #E5EFFA 0%, transparent 55%)",
-          "radial-gradient(680px 380px at 55% 110%, rgba(254,235,200,0.55) 0%, transparent 60%)",
+          "radial-gradient(900px 460px at -6% 8%, var(--tp-header-glow-a) 0%, transparent 55%)",
+          "radial-gradient(680px 380px at 55% 110%, var(--tp-wash-warm) 0%, transparent 60%)",
           "radial-gradient(420px 280px at 22% 60%, rgba(167,139,250,0.18) 0%, transparent 65%)",
-          "linear-gradient(180deg, #FFFFFF 0%, #F6F9FC 100%)",
+          "linear-gradient(180deg, var(--tp-header-from) 0%, var(--tp-header-to) 100%)",
         ].join(", "),
       }}
     >

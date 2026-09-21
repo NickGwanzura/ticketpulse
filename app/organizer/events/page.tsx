@@ -69,7 +69,7 @@ export default async function OrganizerEventsPage() {
         subtitle="Manage every event you own or have been invited to work on."
         width="full"
         actions={
-          <Link href="/organizer/events/new" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/90">
+          <Link href="/organizer/events/new" className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/90">
             <Plus size={14} /> New event
           </Link>
         }

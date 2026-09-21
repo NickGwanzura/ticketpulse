@@ -176,7 +176,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
                   <form action={resendLookupTicketsAction.bind(null, order.id, trimmedEmail)} className="mt-4 pt-4 border-t border-line">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-3.5 py-2 text-[12px] font-semibold text-white hover:bg-ink/85 transition-colors"
+                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-3.5 py-2 text-[12px] font-semibold text-paper hover:bg-ink/85 transition-colors"
                     >
                       <Send size={13} /> Resend ticket email
                     </button>

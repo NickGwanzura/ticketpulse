@@ -336,7 +336,7 @@ export default function OrganizerScanPage() {
       : latest.status === "duplicate"
         ? {
             shell: "border-amber-200 bg-amber-50/80 ring-1 ring-amber-200/60",
-            badge: "bg-amber-500 text-white ring-amber-700/20",
+            badge: "bg-amber-400 text-amber-950 ring-amber-700/20",
             title: "Already scanned",
             body: "This ticket was previously checked in. Do not admit without manual review.",
           }
@@ -366,7 +366,7 @@ export default function OrganizerScanPage() {
         />
       </div>
 
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-ink px-4 py-3 text-white shadow-sm md:hidden">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line bg-ink px-4 py-3 text-paper shadow-sm md:hidden">
         <Link href="/organizer" className="inline-flex items-center gap-2 text-[13px] font-semibold text-white">
           <ArrowLeft size={15} /> Scanner
         </Link>
@@ -561,7 +561,7 @@ export default function OrganizerScanPage() {
                   )}
 
                   {/* Subtle progress bar — visual indicator of freshness */}
-                  <p className="mt-3 rounded-xl bg-white/55 px-3 py-2 text-[13px] font-medium text-ink-2 ring-1 ring-line/60">
+                  <p className="mt-3 rounded-xl bg-paper/55 px-3 py-2 text-[13px] font-medium text-ink-2 ring-1 ring-line/60">
                     {latestTone.body}
                   </p>
 

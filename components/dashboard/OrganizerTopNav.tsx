@@ -27,7 +27,7 @@ export default function OrganizerTopNav() {
     href === "/organizer" ? pathname === href : pathname === href || pathname.startsWith(href + "/")
 
   return (
-    <nav className="hidden lg:block sticky top-0 z-40 bg-[#0a2540] border-b border-white/10">
+    <nav className="hidden lg:block sticky top-0 z-40 bg-chrome border-b border-white/10">
       <div className="max-w-7xl mx-auto px-5 md:px-8 flex items-center gap-1 overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)

@@ -232,7 +232,7 @@ export default async function EventOverviewPage({
           <div className="flex items-center gap-2">
             <Link
                   href={`/organizer/scan?event=${event.id}`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:bg-ink/85 transition"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper hover:bg-ink/85 transition"
             >
               <ScanLine size={14} /> Scan tickets
             </Link>
@@ -308,7 +308,7 @@ export default async function EventOverviewPage({
               </p>
               <Link
                 href={nextAction.href}
-                className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink/85 transition-colors"
+                className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2.5 text-[13px] font-semibold text-paper hover:bg-ink/85 transition-colors"
               >
                 {nextAction.action} <ArrowUpRight size={12} />
               </Link>

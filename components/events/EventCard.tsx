@@ -183,7 +183,7 @@ export default function EventCard({
 
             {/* Category icon */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className={`inline-flex h-20 w-20 items-center justify-center rounded-[28px] bg-white/55 ${visual.tint} shadow-sm ring-1 ${visual.ring} backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}>
+              <span className={`inline-flex h-20 w-20 items-center justify-center rounded-[28px] bg-paper/55 ${visual.tint} shadow-sm ring-1 ${visual.ring} backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}>
                 <CategoryIcon size={38} strokeWidth={1.7} />
               </span>
             </div>
@@ -192,7 +192,7 @@ export default function EventCard({
 
         {/* Top-left: status */}
         {isPast ? (
-            <span className="absolute top-3 left-3 rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+            <span className="absolute top-3 left-3 rounded-full bg-ink px-2.5 py-1 text-[10px] font-bold text-paper shadow-sm">
             PAST EVENT
           </span>
         ) : sponsored ? (

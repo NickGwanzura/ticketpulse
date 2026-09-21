@@ -99,7 +99,7 @@ export default function PhotoManager({ eventId, galleryId, initialPhotos }: Prop
                       type="submit"
                       title="Remove photo"
                       aria-label="Remove photo"
-                      className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-white/90 text-ink-2 hover:text-rose-600 hover:bg-white shadow-sm transition opacity-0 group-hover:opacity-100"
+                      className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-paper/90 text-ink-2 hover:text-rose-600 hover:bg-paper shadow-sm transition opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 size={13} />
                     </button>

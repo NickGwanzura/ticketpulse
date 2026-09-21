@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Cookie, X } from "lucide-react"
 
 const STORAGE_KEY = "tp_cookie_notice_v1"
@@ -10,6 +10,7 @@ const STORAGE_KEY = "tp_cookie_notice_v1"
 export default function CookiesNotice() {
   const pathname = usePathname()
   const [visible, setVisible] = useState(false)
+  const bannerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -18,6 +19,26 @@ export default function CookiesNotice() {
     return () => clearTimeout(t)
   }, [])
 
+  // Publish the banner's top edge (distance from the viewport bottom, plus a gap)
+  // as --tp-cookie-top so other fixed bottom-right elements (the support button)
+  // sit above the banner instead of underneath it. Cleared when it goes away.
+  useEffect(() => {
+    const el = bannerRef.current
+    if (!visible || !el) return
+    const root = document.documentElement
+    const update = () => {
+      root.style.setProperty("--tp-cookie-top", `${Math.round(window.innerHeight - el.getBoundingClientRect().top + 12)}px`)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    window.addEventListener("resize", update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", update)
+      root.style.removeProperty("--tp-cookie-top")
+    }
+  }, [visible, pathname])
   if (pathname?.startsWith("/coming-soon")) return null
   if (pathname?.startsWith("/legal/cookies")) return null
   if (!visible) return null
@@ -29,6 +50,7 @@ export default function CookiesNotice() {
 
   return (
     <div
+      ref={bannerRef}
       role="dialog"
       aria-live="polite"
       aria-label="Cookie notice"

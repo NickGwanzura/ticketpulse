@@ -306,7 +306,7 @@ export default function ImageUploader(props: Props) {
               {/* Drag handle (multi mode) */}
               {multiple && items.length > 1 && (
                 <span
-                  className="absolute top-1.5 right-9 inline-flex items-center justify-center w-6 h-6 rounded-md bg-white/90 text-ink-2 shadow-sm cursor-grab active:cursor-grabbing"
+                  className="absolute top-1.5 right-9 inline-flex items-center justify-center w-6 h-6 rounded-md bg-paper/90 text-ink-2 shadow-sm cursor-grab active:cursor-grabbing"
                   aria-hidden
                 >
                   <GripVertical size={12} />
@@ -319,7 +319,7 @@ export default function ImageUploader(props: Props) {
                   type="button"
                   onClick={() => setPrimary(i)}
                   title="Set as primary"
-                  className="absolute bottom-1.5 left-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-white/90 text-ink-2 hover:text-navy hover:bg-white shadow-sm transition opacity-0 group-hover:opacity-100"
+                  className="absolute bottom-1.5 left-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-paper/90 text-ink-2 hover:text-navy hover:bg-paper shadow-sm transition opacity-0 group-hover:opacity-100"
                 >
                   <Star size={13} />
                 </button>
@@ -330,7 +330,7 @@ export default function ImageUploader(props: Props) {
                 type="button"
                 onClick={() => removeAt(i)}
                 title="Remove"
-                className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-white/90 text-ink-2 hover:text-rose-600 hover:bg-white shadow-sm transition"
+                className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-7 h-7 rounded-md bg-paper/90 text-ink-2 hover:text-rose-600 hover:bg-paper shadow-sm transition"
               >
                 <X size={14} />
               </button>
