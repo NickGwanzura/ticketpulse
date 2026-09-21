@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, use } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
@@ -40,6 +41,8 @@ async function qrDataUrl(value: string): Promise<string> {
 
 export default function PrintTicketsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const searchParams = useSearchParams()
+  const accessSignature = searchParams.get("sig")
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
@@ -59,7 +62,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     }
 
     setFetching(!local)
-    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
+    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
         if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
@@ -67,16 +70,16 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
         setFetching(false)
       })
       .catch(() => setFetching(false))
-  }, [ready, id, getOrder])
+  }, [ready, id, getOrder, accessSignature])
 
   useEffect(() => {
     if (!ready) return
 
-    fetch(`/api/orders/${id}/tickets`, { headers: orderAuthHeaders(id) })
+    fetch(`/api/orders/${id}/tickets`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: CanonicalTicket[]) => setCanonicalTickets(Array.isArray(rows) ? rows : []))
       .catch(() => setCanonicalTickets([]))
-  }, [ready, id])
+  }, [ready, id, accessSignature])
 
   // Generate scanner-compatible QR code data URLs from canonical DB tickets.
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   const downloadAllPdf = async () => {
     setDownloading(true)
     try {
-      const res = await fetch(`/api/orders/${id}/pdf`, { headers: orderAuthHeaders(id) })
+      const res = await fetch(`/api/orders/${id}/pdf`, { headers: orderAuthHeaders(id, accessSignature) })
       if (!res.ok) throw new Error(`PDF API returned ${res.status}`)
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
@@ -176,7 +179,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
-              href={`/orders/${order.id}`}
+              href={`/orders/${order.id}${accessSignature ? `?sig=${encodeURIComponent(accessSignature)}` : ""}`}
               className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#5a6d7c] hover:text-[#0a2540] transition-colors"
             >
               <ArrowLeft size={14} /> Back

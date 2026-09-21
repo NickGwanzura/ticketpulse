@@ -5,6 +5,7 @@ import { orders, events } from "@/db/schema"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { sendEmail } from "@/lib/email"
 import { log } from "@/lib/logger"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 /**
  * Sends one recovery email after 15 minutes of an unresolved card payment.
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     const ev = eventMap.get(order.eventId)
     const eventTitle = ev?.title ?? "your event"
     const name = order.guestName ?? "there"
-    const orderUrl = `${appUrl}/orders/${order.id}`
+    const orderUrl = generateOrderAccessUrl(order.id, appUrl)
     const eventUrl = ev?.slug ? `${appUrl}/events/${ev.slug}` : null
     const supportUrl = "https://wa.me/263788689923"
     const reference = order.id.slice(0, 8).toUpperCase()

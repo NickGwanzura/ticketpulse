@@ -5,6 +5,7 @@ import { orders, events } from "@/db/schema"
 import { ArrowRight, Ticket, Search, Mail, Send } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { resendLookupTicketsAction } from "./actions"
+import { signTicketPayload } from "@/lib/tickets"
 
 export const metadata = { title: "Find my tickets · TicketPulse" }
 
@@ -47,6 +48,8 @@ export default async function OrderLookupPage({ searchParams }: Props) {
 
     results = rows
   }
+
+  const orderHref = (orderId: string) => `/orders/${orderId}?sig=${encodeURIComponent(signTicketPayload(orderId, orderId))}`
 
   const statusLabel: Record<string, string> = {
     paid: "Paid",
@@ -138,7 +141,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
             <li key={order.id}>
               <div className="rounded-2xl border border-line bg-paper p-5">
                 <div className="flex items-center justify-between gap-4">
-                  <Link href={`/orders/${order.id}`} className="group flex items-start gap-3 min-w-0 flex-1">
+                  <Link href={orderHref(order.id)} className="group flex items-start gap-3 min-w-0 flex-1">
                     <span className="shrink-0 mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-paper-2 text-ink-2 ring-1 ring-line">
                       <Ticket size={16} />
                     </span>
@@ -164,7 +167,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${(order.status && statusColor[order.status]) ?? "text-ink-2 bg-paper-2"}`}>
                       {(order.status && statusLabel[order.status]) ?? order.status ?? "Unknown"}
                     </span>
-                    <Link href={`/orders/${order.id}`} aria-label="Open order">
+                    <Link href={orderHref(order.id)} aria-label="Open order">
                       <ArrowRight size={14} className="text-ink-3 hover:text-ink transition" />
                     </Link>
                   </div>

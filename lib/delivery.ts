@@ -14,6 +14,7 @@ import {
   generateCombinedTicketPdf,
   generateTicketQrImageDataUrl,
   generateTicketVerifyUrl,
+  generateOrderAccessUrl,
 } from "@/lib/tickets"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 
@@ -370,7 +371,7 @@ async function _deliver(orderId: string, options: DeliveryOptions = {}): Promise
           lines: saleLines,
           total: String(order.totalAmount ?? "0"),
           currency: order.currency ?? "USD",
-          ticketUrl: `${baseUrl}/orders/${orderId}`,
+          ticketUrl: generateOrderAccessUrl(orderId, baseUrl),
           attachments,
         })
 

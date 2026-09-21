@@ -14,7 +14,7 @@ import {
 } from "@/lib/email"
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
-import { generateCombinedTicketPdf, generateTicketQrImageDataUrl } from "@/lib/tickets"
+import { generateCombinedTicketPdf, generateOrderAccessUrl, generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { getBaseUrl } from "@/lib/url-config"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
@@ -149,7 +149,7 @@ export async function resendOrderEmailAction(orderId: string) {
       lines,
       total: String(order.totalAmount ?? "0"),
       currency: order.currency ?? "USD",
-      ticketUrl: `${appUrl}/orders/${orderId}`,
+      ticketUrl: generateOrderAccessUrl(orderId, appUrl),
       attachments,
     })
 
@@ -732,7 +732,7 @@ export async function regeneratePdfAction(orderId: string) {
       lines,
       total: String(order.totalAmount ?? "0"),
       currency: order.currency ?? "USD",
-      ticketUrl: `${baseUrl}/orders/${orderId}`,
+      ticketUrl: generateOrderAccessUrl(orderId, baseUrl),
       attachments,
     })
   } catch (err) {

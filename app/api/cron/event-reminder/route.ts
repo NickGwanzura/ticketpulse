@@ -6,6 +6,7 @@ import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
 import { sendEventReminderEmail } from "@/lib/email"
 import { formatChatId } from "@/lib/whatsapp"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 const MAX_EVENTS_PER_RUN = 20
 const REMINDER_WINDOW_HOURS = 1 // run every hour, look 23-25h ahead
@@ -96,7 +97,12 @@ export async function POST(request: Request) {
     for (const order of paidOrders) {
       const buyerName = order.guestName ?? undefined
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
-      const ticketUrl = `${appUrl}/orders/${order.id}`
+      // Production always has the QR signing secret. Keep the cron payload
+      // testable in minimal environments where that secret is intentionally
+      // omitted; the customer-facing production path remains signed.
+      const ticketUrl = process.env.TICKET_QR_SECRET || process.env.AUTH_SECRET
+        ? generateOrderAccessUrl(order.id, appUrl)
+        : `${appUrl}/orders/${encodeURIComponent(order.id)}`
       let orderSent = 0
       let orderErrors = 0
 

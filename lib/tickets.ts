@@ -49,6 +49,17 @@ export function signTicketPayload(ticketId: string, orderId: string): string {
   return createHash("sha256").update(`${secret}:${ticketId}:${orderId}`).digest("hex")
 }
 
+/**
+ * Guest-safe order link for transactional emails and lookup results.
+ * The order id remains visible for routing, while the signature proves that
+ * the link was minted by TicketPulse without exposing the buyer's email.
+ */
+export function generateOrderAccessUrl(orderId: string, baseUrl?: string): string {
+  const origin = (baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech").replace(/\/$/, "")
+  const signature = signTicketPayload(orderId, orderId)
+  return `${origin}/orders/${encodeURIComponent(orderId)}?sig=${encodeURIComponent(signature)}`
+}
+
 export async function generateQrDataUrlFromValue(value: string): Promise<string> {
   return QRCode.toDataURL(value, { width: 200, margin: 2 })
 }

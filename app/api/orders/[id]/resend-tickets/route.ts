@@ -6,6 +6,7 @@ import { sendOrderConfirmationEmail } from "@/lib/email"
 import { rateLimit } from "@/lib/rate-limit"
 import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
 import { log } from "@/lib/logger"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 type Params = { id: string }
 
@@ -118,7 +119,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       lines,
       total: String(order.totalAmount ?? "0"),
       currency: order.currency ?? "USD",
-      ticketUrl: `${appUrl}/orders/${id}`,
+      ticketUrl: generateOrderAccessUrl(id, appUrl),
     })
 
   } catch (err) {

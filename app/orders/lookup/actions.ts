@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orderItems, orders, ticketTiers } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 export async function resendLookupTicketsAction(orderId: string, email: string) {
   const normalizedEmail = email.trim().toLowerCase()
@@ -75,7 +76,7 @@ export async function resendLookupTicketsAction(orderId: string, email: string) 
     })),
     total: String(order.totalAmount ?? "0"),
     currency: order.currency ?? "USD",
-    ticketUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/orders/${orderId}`,
+    ticketUrl: generateOrderAccessUrl(orderId),
   })
 
   redirectTo({ sent: orderId.slice(0, 8) })

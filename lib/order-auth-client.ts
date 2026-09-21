@@ -39,7 +39,8 @@ export function rememberOrderOwner(orderId: string, email: string | null | undef
 }
 
 /** Headers proving ownership of `orderId`, or empty when unknown. */
-export function orderAuthHeaders(orderId: string): Record<string, string> {
+export function orderAuthHeaders(orderId: string, signature?: string | null): Record<string, string> {
+  if (signature) return { "x-ticket-signature": signature }
   const email = readMap()[orderId]
   return email ? { "x-order-email": email } : {}
 }
@@ -48,7 +49,8 @@ export function orderAuthHeaders(orderId: string): Record<string, string> {
  * Same proof as a query string, for plain `<a href>` links (e.g. the Apple
  * Wallet pass download) that cannot set request headers.
  */
-export function orderOwnerQuery(orderId: string): string {
+export function orderOwnerQuery(orderId: string, signature?: string | null): string {
+  if (signature) return `?sig=${encodeURIComponent(signature)}`
   const email = readMap()[orderId]
   return email ? `?email=${encodeURIComponent(email)}` : ""
 }

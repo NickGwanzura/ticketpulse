@@ -4,7 +4,7 @@ import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { isValidUUID } from "@/lib/velocity/validation"
 import { log } from "@/lib/logger"
-import { getBaseUrl } from "@/lib/url-config"
+import { getBaseUrl, getOrderUrl } from "@/lib/url-config"
 
 type Params = { id: string }
 
@@ -27,11 +27,11 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
   // Already paid — send straight to order page.
   if (order.status === "paid") {
-    return NextResponse.redirect(`${origin}/orders/${id}?welcome=1`)
+    return NextResponse.redirect(`${getOrderUrl(id)}&welcome=1`)
   }
 
   if (order.status !== "pending") {
-    return NextResponse.redirect(`${origin}/orders/${id}?error=cancelled`)
+    return NextResponse.redirect(`${getOrderUrl(id)}&error=cancelled`)
   }
 
   log.info("velocity return - user returned from hosted checkout", {
@@ -40,5 +40,5 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
   // Still pending — redirect to the orders page where client-side polling
   // picks up the transaction status and finalizes the workflow when ready.
-  return NextResponse.redirect(`${origin}/orders/${id}?welcome=1`)
+  return NextResponse.redirect(`${getOrderUrl(id)}&welcome=1`)
 }

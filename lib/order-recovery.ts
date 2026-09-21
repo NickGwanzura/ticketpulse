@@ -9,6 +9,7 @@ import {
   generateCombinedTicketPdf,
   generateTicketQrImageDataUrl,
   generateTicketVerifyUrl,
+  generateOrderAccessUrl,
 } from "@/lib/tickets"
 import { sendOrderConfirmationEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
@@ -470,7 +471,7 @@ export async function sendTicketsAction(
       lines,
       total: String(order.totalAmount ?? "0"),
       currency: order.currency ?? "USD",
-      ticketUrl: `${baseUrl}/orders/${orderId}`,
+      ticketUrl: generateOrderAccessUrl(orderId, baseUrl),
       attachments,
     })
     result.emailSent = true

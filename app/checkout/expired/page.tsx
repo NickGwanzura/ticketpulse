@@ -12,10 +12,32 @@ function ExpiredInner() {
   useEffect(() => {
     if (!orderId) return
     const controller = new AbortController()
-    fetch(`/api/checkout/velocity/status/${encodeURIComponent(orderId)}`, { cache: "no-store", signal: controller.signal })
-      .then(async (response) => { if (response.ok) setStatus((await response.json()).status ?? null) })
-      .catch(() => {})
-    return () => controller.abort()
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const startedAt = Date.now()
+
+    const check = async () => {
+      try {
+        const response = await fetch(`/api/checkout/velocity/status/${encodeURIComponent(orderId)}`, { cache: "no-store", signal: controller.signal })
+        if (response.ok) {
+          const next = await response.json()
+          const nextStatus = next.status ?? null
+          setStatus(nextStatus)
+          if (next.paid || ["expired", "cancelled", "refunded"].includes(nextStatus)) return
+        }
+      } catch {
+        // Keep the recovery page usable through temporary network failures.
+      }
+
+      if (!controller.signal.aborted && Date.now() - startedAt < 10 * 60 * 1000) {
+        timer = setTimeout(() => void check(), 10_000)
+      }
+    }
+
+    void check()
+    return () => {
+      controller.abort()
+      if (timer) clearTimeout(timer)
+    }
   }, [orderId])
   const paid = status === "paid" || status === "completed"
   const closed = status === "expired" || status === "cancelled"

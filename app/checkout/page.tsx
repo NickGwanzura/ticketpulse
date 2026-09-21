@@ -298,7 +298,10 @@ export default function CheckoutPage() {
 
       const res = await fetch("/api/checkout/velocity", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-session-id": getAnalyticsSessionId(),
+        },
         body: JSON.stringify(body),
       })
       if (!res.ok) {
@@ -719,6 +722,15 @@ export default function CheckoutPage() {
       </form>
     </div>
   )
+}
+
+function getAnalyticsSessionId() {
+  const key = "tp_analytics_session"
+  const existing = sessionStorage.getItem(key)
+  if (existing) return existing
+  const created = crypto.randomUUID()
+  sessionStorage.setItem(key, created)
+  return created
 }
 
 function PaymentWaitingOverlay({

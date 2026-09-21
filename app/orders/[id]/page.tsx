@@ -26,6 +26,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const searchParams = useSearchParams()
   const welcomeFlag = searchParams.get("welcome") === "1"
+  const accessSignature = searchParams.get("sig")
   const { ready, getOrder, placeOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
@@ -37,7 +38,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const orderStatus = order?.status
   const ticketsEnabled = order?.status === "paid" || order?.status === "completed"
-  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, ticketsEnabled)
+  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, ticketsEnabled, accessSignature)
   const [transferStates, setTransferStates] = useState<Record<string, {
     open: boolean; name: string; email: string; submitting: boolean; note: string | null; done: boolean
   }>>({})
@@ -90,7 +91,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
 
     // Fall back to server-side API
     setFetching(true)
-    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
+    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
         if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
@@ -98,7 +99,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
         setFetching(false)
       })
       .catch(() => setFetching(false))
-  }, [ready, id, getOrder])
+  }, [ready, id, getOrder, accessSignature])
 
   // Card payment recovery polling:
   // After a Velocity card redirect, the checkout page is gone and its polling
@@ -126,7 +127,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
           if (data.paid) {
             setPollingForCard(false)
             // Re-fetch the order from the server to get the updated status
-            const fresh = await fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
+            const fresh = await fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
             if (fresh.ok) {
               const updated: OrderRecord = await fresh.json()
               setOrder(updated)
@@ -156,14 +157,14 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       cancelled = true
       if (pollRef.current) clearTimeout(pollRef.current)
     }
-  }, [welcomeFlag, orderStatus, id, placeOrder])
+  }, [welcomeFlag, orderStatus, id, placeOrder, accessSignature])
 
   async function resendTickets() {
     if (resendingTickets) return
     setResendingTickets(true)
     setResendTicketNote(null)
     try {
-      const res = await fetch(`/api/orders/${id}/resend-tickets`, { method: "POST", headers: orderAuthHeaders(id) })
+      const res = await fetch(`/api/orders/${id}/resend-tickets`, { method: "POST", headers: orderAuthHeaders(id, accessSignature) })
       if (res.status === 429) setResendTicketNote("Please wait a moment before resending.")
       else if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Couldn't resend. Try again shortly." }))
@@ -185,7 +186,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     try {
       const res = await fetch("/api/whatsapp/send-ticket", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...orderAuthHeaders(id, accessSignature) },
         body: JSON.stringify({ orderId: id, mode: "manual_resend" }),
       })
       const body = await res.json().catch(() => ({}))
@@ -257,13 +258,13 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={`/orders/${order.id}/print`}
+                href={`/orders/${order.id}/print${orderOwnerQuery(order.id, accessSignature)}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-medium text-ink hover:border-line-2 transition-colors"
               >
                 <Printer size={14} /> Print
               </Link>
               <Link
-                href={`/orders/${order.id}/print?auto=1`}
+                href={`/orders/${order.id}/print?auto=1${accessSignature ? `&sig=${encodeURIComponent(accessSignature)}` : ""}`}
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
               >
                 <Download size={14} /> Save as PDF
@@ -511,12 +512,12 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                 {/* Wallet buttons */}
                 <div className="flex gap-2 pt-1">
                   <a
-                    href={`/api/orders/${order.id}/wallet/apple${orderOwnerQuery(order.id)}`}
+                    href={`/api/orders/${order.id}/wallet/apple${orderOwnerQuery(order.id, accessSignature)}`}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink hover:border-line-2 transition"
                   >
                     <Wallet size={13} /> Apple Wallet
                   </a>
-                  <GoogleWalletButton orderId={order.id} />
+                  <GoogleWalletButton orderId={order.id} signature={accessSignature} />
                 </div>
               </div>
             )}
@@ -527,7 +528,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   )
 }
 
-function GoogleWalletButton({ orderId }: { orderId: string }) {
+function GoogleWalletButton({ orderId, signature }: { orderId: string; signature?: string | null }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -535,7 +536,7 @@ function GoogleWalletButton({ orderId }: { orderId: string }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/orders/${orderId}/wallet/google`, { headers: orderAuthHeaders(orderId) })
+      const res = await fetch(`/api/orders/${orderId}/wallet/google`, { headers: orderAuthHeaders(orderId, signature) })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? "Not available"); return }
       window.open(data.url, "_blank")

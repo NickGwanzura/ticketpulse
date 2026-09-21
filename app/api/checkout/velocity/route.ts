@@ -13,6 +13,7 @@ import { isDefinitiveRejection, VelocityApiError } from "@/lib/velocity/api-erro
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
@@ -637,6 +638,19 @@ export async function POST(req: Request) {
     inventoryReserved: true,
   }
 
+  // A resumable payment must represent the same checkout attempt. Matching
+  // only by event and email can resume an order created with a different
+  // payment method, phone number, amount, or cart after a customer corrects a
+  // typo and retries.
+  const checkoutFingerprint = JSON.stringify({
+    eventId: event.id,
+    paymentMethod: parsed.paymentMethod,
+    phone: parsed.phone.trim(),
+    currency,
+    total: total.toFixed(2),
+    items: parsed.items.map((item) => JSON.stringify(item)).sort(),
+  })
+
   // ── Idempotency: resume an existing in-progress order if one exists ──────────
   // Handles retries, double-clicks, and page-refresh re-submissions without
   // creating duplicate orders or surfacing a confusing error to the user.
@@ -654,7 +668,9 @@ export async function POST(req: Request) {
         and(
           eq(orders.eventId, event.id),
           eq(orders.guestEmail, parsed.email),
+          eq(orders.paymentMethod, parsed.paymentMethod),
           inArray(orders.status, ["pending", "awaiting_verification"]),
+          sql`${orders.metadata}->>'checkoutFingerprint' = ${checkoutFingerprint}`,
           sql`${orders.createdAt} > now() - interval '30 minutes'`,
         ),
       )
@@ -745,7 +761,7 @@ export async function POST(req: Request) {
           guestEmail: parsed.email,
           guestName: parsed.name,
           guestPhone: parsed.phone,
-          metadata: { ...baseMeta, inventoryReserved: true },
+          metadata: { ...baseMeta, checkoutFingerprint, inventoryReserved: true },
         })
         .returning({ id: orders.id })
 
@@ -1059,7 +1075,7 @@ export async function POST(req: Request) {
       const base = `${getBaseUrl()}/api/checkout/velocity`
       returnUrlFields.returnUrl = `${base}/return/${orderId}`
       returnUrlFields.successUrl = `${base}/return/${orderId}`
-      returnUrlFields.cancelUrl = `${getBaseUrl()}/orders/${orderId}?error=cancelled`
+      returnUrlFields.cancelUrl = `${generateOrderAccessUrl(orderId, getBaseUrl())}&error=cancelled`
     }
 
     // For card (VMC) payments, use the merchant phone as a fallback if the

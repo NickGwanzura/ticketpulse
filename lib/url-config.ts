@@ -1,5 +1,6 @@
 import "server-only"
 import { log } from "@/lib/logger"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 const PRODUCTION_BASE_URL = "https://ticketpulse.tech"
 const DEV_BASE_URL = "http://localhost:8080"
@@ -58,7 +59,7 @@ export function getMyTicketsUrl(): string {
 }
 
 export function getOrderUrl(orderId: string): string {
-  return `${getBaseUrl()}/orders/${orderId}`
+  return generateOrderAccessUrl(orderId, getBaseUrl())
 }
 
 export function getTicketUrl(ticketId: string): string {

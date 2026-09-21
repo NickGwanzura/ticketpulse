@@ -33,7 +33,7 @@ import { events as eventsTable } from "@/db/schema"
 import { and, desc, inArray, sql } from "drizzle-orm"
 
 const FAQ = [
-  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Your account is auto-created — no password required." },
+  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Keep the secure ticket link or use your checkout email to recover the order later." },
   { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, a WhatsApp message, and an SMS with your ticket details — all at once. You can also find and resend tickets from order lookup." },
   { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
   { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse deducts the 5% fee from confirmed ticket sales and shows gross, fee, paid out, pending, and available balance before withdrawal." },
@@ -79,7 +79,7 @@ export default async function Home() {
         <div className="mx-auto flex min-h-[720px] max-w-7xl items-center px-5 pb-16 pt-36 sm:pb-20 md:min-h-[820px] md:px-8 md:pt-40">
           <div className="mx-auto max-w-5xl text-center">
             <p className="tp-fade-up text-[11px] font-bold uppercase tracking-[0.28em] text-[#f6c995]">
-              Zimbabwe's home for live moments
+              Zimbabwe&apos;s home for live moments
             </p>
             <div className="tp-fade-up-1 mx-auto mt-7 inline-flex items-center gap-3 rounded-full border border-[#fbf2e4]/25 bg-[#081522]/45 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#fbf2e4]/85 backdrop-blur-sm">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#f47b4b]" aria-hidden />

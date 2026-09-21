@@ -7,10 +7,11 @@ import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers, tickets } from "@/db/schema"
 import { sendText, sendDocument, formatChatId, isSessionReady } from "@/lib/whatsapp"
 import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
-import { generateTicketQrImageDataUrl } from "@/lib/tickets"
+import { generateOrderAccessUrl, generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { formatDate } from "@/lib/utils"
 import { log } from "@/lib/logger"
 import { rateLimit } from "@/lib/rate-limit"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
 
 const SendTicketSchema = z.object({
   orderId: z.string().uuid(),
@@ -57,7 +58,11 @@ export async function POST(req: Request) {
     // Every mode requires authorization. Previously only `initial` was gated,
     // so an anonymous caller could pass mode=manual_resend and have the ticket
     // PDF sent for any order UUID.
-    if (!isInternal && !isAdmin) {
+    const guestAccess = !isInternal && !isAdmin
+      ? await authorizeOrderAccess(orderId, orderAccessCredsFrom(req))
+      : null
+
+    if (!isInternal && !isAdmin && !guestAccess?.ok) {
       log.warn("whatsapp send-ticket — rejected unauthorised request", { orderId, mode })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -163,7 +168,7 @@ export async function POST(req: Request) {
       : "TBA"
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
-    const ticketUrl = `${appUrl}/orders/${orderId}`
+    const ticketUrl = generateOrderAccessUrl(orderId, appUrl)
 
     const summary = items
       .map((i) => `  • ${i.qty}× ${i.tierName ?? "Ticket"}`)

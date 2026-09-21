@@ -12,6 +12,7 @@ import MerchSection from "@/components/merch/MerchSection"
 import VendorSection from "@/components/vendors/VendorSection"
 import MediaSection from "@/components/media/MediaSection"
 import TicketSelector from "@/components/events/TicketSelector"
+import EventViewTracker from "@/components/events/EventViewTracker"
 import VenueMap from "@/components/events/VenueMap"
 import ShareEventButton from "@/components/events/ShareEventButton"
 import SaveFavoriteButton from "@/components/events/SaveFavoriteButton"
@@ -372,6 +373,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div>
+      <EventViewTracker eventId={row.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

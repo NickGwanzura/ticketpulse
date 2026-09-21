@@ -1,4 +1,5 @@
 import { APP_URL, BRAND, escape, formatMoney, layout } from "./shared"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 export function reviewRequestEmail(opts: {
   name?: string | null
@@ -338,7 +339,7 @@ export function orderReceiptEmail(opts: {
   const { orderId, items, total, currency, customerName } = opts
   const first = customerName?.split(" ")[0]?.trim()
   const heading = first ? `Thanks, ${first}.` : "Your TicketPulse order"
-  const orderUrl = `${APP_URL}/orders/${encodeURIComponent(orderId)}`
+  const orderUrl = generateOrderAccessUrl(orderId, APP_URL)
 
   const rows = items
     .map(

@@ -25,7 +25,7 @@ export type TicketRecord = {
  * order) for rendering, and a `loading` flag that stays true while still polling
  * for an empty result.
  */
-export function useOrderTickets(orderId: string, enabled: boolean) {
+export function useOrderTickets(orderId: string, enabled: boolean, signature?: string | null) {
   const [records, setRecords] = useState<TicketRecord[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -38,12 +38,14 @@ export function useOrderTickets(orderId: string, enabled: boolean) {
     const MAX_MS = 30_000
     const INTERVAL_MS = 2_000
 
-    setLoading(true)
+    void Promise.resolve().then(() => {
+      if (!cancelled) setLoading(true)
+    })
 
     const poll = async () => {
       try {
         const res = await fetch(`/api/orders/${orderId}/tickets`, {
-          headers: orderAuthHeaders(orderId),
+          headers: orderAuthHeaders(orderId, signature),
         })
         const data: TicketRecord[] = res.ok ? await res.json() : []
         if (cancelled) return
@@ -68,7 +70,7 @@ export function useOrderTickets(orderId: string, enabled: boolean) {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [orderId, enabled])
+  }, [orderId, enabled, signature])
 
   const qrByTier = new Map<string, string[]>()
   const recordsByTier = new Map<string, TicketRecord[]>()

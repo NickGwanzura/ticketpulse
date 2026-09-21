@@ -9,6 +9,7 @@ import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
 import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 
 export async function verifyUserEmailAction(userId: string) {
   await requireAdmin()
@@ -155,7 +156,7 @@ export async function resendOrderEmailAction(orderId: string) {
       lines,
       total: String(order.totalAmount ?? "0"),
       currency: order.currency ?? "USD",
-      ticketUrl: `${appUrl}/orders/${orderId}`,
+      ticketUrl: generateOrderAccessUrl(orderId, appUrl),
     })
 
     revalidatePath("/admin/orders")
