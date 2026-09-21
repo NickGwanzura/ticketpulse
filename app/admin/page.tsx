@@ -13,13 +13,15 @@ import {
   Users,
   Zap,
 } from "lucide-react"
-import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orders, payouts, reviews, users } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { ACTIVE_PAYOUT_STATUSES } from "@/lib/revenue-summary"
+import { ORDER_ISSUES, ORDER_ISSUE_WINDOW_DAYS, orderIssueCondition, orderIssueWindowStart } from "@/lib/order-issues"
+import { HEARTBEAT_KEYS, ageLabel, getHeartbeats } from "@/lib/heartbeat"
 import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import { approveOrganizerAction, rejectOrganizerAction, verifyUserEmailAction } from "@/app/admin/actions/users"
 import RejectEventButton from "@/app/admin/actions/RejectEventButton"
@@ -58,6 +60,11 @@ export default async function AdminOverviewPage() {
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
   const liveEventWindow = or(isNull(events.endsAt), gte(events.endsAt, now))
+  const issueWindowStart = orderIssueWindowStart(now)
+  const heartbeatsPromise = getHeartbeats([HEARTBEAT_KEYS.cronTick, HEARTBEAT_KEYS.velocityWebhook]).catch((error) => {
+    console.error("[admin] heartbeat read failed", error)
+    return null
+  })
 
   const [
     [activeEventsRow],
@@ -75,7 +82,7 @@ export default async function AdminOverviewPage() {
     [noEventOrganizersRow],
     [frozenOrganizersRow],
     [stalePaymentRow],
-    moneyPathIssueRows,
+    orderIssueCounts,
   ] = await Promise.all([
     db.select({ count: sql<number>`COUNT(*)::int` })
       .from(events)
@@ -147,7 +154,7 @@ export default async function AdminOverviewPage() {
       total: sql<number>`COUNT(*) OVER()::int`,
     })
       .from(users)
-      .where(isNull(users.emailVerified))
+      // Organizers awaiting approval already appear in the organiser list above (approval requires a verified email); counting them here too double-counted them.
       .orderBy(desc(users.createdAt))
       .limit(5),
 
@@ -201,35 +208,29 @@ export default async function AdminOverviewPage() {
         sql`${orders.createdAt} < NOW() - INTERVAL '30 minutes'`,
       )),
 
-    db.execute(sql`
-      WITH confirmed_orders AS (
-        SELECT id, metadata
-        FROM orders
-        WHERE status IN ('paid', 'completed')
-      ),
-      ticket_counts AS (
-        SELECT order_id, COUNT(*)::int AS ticket_count
-        FROM tickets
-        WHERE order_id IN (SELECT id FROM confirmed_orders)
-          AND is_staff_ticket = false
-          AND status NOT IN ('cancelled', 'refunded')
-        GROUP BY order_id
-      ),
-      duplicate_ledgers AS (
-        SELECT order_id
-        FROM payment_ledger
-        WHERE local_status IN ('paid', 'completed', 'success', 'paid_success')
-        GROUP BY order_id
-        HAVING COUNT(*) > 1
-      )
-      SELECT
-        COUNT(*) FILTER (WHERE COALESCE(tc.ticket_count, 0) = 0)::int AS paid_no_tickets,
-        COUNT(*) FILTER (WHERE COALESCE(confirmed_orders.metadata->'delivery'->>'status', '') IN ('FAILED', 'EMAIL_FAILED'))::int AS delivery_attention,
-        (SELECT COUNT(*)::int FROM duplicate_ledgers)::int AS duplicate_ledgers
-      FROM confirmed_orders
-      LEFT JOIN ticket_counts tc ON tc.order_id = confirmed_orders.id
-    `),
+    // Shared definitions (lib/order-issues), windowed so the overview never scans all history.
+    // A slow or failing count degrades to "unavailable" instead of blanking the whole page.
+    Promise.all(ORDER_ISSUES.map((issue) =>
+      db.select({ count: sql<number>`COUNT(*)::int` }).from(orders)
+        .where(and(orderIssueCondition(issue), gte(orders.createdAt, issueWindowStart))),
+    )).then(([noTickets, delivery, duplicate]) => ({
+      ok: true as const,
+      paid_no_tickets: noTickets[0]?.count ?? 0,
+      delivery_failed: delivery[0]?.count ?? 0,
+      duplicate_ledger: duplicate[0]?.count ?? 0,
+    })).catch((error) => {
+      console.error("[admin] order issue counts failed", error)
+      return { ok: false as const, paid_no_tickets: 0, delivery_failed: 0, duplicate_ledger: 0 }
+    }),
   ])
+
+  const heartbeats = await heartbeatsPromise
+  const cronBeat = heartbeats?.get(HEARTBEAT_KEYS.cronTick)
+  const webhookBeat = heartbeats?.get(HEARTBEAT_KEYS.velocityWebhook)
+  const cronAgeMin = cronBeat?.lastSuccessAt ? (now.getTime() - cronBeat.lastSuccessAt.getTime()) / 60_000 : null
+  const cronState: "ok" | "warn" | "bad" | "unknown" = !heartbeats ? "unknown" : cronAgeMin === null ? "bad" : cronAgeMin <= 5 ? "ok" : cronAgeMin <= 15 ? "warn" : "bad"
+  const webhookRejected = !!webhookBeat?.lastErrorAt && (!webhookBeat.lastSuccessAt || webhookBeat.lastErrorAt > webhookBeat.lastSuccessAt)
+  const asOf = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Harare" })
 
   const activeEvents = activeEventsRow?.count ?? 0
   const newUsers = newUsersRow?.count ?? 0
@@ -238,14 +239,9 @@ export default async function AdminOverviewPage() {
   const pendingPayouts = pendingPayoutsRow?.count ?? 0
   const pendingPayoutTotal = Number(pendingPayoutsRow?.total ?? 0)
   const pendingReviews = pendingReviewsRow?.count ?? 0
-  const moneyPathIssues = (moneyPathIssueRows.rows?.[0] ?? {}) as {
-    paid_no_tickets?: number
-    delivery_attention?: number
-    duplicate_ledgers?: number
-  }
-  const paidNoTickets = Number(moneyPathIssues.paid_no_tickets ?? 0)
-  const deliveryAttention = Number(moneyPathIssues.delivery_attention ?? 0)
-  const duplicateLedgers = Number(moneyPathIssues.duplicate_ledgers ?? 0)
+  const paidNoTickets = orderIssueCounts.paid_no_tickets
+  const deliveryAttention = orderIssueCounts.delivery_failed
+  const duplicateLedgers = orderIssueCounts.duplicate_ledger
   const pendingEventCount = Number(draftEvents[0]?.total ?? 0)
   const pendingOrganizerCount = Number(pendingOrganizers[0]?.total ?? 0)
   const unverifiedUserCount = Number(unverifiedUsers[0]?.total ?? 0)
@@ -258,9 +254,9 @@ export default async function AdminOverviewPage() {
 
   const operationsQueue = [
     { label: "Stale payment checks", value: stalePaymentCount, href: "/admin/orders?status=pending", icon: CreditCard, tone: "rose" as const, detail: "Pending or verification orders older than 30 minutes" },
-    { label: "Paid, no tickets", value: paidNoTickets, href: "/admin/orders?q=paid", icon: Ticket, tone: "rose" as const, detail: "Confirmed payment without issued tickets" },
-    { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders", icon: FileWarning, tone: "amber" as const, detail: "Ticket or email delivery needs action" },
-    { label: "Duplicate ledgers", value: duplicateLedgers, href: "/admin/reconciliation", icon: AlertTriangle, tone: "rose" as const, detail: "Multiple settled payment records" },
+    { label: "Paid, no tickets", value: paidNoTickets, href: "/admin/orders?issue=paid_no_tickets", icon: Ticket, tone: "rose" as const, detail: `Confirmed payment without issued tickets (last ${ORDER_ISSUE_WINDOW_DAYS} days)` },
+    { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders?issue=delivery_failed", icon: FileWarning, tone: "amber" as const, detail: `Ticket or email delivery needs action (last ${ORDER_ISSUE_WINDOW_DAYS} days)` },
+    { label: "Duplicate ledgers", value: duplicateLedgers, href: "/admin/orders?issue=duplicate_ledger", icon: AlertTriangle, tone: "rose" as const, detail: `Multiple settled payment records (last ${ORDER_ISSUE_WINDOW_DAYS} days)` },
     { label: "Velocity pending", value: velocityPending, href: "/admin/velocity?status=pending", icon: Zap, tone: "amber" as const, detail: "Gateway confirmations unresolved" },
     { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "amber" as const, detail: `${formatCurrency(pendingPayoutTotal, "USD")} awaiting review` },
     { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue" as const, detail: "Customer reviews awaiting moderation" },
@@ -268,7 +264,7 @@ export default async function AdminOverviewPage() {
     { label: "Old event reviews", value: staleReviewCount, href: "/admin/events?status=pending_review", icon: CalendarCheck, tone: "amber" as const, detail: "Publish requests waiting over 24 hours" },
     { label: "Frozen organisers", value: frozenOrganizerCount, href: "/admin/organizers?status=frozen", icon: Users, tone: "blue" as const, detail: "No-event accounts paused from organiser tools" },
     { label: "No-event organisers", value: noEventOrganizerCount, href: "/admin/organizers?status=no_event", icon: Users, tone: "blue" as const, detail: "Accounts needing onboarding follow-up" },
-    { label: "Approvals & verification", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events, organisers, and accounts needing review" },
+    { label: "Approvals & verification", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events, organisers awaiting approval, and unverified attendee/vendor accounts" },
   ].filter((item) => item.value > 0)
 
   const actionCount = operationsQueue.reduce((total, item) => total + item.value, 0)
@@ -281,7 +277,7 @@ export default async function AdminOverviewPage() {
           <div>
             <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Admin</p>
             <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">Platform overview</h1>
-            <p className="mt-2 text-[13px] text-ink-2">The work that needs attention, at a glance.</p>
+            <p className="mt-2 text-[13px] text-ink-2">The work that needs attention, at a glance. <span className="text-ink-3">Data as of {asOf} (Harare).</span></p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <PollNowButton />
@@ -296,7 +292,37 @@ export default async function AdminOverviewPage() {
       </div>
 
       <div className="px-5 md:px-8 py-8 space-y-6">
-        {hasPendingAction && (
+        <section aria-label="System health" className="grid sm:grid-cols-2 gap-3">
+          {[
+            {
+              label: "Scheduler (cron tick)",
+              tone: cronState,
+              value: !heartbeats ? "Health data unavailable" : cronBeat?.lastSuccessAt ? `Last ran ${ageLabel(cronBeat.lastSuccessAt, now)}` : "No heartbeat recorded yet",
+              detail: cronState === "ok" ? "Payments are being rechecked every minute." : cronState === "unknown" ? "Could not read heartbeat records." : "Expected every minute. If this persists, pending payments are not being rechecked — verify the Dokploy cron job and CRON_SECRET.",
+            },
+            {
+              label: "Velocity webhook",
+              tone: (webhookRejected ? "bad" : webhookBeat?.lastSuccessAt ? "ok" : "unknown") as "ok" | "bad" | "unknown",
+              value: !heartbeats ? "Health data unavailable" : webhookRejected ? `Last callback rejected ${ageLabel(webhookBeat?.lastErrorAt, now)}` : webhookBeat?.lastSuccessAt ? `Last callback ${ageLabel(webhookBeat.lastSuccessAt, now)}` : "No callback received yet",
+              detail: webhookRejected ? (webhookBeat?.lastError ?? "Check the webhook secret and signature header in the Velocity dashboard.") : "Quiet is normal when nobody is paying; a rejected callback is not.",
+            },
+          ].map(({ label, tone, value, detail }) => (
+            <div key={label} className="rounded-xl border border-line bg-paper px-4 py-3 flex items-start gap-3">
+              <span aria-hidden="true" className={`mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full ${tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : tone === "bad" ? "bg-rose-500" : "bg-ink-3"}`} />
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-ink-2">{label}</p>
+                <p className="text-[13px] font-semibold text-ink">{value}</p>
+                <p className="mt-0.5 text-[11.5px] text-ink-3 leading-snug">{detail}</p>
+              </div>
+            </div>
+          ))}
+        </section>
+        {!orderIssueCounts.ok && (
+          <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-800">
+            Payment and delivery issue counts are unavailable right now, so a zero above does not mean all clear. Check{" "}
+            <Link href="/admin/reconciliation" className="font-semibold underline underline-offset-2">reconciliation</Link> directly.
+          </div>
+        )}        {hasPendingAction && (
           <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 flex items-start gap-3 tp-fade-up-1">
             <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
             <p className="flex-1 text-[13px] font-semibold text-amber-900">
@@ -468,6 +494,16 @@ export default async function AdminOverviewPage() {
                   <form action={verifyUserEmailAction.bind(null, user.id)} className="shrink-0">
                     <button type="submit" className="min-h-10 rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors">Verify email</button>
                   </form>
+                </li>
+              ))}
+              {[
+                { label: "event approvals", shown: draftEvents.length, total: pendingEventCount, href: "/admin/events?status=pending_review" },
+                { label: "organiser approvals", shown: pendingOrganizers.length, total: pendingOrganizerCount, href: "/admin/organizers" },
+                { label: "unverified accounts", shown: unverifiedUsers.length, total: unverifiedUserCount, href: "/admin/users" },
+              ].filter((row) => row.total > row.shown).map((row) => (
+                <li key={`more-${row.label}`} className="px-5 py-3 text-[12px] text-ink-3 flex items-center justify-between gap-3">
+                  <span>Showing {row.shown} of {row.total} {row.label}.</span>
+                  <Link href={row.href} className="font-semibold text-navy underline underline-offset-2">See all</Link>
                 </li>
               ))}
             </ul>

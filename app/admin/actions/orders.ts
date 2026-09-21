@@ -5,6 +5,7 @@ import { eq, and, inArray, or, sql } from "drizzle-orm"
 
 import { signIn } from "@/auth"
 import { requireAdmin } from "@/lib/auth-guard"
+import { recordAdminAction } from "@/lib/admin-audit"
 import { db } from "@/db"
 import { events, orders, orderItems, organizerFeeDues, paymentLedger, ticketTiers, tickets, users } from "@/db/schema"
 import {
@@ -244,6 +245,8 @@ export async function cancelOrderTicketsAction(orderId: string) {
     }
   })
 
+  await recordAdminAction(session, { action: "order.cancel", targetType: "order", targetId: orderId, before: { status: order.status }, after: { status: "cancelled" } })
+
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")
   revalidatePath("/admin")
@@ -300,6 +303,8 @@ export async function cancelTicketsAction(ticketIds: string[]) {
       .where(eq(ticketTiers.id, tierId))
   }
 
+  await recordAdminAction(session, { action: "ticket.cancel", targetType: "order", targetId: toCancelIds.join(","), before: { status: "active", count: toCancelIds.length }, after: { status: "cancelled" } })
+
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")
   revalidatePath("/admin")
@@ -314,7 +319,9 @@ export async function markOrderCompleteAction(orderId: string) {
   const session = await requireAdmin()
 
   const { markOrderCompleteAction: completeAction } = await import("@/lib/order-recovery")
-  return completeAction(orderId, session.user.id, session.user.email ?? "admin")
+  const result = await completeAction(orderId, session.user.id, session.user.email ?? "admin")
+  await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, after: { result: typeof result === "object" ? result : String(result) } })
+  return result
 }
 
 /**
@@ -593,6 +600,8 @@ export async function refundOrderAction(orderId: string) {
     log.error("refundOrderAction - clawback check failed", { orderId, error: String(err) })
   }
 
+  await recordAdminAction(session, { action: "order.refund", targetType: "order", targetId: orderId, before: { status: order.status, totalAmount: order.totalAmount }, after: { status: "refunded" } })
+
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")
   revalidatePath("/admin")
@@ -815,6 +824,8 @@ export async function deleteOrderAction(orderId: string) {
   })
 
   log.info("admin - order deleted", { orderId, deletedBy: session.user.id })
+
+  await recordAdminAction(session, { action: "order.delete", targetType: "order", targetId: orderId, before: { existed: true }, after: { deleted: true } })
 
   revalidatePath("/admin/orders")
   revalidatePath("/admin")

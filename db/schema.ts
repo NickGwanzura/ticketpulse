@@ -878,6 +878,37 @@ export const payoutAuditLog = pgTable("payout_audit_log", {
   index("payout_audit_log_created_idx").on(table.createdAt),
 ])
 
+// ─── Admin Audit Log ──────────────────────────────────────────────────────────
+// Who did what to whom. Written by lib/admin-audit.ts for admin mutations that
+// change access, approval, money or lifecycle state. Append-only by convention.
+
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorId: text("actor_id").notNull(),
+  actorEmail: text("actor_email"),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  before: jsonb("before"),
+  after: jsonb("after"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("admin_audit_log_target_idx").on(table.targetType, table.targetId),
+  index("admin_audit_log_actor_idx").on(table.actorId),
+  index("admin_audit_log_created_idx").on(table.createdAt),
+])
+// ─── System Heartbeats ────────────────────────────────────────────────────────
+// Last time each background job / inbound integration ran or failed, so the
+// admin overview can show "cron last ran 2 min ago" instead of guessing.
+
+export const systemHeartbeats = pgTable("system_heartbeats", {
+  key: text("key").primaryKey(),
+  lastSuccessAt: timestamp("last_success_at"),
+  lastErrorAt: timestamp("last_error_at"),
+  lastError: text("last_error"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
 // ─── Organiser Fee Dues ──────────────────────────────────────────────────────
 // Tracks platform fees owed to us when an organiser is paid directly by the
 // buyer (cash/bank transfer at the door, etc.) and we only issue the ticket —

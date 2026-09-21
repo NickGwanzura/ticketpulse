@@ -7,6 +7,7 @@ import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { log } from "@/lib/logger"
+import { HEARTBEAT_KEYS, recordHeartbeat } from "@/lib/heartbeat"
 import { alertCallbackOrderNotFound, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
   const providedSignature = req.headers.get("x-webhook-signature") ?? req.headers.get("x-api-key") ?? ""
   if (!providedSignature || !safeEqual(providedSignature, webhookSecret)) {
     log.warn("velocity callback - invalid webhook signature")
+    void recordHeartbeat(HEARTBEAT_KEYS.velocityWebhook, { ok: false, error: "Callback rejected: invalid signature" })
     alertPaymentAnomaly({
       type: "CALLBACK_INVALID_SIGNATURE",
       severity: "critical",
@@ -55,6 +57,9 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_payload", detail: parsed.error.flatten() }, { status: 400 })
   }
+
+  // A correctly signed, well-formed callback reached us: the webhook is configured and alive.
+  void recordHeartbeat(HEARTBEAT_KEYS.velocityWebhook, { ok: true })
 
   const { transactionTrace, salesOrderTrace } = parsed.data
   if (!isValidVelocityTrace(transactionTrace) || !isValidVelocityTrace(salesOrderTrace)) {

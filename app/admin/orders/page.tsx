@@ -17,7 +17,8 @@ import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
 import OrderActionsDropdown from "@/app/admin/_components/OrderActionsDropdown"
-import { desc, eq, or, like, and, sql, inArray } from "drizzle-orm"
+import { desc, eq, or, like, and, sql, inArray, gte } from "drizzle-orm"
+import { ORDER_ISSUE_LABEL, ORDER_ISSUE_WINDOW_DAYS, isOrderIssue, orderIssueCondition, orderIssueWindowStart } from "@/lib/order-issues"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -113,7 +114,7 @@ const LIMIT = 25
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>
+  searchParams: Promise<{ q?: string; status?: string; issue?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
@@ -123,6 +124,7 @@ export default async function AdminOrdersPage({
   const sp = await searchParams
   const query = sp.q?.trim() ?? ""
   const statusFilter = sp.status ?? "all"
+  const issueFilter = isOrderIssue(sp.issue) ? sp.issue : null
   const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
   const offset = (currentPage - 1) * LIMIT
   const exportParams = new URLSearchParams()
@@ -136,11 +138,13 @@ export default async function AdminOrdersPage({
   const conditions: ReturnType<typeof and>[] = []
 
   if (query) {
+    // Escape LIKE wildcards so searching for "%" or "_" matches literally.
+    const escaped = query.replace(/[\\%_]/g, "\\$&")
     conditions.push(
       or(
-        like(orders.guestEmail, `%${query}%`),
-        like(orders.guestName, `%${query}%`),
-        like(sql`${orders.id}::text`, `%${query}%`),
+        like(orders.guestEmail, `%${escaped}%`),
+        like(orders.guestName, `%${escaped}%`),
+        like(sql`${orders.id}::text`, `%${escaped}%`),
       ),
     )
   }
@@ -152,6 +156,9 @@ export default async function AdminOrdersPage({
   } else if (statusFilter !== "all") {
     conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "awaiting_verification" | "refunded" | "cancelled"))
   }
+
+  // Same definition + window the overview counts with, so the badge and these rows agree.
+  if (issueFilter) conditions.push(orderIssueCondition(issueFilter), gte(orders.createdAt, orderIssueWindowStart()))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
@@ -319,8 +326,14 @@ export default async function AdminOrdersPage({
           ))}
         </div>
 
-        {/* Search + filters */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 tp-fade-up-2">
+        {issueFilter && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+            <span>Showing only: <strong className="font-semibold">{ORDER_ISSUE_LABEL[issueFilter]}</strong> · last {ORDER_ISSUE_WINDOW_DAYS} days</span>
+            <Link href="/admin/orders" className="font-semibold underline underline-offset-2">Clear filter</Link>
+          </div>
+        )}
+
+        {/* Search + filters */}        <div className="flex flex-col md:flex-row md:items-center gap-3 tp-fade-up-2">
           <form
             method="GET"
             id="orders-search"
@@ -339,6 +352,9 @@ export default async function AdminOrdersPage({
             />
             {statusFilter !== "all" && (
               <input type="hidden" name="status" value={statusFilter} />
+            )}
+            {issueFilter && (
+              <input type="hidden" name="issue" value={issueFilter} />
             )}
           </form>
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -681,7 +697,7 @@ export default async function AdminOrdersPage({
               currentPage={currentPage}
               totalPages={totalPages}
               baseUrl="/admin/orders"
-              queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined }}
+              queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined, issue: issueFilter ?? undefined }}
             />
           )}
         </div>

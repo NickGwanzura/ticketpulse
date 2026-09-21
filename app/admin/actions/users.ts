@@ -1,10 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, isNull, sql } from "drizzle-orm"
 
 import { signIn } from "@/auth"
 import { requireAdmin } from "@/lib/auth-guard"
+import { recordAdminAction } from "@/lib/admin-audit"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
@@ -12,12 +13,18 @@ import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 import { generateOrderAccessUrl } from "@/lib/tickets"
 
 export async function verifyUserEmailAction(userId: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
+
+  const [target] = await db.select({ id: users.id, emailVerified: users.emailVerified }).from(users).where(eq(users.id, userId)).limit(1)
+  if (!target) throw new Error("User not found")
+  const verifiedAt = new Date()
 
   await db
     .update(users)
-    .set({ emailVerified: new Date() })
+    .set({ emailVerified: verifiedAt })
     .where(eq(users.id, userId))
+
+  await recordAdminAction(session, { action: "user.verify_email", targetType: "user", targetId: userId, before: { emailVerified: target.emailVerified }, after: { emailVerified: verifiedAt } })
 
   revalidatePath("/admin/users")
   revalidatePath("/admin")
@@ -28,17 +35,24 @@ export async function verifyUserEmailAction(userId: string) {
  * (admin accounts must be created via the database directly).
  */
 export async function updateUserRoleAction(userId: string, newRole: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
 
   const allowedRoles = ["attendee", "organizer", "vendor"] as const
   if (!allowedRoles.includes(newRole as typeof allowedRoles[number])) {
     throw new Error(`Invalid role: "${newRole}"`)
   }
 
+  const [target] = await db.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, userId)).limit(1)
+  if (!target) throw new Error("User not found")
+  // Admin accounts are managed in the database directly; this action must not be able to demote one.
+  if (target.role === "admin") throw new Error("Admin accounts cannot be changed here")
+
   await db
     .update(users)
     .set({ role: newRole as typeof users.$inferInsert.role, updatedAt: new Date() })
-    .where(eq(users.id, userId))
+    .where(and(eq(users.id, userId), target.role ? eq(users.role, target.role) : isNull(users.role)))
+
+  await recordAdminAction(session, { action: "user.role_change", targetType: "user", targetId: userId, before: { role: target.role }, after: { role: newRole } })
 
   revalidatePath("/admin/users")
   revalidatePath("/admin")
@@ -48,12 +62,18 @@ export async function updateUserRoleAction(userId: string, newRole: string) {
  * Unverify a user's email (set emailVerified to null).
  */
 export async function unverifyUserEmailAction(userId: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
+
+  const [target] = await db.select({ id: users.id, role: users.role, emailVerified: users.emailVerified }).from(users).where(eq(users.id, userId)).limit(1)
+  if (!target) throw new Error("User not found")
+  if (target.role === "admin") throw new Error("Admin accounts cannot be changed here")
 
   await db
     .update(users)
     .set({ emailVerified: null })
     .where(eq(users.id, userId))
+
+  await recordAdminAction(session, { action: "user.unverify_email", targetType: "user", targetId: userId, before: { emailVerified: target.emailVerified }, after: { emailVerified: null } })
 
   revalidatePath("/admin/users")
   revalidatePath("/admin")
@@ -193,7 +213,7 @@ export async function updateCommissionRateAction(userId: string, rate: number) {
  * Sets approvedAt to the current time. No-op if already approved.
  */
 export async function approveOrganizerAction(userId: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
 
   const [organizer] = await db
     .select({ email: users.email, name: users.name, role: users.role, approvedAt: users.approvedAt })
@@ -209,6 +229,10 @@ export async function approveOrganizerAction(userId: string) {
     .update(users)
     .set({ approvedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(users.id, userId), eq(users.role, "organizer")))
+
+  if (!organizer.approvedAt) {
+    await recordAdminAction(session, { action: "organizer.approve", targetType: "organizer", targetId: userId, before: { approvedAt: null }, after: { approvedAt: "now" } })
+  }
 
   // Send approval email (fire-and-forget — don't block the admin action)
   if (organizer?.email && !organizer.approvedAt) {
@@ -234,10 +258,10 @@ export async function approveOrganizerAction(userId: string) {
  * Reject/unapprove an organizer account (sets approvedAt to null).
  */
 export async function rejectOrganizerAction(userId: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
 
   const [organizer] = await db
-    .select({ email: users.email, name: users.name, role: users.role })
+    .select({ email: users.email, name: users.name, role: users.role, approvedAt: users.approvedAt })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
@@ -250,6 +274,8 @@ export async function rejectOrganizerAction(userId: string) {
     .update(users)
     .set({ approvedAt: null, updatedAt: new Date() })
     .where(and(eq(users.id, userId), eq(users.role, "organizer")))
+
+  await recordAdminAction(session, { action: "organizer.reject", targetType: "organizer", targetId: userId, before: { approved: organizer.approvedAt != null }, after: { approved: false } })
 
   if (organizer?.email) {
     const { sendEmail } = await import("@/lib/email")
@@ -276,7 +302,7 @@ export async function rejectOrganizerAction(userId: string) {
  * an email or notification. Admins can reverse it with unfreezeOrganizerAction.
  */
 export async function freezeOrganizerWithoutEventsAction(userId: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
 
   const [organizer] = await db
     .select({
@@ -304,18 +330,26 @@ export async function freezeOrganizerWithoutEventsAction(userId: string) {
     })
     .where(eq(users.id, userId))
 
+  await recordAdminAction(session, { action: "organizer.freeze", targetType: "organizer", targetId: userId, before: { frozen: false }, after: { frozen: true }, reason: "Frozen by admin: no event created" })
+
   revalidatePath("/admin/organizers")
   revalidatePath("/admin/users")
 }
 
 /** Reverse an organiser freeze without changing approval state. */
 export async function unfreezeOrganizerAction(userId: string) {
-  await requireAdmin()
+  const session = await requireAdmin()
+
+  const [target] = await db.select({ role: users.role, frozenAt: users.organizerFrozenAt }).from(users).where(eq(users.id, userId)).limit(1)
+  if (!target || target.role !== "organizer") throw new Error("Organizer not found")
+  if (!target.frozenAt) return
 
   await db
     .update(users)
     .set({ organizerFrozenAt: null, organizerFreezeReason: null, updatedAt: new Date() })
-    .where(eq(users.id, userId))
+    .where(and(eq(users.id, userId), eq(users.role, "organizer")))
+
+  await recordAdminAction(session, { action: "organizer.unfreeze", targetType: "organizer", targetId: userId, before: { frozen: true }, after: { frozen: false } })
 
   revalidatePath("/admin/organizers")
   revalidatePath("/admin/users")

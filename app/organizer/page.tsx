@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { ORDER_ISSUES, orderIssueCondition } from "@/lib/order-issues"
 import { eq, desc, or, inArray, notInArray, sql, and } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
@@ -213,22 +214,20 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     )
   }
 
-  const invitedEventIds = isAdmin ? [] : await db
-    .select({ eventId: eventOrganisers.eventId })
-    .from(eventOrganisers).where(eq(eventOrganisers.userId, session.user.id))
+  // Independent lookups run together (this used to be three sequential round-trips).
+  const isOrganizerRole = !isAdmin && session.user.role === "organizer"
+  const [invitedEventIds, [profile]] = await Promise.all([
+    isAdmin
+      ? Promise.resolve([] as { eventId: string }[])
+      : db.select({ eventId: eventOrganisers.eventId }).from(eventOrganisers).where(eq(eventOrganisers.userId, session.user.id)),
+    isOrganizerRole
+      ? db.select({ phone: users.phone }).from(users).where(eq(users.id, session.user.id)).limit(1)
+      : Promise.resolve([] as { phone: string | null }[]),
+  ])
 
   if (!isAdmin && session.user.role !== "organizer" && invitedEventIds.length === 0) redirect("/dashboard")
-
-  if (!isAdmin && session.user.role === "organizer") {
-    const [profile] = await db
-      .select({ phone: users.phone })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .limit(1)
-
-    if (!hasValidWhatsappContact(profile?.phone)) {
-      redirect("/organizer/onboarding?step=2&error=whatsapp_required")
-    }
+  if (isOrganizerRole && !hasValidWhatsappContact(profile?.phone)) {
+    redirect("/organizer/onboarding?step=2&error=whatsapp_required")
   }
 
   const sp = await searchParams
@@ -239,13 +238,22 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     : ownedIds.length > 0 ? or(eq(events.organizerId, session.user.id), inArray(events.id, ownedIds))
     : eq(events.organizerId, session.user.id)
 
-  const rawEvents = await db
-    .select({ id: events.id, slug: events.slug, title: events.title, category: events.category, venue: events.venue, city: events.city, startsAt: events.startsAt, endsAt: events.endsAt, status: events.status })
-    .from(events).where(whereClause).orderBy(desc(events.startsAt)).limit(50)
+  // Enough headroom that real organizers never lose events from the counters and
+  // totals. The true total is counted so the page can say when it is truncated,
+  // instead of silently dropping everything past the first 50.
+  const EVENT_SCAN_LIMIT = 200
+  const [rawEvents, [eventTotalRow]] = await Promise.all([
+    db
+      .select({ id: events.id, slug: events.slug, title: events.title, category: events.category, venue: events.venue, city: events.city, startsAt: events.startsAt, endsAt: events.endsAt, status: events.status })
+      .from(events).where(whereClause).orderBy(desc(events.startsAt)).limit(EVENT_SCAN_LIMIT),
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(whereClause),
+  ])
+  const eventTotal = eventTotalRow?.count ?? rawEvents.length
+  const eventsTruncated = eventTotal > rawEvents.length
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueRows] = await Promise.all([
+  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueCounts] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency, salesEnd: ticketTiers.salesEnd }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     // Canonical per-event revenue — same maths as payout balances and admin pages.
     getEventRevenueSummaries(eventIds),
@@ -254,37 +262,17 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, checkedIn: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]), sql`scanned_at IS NOT NULL`)).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
-    eventIds.length > 0 ? db.execute(sql`
-      WITH organizer_orders AS (
-        SELECT o.id, o.metadata
-        FROM orders o
-        WHERE o.event_id IN (${sql.join(eventIds.map((eventId) => sql`${eventId}`), sql`, `)})
-          AND o.status IN ('paid', 'completed')
-      ),
-      ticket_counts AS (
-        SELECT order_id, COUNT(*)::int AS ticket_count
-        FROM tickets
-        WHERE order_id IN (SELECT id FROM organizer_orders)
-          AND is_staff_ticket = false
-          AND status NOT IN ('cancelled', 'refunded')
-        GROUP BY order_id
-      ),
-      ledger_counts AS (
-        SELECT order_id, COUNT(*)::int AS ledger_count
-        FROM payment_ledger
-        WHERE order_id IN (SELECT id FROM organizer_orders)
-        GROUP BY order_id
-      )
-      SELECT
-        COUNT(*) FILTER (WHERE COALESCE(tc.ticket_count, 0) = 0)::int AS paid_no_tickets,
-        COUNT(*) FILTER (WHERE COALESCE(lc.ledger_count, 0) > 1)::int AS duplicate_ledgers,
-        COUNT(*) FILTER (
-          WHERE COALESCE(organizer_orders.metadata->'delivery'->>'status', '') IN ('FAILED', 'EMAIL_FAILED')
-        )::int AS delivery_attention
-      FROM organizer_orders
-      LEFT JOIN ticket_counts tc ON tc.order_id = organizer_orders.id
-      LEFT JOIN ledger_counts lc ON lc.order_id = organizer_orders.id
-    `) : Promise.resolve({ rows: [] }),
+    // Shared issue definitions (lib/order-issues): each count is exactly the row set its alert opens.
+    eventIds.length > 0
+      ? Promise.all(ORDER_ISSUES.map((issue) =>
+          db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(and(inArray(orders.eventId, eventIds), orderIssueCondition(issue))),
+        )).then(([noTickets, delivery, duplicate]) => ({
+          paid_no_tickets: noTickets[0]?.count ?? 0,
+          delivery_failed: delivery[0]?.count ?? 0,
+          duplicate_ledger: duplicate[0]?.count ?? 0,
+        }))
+      : Promise.resolve({ paid_no_tickets: 0, delivery_failed: 0, duplicate_ledger: 0 }),
+
   ])
 
   // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
@@ -343,14 +331,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const hasTiers = allTiers.length > 0
   const hasPublished = EVENTS.some(e => e.status === "published")
   const hasSales = totalSold > 0
-  const orderIssues = (issueRows.rows?.[0] ?? {}) as { paid_no_tickets?: number; duplicate_ledgers?: number; delivery_attention?: number }
-  const paidNoTickets = Number(orderIssues.paid_no_tickets ?? 0)
-  const duplicateLedgers = Number(orderIssues.duplicate_ledgers ?? 0)
-  const deliveryAttention = Number(orderIssues.delivery_attention ?? 0)
-  const lowInventoryCount = EVENTS.filter((e) => e.status === "published" && e.capacity > 0 && e.capacity - e.sold <= 10 && e.capacity - e.sold > 0).length
-  const closedSalesCount = EVENTS.filter((e) => e.status === "published" && e.salesEnded).length
-  const missingTierCount = EVENTS.filter((e) => !e.hasTiers).length
-  const missingTierEvent = EVENTS.find(e => !e.hasTiers)
+  const paidNoTickets = issueCounts.paid_no_tickets
+  const duplicateLedgers = issueCounts.duplicate_ledger
+  const deliveryAttention = issueCounts.delivery_failed
+  const lowInventoryCount = EVENTS.filter((e) => e.status === "published" && e.capacity > 0 && e.capacity - e.sold <= 10 && e.capacity - e.sold > 0 && !e.isPast).length
+  const closedSalesEvent = EVENTS.find((e) => e.status === "published" && !e.isPast && e.salesEnded)
+  const closedSalesCount = EVENTS.filter((e) => e.status === "published" && !e.isPast && e.salesEnded).length
+  const missingTierCount = EVENTS.filter((e) => !e.hasTiers && !e.isPast).length
+  const missingTierEvent = EVENTS.find(e => !e.hasTiers && !e.isPast)
   const checkinWindowCutoff = now + 24 * 60 * 60 * 1000
   const lowCheckinEvent = EVENTS.find((e) => {
     const activeWindow = e.status === "published" && !e.isPast && e.startsAt.getTime() <= checkinWindowCutoff
@@ -360,10 +348,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const needsAttention = [
     { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
     { label: "Missing tiers", value: missingTierCount, href: missingTierEvent ? `/organizer/events/${missingTierEvent.id}/tiers` : "/organizer/events/new", icon: Ticket, tone: "rose" },
-    { label: "Paid, no tickets", value: paidNoTickets, href: "/organizer/orders", icon: AlertCircle, tone: "rose" },
-    { label: "Delivery issues", value: deliveryAttention, href: "/organizer/orders", icon: Mail, tone: "amber" },
-    { label: "Payment warnings", value: duplicateLedgers, href: "/organizer/orders", icon: Zap, tone: "amber" },
-    { label: "Sales closed", value: closedSalesCount, href: "/organizer", icon: AlertCircle, tone: "rose" },
+    { label: "Paid, no tickets", value: paidNoTickets, href: "/organizer/orders?issue=paid_no_tickets", icon: AlertCircle, tone: "rose" },
+    { label: "Delivery issues", value: deliveryAttention, href: "/organizer/orders?issue=delivery_failed", icon: Mail, tone: "amber" },
+    { label: "Payment warnings", value: duplicateLedgers, href: "/organizer/orders?issue=duplicate_ledger", icon: Zap, tone: "amber" },
+    { label: "Sales closed", value: closedSalesCount, href: closedSalesEvent ? `/organizer/events/${closedSalesEvent.id}/tiers` : "/organizer/events", icon: AlertCircle, tone: "rose" },
     { label: "Low inventory", value: lowInventoryCount, href: "/organizer?filter=live", icon: Ticket, tone: "amber" },
     { label: "Payout available", value: availableBalance > 0 ? 1 : 0, href: "/payouts/request", icon: Wallet, tone: "green", amount: availableBalance },
     ...(lowCheckinEvent ? [{
@@ -416,6 +404,21 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           )}
         </Link>
 
+        {eventsTruncated && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+            <span>Showing your {rawEvents.length} most recent of {eventTotal} events. Counts and totals below cover only these.</span>
+            <Link href="/organizer/events" className="font-semibold underline underline-offset-2">See all events</Link>
+          </div>
+        )}
+        {new Set(EVENTS.map((e) => e.currency)).size > 1 && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12.5px] text-amber-800">
+            Your events use more than one currency ({[...new Set(EVENTS.map((e) => e.currency))].join(", ")}). Totals here add the amounts together without converting, so read them per event.
+          </p>
+        )}        {!isAdmin && ownedIds.length > 0 && (
+          <p className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-[12.5px] text-ink-2">
+            Events shared with you are included in attendance and alerts. Earnings and payouts cover only events you own.
+          </p>
+        )}
         {/* Checklist for new organizers */}
         <NewOrganizerChecklist
           hasEvents={hasEvents}

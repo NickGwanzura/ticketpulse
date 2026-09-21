@@ -14,6 +14,7 @@ import type { VelocityOrderMetadata } from "@/types/velocity"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
+import { ORDER_ISSUE_LABEL, isOrderIssue, orderIssueCondition } from "@/lib/order-issues"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 import CompleteButton from "@/app/admin/_components/CompleteButton"
@@ -94,10 +95,12 @@ function getDeliveryBadge(meta: Record<string, unknown> | null) {
 
 const LIMIT = 25
 
+
+
 export default async function OrganizerOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>
+  searchParams: Promise<{ q?: string; status?: string; issue?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer/orders")
@@ -147,6 +150,8 @@ export default async function OrganizerOrdersPage({
   const sp = await searchParams
   const query = sp.q?.trim() ?? ""
   const statusFilter = sp.status ?? "all"
+  // Same definitions as the dashboard "needs attention" counters, so a count and the rows it opens always agree.
+  const issueFilter = isOrderIssue(sp.issue) ? sp.issue : null
   const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
   const offset = (currentPage - 1) * LIMIT
   const exportParams = new URLSearchParams()
@@ -172,6 +177,8 @@ export default async function OrganizerOrdersPage({
   if (statusFilter !== "all") {
     conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "completed" | "cancelled" | "refunded" | "expired"))
   }
+
+  if (issueFilter) conditions.push(orderIssueCondition(issueFilter))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
@@ -218,6 +225,13 @@ export default async function OrganizerOrdersPage({
       />
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-10 space-y-6">
+        {issueFilter && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+            <span>Showing only: <strong className="font-semibold">{ORDER_ISSUE_LABEL[issueFilter]}</strong> ({totalCount})</span>
+            <Link href="/organizer/orders" className="font-semibold underline underline-offset-2">Clear filter</Link>
+          </div>
+        )}
+
         {/* Search + filters */}
         <div className="flex flex-col md:flex-row md:items-center gap-3 tp-fade-up-2">
           <form
@@ -238,6 +252,9 @@ export default async function OrganizerOrdersPage({
             />
             {statusFilter !== "all" && (
               <input type="hidden" name="status" value={statusFilter} />
+            )}
+            {issueFilter && (
+              <input type="hidden" name="issue" value={issueFilter} />
             )}
           </form>
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -494,7 +511,7 @@ export default async function OrganizerOrdersPage({
             currentPage={currentPage}
             totalPages={totalPages}
             baseUrl="/organizer/orders"
-            queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined }}
+            queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined, issue: issueFilter ?? undefined }}
           />
         )}
       </div>

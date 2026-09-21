@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
+import { HEARTBEAT_KEYS, recordHeartbeat } from "@/lib/heartbeat"
 
 async function invokeCronChild(base: string, path: string, headers: Record<string, string>) {
   const response = await fetch(`${base}${path}`, { method: "POST", headers })
@@ -99,6 +100,15 @@ export async function POST(request: Request) {
     log.error("cron/tick — reconciliation-digest failed", { error: String(err) })
     results.reconciliationDigest = { error: String(err) }
   }
+
+  // Heartbeats: the tick itself always counts as alive (the scheduler reached us);
+  // each child job is recorded separately so one flaky job does not make the
+  // scheduler look dead on the admin overview.
+  await recordHeartbeat(HEARTBEAT_KEYS.cronTick, { ok: true })
+  await Promise.all(Object.entries(results).map(([job, value]) => {
+    const failure = value && typeof value === "object" && "error" in value ? String((value as { error: unknown }).error) : null
+    return recordHeartbeat(`cron.${job}`, failure ? { ok: false, error: failure } : { ok: true })
+  }))
 
   log.info("cron/tick — complete", results)
   return NextResponse.json({ ok: true, ...results })

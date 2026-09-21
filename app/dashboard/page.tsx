@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { eq, count, gte, lt, desc, and, sql } from "drizzle-orm"
+import { eq, count, gte, lt, desc, and, sql, inArray, notInArray } from "drizzle-orm"
 import {
   Calendar, Ticket, ArrowUpRight, QrCode,
   MapPin, Clock, ShoppingBag,
@@ -21,18 +21,21 @@ export default async function DashboardPage() {
   const attendeeName = session.user.name ?? "there"
   const firstName = attendeeName.split(" ")[0]
   const now = new Date()
+  // Only tickets that are still valid, on orders that are confirmed. "completed" is a
+  // confirmed state too (manually verified payments), so it must count like "paid".
+  const liveTicket = notInArray(tickets.status, ["cancelled", "refunded"])
 
   // Upcoming + past events the attendee has tickets for
   const [upcomingResult, pastResult, totalTicketsResult, recentOrders, upcomingEvents] = await Promise.all([
     db.select({ count: count(sql`DISTINCT ${events.id}`) })
       .from(tickets).innerJoin(events, eq(events.id, tickets.eventId))
-      .where(and(eq(tickets.userId, userId), gte(events.startsAt, now))),
+      .where(and(eq(tickets.userId, userId), liveTicket, gte(events.startsAt, now))),
 
     db.select({ count: count(sql`DISTINCT ${events.id}`) })
       .from(tickets).innerJoin(events, eq(events.id, tickets.eventId))
-      .where(and(eq(tickets.userId, userId), lt(events.startsAt, now))),
+      .where(and(eq(tickets.userId, userId), liveTicket, lt(events.startsAt, now))),
 
-    db.select({ count: count() }).from(tickets).where(eq(tickets.userId, userId)),
+    db.select({ count: count() }).from(tickets).where(and(eq(tickets.userId, userId), liveTicket)),
 
     db.select({
       id: orders.id,
@@ -55,7 +58,7 @@ export default async function DashboardPage() {
     }).from(tickets)
       .innerJoin(orders, eq(orders.id, tickets.orderId))
       .innerJoin(events, eq(events.id, tickets.eventId))
-      .where(and(eq(tickets.userId, userId), gte(events.startsAt, now), eq(orders.status, "paid")))
+      .where(and(eq(tickets.userId, userId), liveTicket, gte(events.startsAt, now), inArray(orders.status, ["paid", "completed"])))
       .orderBy(events.startsAt).limit(3),
   ])
 

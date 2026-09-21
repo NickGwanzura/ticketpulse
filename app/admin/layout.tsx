@@ -18,13 +18,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const name = session.user.name ?? "Admin"
   const email = session.user.email ?? ""
 
-  const [[pendingEventsRow], [pendingVendorsRow], [pendingOrganizersRow]] = await Promise.all([
+  // These badges render on every admin page. If the count queries fail, show the
+  // pages without badges instead of taking the whole admin section down.
+  const counts = await Promise.all([
     db.select({ count: sql<number>`COUNT(*)::int` }).from(events).where(eq(events.status, "pending_review")),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(vendors).where(eq(vendors.verified, false)),
     db.select({ count: sql<number>`COUNT(*)::int` })
       .from(users)
       .where(and(eq(users.role, "organizer"), isNull(users.approvedAt))),
-  ])
+  ]).catch((error) => {
+    console.error("[admin] layout badge counts failed", error)
+    return null
+  })
+  const [[pendingEventsRow], [pendingVendorsRow], [pendingOrganizersRow]] = counts ?? [[], [], []]
 
   return (
     <div className="lg:flex lg:items-start">
