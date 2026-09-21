@@ -29,9 +29,12 @@ export type PlatformAnalyticsOrder = {
 export async function getPlatformAnalyticsOrders({
   since,
   until = new Date(),
+  currency = "USD",
 }: {
   since: Date
   until?: Date
+  /** Only orders in this currency are returned; amounts are never converted. */
+  currency?: string
 }): Promise<PlatformAnalyticsOrder[]> {
   const directMethods = [...DIRECT_PAYMENT_METHODS, "complimentary"]
   const result = await db.execute(sql`
@@ -62,6 +65,7 @@ export async function getPlatformAnalyticsOrders({
       WHERE o.status IN ('paid', 'completed')
         AND oi.type = 'ticket'
         AND oi.quantity > 0
+        AND COALESCE(o.currency, 'USD') = ${currency}
         AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join(directMethods.map((method) => sql`${method}`), sql`, `)}))
         AND (
           (o.paid_at >= ${since} AND o.paid_at < ${until})
@@ -105,4 +109,60 @@ export async function getPlatformAnalyticsOrders({
     grossRevenue: Number(row.gross_revenue ?? 0),
     issuedTickets: Number(row.issued_tickets ?? 0),
   }))
+}
+
+/**
+ * Ticket value on refunded orders created in the window, on the same basis as
+ * getPlatformAnalyticsOrders: single currency, ticket items only, and direct or
+ * complimentary sales excluded. Refunded orders are not in the gross figure, so
+ * refund rate = refunded / (gross + refunded).
+ */
+export async function getPlatformRefundedValue({
+  since,
+  until = new Date(),
+  currency = "USD",
+}: {
+  since: Date
+  until?: Date
+  currency?: string
+}): Promise<number> {
+  const directMethods = [...DIRECT_PAYMENT_METHODS, "complimentary"]
+  const result = await db.execute(sql`
+    SELECT COALESCE(SUM(oi.total), 0)::numeric AS total
+    FROM order_items oi
+    INNER JOIN orders o ON o.id = oi.order_id
+    WHERE o.status = 'refunded'
+      AND oi.type = 'ticket'
+      AND COALESCE(o.currency, 'USD') = ${currency}
+      AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join(directMethods.map((method) => sql`${method}`), sql`, `)}))
+      AND o.created_at >= ${since}
+      AND o.created_at < ${until}
+  `)
+  return Number((result.rows[0] as Record<string, unknown> | undefined)?.total ?? 0)
+}
+
+/**
+ * Confirmed orders in the window that analytics leaves out because they are not
+ * in `currency`. Lets the UI say so instead of silently under-reporting.
+ */
+export async function countExcludedCurrencyOrders({
+  since,
+  until = new Date(),
+  currency = "USD",
+}: {
+  since: Date
+  until?: Date
+  currency?: string
+}): Promise<number> {
+  const result = await db.execute(sql`
+    SELECT COUNT(*)::int AS count
+    FROM orders o
+    WHERE o.status IN ('paid', 'completed')
+      AND COALESCE(o.currency, 'USD') <> ${currency}
+      AND (
+        (o.paid_at >= ${since} AND o.paid_at < ${until})
+        OR (o.completed_at >= ${since} AND o.completed_at < ${until})
+      )
+  `)
+  return Number((result.rows[0] as Record<string, unknown> | undefined)?.count ?? 0)
 }

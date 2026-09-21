@@ -654,13 +654,18 @@ export async function POST(req: Request) {
   // ── Idempotency: resume an existing in-progress order if one exists ──────────
   // Handles retries, double-clicks, and page-refresh re-submissions without
   // creating duplicate orders or surfacing a confusing error to the user.
+  // An order is only resumable when it is the same payment attempt: same method,
+  // amount and currency, and — for EcoCash — the same debit phone. Otherwise a
+  // buyer who corrects a mistyped number would be handed the old transaction and
+  // never receive a new USSD prompt on the right phone.
   async function findResumableOrder() {
-    const [existing] = await db
+    const candidates = await db
       .select({
         id: orders.id,
         paymentMethod: orders.paymentMethod,
         totalAmount: orders.totalAmount,
         currency: orders.currency,
+        guestPhone: orders.guestPhone,
         metadata: orders.metadata,
       })
       .from(orders)
@@ -675,8 +680,19 @@ export async function POST(req: Request) {
         ),
       )
       .orderBy(desc(orders.createdAt))
-      .limit(1)
-    return existing ?? null
+      .limit(10)
+
+    const requestedPhone = formatPhone(parsed.phone ?? "")
+    const match = candidates.find((o) => {
+      if (o.paymentMethod !== parsed.paymentMethod) return false
+      if (o.currency !== currency) return false
+      if (Math.abs(Number(o.totalAmount) - total) >= 0.005) return false
+      if (parsed.paymentMethod === "velocity-ecocash" && formatPhone(o.guestPhone ?? "") !== requestedPhone) {
+        return false
+      }
+      return true
+    })
+    return match ?? null
   }
 
   const resumable = await findResumableOrder()

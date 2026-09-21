@@ -3,15 +3,19 @@ import Link from "next/link"
 import {
   ArrowUpRight, ArrowDownRight, MapPin, CreditCard, TrendingUp, BarChart2, Users, PieChart,
 } from "lucide-react"
-import { eq, sql, and, gte, lt } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events, users } from "@/db/schema"
+import { events, users } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency } from "@/lib/utils"
-import { getPlatformAnalyticsOrders } from "@/lib/platform-analytics"
+import {
+  countExcludedCurrencyOrders,
+  getPlatformAnalyticsOrders,
+  getPlatformRefundedValue,
+} from "@/lib/platform-analytics"
 import AiNarrativeSummary from "@/components/ai/AiNarrativeSummary"
 
 const PERIODS = [
@@ -50,9 +54,14 @@ export default async function AdminAnalyticsPage({
   // ── Canonical confirmed revenue and issued tickets ─────────────────────
   // Keep analytics on the same issued-ticket, direct-sale and payout rules as
   // organizer balances and reconciliation.
-  const [currentOrders, previousOrders] = await Promise.all([
+  // Amounts are never converted: everything below is USD-only, and orders in
+  // other currencies are counted separately so the page can say they're excluded.
+  const [currentOrders, previousOrders, refundedAmount, prevRefunded, excludedCurrencyOrders] = await Promise.all([
     getPlatformAnalyticsOrders({ since }),
     getPlatformAnalyticsOrders({ since: previousSince, until: previousEnd }),
+    getPlatformRefundedValue({ since }),
+    getPlatformRefundedValue({ since: previousSince, until: previousEnd }),
+    countExcludedCurrencyOrders({ since }),
   ])
 
   const currentRevenue = currentOrders.reduce((sum, order) => sum + order.grossRevenue, 0)
@@ -65,29 +74,13 @@ export default async function AdminAnalyticsPage({
   const prevTickets = previousOrders.reduce((sum, order) => sum + order.issuedTickets, 0)
   const ticketsDelta = prevTickets > 0 ? ((ticketsSold - prevTickets) / prevTickets) * 100 : 0
 
-  // ── Refunded amount this period ─────────────────────────────────────────
-  const [refundedRow] = await db
-    .select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-    .from(orders)
-    .where(and(eq(orders.status, "refunded"), gte(orders.createdAt, since)))
-
-  const refundedAmount = Number(refundedRow?.total ?? 0)
-  const refundRate = currentRevenue > 0 ? (refundedAmount / currentRevenue) * 100 : 0
-
-  // Previous period refunds
-  const [prevRefundedRow] = await db
-    .select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.status, "refunded"),
-        gte(orders.createdAt, previousSince),
-        lt(orders.createdAt, previousEnd),
-      ),
-    )
-
-  const prevRefunded = Number(prevRefundedRow?.total ?? 0)
-  const prevRefundRate = prevRevenue > 0 ? (prevRefunded / prevRevenue) * 100 : 0
+  // ── Refund rate ─────────────────────────────────────────────────────────
+  // Refunded orders are excluded from gross revenue, so the base is confirmed
+  // plus refunded ticket value.
+  const refundBase = currentRevenue + refundedAmount
+  const refundRate = refundBase > 0 ? (refundedAmount / refundBase) * 100 : 0
+  const prevRefundBase = prevRevenue + prevRefunded
+  const prevRefundRate = prevRefundBase > 0 ? (prevRefunded / prevRefundBase) * 100 : 0
   const refundDelta = refundRate - prevRefundRate
 
   // ── Avg order value ─────────────────────────────────────────────────────
@@ -233,6 +226,14 @@ export default async function AdminAnalyticsPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
+        {excludedCurrencyOrders > 0 && (
+          <p className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-[12px] text-ink-2">
+            Figures are USD only. {excludedCurrencyOrders.toLocaleString()} confirmed{" "}
+            {excludedCurrencyOrders === 1 ? "order" : "orders"} in another currency in this period{" "}
+            {excludedCurrencyOrders === 1 ? "is" : "are"} not included, as no exchange rate is applied.
+          </p>
+        )}
+
         {/* Revenue chart card */}
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 px-5 md:px-6 pt-5 pb-4 border-b border-line">
@@ -275,13 +276,13 @@ export default async function AdminAnalyticsPage({
             <div className="px-3 md:px-4 pt-4 pb-3">
               <svg
                 viewBox={`0 0 ${revenueOverTime.length * 20} 80`}
-                className="w-full h-20"
+                className="w-full h-20 text-navy"
                 preserveAspectRatio="none"
               >
                 <defs>
                   <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgb(10 37 64)" stopOpacity={0.12} />
-                    <stop offset="100%" stopColor="rgb(10 37 64)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="currentColor" stopOpacity={0.14} />
+                    <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 {(() => {
@@ -297,7 +298,7 @@ export default async function AdminAnalyticsPage({
                   return (
                     <>
                       <path d={area} fill="url(#revFill)" />
-                      <path d={line} fill="none" stroke="rgb(10 37 64)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d={line} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </>
                   )
                 })()}
@@ -340,7 +341,7 @@ export default async function AdminAnalyticsPage({
             <div>
               <h2 className="text-[15px] font-semibold tracking-tight text-ink">Sales mix by category</h2>
               <p className="text-[12px] text-ink-3 mt-0.5">
-                Last {period}, all currencies normalised to USD
+                Last {period}, USD orders only
               </p>
             </div>
             <TrendingUp size={15} className="text-ink-3" />
@@ -392,7 +393,7 @@ export default async function AdminAnalyticsPage({
               <h3 className="text-[14px] font-semibold tracking-tight text-ink">Top organizers</h3>
             </div>
             {ORGANIZERS.length > 0 ? (
-              <table className="w-full">
+              <div className="overflow-x-auto"><table className="w-full min-w-[460px]">
                 <thead>
                   <tr className="text-[11px] font-semibold tracking-widest text-ink-3 uppercase border-b border-line">
                     <th className="text-left px-5 py-2.5 font-semibold">Organizer</th>
@@ -411,7 +412,7 @@ export default async function AdminAnalyticsPage({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             ) : (
               <EmptyState
                 icon={Users}
