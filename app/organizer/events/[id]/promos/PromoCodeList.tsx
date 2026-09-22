@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useState } from "react"
 import { Tag, ToggleLeft, ToggleRight, Trash2, Calendar, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { togglePromoCodeAction, deletePromoCodeAction } from "./actions"
@@ -39,7 +39,10 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
     undefined,
   )
 
-  const isExpired = code.expiresAt && new Date(code.expiresAt) < new Date()
+  const [isExpired, setIsExpired] = useState(false)
+  useEffect(() => {
+    setIsExpired(Boolean(code.expiresAt && new Date(code.expiresAt) < new Date()))
+  }, [code.expiresAt])
   const isMaxed = code.maxUses > 0 && code.usedCount >= code.maxUses
   const isInactive = !code.active || isExpired || isMaxed
 
@@ -101,7 +104,7 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
               {code.expiresAt && (
                 <span className="inline-flex items-center gap-1">
                   <Calendar size={12} />
-                  Expires {new Date(code.expiresAt).toLocaleDateString()}
+                  Expires {new Date(code.expiresAt).toLocaleDateString("en-ZW", { timeZone: "Africa/Harare" })}
                 </span>
               )}
             </div>

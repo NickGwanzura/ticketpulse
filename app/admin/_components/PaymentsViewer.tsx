@@ -109,7 +109,7 @@ type ToastItem = {
 export default function PaymentsViewer({ initialData }: Props) {
   const onFirstPage = initialData.page === 1
   const [data, setData] = useState<PaymentsApiResponse>(initialData)
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
   // Live polling only makes sense while viewing the newest page — pause it
   // automatically on historical pages so it doesn't clobber what's on screen.
   const [isLive, setIsLive] = useState(onFirstPage)
@@ -175,7 +175,7 @@ export default function PaymentsViewer({ initialData }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-[12px] text-ink-3 tabular-nums">
-            {lastRefreshed.toLocaleTimeString()}
+            {lastRefreshed ? lastRefreshed.toLocaleTimeString() : "—"}
           </span>
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold ${isLive ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />

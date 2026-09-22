@@ -174,8 +174,8 @@ function getPollCounts(data: VelocityApiResponse) {
 
 export default function VelocityViewer({ initialData }: Props) {
   const [data, setData] = useState<VelocityApiResponse>(initialData)
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
-  const [currentTime, setCurrentTime] = useState(() => lastRefreshed.getTime())
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+  const [currentTime, setCurrentTime] = useState(0)
   const [isLive, setIsLive] = useState(true)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -352,7 +352,7 @@ export default function VelocityViewer({ initialData }: Props) {
   }
 
   const secondsSinceRefresh = Math.floor(
-    (currentTime - lastRefreshed.getTime()) / 1000,
+    lastRefreshed ? (currentTime - lastRefreshed.getTime()) / 1000 : 0,
   )
 
   return (

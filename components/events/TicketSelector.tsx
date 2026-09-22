@@ -65,10 +65,13 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
   const { addItem } = useCart()
   const [qtys, setQtys] = useState<Record<string, number>>({})
   const [added, setAdded] = useState(false)
-  const [now, setNow] = useState(() => new Date())
+  // Keep the first render identical on the server and client. The live clock
+  // starts after hydration so an early-bird boundary cannot cause a mismatch.
+  const [now, setNow] = useState<Date | null>(null)
 
   // Refresh clock for early bird expiry checks
   useEffect(() => {
+    setNow(new Date())
     const hasEarlyBird = tiers.some((t) => t.earlyBirdPrice && t.earlyBirdUntil)
     if (!hasEarlyBird) return
     const id = setInterval(() => setNow(new Date()), 10_000)
@@ -82,7 +85,7 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
     const map: Record<string, EffectivePrice & { qty: number }> = {}
     for (const tier of tiers) {
       const qty = qtys[tier.id] ?? 0
-      map[tier.id] = { ...computeEffectivePrice(tier, qty, now), qty }
+      map[tier.id] = { ...computeEffectivePrice(tier, qty, now ?? new Date(0)), qty }
     }
     return map
   }, [tiers, qtys, now])

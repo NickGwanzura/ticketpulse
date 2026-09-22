@@ -26,9 +26,9 @@ type Tier = {
 function formatWindow(start: Date | null, end: Date | null): string | null {
   if (!start && !end) return null
   const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
+    d.toLocaleDateString("en-ZW", { day: "numeric", month: "short", timeZone: "Africa/Harare" }) +
     ", " +
-    d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    d.toLocaleTimeString("en-ZW", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Harare" })
   if (start && end) return `${fmt(start)} → ${fmt(end)}`
   if (start) return `From ${fmt(start)}`
   return `Until ${fmt(end!)}`
