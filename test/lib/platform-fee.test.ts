@@ -9,18 +9,18 @@ import {
 } from "@/lib/platform-fee"
 
 describe("platform fee calculations", () => {
-  it("uses a 5% default and supports event-specific rates", () => {
-    expect(PLATFORM_FEE_PERCENT).toBe(5)
-    expect(PLATFORM_FEE_RATE).toBe(0.05)
-    expect(normalizePlatformFeePercent("6.00")).toBe(6)
+  it("uses a 6% default and supports event-specific rates", () => {
+    expect(PLATFORM_FEE_PERCENT).toBe(6)
+    expect(PLATFORM_FEE_RATE).toBe(0.06)
+    expect(normalizePlatformFeePercent("5.00")).toBe(5)
   })
 
   it.each([
-    { gross: 1, fee: 0.05, net: 0.95 },
-    { gross: 10, fee: 0.5, net: 9.5 },
-    { gross: 99.99, fee: 5, net: 94.99 },
-    { gross: 100, fee: 5, net: 95 },
-  ])("deducts the default 5% from $gross", ({ gross, fee, net }) => {
+    { gross: 1, fee: 0.06, net: 0.94 },
+    { gross: 10, fee: 0.6, net: 9.4 },
+    { gross: 99.99, fee: 6, net: 93.99 },
+    { gross: 100, fee: 6, net: 94 },
+  ])("deducts the default 6% from $gross", ({ gross, fee, net }) => {
     expect(calculatePlatformFee(gross)).toBe(fee)
     expect(calculateOrganizerNet(gross)).toBe(net)
   })

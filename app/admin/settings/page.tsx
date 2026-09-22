@@ -87,7 +87,7 @@ export default async function AdminSettingsPage() {
                   required
                   className="w-full cursor-not-allowed rounded-xl border border-line bg-paper-2 px-3.5 py-2.5 text-[14px] text-ink-2"
                 />
-                <p id="platformFeeHelp" className="mt-1.5 text-[11px] text-ink-3">Fixed system-wide at 5% per ticket sold.</p>
+                <p id="platformFeeHelp" className="mt-1.5 text-[11px] text-ink-3">Fixed system-wide at 6% per ticket sold.</p>
               </div>
             </div>
 

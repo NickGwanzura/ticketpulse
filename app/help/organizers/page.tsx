@@ -49,7 +49,7 @@ const PRICING_PERKS = [
   {
     icon: Percent,
     title: "Clear fee per ticket sold",
-    body: "TicketPulse applies the fee shown for each event, with 5% as the standard rate. No monthly fees, no setup costs, no hidden charges.",
+        body: "TicketPulse applies the fee shown for each event, with 6% as the standard rate. No monthly fees, no setup costs, no hidden charges.",
   },
   {
     icon: Banknote,
@@ -97,7 +97,7 @@ const EVENT_DAY = [
 const FAQS = [
   {
     q: "How much does TicketPulse charge organizers?",
-    a: "TicketPulse applies the fee shown for each event, with 5% as the standard rate. There are no setup fees, no monthly subscriptions, and no hidden costs. You only pay when tickets are sold.",
+    a: "TicketPulse applies the fee shown for each event, with 6% as the standard rate. There are no setup fees, no monthly subscriptions, and no hidden costs. You only pay when tickets are sold.",
   },
   {
     q: "When and how do I get paid?",

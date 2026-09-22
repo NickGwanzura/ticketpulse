@@ -225,7 +225,7 @@ export const events = pgTable("events", {
   faq: text("faq"),
   promoImages: json("promo_images").$type<string[]>().default([]),
   absorbFee: boolean("absorb_fee").default(false),
-  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }).default("5.00"),
+  platformFeePercent: decimal("platform_fee_percent", { precision: 5, scale: 2 }).default("6.00"),
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
   createdAt: timestamp("created_at").defaultNow(),

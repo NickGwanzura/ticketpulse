@@ -36,7 +36,7 @@ const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Keep the secure ticket link or use your checkout email to recover the order later." },
   { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, a WhatsApp message, and an SMS with your ticket details — all at once. You can also find and resend tickets from order lookup." },
   { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
-  { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse deducts the 5% fee from confirmed ticket sales and shows gross, fee, paid out, pending, and available balance before withdrawal." },
+  { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse deducts the 6% fee from confirmed ticket sales and shows gross, fee, paid out, pending, and available balance before withdrawal." },
 ]
 
 const STEPS = [

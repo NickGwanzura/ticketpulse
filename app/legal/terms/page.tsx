@@ -50,7 +50,7 @@ export default function TermsPage() {
         {
           id: "fees", title: "Fees and payments",
           body: <>
-            <p>For attendees, TicketPulse is free. We charge organizers a 5% platform fee on tickets sold. Vendors keep 95% of bookings made via the platform.</p>
+            <p>For attendees, TicketPulse is free. We charge organizers a 6% platform fee on tickets sold. Vendors keep 94% of bookings made via the platform.</p>
             <p>Funds are processed by our payment partners and held in escrow with TrustCo Zimbabwe pending event completion. See <a href="/payouts">Payouts</a> for the full timeline.</p>
           </>,
         },

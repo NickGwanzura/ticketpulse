@@ -9,6 +9,8 @@ const PAID_ORDER_STATUSES = new Set(["paid", "completed"])
 const SETTLED_LEDGER_STATUSES = new Set(["paid", "completed", "success", "paid_success"])
 const PAID_PAYOUT_STATUSES = new Set(["paid"])
 const PENDING_PAYOUT_STATUSES = new Set(["pending", "approved", "processing"])
+export const VELOCITY_FEE_PERCENT = 2
+export const VELOCITY_FEE_RATE = VELOCITY_FEE_PERCENT / 100
 
 type OrderRow = {
   id: string
@@ -80,6 +82,8 @@ export type VelocityReconciliationEvent = {
   localPaidRevenue: number
   variance: number
   platformFee: number
+  velocityFee: number
+  ticketpulseProfit: number
   organizerNet: number
   paidOut: number
   pendingPayouts: number
@@ -122,6 +126,8 @@ export type VelocityReconciliationReport = {
     localPaidRevenue: number
     variance: number
     platformFee: number
+    velocityFee: number
+    ticketpulseProfit: number
     organizerNet: number
     paidOut: number
     pendingPayouts: number
@@ -468,6 +474,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       localPaidRevenue: 0,
       variance: 0,
       platformFee: 0,
+      velocityFee: 0,
+      ticketpulseProfit: 0,
       organizerNet: 0,
       paidOut: 0,
       pendingPayouts: 0,
@@ -518,6 +526,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
   const eventsReport = [...eventMap.values()].map((event) => {
     const payoutsForEvent = payoutsByEvent.get(event.eventId) ?? { paid: 0, pending: 0 }
     const platformFee = calculatePlatformFee(event.velocityReceived, event.platformFeePercent / 100)
+    const velocityFee = money(event.velocityReceived * VELOCITY_FEE_RATE)
+    const ticketpulseProfit = money(platformFee - velocityFee)
     const organizerNet = money(event.velocityReceived - platformFee)
     const availableBalance = money(Math.max(0, organizerNet - payoutsForEvent.paid - payoutsForEvent.pending))
     const issues = [...orderReports]
@@ -538,6 +548,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       velocityPaidToTicketPulse: settlementsByEvent.get(event.eventId) ?? 0,
       variance: money(event.velocityReceived - event.localPaidRevenue),
       platformFee,
+      velocityFee,
+      ticketpulseProfit,
       organizerNet,
       paidOut: payoutsForEvent.paid,
       pendingPayouts: payoutsForEvent.pending,
@@ -571,6 +583,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       localPaidRevenue: addMoney(acc.localPaidRevenue, event.localPaidRevenue),
       variance: addMoney(acc.variance, event.variance),
       platformFee: addMoney(acc.platformFee, event.platformFee),
+      velocityFee: addMoney(acc.velocityFee, event.velocityFee),
+      ticketpulseProfit: addMoney(acc.ticketpulseProfit, event.ticketpulseProfit),
       organizerNet: addMoney(acc.organizerNet, event.organizerNet),
       paidOut: addMoney(acc.paidOut, event.paidOut),
       pendingPayouts: addMoney(acc.pendingPayouts, event.pendingPayouts),
@@ -586,6 +600,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       localPaidRevenue: 0,
       variance: 0,
       platformFee: 0,
+      velocityFee: 0,
+      ticketpulseProfit: 0,
       organizerNet: 0,
       paidOut: 0,
       pendingPayouts: 0,

@@ -57,7 +57,7 @@ const TRUST = [
   { icon: Ticket, label: "EcoCash + Visa checkout" },
   { icon: Smartphone, label: "Instant QR delivery" },
   { icon: ScanLine, label: "Gate scanner included" },
-  { icon: Wallet, label: "5% organizer fee" },
+  { icon: Wallet, label: "6% organizer fee" },
 ]
 
 export default function Footer() {

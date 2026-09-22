@@ -1,5 +1,5 @@
 /** Default TicketPulse fee used when an event has no explicit fee policy. */
-export const PLATFORM_FEE_PERCENT = 5 as const
+export const PLATFORM_FEE_PERCENT = 6 as const
 export const PLATFORM_FEE_RATE = PLATFORM_FEE_PERCENT / 100
 
 export function normalizePlatformFeePercent(value: number | string | null | undefined): number {

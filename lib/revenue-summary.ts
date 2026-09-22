@@ -20,7 +20,7 @@ export { PLATFORM_FEE_PERCENT, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
  *
  *   gross      = issued buyer tickets on paid/completed orders, prorated
  *                from the order item total (matches what was delivered)
- *   fee        = event.platformFeePercent × gross (default 5%)
+ *   fee        = event.platformFeePercent × gross (default 6%)
  *   net        = gross − fee
  *   paidOut    = payouts with status "paid" (incl. manual payouts)
  *   pending    = payouts in pending/approved/processing
@@ -191,7 +191,7 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
     )
     SELECT
       event_id,
-      COALESCE(MAX(platform_fee_percent), 5.00)::numeric AS platform_fee_percent,
+      COALESCE(MAX(platform_fee_percent), 6.00)::numeric AS platform_fee_percent,
       COALESCE(SUM(LEAST(issued_count, quantity) * (total::numeric / NULLIF(quantity, 0))), 0)::numeric AS gross_revenue,
       COALESCE(SUM(LEAST(issued_count, quantity)), 0)::int AS confirmed_ticket_count,
       COUNT(DISTINCT CASE WHEN LEAST(issued_count, quantity) > 0 THEN order_id END)::int AS confirmed_order_count

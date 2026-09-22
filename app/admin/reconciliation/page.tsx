@@ -11,7 +11,7 @@ import EmptyState from "@/components/dashboard/EmptyState"
 import AiReconciliationCard from "@/components/ai/AiReconciliationCard"
 import { deleteVelocitySettlementAction, recordVelocitySettlementAction, sendVelocityReconciliationAction } from "@/app/admin/reconciliation/actions"
 import { auditOrderPaymentLedger, type AuditableLedgerEntry, type PaymentAuditIssue } from "@/lib/payment-ledger-audit"
-import { getVelocityReconciliationReport } from "@/lib/velocity-reconciliation"
+import { getVelocityReconciliationReport, VELOCITY_FEE_PERCENT } from "@/lib/velocity-reconciliation"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 type ReconciliationIssue = PaymentAuditIssue & {
@@ -532,7 +532,7 @@ export default async function AdminReconciliationPage({
             <div className="flex items-center justify-between border-b border-line bg-paper-2 px-5 py-3">
               <div>
                 <p className="text-[13px] font-bold text-ink">Event settlement report</p>
-                <p className="text-[12px] text-ink-3">Generated {formatDateShort(velocityReport.generatedAt)}</p>
+                <p className="text-[12px] text-ink-3">Generated {formatDateShort(velocityReport.generatedAt)} · Profit = TicketPulse fee less Velocity&apos;s 2% settlement fee</p>
               </div>
               <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase ${
                 velocityReport.totals.variance === 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
@@ -557,7 +557,9 @@ export default async function AdminReconciliationPage({
                       <th className="px-5 py-3 text-left">Event</th>
                       <th className="px-3 py-3 text-right">Velocity</th>
                       <th className="px-3 py-3 text-right">Deposited</th>
-                      <th className="px-3 py-3 text-right">Fee</th>
+                      <th className="px-3 py-3 text-right">TP fee</th>
+                      <th className="px-3 py-3 text-right">Velocity {VELOCITY_FEE_PERCENT}%</th>
+                      <th className="px-3 py-3 text-right">Profit</th>
                       <th className="px-3 py-3 text-right">Net</th>
                       <th className="px-3 py-3 text-right">Paid out</th>
                       <th className="px-3 py-3 text-right">Pending</th>
@@ -577,6 +579,8 @@ export default async function AdminReconciliationPage({
                         <td className="px-3 py-4 text-right text-[13px] font-bold text-ink">{formatCurrency(event.velocityReceived, event.currency)}</td>
                         <td className={`px-3 py-4 text-right text-[13px] font-semibold ${event.velocityPaidToTicketPulse >= event.velocityReceived ? "text-emerald-700" : "text-amber-700"}`}>{formatCurrency(event.velocityPaidToTicketPulse, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.platformFee, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] text-rose-700">{formatCurrency(event.velocityFee, event.currency)}</td>
+                        <td className="px-3 py-4 text-right text-[13px] font-bold text-emerald-700">{formatCurrency(event.ticketpulseProfit, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] font-semibold text-ink">{formatCurrency(event.organizerNet, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.paidOut, event.currency)}</td>
                         <td className="px-3 py-4 text-right text-[13px] text-ink-2">{formatCurrency(event.pendingPayouts, event.currency)}</td>
