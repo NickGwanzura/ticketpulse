@@ -14,7 +14,7 @@ export default function ResendTicketsButton({
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
 }) {
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, _form: FormData) => {
@@ -34,13 +34,12 @@ export default function ResendTicketsButton({
 
   useEffect(() => {
     if (state) {
-      const t = setTimeout(() => setDismissed(true), 6000)
+      const t = setTimeout(() => setDismissedState(state), 6000)
       return () => clearTimeout(t)
     }
-    setDismissed(false)
   }, [state])
 
-  const showFeedback = state && !dismissed
+  const showFeedback = state && state !== dismissedState
 
   return (
     <form action={formAction} className="relative inline-flex items-center">

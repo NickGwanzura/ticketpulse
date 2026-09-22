@@ -17,16 +17,16 @@ it("keeps web session authorization for existing callers", async () => {
   expect(mocks.select).not.toHaveBeenCalled()
 })
 it("authorizes event owners without a web cookie", async () => {
-  rows([{ id: "event", organizerId: "owner" }])
+  rows([{ frozenAt: null }], [{ id: "event", organizerId: "owner" }])
   expect(await requireEventAccessForUser("event", { id: "owner", role: "organizer" })).toMatchObject({ allowed: true, role: "owner" })
   expect(mocks.auth).not.toHaveBeenCalled()
 })
 it("checks invited membership for other organizers", async () => {
-  rows([{ id: "event", organizerId: "owner" }], [{ id: "invitation" }])
+  rows([{ frozenAt: null }], [{ id: "event", organizerId: "owner" }], [{ id: "invitation" }])
   expect(await requireEventAccessForUser("event", { id: "invited", role: "organizer" })).toMatchObject({ allowed: true, role: "editor" })
 })
 it("denies unrelated organizers", async () => {
-  rows([{ id: "event", organizerId: "owner" }], [])
+  rows([{ frozenAt: null }], [{ id: "event", organizerId: "owner" }], [])
   expect((await requireEventAccessForUser("event", { id: "outsider", role: "organizer" })).allowed).toBe(false)
 })
 it("rejects a revoked role even with an existing organizer access token", async () => {

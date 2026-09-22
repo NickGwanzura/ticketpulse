@@ -42,7 +42,7 @@ export default function EventWaitlist() {
           <Bell size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[15px] font-semibold text-ink">Not what you're looking for?</h3>
+          <h3 className="text-[15px] font-semibold text-ink">Not what you&apos;re looking for?</h3>
           <p className="mt-1 text-[13px] text-ink-2">
             Get notified the moment new events go live. No spam — just the good stuff.
           </p>

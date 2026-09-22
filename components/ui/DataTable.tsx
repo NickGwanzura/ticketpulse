@@ -57,11 +57,17 @@ export default function DataTable<T>({
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   useEffect(() => {
+    let timer: number | undefined
     try {
       const raw = localStorage.getItem(storageKey)
-      if (raw) setHiddenKeys(new Set(JSON.parse(raw)))
+      if (raw) {
+        const savedKeys = new Set<string>(JSON.parse(raw))
+        timer = window.setTimeout(() => setHiddenKeys(savedKeys), 0)
+      }
     } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
   }, [storageKey])
 
   function toggleColumn(key: string) {

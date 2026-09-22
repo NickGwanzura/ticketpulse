@@ -11,7 +11,7 @@ const orderDataLimiter = rateLimit({ windowMs: 60_000, max: 30 })
 type Params = { id: string }
 
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
-  const rl = orderDataLimiter.checkRequest(req)
+  const rl = await orderDataLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "too_many_requests" }, { status: 429 })
   }

@@ -7,7 +7,7 @@ import { rateLimit } from "@/lib/rate-limit"
 const waitlistLimiter = rateLimit({ windowMs: 60_000, max: 5 })
 
 export async function POST(req: Request) {
-  const rl = waitlistLimiter.checkRequest(req)
+  const rl = await waitlistLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

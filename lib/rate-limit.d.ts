@@ -1,6 +1,6 @@
 import "server-only";
 /**
- * Simple in-memory sliding-window rate limiter.
+ * Shared fixed-window rate limiter with an in-memory fallback.
  *
  * Intended for API routes that need per-IP or per-user throttling.  Because
  * serverless environments have no shared memory across instances, this is a
@@ -37,33 +37,38 @@ interface RateLimitResult {
 }
 export declare function rateLimit(config?: RateLimitConfig): {
     check: (key: string) => RateLimitResult;
+    checkDistributed: (key: string) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
-    }) => RateLimitResult;
+    }) => Promise<RateLimitResult>;
 };
 /** Pre-built limiters for common use-cases. */
 export declare const authLimiter: {
     check: (key: string) => RateLimitResult;
+    checkDistributed: (key: string) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
-    }) => RateLimitResult;
+    }) => Promise<RateLimitResult>;
 };
 export declare const checkoutLimiter: {
     check: (key: string) => RateLimitResult;
+    checkDistributed: (key: string) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
-    }) => RateLimitResult;
+    }) => Promise<RateLimitResult>;
 };
 export declare const uploadLimiter: {
     check: (key: string) => RateLimitResult;
+    checkDistributed: (key: string) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
-    }) => RateLimitResult;
+    }) => Promise<RateLimitResult>;
 };
 export declare const apiLimiter: {
     check: (key: string) => RateLimitResult;
+    checkDistributed: (key: string) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
-    }) => RateLimitResult;
+    }) => Promise<RateLimitResult>;
 };
 export {};

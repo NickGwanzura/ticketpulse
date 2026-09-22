@@ -15,7 +15,7 @@ const contactLimiter = rateLimit({ windowMs: 60_000, max: 5 })
  * Body: { name, email, topic, message }
  */
 export async function POST(req: Request) {
-  const rl = contactLimiter.checkRequest(req)
+  const rl = await contactLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

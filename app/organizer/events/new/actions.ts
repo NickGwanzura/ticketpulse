@@ -8,8 +8,9 @@ import { db } from "@/db"
 import { events } from "@/db/schema"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug } from "@/lib/slug"
-import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
+import { requireOrganizerForDraft } from "@/lib/organizer-eligibility"
 import { isFutureEventStart, parseHarareDateTimeLocal } from "@/lib/event-schedule"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 
 const CreateSchema = z.object({
   title:         z.string().trim().min(1, "Title is required").max(160),
@@ -39,7 +40,7 @@ export async function createEventAction(
   _prev: CreateEventState,
   formData: FormData,
 ): Promise<CreateEventState> {
-  const eligibility = await requireApprovedOrganizer()
+  const eligibility = await requireOrganizerForDraft()
   if (!eligibility.ok) return eligibility
   const session = eligibility.session
 
@@ -150,6 +151,14 @@ export async function createEventAction(
   if (!created?.id) {
     return { ok: false, error: "Could not create event. Try again." }
   }
+
+  await trackOrganizerLifecycle({
+    step: "EVENT_CREATED",
+    organizerId: session.user.id,
+    eventId: created.id,
+    dedupeKey: `event:${created.id}:created`,
+    source: "organizer_web",
+  })
 
   // WhatsApp alert to admin (fire-and-forget).
   const { sendAdminAlert } = await import("@/lib/whatsapp")

@@ -30,7 +30,7 @@ const Body = z.object({
  * Content-Length to go on, this confirms what R2 actually received.
  */
 export async function POST(req: NextRequest) {
-  const rl = uploadLimiter.checkRequest(req)
+  const rl = await uploadLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many requests" }, {
       status: 429,

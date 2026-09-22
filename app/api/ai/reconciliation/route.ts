@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 })
   }
 
-  const rl = aiLimiter.checkRequest(request)
+  const rl = await aiLimiter.checkRequest(request)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

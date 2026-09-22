@@ -175,6 +175,7 @@ function getPollCounts(data: VelocityApiResponse) {
 export default function VelocityViewer({ initialData }: Props) {
   const [data, setData] = useState<VelocityApiResponse>(initialData)
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
+  const [currentTime, setCurrentTime] = useState(() => lastRefreshed.getTime())
   const [isLive, setIsLive] = useState(true)
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -182,6 +183,11 @@ export default function VelocityViewer({ initialData }: Props) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevSnapshotRef = useRef<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // ── Poll every 15s ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -346,7 +352,7 @@ export default function VelocityViewer({ initialData }: Props) {
   }
 
   const secondsSinceRefresh = Math.floor(
-    (Date.now() - lastRefreshed.getTime()) / 1000,
+    (currentTime - lastRefreshed.getTime()) / 1000,
   )
 
   return (
@@ -628,7 +634,7 @@ export default function VelocityViewer({ initialData }: Props) {
                             <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
                             {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
                               <span className="text-[10px] text-ink-3">
-                                {Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
+                                {Math.floor((currentTime - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
                               </span>
                             )}
                           </div>
@@ -744,7 +750,7 @@ export default function VelocityViewer({ initialData }: Props) {
                         {o.createdAt ? formatDateShort(o.createdAt) : "—"}
                         {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
                           <span className="text-[10px] text-ink-3 ml-1">
-                            ({Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago)
+                            ({Math.floor((currentTime - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago)
                           </span>
                         )}
                       </span>

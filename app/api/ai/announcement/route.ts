@@ -3,9 +3,11 @@ import { generateAnnouncementContent } from "@/lib/groq"
 import { rateLimit } from "@/lib/rate-limit"
 
 const aiLimiter = rateLimit({ windowMs: 60_000, max: 10 })
+type AnnouncementAudience = "attendees" | "organizers" | "all_users"
+type AnnouncementTone = "friendly" | "professional" | "urgent"
 
 export async function POST(req: NextRequest) {
-  const rl = aiLimiter.checkRequest(req)
+  const rl = await aiLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
@@ -37,7 +39,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const result = await generateAnnouncementContent(topic, audience as any, tone as any)
+    const result = await generateAnnouncementContent(
+      topic,
+      audience as AnnouncementAudience,
+      tone as AnnouncementTone,
+    )
 
     return NextResponse.json(result)
   } catch (err) {

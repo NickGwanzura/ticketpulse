@@ -110,12 +110,8 @@ export default function NotificationBell() {
 
     const timerRef: { current: number | null } = { current: null }
 
-    // Initial fetch
-    fetchNotifications().then(() => {
-      if (mountedRef.current) {
-        timerRef.current = window.setTimeout(poll, BASE_INTERVAL_MS)
-      }
-    })
+    // Initial fetch runs on the next task so effect setup remains synchronous.
+    timerRef.current = window.setTimeout(poll, 0)
 
     return () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current)

@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rate-limit"
 const commsLimiter = rateLimit({ windowMs: 60_000, max: 10 })
 
 export async function POST(req: NextRequest) {
-  const rl = commsLimiter.checkRequest(req)
+  const rl = await commsLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

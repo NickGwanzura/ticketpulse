@@ -308,24 +308,24 @@ function MemberCard({ member, eventId, onEdit, dragHandleProps }: MemberCardProp
 export default function LineupManager({ members: initialMembers, eventId }: Props) {
   const router = useRouter()
   const [members, setMembers] = useState<LineupMember[]>(initialMembers)
+  const [previousInitialMembers, setPreviousInitialMembers] = useState(initialMembers)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
   // Keep local members in sync when server refreshes props
   // (Next.js passes new props on router.refresh())
-  const prevInitial = useRef(initialMembers)
-  if (prevInitial.current !== initialMembers) {
-    prevInitial.current = initialMembers
+  if (previousInitialMembers !== initialMembers) {
+    setPreviousInitialMembers(initialMembers)
     setMembers(initialMembers)
   }
 
   // Drag state
-  const dragIndex = useRef<number | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [isPendingReorder, startReorderTransition] = useTransition()
 
   function handleDragStart(index: number) {
-    dragIndex.current = index
+    setDragIndex(index)
   }
 
   function handleDragOver(e: React.DragEvent, index: number) {
@@ -334,9 +334,9 @@ export default function LineupManager({ members: initialMembers, eventId }: Prop
   }
 
   function handleDrop(dropIndex: number) {
-    const fromIndex = dragIndex.current
+    const fromIndex = dragIndex
     if (fromIndex === null || fromIndex === dropIndex) {
-      dragIndex.current = null
+      setDragIndex(null)
       setDragOverIndex(null)
       return
     }
@@ -346,7 +346,7 @@ export default function LineupManager({ members: initialMembers, eventId }: Prop
     reordered.splice(dropIndex, 0, moved)
 
     setMembers(reordered)
-    dragIndex.current = null
+    setDragIndex(null)
     setDragOverIndex(null)
 
     startReorderTransition(async () => {
@@ -356,7 +356,7 @@ export default function LineupManager({ members: initialMembers, eventId }: Prop
   }
 
   function handleDragEnd() {
-    dragIndex.current = null
+    setDragIndex(null)
     setDragOverIndex(null)
   }
 
@@ -447,7 +447,7 @@ export default function LineupManager({ members: initialMembers, eventId }: Prop
                 onDragEnd={handleDragEnd}
                 className={[
                   "transition-opacity",
-                  dragOverIndex === index && dragIndex.current !== index
+                  dragOverIndex === index && dragIndex !== index
                     ? "opacity-50 ring-2 ring-brand-400 rounded-xl"
                     : "",
                   isPendingReorder ? "opacity-70" : "",

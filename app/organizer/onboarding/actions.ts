@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { users } from "@/db/schema"
 import { log } from "@/lib/logger"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 
 function slugify(s: string) {
   return s
@@ -38,6 +39,13 @@ export async function saveOrganizerProfileAction(formData: FormData) {
       .update(users)
       .set({ organizerBio: bio || null, organizerSlug, phone, updatedAt: new Date() })
       .where(eq(users.id, session.user.id))
+
+    await trackOrganizerLifecycle({
+      step: "PROFILE_COMPLETED",
+      organizerId: session.user.id,
+      dedupeKey: `organizer:${session.user.id}:profile-completed`,
+      source: "organizer_onboarding",
+    })
   } catch (err: unknown) {
     console.error("[onboarding] saveOrganizerProfileAction", err)
     log.error("onboarding — saveOrganizerProfileAction failed", { userId: session.user.id, error: String(err) })

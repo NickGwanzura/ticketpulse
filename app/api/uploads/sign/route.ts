@@ -46,7 +46,7 @@ function bad(message: string, status: number, extra?: Record<string, unknown>) {
 
 export async function POST(req: NextRequest) {
   // Rate limit: 60 requests per minute per IP
-  const rl = uploadLimiter.checkRequest(req)
+  const rl = await uploadLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many requests" }, {
       status: 429,

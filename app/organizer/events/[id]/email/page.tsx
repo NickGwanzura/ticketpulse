@@ -98,7 +98,7 @@ export default function EmailPage() {
           <div className="space-y-1">
             <h2 className="text-[16px] font-semibold tracking-tight text-ink">Compose message</h2>
             <p className="text-[13px] text-ink-3">
-              Use <code className="text-blue text-[12px]">{`{name}`}</code> for the recipient's first name and{" "}
+              Use <code className="text-blue text-[12px]">{`{name}`}</code> for the recipient&apos;s first name and{" "}
               <code className="text-blue text-[12px]">{`{event}`}</code> for the event name.
               {recipientCount !== null && (
                 <span className="ml-1.5 inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">

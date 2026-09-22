@@ -27,7 +27,7 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const rl = uploadLimiter.checkRequest(req)
+  const rl = await uploadLimiter.checkRequest(req)
   if (!rl.allowed) return errorResponse("Too many requests", 429)
 
   const session = await auth()

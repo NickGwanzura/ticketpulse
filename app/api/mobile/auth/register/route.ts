@@ -14,7 +14,7 @@ const RegisterSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const rl = authLimiter.checkRequest(request)
+  const rl = await authLimiter.checkRequest(request)
   if (!rl.allowed) {
     return NextResponse.json(
       { ok: false, error: "Too many requests" },

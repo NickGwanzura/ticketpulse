@@ -11,7 +11,7 @@ const ScanSchema = z.object({
 })
 
 export async function POST(req: Request) {
-  const rl = apiLimiter.checkRequest(req)
+  const rl = await apiLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { ok: false, error: "Too many requests" },

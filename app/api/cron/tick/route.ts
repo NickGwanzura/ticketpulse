@@ -15,7 +15,7 @@
 import { NextResponse } from "next/server"
 import { verifyCronSecret } from "@/lib/cron-auth"
 import { log } from "@/lib/logger"
-import { HEARTBEAT_KEYS, recordHeartbeat } from "@/lib/heartbeat"
+import { recordHeartbeatError, recordHeartbeatSuccess } from "@/lib/system-heartbeats"
 
 async function invokeCronChild(base: string, path: string, headers: Record<string, string>) {
   const response = await fetch(`${base}${path}`, { method: "POST", headers })
@@ -35,81 +35,41 @@ export async function POST(request: Request) {
   const headers = { "Content-Type": "application/json", "x-cron-secret": secret }
 
   const results: Record<string, unknown> = {}
+  const failed: string[] = []
 
-  // 1. recheck-velocity first — marks paid orders before expire-orders can delete them
-  try {
-    results.recheckVelocity = await invokeCronChild(base, "/api/cron/recheck-velocity", headers)
-  } catch (err) {
-    log.error("cron/tick — recheck-velocity failed", { error: String(err) })
-    results.recheckVelocity = { error: String(err) }
+  const jobs = [
+    { key: "recheckVelocity", path: "/api/cron/recheck-velocity", critical: true },
+    { key: "expireOrders", path: "/api/cron/expire-orders", critical: true },
+    { key: "eventReminder", path: "/api/cron/event-reminder", critical: false },
+    { key: "cardRecovery", path: "/api/cron/card-recovery", critical: false },
+    { key: "paymentFollowups", path: "/api/cron/payment-followups", critical: false },
+    { key: "cleanupLogs", path: "/api/cron/cleanup-logs", critical: false },
+    { key: "whatsappWatchdog", path: "/api/cron/whatsapp-watchdog", critical: false },
+    { key: "reconciliationDigest", path: "/api/cron/reconciliation-digest", critical: false },
+  ] as const
+
+  // Preserve dependency order: payment recheck must finish before expiry.
+  for (const job of jobs) {
+    const heartbeatKey = `cron:${job.key}`
+    try {
+      results[job.key] = await invokeCronChild(base, job.path, headers)
+      await recordHeartbeatSuccess(heartbeatKey)
+    } catch (error) {
+      const message = String(error)
+      failed.push(job.key)
+      results[job.key] = { error: message }
+      log.error(`cron/tick — ${job.key} failed`, { error: message })
+      await recordHeartbeatError(heartbeatKey, error)
+    }
   }
 
-  // 2. expire stale orders (recheck already rescued any paid ones above)
-  try {
-    results.expireOrders = await invokeCronChild(base, "/api/cron/expire-orders", headers)
-  } catch (err) {
-    log.error("cron/tick — expire-orders failed", { error: String(err) })
-    results.expireOrders = { error: String(err) }
-  }
+  const criticalFailed = jobs.some((job) => job.critical && failed.includes(job.key))
+  if (failed.length === 0) await recordHeartbeatSuccess("cron:tick")
+  else await recordHeartbeatError("cron:tick", `Failed jobs: ${failed.join(", ")}`)
 
-  // 3. event-reminder (runs every run, only acts on events ~24h away)
-  try {
-    results.eventReminder = await invokeCronChild(base, "/api/cron/event-reminder", headers)
-  } catch (err) {
-    log.error("cron/tick — event-reminder failed", { error: String(err) })
-    results.eventReminder = { error: String(err) }
-  }
-
-  // 4. card-recovery — emails buyers whose card payment has been pending 15 min+
-  try {
-    results.cardRecovery = await invokeCronChild(base, "/api/cron/card-recovery", headers)
-  } catch (err) {
-    log.error("cron/tick — card-recovery failed", { error: String(err) })
-    results.cardRecovery = { error: String(err) }
-  }
-
-  // 5. payment follow-ups — one recovery email per unpaid Visa/EcoCash buyer
-  // from the last 72 hours; the job marks successful sends for idempotency.
-  try {
-    results.paymentFollowups = await invokeCronChild(base, "/api/cron/payment-followups", headers)
-  } catch (err) {
-    log.error("cron/tick — payment-followups failed", { error: String(err) })
-    results.paymentFollowups = { error: String(err) }
-  }
-
-  // 6. cleanup-logs — prunes old past_announce_log rows (cheap, returns fast when nothing to do)
-  try {
-    results.cleanupLogs = await invokeCronChild(base, "/api/cron/cleanup-logs", headers)
-  } catch (err) {
-    log.error("cron/tick — cleanup-logs failed", { error: String(err) })
-    results.cleanupLogs = { error: String(err) }
-  }
-
-  // 7. whatsapp-watchdog — daily session health-check (internally gated to 07:00 UTC)
-  try {
-    results.whatsappWatchdog = await invokeCronChild(base, "/api/cron/whatsapp-watchdog", headers)
-  } catch (err) {
-    log.error("cron/tick — whatsapp-watchdog failed", { error: String(err) })
-    results.whatsappWatchdog = { error: String(err) }
-  }
-
-  // 8. reconciliation-digest — daily anomaly summary (internally gated to 08:00 UTC)
-  try {
-    results.reconciliationDigest = await invokeCronChild(base, "/api/cron/reconciliation-digest", headers)
-  } catch (err) {
-    log.error("cron/tick — reconciliation-digest failed", { error: String(err) })
-    results.reconciliationDigest = { error: String(err) }
-  }
-
-  // Heartbeats: the tick itself always counts as alive (the scheduler reached us);
-  // each child job is recorded separately so one flaky job does not make the
-  // scheduler look dead on the admin overview.
-  await recordHeartbeat(HEARTBEAT_KEYS.cronTick, { ok: true })
-  await Promise.all(Object.entries(results).map(([job, value]) => {
-    const failure = value && typeof value === "object" && "error" in value ? String((value as { error: unknown }).error) : null
-    return recordHeartbeat(`cron.${job}`, failure ? { ok: false, error: failure } : { ok: true })
-  }))
-
-  log.info("cron/tick — complete", results)
-  return NextResponse.json({ ok: true, ...results })
+  log.info("cron/tick — complete", { failed, results })
+  return NextResponse.json(
+    { ok: failed.length === 0, failed, ...results },
+    { status: criticalFailed ? 503 : 200 },
+  )
 }

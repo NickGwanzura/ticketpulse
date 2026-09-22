@@ -11,8 +11,15 @@ import { sendEmail, adminEmail } from "@/lib/email"
 import { eventSubmittedForReviewAdminEmail, eventSubmittedForReviewOrganizerEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
 import { isFutureEventStart } from "@/lib/event-schedule"
+import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 
 export async function publishOrganizerEventAction(eventId: string) {
+  const eligibility = await requireApprovedOrganizer()
+  if (!eligibility.ok) {
+    redirect(`/organizer/events/${eventId}?publishError=approval_required`)
+  }
+
   const access = await requireOwnerAccess(eventId)
   if (!access.ok) redirect(access.redirectTo)
 
@@ -51,6 +58,14 @@ export async function publishOrganizerEventAction(eventId: string) {
     .update(events)
     .set({ status: "pending_review", updatedAt: new Date() })
     .where(eq(events.id, eventId))
+
+  await trackOrganizerLifecycle({
+    step: "EVENT_SUBMITTED",
+    organizerId: event.organizerId,
+    eventId,
+    dedupeKey: `event:${eventId}:submitted`,
+    source: "organizer_web",
+  })
 
   revalidatePath("/organizer")
   revalidatePath("/admin/events")

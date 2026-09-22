@@ -9,7 +9,8 @@ export default function SaveFavoriteButton({ eventId }: { eventId: string }) {
     const stored = window.localStorage.getItem("tp:favourites")
     if (stored) {
       const ids = JSON.parse(stored) as string[]
-      setSaved(ids.includes(eventId))
+      const timer = window.setTimeout(() => setSaved(ids.includes(eventId)), 0)
+      return () => window.clearTimeout(timer)
     }
   }, [eventId])
 

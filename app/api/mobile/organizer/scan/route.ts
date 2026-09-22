@@ -8,7 +8,7 @@ import { apiLimiter } from "@/lib/rate-limit"
 const Scan = z.object({ code: z.string().trim().min(1).max(2000), eventId: z.string().uuid() })
 
 export async function POST(request: Request) {
-  const rate = apiLimiter.checkRequest(request)
+  const rate = await apiLimiter.checkRequest(request)
   if (!rate.allowed) return NextResponse.json({ ok: false, error: "Too many requests. Try again shortly." }, {
     status: 429, headers: { ...privateHeaders, "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
   })

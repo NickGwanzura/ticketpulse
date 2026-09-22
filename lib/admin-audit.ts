@@ -2,37 +2,59 @@ import "server-only"
 
 import { db } from "@/db"
 import { adminAuditLog } from "@/db/schema"
+import { log } from "@/lib/logger"
 
 type ActingAdmin = { user: { id?: string | null; email?: string | null } }
 
 export type AdminAuditEntry = {
-  /** Verb, dotted by area: "organizer.approve", "user.role_change", "order.complete"… */
   action: string
-  targetType: "user" | "organizer" | "event" | "order" | "payout" | "settings"
+  targetType: "user" | "organizer" | "event" | "order" | "payout" | "settings" | string
   targetId: string
   before?: unknown
   after?: unknown
   reason?: string | null
 }
 
-/**
- * Records who changed what. Best-effort by design: an audit-write failure is
- * logged loudly but never blocks the admin action itself, so shipping this
- * before the migration has run can't take the admin tools down.
- */
-export async function recordAdminAction(session: ActingAdmin, entry: AdminAuditEntry): Promise<void> {
+type AuditSnapshot = Record<string, unknown> | null
+
+export async function recordAdminAudit(input: {
+  actorId: string
+  actorEmail?: string | null
+  action: string
+  targetType: string
+  targetId: string
+  before?: AuditSnapshot
+  after?: AuditSnapshot
+  reason?: string | null
+}) {
   try {
     await db.insert(adminAuditLog).values({
-      actorId: session.user.id ?? "unknown",
-      actorEmail: session.user.email ?? null,
-      action: entry.action,
-      targetType: entry.targetType,
-      targetId: entry.targetId,
-      before: entry.before ?? null,
-      after: entry.after ?? null,
-      reason: entry.reason ?? null,
+      actorId: input.actorId,
+      actorEmail: input.actorEmail ?? null,
+      action: input.action,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      before: input.before ?? null,
+      after: input.after ?? null,
+      reason: input.reason ?? null,
     })
   } catch (error) {
-    console.error("[admin-audit] failed to record", entry.action, entry.targetId, error)
+    log.error("admin audit write failed", {
+      action: input.action,
+      targetType: input.targetType,
+      targetId: input.targetId,
+      error: String(error),
+    })
   }
+}
+
+/** Compatibility wrapper used by the existing admin actions. */
+export async function recordAdminAction(session: ActingAdmin, entry: AdminAuditEntry): Promise<void> {
+  await recordAdminAudit({
+    actorId: session.user.id ?? "unknown",
+    actorEmail: session.user.email ?? null,
+    ...entry,
+    before: entry.before as AuditSnapshot,
+    after: entry.after as AuditSnapshot,
+  })
 }

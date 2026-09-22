@@ -5,6 +5,7 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import { emailVerificationTokens, users } from "@/db/schema"
 import { hashVerificationToken, VERIFICATION_TOKEN_EXPIRY_HOURS } from "@/lib/email-verification"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 
 /**
  * GET /api/auth/verify-email/[token]
@@ -56,6 +57,13 @@ export async function GET(
       .update(emailVerificationTokens)
       .set({ usedAt: new Date() })
       .where(eq(emailVerificationTokens.id, row.id))
+  })
+
+  await trackOrganizerLifecycle({
+    step: "EMAIL_VERIFIED",
+    organizerId: row.userId,
+    dedupeKey: `organizer:${row.userId}:email-verified`,
+    source: "email_verification",
   })
 
   // Redirect to organizer dashboard with success flag

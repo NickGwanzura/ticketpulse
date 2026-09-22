@@ -16,7 +16,7 @@ export default function ResendButton({
   status: string
   variant?: "desktop" | "mobile" | "menu"
 }) {
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, _form: FormData) => {
@@ -35,13 +35,12 @@ export default function ResendButton({
   // Auto-dismiss success after 4 seconds
   useEffect(() => {
     if (state?.ok) {
-      const t = setTimeout(() => setDismissed(true), 4000)
+      const t = setTimeout(() => setDismissedState(state), 4000)
       return () => clearTimeout(t)
     }
-    setDismissed(false)
   }, [state])
 
-  const showFeedback = state && !dismissed
+  const showFeedback = state && state !== dismissedState
 
   const label =
     status === "paid" ? "Resend confirmation" : "Resend verification"

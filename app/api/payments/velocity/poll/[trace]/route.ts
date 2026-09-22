@@ -10,7 +10,7 @@ const pollLimiter = rateLimit({ windowMs: 60_000, max: 90 })
 type Params = { trace: string }
 
 export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
-  const rl = pollLimiter.checkRequest(_req)
+  const rl = await pollLimiter.checkRequest(_req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many requests" }, {
       status: 429,

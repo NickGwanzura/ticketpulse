@@ -220,13 +220,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Two layers: per-IP (stops one attacker hammering many accounts) and
         // per-email (stops credential stuffing spread across many IPs).
         if (request instanceof Request) {
-          const ipResult = authLimiter.checkRequest(request)
+          const ipResult = await authLimiter.checkRequest(request)
           if (!ipResult.allowed) {
             log.warn("[auth] login rate limited by IP")
             return null
           }
         }
-        const emailResult = loginByEmailLimiter.check(email)
+        const emailResult = await loginByEmailLimiter.checkDistributed(email)
         if (!emailResult.allowed) {
           log.warn("[auth] login rate limited by email", { email })
           return null

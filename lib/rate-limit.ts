@@ -1,13 +1,11 @@
 import "server-only"
 
 /**
- * Simple in-memory sliding-window rate limiter.
+ * Shared fixed-window rate limiter with an in-memory fallback.
  *
- * Intended for API routes that need per-IP or per-user throttling.  Because
- * serverless environments have no shared memory across instances, this is a
- * **best-effort** guard — enough to stop casual abuse but not a determined
- * attacker.  For production-critical rate limiting, swap the store for Redis
- * or KV (e.g. Upstash / Vercel KV).
+ * Configure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to share
+ * counters across application instances. Without them, local development and
+ * emergency Redis outages retain a best-effort per-process guard.
  *
  * Usage
  * -----
@@ -43,6 +41,8 @@ interface Entry {
   count: number
   resetAt: number
 }
+
+type UpstashPipelineResult = Array<{ result?: unknown; error?: string }>
 
 const stores = new Map<string, Map<string, Entry>>()
 
@@ -95,16 +95,62 @@ export function rateLimit(config: RateLimitConfig = {}) {
     return { allowed: true, remaining: max - entry.count, resetMs: entry.resetAt, retryAfterMs: 0 }
   }
 
+  async function checkDistributed(key: string): Promise<RateLimitResult> {
+    const url = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, "")
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN
+    if (!url || !token) return check(key)
+
+    const now = Date.now()
+    const bucket = Math.floor(now / windowMs)
+    const redisKey = `${label}:${bucket}:${key}`
+    try {
+      const response = await fetch(`${url}/pipeline`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify([
+          ["INCR", redisKey],
+          ["PEXPIRE", redisKey, String(windowMs), "NX"],
+          ["PTTL", redisKey],
+        ]),
+        cache: "no-store",
+      })
+      if (!response.ok) throw new Error(`Redis HTTP ${response.status}`)
+
+      const payload = await response.json() as UpstashPipelineResult
+      if (payload.some((entry) => entry.error)) {
+        throw new Error(payload.find((entry) => entry.error)?.error ?? "Redis pipeline failed")
+      }
+      const count = Number(payload[0]?.result)
+      const ttl = Math.max(0, Number(payload[2]?.result) || windowMs)
+      if (!Number.isFinite(count)) throw new Error("Redis returned an invalid counter")
+
+      return {
+        allowed: count <= max,
+        remaining: Math.max(0, max - count),
+        resetMs: now + ttl,
+        retryAfterMs: count > max ? ttl : 0,
+      }
+    } catch (error) {
+      // Preserve availability if Redis has an incident, while retaining a
+      // per-instance abuse guard as a fallback.
+      console.warn("[rate-limit] shared limiter unavailable; using local fallback", String(error))
+      return check(key)
+    }
+  }
+
   /** Convenience: extract IP from a Request/NextRequest and check. */
-  function checkRequest(req: { headers: Headers }): RateLimitResult {
+  async function checkRequest(req: { headers: Headers }): Promise<RateLimitResult> {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       req.headers.get("x-real-ip") ??
       "unknown"
-    return check(ip)
+    return checkDistributed(ip)
   }
 
-  return { check, checkRequest }
+  return { check, checkDistributed, checkRequest }
 }
 
 /** Pre-built limiters for common use-cases. */

@@ -126,7 +126,7 @@ export default async function PayoutsDashboardPage() {
               {formatCurrency(outstandingClawbacks, "USD")} owed back to TicketPulse
             </p>
             <p className="mt-1 text-[13px] text-red-800/80">
-              A refund on a ticket reduced your net earnings below what's already been paid out.
+              A refund on a ticket reduced your net earnings below what&apos;s already been paid out.
               This amount will be deducted from your next payout.
             </p>
           </div>

@@ -23,7 +23,7 @@ const PostSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
-  const rl = eventsLimiter.checkRequest(req)
+  const rl = await eventsLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const rl = eventsLimiter.checkRequest(req)
+  const rl = await eventsLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

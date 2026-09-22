@@ -170,49 +170,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     )
   }
 
-  // Unapproved organizers see a holding page instead of the full dashboard
-  if (!isAdmin && session.user.role === "organizer" && !session.user.approvedAt) {
-    const firstName = session.user.name?.split(" ")[0] ?? null
-    return (
-      <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-5 py-20 tp-fade-up">
-        <div className="max-w-md w-full text-center">
-          <div className="inline-flex w-16 h-16 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200 mb-6">
-            <ClipboardList size={28} className="text-amber-600" />
-          </div>
-          <h1 className="text-[24px] font-bold tracking-tight text-ink mb-3">
-            {firstName ? `Welcome, ${firstName}.` : "Welcome to TicketPulse."}
-          </h1>
-          <p className="text-[15px] text-ink-2 leading-relaxed mb-2">
-            Your organizer account is being reviewed by our team.
-          </p>
-          <p className="text-[14px] text-ink-3 leading-relaxed mb-8">
-            This usually takes less than 24 hours. You will receive an email as soon as
-            your account is approved and you can start creating events.
-          </p>
-          <div className="rounded-xl border border-line bg-paper-2 px-5 py-4 text-left space-y-3 mb-8">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 size={15} className="text-emerald-600 mt-0.5 shrink-0" />
-              <p className="text-[13px] text-ink-2">Account created successfully</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 shrink-0 w-3.5 h-3.5 rounded-full border-2 border-amber-400 bg-amber-100" />
-              <p className="text-[13px] text-ink-2">Awaiting team approval</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 shrink-0 w-3.5 h-3.5 rounded-full border-2 border-line bg-paper" />
-              <p className="text-[13px] text-ink-3">Create your first event</p>
-            </div>
-          </div>
-          <p className="text-[13px] text-ink-3">
-            Questions?{" "}
-            <a href="mailto:hello@ticketpulse.tech" className="text-navy hover:underline font-medium">
-              hello@ticketpulse.tech
-            </a>
-          </p>
-        </div>
-      </div>
-    )
-  }
+  const pendingApproval = !isAdmin && session.user.role === "organizer" && !session.user.approvedAt
 
   // Independent lookups run together (this used to be three sequential round-trips).
   const isOrganizerRole = !isAdmin && session.user.role === "organizer"
@@ -394,6 +352,19 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-8 space-y-8">
+        {pendingApproval && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-[14px] font-semibold text-amber-900">Account review in progress</p>
+              <p className="mt-1 text-[13px] text-amber-800">
+                Approval normally takes less than 24 hours. You can create and prepare draft events now; publishing unlocks after approval.
+              </p>
+            </div>
+            <Link href="/organizer/events/new" className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-900 px-4 py-2.5 text-[13px] font-semibold text-white">
+              <Plus size={14} /> Prepare an event
+            </Link>
+          </div>
+        )}
         <Link
           href="/organizer/scan"
           className="lg:hidden sticky top-24 z-20 flex items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-[14px] font-bold text-paper shadow-lg shadow-ink/15"

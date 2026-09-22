@@ -72,7 +72,7 @@ async function authorizeTransfer(ticketId: string, ticketOrderId: string, suppli
 // POST /api/tickets/[id]/transfer  — initiate a transfer
 // DELETE /api/tickets/[id]/transfer — cancel a pending transfer
 export async function POST(req: Request, ctx: { params: Promise<Params> }) {
-  const rl = transferLimiter.checkRequest(req)
+  const rl = await transferLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many transfer attempts. Please wait before trying again." }, {
       status: 429,
@@ -178,7 +178,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<Params> }) {
-  const rl = transferLimiter.checkRequest(req)
+  const rl = await transferLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many transfer attempts. Please wait before trying again." }, {
       status: 429,

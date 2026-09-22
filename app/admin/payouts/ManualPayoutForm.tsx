@@ -130,8 +130,8 @@ export default function ManualPayoutForm({
       <label className="flex items-start gap-2 text-[12px] text-ink-2">
         <input name="confirmOverage" type="checkbox" value="true" className="mt-0.5" />
         <span>
-          Record this even if it's more than the event's available balance right now.
-          Leave unchecked unless you've already checked reconciliation — this is how
+          Record this even if it&apos;s more than the event&apos;s available balance right now.
+          Leave unchecked unless you&apos;ve already checked reconciliation — this is how
           duplicate/phantom settlement payouts have happened before.
         </span>
       </label>

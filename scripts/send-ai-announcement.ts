@@ -34,11 +34,11 @@ function groqAiAnnouncementEmail(name?: string | null): { html: string; text: st
 
   function escape(s: string): string {
     const m: Record<string, string> = {
-      "<": "<",
-      ">": ">",
-      "&": "&",
-      '"': """,
-      "'": "'",
+      "<": "&lt;",
+      ">": "&gt;",
+      "&": "&amp;",
+      '"': "&quot;",
+      "'": "&#39;",
     }
     return s.replace(/[<>&"']/g, (c) => m[c])
   }

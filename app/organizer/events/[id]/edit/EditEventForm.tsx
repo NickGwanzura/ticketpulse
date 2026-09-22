@@ -226,10 +226,12 @@ export default function EditEventForm({ event, tiers, showCreatedToast, isAdmin 
 
   useEffect(() => {
     if (!venue || !city) {
-      setLiveLat(null)
-      setLiveLng(null)
-      setGeocodeNotFound(false)
-      return
+      const timer = window.setTimeout(() => {
+        setLiveLat(null)
+        setLiveLng(null)
+        setGeocodeNotFound(false)
+      }, 0)
+      return () => window.clearTimeout(timer)
     }
 
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current)

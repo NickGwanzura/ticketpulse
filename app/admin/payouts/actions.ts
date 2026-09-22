@@ -9,8 +9,14 @@ import { payouts, events, users, payoutAuditLog, notifications } from "@/db/sche
 import { log } from "@/lib/logger"
 import { sendPayoutNotificationEmail } from "@/lib/email"
 import { defaultNotificationPriority } from "@/lib/notification-priority"
+import { recordAdminAudit } from "@/lib/admin-audit"
 
 const VALID_STATUSES = ["pending", "approved", "processing", "paid", "held", "rejected", "failed", "cancelled"] as const
+type PayoutStatus = (typeof VALID_STATUSES)[number]
+
+function isPayoutStatus(value: string): value is PayoutStatus {
+  return (VALID_STATUSES as readonly string[]).includes(value)
+}
 
 // FormData.get() returns null (not undefined) for any field that's absent —
 // an unchecked checkbox, a field the form doesn't render at all, etc.
@@ -45,8 +51,8 @@ function adminPayoutResult(ok: boolean, message: string, payoutId?: string): Adm
 async function createAuditLog(opts: {
   payoutId: string
   action: string
-  fromStatus?: string | null
-  toStatus: string
+  fromStatus?: PayoutStatus | null
+  toStatus: PayoutStatus
   performedBy: string
   notes?: string | null
 }, tx?: typeof db) {
@@ -54,8 +60,8 @@ async function createAuditLog(opts: {
   await client.insert(payoutAuditLog).values({
     payoutId: opts.payoutId,
     action: opts.action,
-    fromStatus: opts.fromStatus as any,
-    toStatus: opts.toStatus as any,
+    fromStatus: opts.fromStatus,
+    toStatus: opts.toStatus,
     performedBy: opts.performedBy,
     notes: opts.notes,
   })
@@ -71,7 +77,7 @@ async function createPayoutNotification(opts: {
   const client = tx ?? db
   await client.insert(notifications).values({
     userId: opts.userId,
-    type: opts.type as any,
+    type: opts.type,
     priority: defaultNotificationPriority(opts.type),
     title: opts.title,
     body: opts.body,
@@ -81,7 +87,7 @@ async function createPayoutNotification(opts: {
 
 type PayoutRow = {
   id: string
-  status: string
+  status: PayoutStatus
   amount: string
   currency: string | null
   method: string
@@ -170,6 +176,17 @@ export async function transitionPayout(opts: {
       }
     })
 
+    await recordAdminAudit({
+      actorId: opts.performedBy,
+      actorEmail: opts.performedBy.includes("@") ? opts.performedBy : null,
+      action: `payout.${opts.action}`,
+      targetType: "payout",
+      targetId: opts.payoutId,
+      before: { status: payout.status },
+      after: { status: opts.toStatus },
+      reason: opts.auditNotes,
+    })
+
     log.info(`Payout ${opts.action}`, { payoutId: opts.payoutId, by: opts.performedBy })
     return { ok: true, payout }
   } catch (err) {
@@ -185,8 +202,8 @@ export async function getPayouts(status?: string) {
   await requireAdmin()
 
   const conditions: ReturnType<typeof eq>[] = []
-  if (status && status !== "all" && VALID_STATUSES.includes(status as any)) {
-    conditions.push(eq(payouts.status, status as any))
+  if (status && status !== "all" && isPayoutStatus(status)) {
+    conditions.push(eq(payouts.status, status))
   }
 
   const whereClause = conditions.length > 0 ? conditions[0] : undefined
@@ -347,6 +364,16 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
       return result
     })
 
+    await recordAdminAudit({
+      actorId: session.user.id,
+      actorEmail: session.user.email,
+      action: "payout.recorded_manual",
+      targetType: "payout",
+      targetId: inserted.id,
+      after: { status: "paid", amount: cleanAmount, currency, organizerId: userId },
+      reason: notes || null,
+    })
+
     log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
     revalidatePath("/admin/payouts")
     revalidatePath("/admin/reconciliation")
@@ -483,7 +510,7 @@ export async function updatePayoutStatusAction(payoutId: string, status: string)
   const session = await requireAdmin().catch(() => null)
   if (!session) { log.warn("[update-status] Unauthorized", { payoutId }); revalidatePath("/admin/payouts"); return }
 
-  if (!VALID_STATUSES.includes(status as any)) {
+  if (!isPayoutStatus(status)) {
     log.warn("[update-status] Invalid status", { payoutId, status })
     revalidatePath("/admin/payouts")
     return

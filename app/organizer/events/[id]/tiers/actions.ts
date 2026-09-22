@@ -8,6 +8,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, ticketTiers, tickets, orderItems } from "@/db/schema"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 
 async function requireEventOwnership(eventId: string) {
   const session = await auth()
@@ -218,6 +219,13 @@ export async function saveTierAction(
       earlyBirdQuantity: earlyBirdQuantity || null,
       groupPrice:        groupPrice !== null ? groupPrice.toFixed(2) : null,
       groupMinQty:       groupMinQty || null,
+    })
+    await trackOrganizerLifecycle({
+      step: "TICKET_TIER_ADDED",
+      organizerId: guard.event.organizerId,
+      eventId: data.eventId,
+      dedupeKey: `event:${data.eventId}:first-tier`,
+      source: "organizer_web",
     })
   }
 

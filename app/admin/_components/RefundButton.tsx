@@ -17,7 +17,7 @@ export default function RefundButton({
 }) {
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, _form: FormData) => {
@@ -53,13 +53,12 @@ export default function RefundButton({
 
   useEffect(() => {
     if (state?.ok) {
-      const t = setTimeout(() => setDismissed(true), 4000)
+      const t = setTimeout(() => setDismissedState(state), 4000)
       return () => clearTimeout(t)
     }
-    setDismissed(false)
   }, [state])
 
-  const showFeedback = state && !dismissed
+  const showFeedback = state && state !== dismissedState
 
   return (
     <div className="relative inline-flex items-center">

@@ -81,18 +81,21 @@ export default function CommandPalette() {
   // Focus input when opened
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50)
-      setQuery("")
-      setResults([])
-      setSelectedIndex(0)
+      const timer = window.setTimeout(() => {
+        inputRef.current?.focus()
+        setQuery("")
+        setResults([])
+        setSelectedIndex(0)
+      }, 50)
+      return () => window.clearTimeout(timer)
     }
   }, [open])
 
   // Search API call
   useEffect(() => {
     if (!query.trim() || query.length < 2) {
-      setResults([])
-      return
+      const timer = window.setTimeout(() => setResults([]), 0)
+      return () => window.clearTimeout(timer)
     }
 
     const q = query.trim().toLowerCase()

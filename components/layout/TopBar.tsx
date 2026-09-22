@@ -18,7 +18,11 @@ export default function TopBar() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    setHidden(typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY) === "1")
+    const timer = window.setTimeout(
+      () => setHidden(window.localStorage.getItem(STORAGE_KEY) === "1"),
+      0,
+    )
+    return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {

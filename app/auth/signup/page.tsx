@@ -142,7 +142,7 @@ export default async function SignUpPage({
             const hdrs = (await headersList.headers())
             const signupLimiter = rl({ windowMs: 60_000, max: 3 })
             const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-            const rlResult = signupLimiter.check(ip)
+            const rlResult = await signupLimiter.checkDistributed(ip)
             if (!rlResult.allowed) {
               redirect(signupUrl(role, requestedCallbackUrl, "too_many", email, name ?? undefined))
             }
@@ -208,6 +208,14 @@ export default async function SignUpPage({
                   .limit(1)
 
                 if (newUser) {
+                  const { trackOrganizerLifecycle } = await import("@/lib/organizer-lifecycle")
+                  await trackOrganizerLifecycle({
+                    step: "SIGNUP_COMPLETED",
+                    organizerId: newUser.id,
+                    dedupeKey: `organizer:${newUser.id}:signup-completed`,
+                    source: "web_signup",
+                  })
+
                   await db.insert(emailVerificationTokens).values({
                     userId: newUser.id,
                     tokenHash: tokenInfo.hash,

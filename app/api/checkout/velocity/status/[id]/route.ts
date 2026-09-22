@@ -26,7 +26,7 @@ const statusLimiter = rateLimit({ windowMs: 60_000, max: 90 })
 type Params = { id: string }
 
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
-  const limited = statusLimiter.checkRequest(req)
+  const limited = await statusLimiter.checkRequest(req)
   if (!limited.allowed) {
     return NextResponse.json(
       { error: "too_many_requests" },

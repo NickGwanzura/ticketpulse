@@ -293,6 +293,11 @@ export default async function EventOverviewPage({
             This event cannot be published because its start time has passed. Update the schedule and try again.
           </div>
         )}
+        {sp.publishError === "approval_required" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+            Your draft is saved. Account approval is required before you can submit it for publishing.
+          </div>
+        )}
 
         <div className="rounded-2xl border border-line bg-paper overflow-hidden">
           <div className="grid lg:grid-cols-[1.25fr_1fr_1fr] divide-y lg:divide-y-0 lg:divide-x divide-line">

@@ -8,6 +8,7 @@ import { sendText, sendImage, formatChatId } from "@/lib/whatsapp"
 import { sendTicketConfirmationSms } from "@/lib/sms"
 import { getBaseUrl } from "@/lib/url-config"
 import { trackEvent } from "@/lib/analytics"
+import { trackOrganizerFirstSale } from "@/lib/organizer-lifecycle"
 import { log } from "@/lib/logger"
 import {
   deterministicTicketId,
@@ -275,6 +276,7 @@ async function _deliver(orderId: string, options: DeliveryOptions = {}): Promise
           ticketType: [...new Set(ticketValues.map((t) => t.tierId))].join(","),
           buyerEmail: order.guestEmail ?? undefined,
         })
+        await trackOrganizerFirstSale(order.eventId, orderId)
       }
 
       attemptMeta.status = "TICKETS_CREATED"

@@ -14,7 +14,7 @@ export default function CompleteAndSendButton({
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
 }) {
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, _form: FormData) => {
@@ -31,13 +31,12 @@ export default function CompleteAndSendButton({
 
   useEffect(() => {
     if (state?.ok) {
-      const t = setTimeout(() => setDismissed(true), 8000)
+      const t = setTimeout(() => setDismissedState(state), 8000)
       return () => clearTimeout(t)
     }
-    setDismissed(false)
   }, [state])
 
-  const showFeedback = state && !dismissed
+  const showFeedback = state && state !== dismissedState
 
   return (
     <form action={formAction} className="relative inline-flex items-center">

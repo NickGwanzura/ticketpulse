@@ -8,7 +8,7 @@ import { rateLimit } from "@/lib/rate-limit"
 const searchLimiter = rateLimit({ windowMs: 60_000, max: 30 })
 
 export async function GET(req: Request) {
-  const rl = searchLimiter.checkRequest(req)
+  const rl = await searchLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

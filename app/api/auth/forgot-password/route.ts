@@ -22,7 +22,7 @@ const APP_URL =
 
 export async function POST(req: Request) {
   // Rate limit: 5 requests per minute per IP
-  const rl = authLimiter.checkRequest(req)
+  const rl = await authLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many requests" }, {
       status: 429,

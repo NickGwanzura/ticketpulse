@@ -15,6 +15,8 @@ import {
 import { eventPublishedNotificationEmail } from "@/lib/email-templates"
 import { log } from "@/lib/logger"
 import type { VelocityOrderMetadata } from "@/types/velocity"
+import { recordAdminAudit } from "@/lib/admin-audit"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 
 export async function publishEventAction(eventId: string) {
   const session = await requireAdmin()
@@ -40,6 +42,16 @@ export async function publishEventAction(eventId: string) {
     .update(events)
     .set({ status: newStatus })
     .where(eq(events.id, eventId))
+
+  await recordAdminAudit({
+    actorId: session.user.id,
+    actorEmail: session.user.email,
+    action: newStatus === "published" ? "event.published" : "event.unpublished",
+    targetType: "event",
+    targetId: eventId,
+    before: { status: ev.status },
+    after: { status: newStatus },
+  })
 
   // ── Notify organiser when their event is published ──────────────────────
   if (newStatus === "published") {
@@ -147,6 +159,25 @@ export async function approveEventAction(eventId: string) {
     action: "approved",
   })
 
+  await Promise.all([
+    recordAdminAudit({
+      actorId: session.user.id,
+      actorEmail: session.user.email,
+      action: "event.approved",
+      targetType: "event",
+      targetId: eventId,
+      before: { status: ev.status },
+      after: { status: "published" },
+    }),
+    trackOrganizerLifecycle({
+      step: "EVENT_PUBLISHED",
+      organizerId: ev.organizerId,
+      eventId,
+      dedupeKey: `event:${eventId}:published`,
+      source: "admin",
+    }),
+  ])
+
   const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/events/${ev.slug}`
   const eventDate = ev.startsAt
     ? new Date(ev.startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
@@ -228,6 +259,17 @@ export async function rejectEventAction(eventId: string, formData: FormData) {
     eventId,
     adminId: session.user.id,
     action: "rejected",
+    reason,
+  })
+
+  await recordAdminAudit({
+    actorId: session.user.id,
+    actorEmail: session.user.email,
+    action: "event.rejected",
+    targetType: "event",
+    targetId: eventId,
+    before: { status: ev.status },
+    after: { status: "draft" },
     reason,
   })
 

@@ -60,7 +60,7 @@ export default async function OnboardingPage({
   const step = Number(sp.step ?? "1")
   const error = sp.error
   const [profile] = await db
-    .select({ phone: users.phone })
+    .select({ phone: users.phone, approvedAt: users.approvedAt })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1)
@@ -229,9 +229,13 @@ export default async function OnboardingPage({
             <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 mb-5">
               <CheckCircle2 size={28} />
             </span>
-            <h1 className="text-[22px] font-bold tracking-tight text-ink mb-2">You&apos;re all set!</h1>
+            <h1 className="text-[22px] font-bold tracking-tight text-ink mb-2">
+              {profile?.approvedAt ? "You're all set!" : "Your profile is ready!"}
+            </h1>
             <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              Profile saved. Now create your first event — it only takes a few minutes to go live.
+              {profile?.approvedAt
+                ? "Profile saved. Now create your first event — it only takes a few minutes to go live."
+                : "Your account review is in progress. You can prepare your first event now and submit it as soon as approval arrives."}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link

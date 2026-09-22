@@ -14,7 +14,7 @@ const LoginSchema = z.object({
 
 export async function POST(request: Request) {
   // Rate limit
-  const rl = authLimiter.checkRequest(request)
+  const rl = await authLimiter.checkRequest(request)
   if (!rl.allowed) {
     return NextResponse.json(
       { ok: false, error: "Too many login attempts. Try again shortly." },

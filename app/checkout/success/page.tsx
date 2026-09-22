@@ -40,20 +40,33 @@ function CheckoutSuccessInner() {
     // Try localStorage first
     const local = getOrder(id)
     if (local) {
-      setOrder(local)
-      return
+      const timer = window.setTimeout(() => setOrder(local), 0)
+      return () => window.clearTimeout(timer)
     }
 
-    // Fall back to server-side API
-    setFetching(true)
-    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id) })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: OrderRecord | null) => {
-        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
-        setOrder(data)
-        setFetching(false)
+    // Fall back to server-side API on the next task so effect setup stays synchronous.
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      setFetching(true)
+      fetch(`/api/orders/${id}/data`, {
+        headers: orderAuthHeaders(id),
+        signal: controller.signal,
       })
-      .catch(() => setFetching(false))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: OrderRecord | null) => {
+          if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
+          setOrder(data)
+          setFetching(false)
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setFetching(false)
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
   }, [ready, id, getOrder])
 
   if (!ready || fetching) {

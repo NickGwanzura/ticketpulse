@@ -6,6 +6,7 @@ import { and, eq, isNull, sql } from "drizzle-orm"
 import { signIn } from "@/auth"
 import { requireAdmin } from "@/lib/auth-guard"
 import { recordAdminAction } from "@/lib/admin-audit"
+import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
 import { db } from "@/db"
 import { events, orders, orderItems, ticketTiers, users } from "@/db/schema"
 import { sendOrderConfirmationEmail } from "@/lib/email"
@@ -232,6 +233,12 @@ export async function approveOrganizerAction(userId: string) {
 
   if (!organizer.approvedAt) {
     await recordAdminAction(session, { action: "organizer.approve", targetType: "organizer", targetId: userId, before: { approvedAt: null }, after: { approvedAt: "now" } })
+    await trackOrganizerLifecycle({
+      step: "ORGANIZER_APPROVED",
+      organizerId: userId,
+      dedupeKey: `organizer:${userId}:approved`,
+      source: "admin",
+    })
   }
 
   // Send approval email (fire-and-forget — don't block the admin action)

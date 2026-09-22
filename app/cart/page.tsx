@@ -45,10 +45,6 @@ function EditableQty({ value, min, max, onChange }: {
     if (editing) ref.current?.select()
   }, [editing])
 
-  useEffect(() => {
-    if (!editing) setDraft(String(value))
-  }, [value, editing])
-
   const commit = () => {
     const parsed = Math.max(min, Math.min(max ?? 999, parseInt(draft, 10) || min))
     onChange(parsed)
@@ -74,7 +70,10 @@ function EditableQty({ value, min, max, onChange }: {
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={() => {
+        setDraft(String(value))
+        setEditing(true)
+      }}
       className="group relative inline-flex items-center justify-center w-7 h-8 cursor-text"
       title="Click to edit quantity"
     >

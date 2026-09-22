@@ -394,7 +394,7 @@ const Body = z.object({
 })
 
 export async function POST(req: Request) {
-  const rl = checkoutLimiter.checkRequest(req)
+  const rl = await checkoutLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json({ error: "Too many requests" }, {
       status: 429,

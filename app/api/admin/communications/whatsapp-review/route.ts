@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const rl = reviewBatchLimiter.checkRequest(req)
+  const rl = await reviewBatchLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "A review batch was sent recently. Please wait before starting another." },

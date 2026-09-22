@@ -135,7 +135,10 @@ export const users = pgTable("users", {
   organizerFreezeReason: text("organizer_freeze_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-})
+}, (table) => [
+  index("users_role_approved_idx").on(table.role, table.approvedAt),
+  index("users_created_at_idx").on(table.createdAt),
+])
 
 export const accounts = pgTable("accounts", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -230,6 +233,8 @@ export const events = pgTable("events", {
 }, (table) => [
   index("events_organizer_id_idx").on(table.organizerId),
   index("events_status_idx").on(table.status),
+  index("events_organizer_status_idx").on(table.organizerId, table.status),
+  index("events_status_starts_at_idx").on(table.status, table.startsAt),
 ])
 
 export const eventModerationLog = pgTable("event_moderation_log", {
@@ -385,6 +390,7 @@ export const orders = pgTable("orders", {
   index("orders_event_id_idx").on(table.eventId),
   index("orders_guest_email_idx").on(table.guestEmail),
   index("orders_status_event_idx").on(table.eventId, table.status),
+  index("orders_status_created_at_idx").on(table.status, table.createdAt),
   index("orders_metadata_gin_idx").using("gin", table.metadata),
   index("orders_created_at_idx").on(table.createdAt),
   index("orders_paid_at_idx").on(table.paidAt),
@@ -718,9 +724,26 @@ export const analyticsEvents = pgTable("analytics_events", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("analytics_events_event_id_idx").on(table.eventId),
+  index("analytics_events_event_created_idx").on(table.eventId, table.createdAt),
   index("analytics_events_order_id_idx").on(table.orderId),
   index("analytics_events_session_id_idx").on(table.sessionId),
   index("analytics_events_event_type_idx").on(table.event, table.createdAt),
+])
+
+export const organizerLifecycleEvents = pgTable("organizer_lifecycle_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizerId: text("organizer_id").references(() => users.id, { onDelete: "set null" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  step: text("step").notNull(),
+  dedupeKey: text("dedupe_key").notNull(),
+  source: text("source"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("organizer_lifecycle_organizer_created_idx").on(table.organizerId, table.createdAt),
+  index("organizer_lifecycle_step_created_idx").on(table.step, table.createdAt),
+  index("organizer_lifecycle_event_idx").on(table.eventId),
+  uniqueIndex("organizer_lifecycle_dedupe_idx").on(table.dedupeKey),
 ])
 
 export const ticketScanLogs = pgTable("ticket_scan_logs", {
@@ -878,9 +901,7 @@ export const payoutAuditLog = pgTable("payout_audit_log", {
   index("payout_audit_log_created_idx").on(table.createdAt),
 ])
 
-// ─── Admin Audit Log ──────────────────────────────────────────────────────────
-// Who did what to whom. Written by lib/admin-audit.ts for admin mutations that
-// change access, approval, money or lifecycle state. Append-only by convention.
+// ─── Administrative Audit Log ───────────────────────────────────────────────
 
 export const adminAuditLog = pgTable("admin_audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -898,9 +919,8 @@ export const adminAuditLog = pgTable("admin_audit_log", {
   index("admin_audit_log_actor_idx").on(table.actorId),
   index("admin_audit_log_created_idx").on(table.createdAt),
 ])
-// ─── System Heartbeats ────────────────────────────────────────────────────────
-// Last time each background job / inbound integration ran or failed, so the
-// admin overview can show "cron last ran 2 min ago" instead of guessing.
+
+// ─── System Heartbeats ──────────────────────────────────────────────────────
 
 export const systemHeartbeats = pgTable("system_heartbeats", {
   key: text("key").primaryKey(),
@@ -909,6 +929,7 @@ export const systemHeartbeats = pgTable("system_heartbeats", {
   lastError: text("last_error"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
+
 // ─── Organiser Fee Dues ──────────────────────────────────────────────────────
 // Tracks platform fees owed to us when an organiser is paid directly by the
 // buyer (cash/bank transfer at the door, etc.) and we only issue the ticket —

@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rate-limit"
 const analyticsLimiter = rateLimit({ windowMs: 60_000, max: 120 })
 
 export async function POST(req: NextRequest) {
-  const rl = analyticsLimiter.checkRequest(req)
+  const rl = await analyticsLimiter.checkRequest(req)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
