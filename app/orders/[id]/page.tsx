@@ -121,7 +121,10 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
         return
       }
       try {
-        const res = await fetch(`/api/checkout/velocity/status/${id}`, { cache: "no-store" })
+        const res = await fetch(`/api/checkout/velocity/status/${id}`, {
+          cache: "no-store",
+          headers: orderAuthHeaders(id, accessSignature),
+        })
         if (res.ok) {
           const data = await res.json()
           if (data.paid) {

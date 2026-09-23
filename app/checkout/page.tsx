@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import CheckoutPaymentNotice from "@/app/checkout/CheckoutPaymentNotice"
 import { useCart } from "@/lib/cart-context"
+import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
 import { formatCurrency } from "@/lib/utils"
 import {
   ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
@@ -137,7 +138,11 @@ export default function CheckoutPage() {
 
       try {
         controller = new AbortController()
-        const res = await fetch(statusEndpoint, { cache: "no-store", signal: controller.signal })
+        const res = await fetch(statusEndpoint, {
+          cache: "no-store",
+          signal: controller.signal,
+          headers: orderAuthHeaders(pollingOrderId, null),
+        })
         const data = await res.json()
         if (!active) return
 
@@ -314,6 +319,7 @@ export default function CheckoutPage() {
         throw new Error(errorMsg)
       }
       const data = (await res.json()) as CheckoutResponse
+      rememberOrderOwner(data.orderId, form.email)
 
       const contactData = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
 

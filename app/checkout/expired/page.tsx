@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Clock, ArrowRight, Mail } from "lucide-react"
+import { orderAuthHeaders } from "@/lib/order-auth-client"
 
 function ExpiredInner() {
   const params = useSearchParams()
@@ -17,7 +18,11 @@ function ExpiredInner() {
 
     const check = async () => {
       try {
-        const response = await fetch(`/api/checkout/velocity/status/${encodeURIComponent(orderId)}`, { cache: "no-store", signal: controller.signal })
+        const response = await fetch(`/api/checkout/velocity/status/${encodeURIComponent(orderId)}`, {
+          cache: "no-store",
+          signal: controller.signal,
+          headers: orderAuthHeaders(orderId),
+        })
         if (response.ok) {
           const next = await response.json()
           const nextStatus = next.status ?? null

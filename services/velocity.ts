@@ -18,6 +18,23 @@ import type {
 } from "@/types/velocity"
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
+const SENSITIVE_VELOCITY_KEYS = new Set([
+  "debitPhone",
+  "creditPhone",
+  "creditAccount",
+  "phone",
+])
+
+function redactVelocityPayload(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactVelocityPayload)
+  if (!value || typeof value !== "object") return value
+  return Object.fromEntries(
+    Object.entries(value).map(([key, nested]) => [
+      key,
+      SENSITIVE_VELOCITY_KEYS.has(key) ? "[REDACTED]" : redactVelocityPayload(nested),
+    ]),
+  )
+}
 
 function getRequestTimeoutMs(): number {
   const configured = Number(process.env.VELOCITY_REQUEST_TIMEOUT_MS)
@@ -129,7 +146,7 @@ async function velocityRequest<T>(
         status: response.status,
         path,
         elapsed,
-        requestBody: options.body ? JSON.stringify(options.body).slice(0, 2000) : undefined,
+        requestBody: options.body ? JSON.stringify(redactVelocityPayload(options.body)).slice(0, 2000) : undefined,
         errorBody,
       })
 

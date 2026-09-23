@@ -31,13 +31,14 @@ export default function HeroBackgroundSlideshow({ bright = false }: { bright?: b
 
       <style>{`
         @keyframes tp-hero-crossfade {
-          0%, 21% { opacity: 1; transform: scale(1); }
-          25%, 100% { opacity: 0; transform: scale(1.035); }
+          0%, 21% { opacity: 1; transform: scale(1.01); }
+          25%, 100% { opacity: 0; transform: scale(1.065); }
         }
 
         .tp-hero-slide {
-          animation: tp-hero-crossfade 24s ease-in-out infinite;
+          animation: tp-hero-crossfade 24s cubic-bezier(0.4, 0, 0.2, 1) infinite;
           will-change: opacity, transform;
+          filter: saturate(0.92) contrast(1.04);
         }
 
         .tp-hero-bright .tp-hero-slide {
@@ -54,7 +55,16 @@ export default function HeroBackgroundSlideshow({ bright = false }: { bright?: b
         }
 
         .tp-hero-overlay-vertical {
-          background: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.34) 62%, rgba(0,0,0,0.78) 100%);
+          background: linear-gradient(180deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.22) 38%, rgba(0,0,0,0.82) 100%);
+        }
+
+        .tp-hero-bright::after,
+        .tp-hero-slide::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: radial-gradient(circle at 50% 42%, transparent 24%, rgba(0,0,0,0.2) 100%);
         }
 
         .tp-hero-overlay-horizontal-bright {

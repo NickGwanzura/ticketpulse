@@ -168,6 +168,7 @@ export default function PaymentsViewer({ initialData }: Props) {
   }, [isLive, onFirstPage])
 
   const { stats, methods, transactions, pendingPayments } = data
+  const refreshedAt = lastRefreshed?.getTime() ?? Date.now()
 
   return (
     <div className="space-y-8">
@@ -291,7 +292,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                   {pendingPayments.map((payment) => (
                     <tr key={payment.orderId} className="border-b border-line last:border-0 hover:bg-paper-2 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-700"><Clock3 size={12} />{pendingAge(payment.createdAt, lastRefreshed.getTime())}</span>
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber-700"><Clock3 size={12} />{pendingAge(payment.createdAt, refreshedAt)}</span>
                         <p className="text-[11px] text-ink-3 mt-1">{payment.status}</p>
                       </td>
                       <td className="px-4 py-3 min-w-[220px]">
@@ -305,7 +306,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                         <p className="text-[12px] font-medium text-ink">{payment.paymentStatus ?? "Unknown"} / {payment.pollStatus ?? "Unknown"}</p>
                         {payment.providerHttpStatus && <p className="text-[11px] text-ink-3 mt-1">HTTP {payment.providerHttpStatus} · {payment.consecutiveProviderErrors} errors</p>}
                         {payment.transactionTrace && <p className="text-[10px] font-mono text-ink-3 mt-1 max-w-[180px] truncate" title={payment.transactionTrace}>TX: {payment.transactionTrace}</p>}
-                        {payment.updatedAt && <p className="text-[10px] text-ink-3 mt-1">Updated {pendingAge(payment.updatedAt, lastRefreshed.getTime())} ago</p>}
+                        {payment.updatedAt && <p className="text-[10px] text-ink-3 mt-1">Updated {pendingAge(payment.updatedAt, refreshedAt)} ago</p>}
                       </td>
                       <td className="px-4 py-3 max-w-[240px] text-[12px] text-rose-600 break-words">{payment.providerError ?? "—"}</td>
                       <td className="px-4 py-3">
@@ -332,12 +333,12 @@ export default function PaymentsViewer({ initialData }: Props) {
                       <p className="text-[12px] text-ink-3">{payment.eventTitle ?? "Unknown event"}</p>
                       {payment.eventFinished && <p className="text-[11px] font-semibold text-rose-700 mt-1">Event finished — ready to archive</p>}
                     </div>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock3 size={11} />{pendingAge(payment.createdAt, lastRefreshed.getTime())}</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock3 size={11} />{pendingAge(payment.createdAt, refreshedAt)}</span>
                   </div>
                   <p className="text-[13px] font-semibold text-ink">{payment.currency ?? "USD"} {payment.amount} · {payment.paymentMethod?.replace("velocity-", "") ?? "Unknown method"}</p>
                   <p className="text-[12px] text-ink-2">{payment.paymentStatus ?? "Unknown"} / {payment.pollStatus ?? "Unknown"}{payment.providerHttpStatus ? ` · HTTP ${payment.providerHttpStatus}` : ""}</p>
                   {payment.transactionTrace && <p className="text-[10px] font-mono text-ink-3 truncate" title={payment.transactionTrace}>TX: {payment.transactionTrace}</p>}
-                  {payment.updatedAt && <p className="text-[11px] text-ink-3">Last updated {pendingAge(payment.updatedAt, lastRefreshed.getTime())} ago</p>}
+                  {payment.updatedAt && <p className="text-[11px] text-ink-3">Last updated {pendingAge(payment.updatedAt, refreshedAt)} ago</p>}
                   {payment.providerError && <p className="text-[12px] text-rose-600">{payment.providerError} · {payment.consecutiveProviderErrors} consecutive errors</p>}
                   <div className="flex items-center gap-2">
                     {payment.buyerEmail && <a href={`mailto:${payment.buyerEmail}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-paper-2 text-[12px] text-ink-2"><Mail size={12} /> Email</a>}

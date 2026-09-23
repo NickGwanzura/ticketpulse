@@ -64,13 +64,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // Both schemes are supported; the head script (lib/theme.ts) narrows this to
-  // the resolved in-app theme before first paint, and ThemeSync keeps it current.
-  colorScheme: "light dark",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: THEME_CHROME_COLOR.light },
-    { media: "(prefers-color-scheme: dark)", color: THEME_CHROME_COLOR.dark },
-  ],
+  colorScheme: "light",
+  themeColor: THEME_CHROME_COLOR.light,
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

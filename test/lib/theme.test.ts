@@ -40,24 +40,24 @@ const light = { ...tokens(css.slice(css.indexOf(":root {"), css.indexOf("}", css
 const dark = { ...light, ...tokens(darkBlock) }
 
 describe("theme preference logic", () => {
-  it("parses stored values, defaulting anything unknown to system", () => {
+  it("normalizes every preference to light", () => {
     expect(parsePreference("light")).toBe("light")
-    expect(parsePreference("dark")).toBe("dark")
-    expect(parsePreference("system")).toBe("system")
-    expect(parsePreference(null)).toBe("system")
-    expect(parsePreference("purple")).toBe("system")
+    expect(parsePreference("dark")).toBe("light")
+    expect(parsePreference("system")).toBe("light")
+    expect(parsePreference(null)).toBe("light")
+    expect(parsePreference("purple")).toBe("light")
   })
 
-  it("resolves system from the OS and lets explicit choices win", () => {
-    expect(resolveTheme("system", true)).toBe("dark")
+  it("always resolves to light regardless of OS or preference", () => {
+    expect(resolveTheme("system", true)).toBe("light")
     expect(resolveTheme("system", false)).toBe("light")
     expect(resolveTheme("light", true)).toBe("light")
-    expect(resolveTheme("dark", false)).toBe("dark")
+    expect(resolveTheme("dark", false)).toBe("light")
   })
 
-  it("cycles light -> dark -> system -> light", () => {
-    expect(nextPreference("light")).toBe("dark")
-    expect(nextPreference("dark")).toBe("system")
+  it("never advances away from light", () => {
+    expect(nextPreference("light")).toBe("light")
+    expect(nextPreference("dark")).toBe("light")
     expect(nextPreference("system")).toBe("light")
   })
 })
@@ -78,22 +78,22 @@ describe("pre-paint theme script", () => {
 
   it("applies the stored preference before anything else", () => {
     run("dark", false)
-    expect(html.dataset.theme).toBe("dark")
-    expect(html.dataset.themePref).toBe("dark")
+    expect(html.dataset.theme).toBe("light")
+    expect(html.dataset.themePref).toBe("light")
     run("light", true)
     expect(html.dataset.theme).toBe("light")
   })
 
   it("follows the OS when nothing (or junk) is stored", () => {
     run(null, true)
-    expect([html.dataset.theme, html.dataset.themePref]).toEqual(["dark", "system"])
+    expect([html.dataset.theme, html.dataset.themePref]).toEqual(["light", "light"])
     run("nonsense", false)
-    expect([html.dataset.theme, html.dataset.themePref]).toEqual(["light", "system"])
+    expect([html.dataset.theme, html.dataset.themePref]).toEqual(["light", "light"])
   })
 
   it("never throws when storage is blocked; still honours the OS", () => {
     expect(() => run(null, true, true)).not.toThrow()
-    expect(html.dataset.theme).toBe("dark")
+    expect(html.dataset.theme).toBe("light")
   })
 })
 
@@ -103,13 +103,13 @@ describe("applying, persisting and locking", () => {
     window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as never
   })
 
-  it("persists explicit choices and clears the key for system", () => {
+  it("keeps the document light when a preference is requested", () => {
     setThemePreference("dark")
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark")
-    expect(document.documentElement.dataset.theme).toBe("dark")
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
+    expect(document.documentElement.dataset.theme).toBe("light")
     setThemePreference("system")
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
-    expect(document.documentElement.dataset.themePref).toBe("system")
+    expect(document.documentElement.dataset.themePref).toBe("light")
   })
 
   it("lockTheme pins a document route to light and restores the real preference", () => {
@@ -119,7 +119,7 @@ describe("applying, persisting and locking", () => {
     applyTheme("dark") // e.g. an OS change while locked must not flip it
     expect(document.documentElement.dataset.theme).toBe("light")
     unlock()
-    expect(document.documentElement.dataset.theme).toBe("dark")
+    expect(document.documentElement.dataset.theme).toBe("light")
   })
 })
 

@@ -15,6 +15,7 @@ import {
   reconcileVelocityOrderBeforeExpiry,
 } from "@/lib/velocity/reconciliation"
 import { isValidUUID, isValidVelocityTrace } from "@/lib/velocity/validation"
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { newPaymentAlert } from "@/lib/whatsapp-templates"
 import type { VelocityOrderMetadata } from "@/types/velocity"
@@ -37,6 +38,14 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "invalid_order_id" }, { status: 400 })
+  }
+
+  const access = await authorizeOrderAccess(id, orderAccessCredsFrom(req))
+  if (!access.ok) {
+    return NextResponse.json(
+      { error: access.reason === "not_found" ? "not_found" : "forbidden" },
+      { status: access.reason === "not_found" ? 404 : 403 },
+    )
   }
 
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)

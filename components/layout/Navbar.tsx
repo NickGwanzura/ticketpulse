@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import { ArrowRight, LayoutDashboard, LogOut, Menu, Plus, ShoppingBag, X } from "lucide-react"
 import { useEffect, useState } from "react"
-import ThemeToggle from "@/components/ui/ThemeToggle"
 import { useCart } from "@/lib/cart-context"
 import { getDashboardPathForRole } from "@/lib/role-routes"
 
@@ -82,7 +81,6 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle className="rounded-full" />
           <Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
@@ -135,7 +133,6 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
-          <ThemeToggle className="rounded-full border-transparent bg-transparent" />
           <Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}

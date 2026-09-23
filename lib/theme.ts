@@ -33,17 +33,16 @@ export const THEME_CHROME_COLOR: Record<ResolvedTheme, string> = {
 const DARK_QUERY = "(prefers-color-scheme: dark)"
 
 export function parsePreference(value: unknown): ThemePreference {
-  return value === "light" || value === "dark" ? value : "system"
+  return "light"
 }
 
 export function resolveTheme(preference: ThemePreference, systemPrefersDark: boolean): ResolvedTheme {
-  if (preference === "system") return systemPrefersDark ? "dark" : "light"
-  return preference
+  return "light"
 }
 
 /** Order the toggle cycles through. */
 export function nextPreference(current: ThemePreference): ThemePreference {
-  return current === "light" ? "dark" : current === "dark" ? "system" : "light"
+  return "light"
 }
 
 /**
@@ -51,24 +50,14 @@ export function nextPreference(current: ThemePreference): ThemePreference {
  * throw (private mode, blocked cookies) and matchMedia may be missing; in every
  * failure case it falls back to the light theme rather than throwing.
  */
-export const THEME_INIT_SCRIPT = `(function(){var r="light",p="system";try{var s=null;try{s=localStorage.getItem(${JSON.stringify(
-  THEME_STORAGE_KEY,
-)})}catch(e){}p=s==="light"||s==="dark"?s:"system";r=p==="system"?(window.matchMedia&&window.matchMedia(${JSON.stringify(
-  DARK_QUERY,
-)}).matches?"dark":"light"):p}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",r);d.setAttribute("data-theme-pref",p);d.style.colorScheme=r;var c=r==="dark"?${JSON.stringify(
-  THEME_CHROME_COLOR.dark,
-)}:${JSON.stringify(THEME_CHROME_COLOR.light)};var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++){m[i].setAttribute("content",c);m[i].removeAttribute("media")}})();`
+export const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement;d.setAttribute("data-theme","light");d.setAttribute("data-theme-pref","light");d.style.colorScheme="light";var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++){m[i].setAttribute("content",${JSON.stringify(THEME_CHROME_COLOR.light)});m[i].removeAttribute("media")}})();`
 
 function systemPrefersDark(): boolean {
   return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(DARK_QUERY).matches
 }
 
 export function readStoredPreference(): ThemePreference {
-  try {
-    return parsePreference(window.localStorage.getItem(THEME_STORAGE_KEY))
-  } catch {
-    return "system"
-  }
+  return "light"
 }
 
 /** While set, every apply paints this theme regardless of preference (see lockTheme). */
@@ -90,10 +79,10 @@ export function lockTheme(theme: ResolvedTheme): () => void {
 
 /** Paints a preference: sets the attributes and the browser-chrome colour. */
 export function applyTheme(preference: ThemePreference): ResolvedTheme {
-  const resolved = lockedTheme ?? resolveTheme(preference, systemPrefersDark())
+  const resolved = "light"
   const root = document.documentElement
   root.setAttribute("data-theme", resolved)
-  root.setAttribute("data-theme-pref", preference)
+  root.setAttribute("data-theme-pref", "light")
   root.style.colorScheme = resolved
 
   const metas = document.querySelectorAll('meta[name="theme-color"]')
@@ -113,13 +102,7 @@ export function applyTheme(preference: ThemePreference): ResolvedTheme {
 
 /** Persists and applies a preference. Storage failure still applies it for this session. */
 export function setThemePreference(preference: ThemePreference): void {
-  try {
-    if (preference === "system") window.localStorage.removeItem(THEME_STORAGE_KEY)
-    else window.localStorage.setItem(THEME_STORAGE_KEY, preference)
-  } catch {
-    /* private mode / storage blocked — the choice just won't persist */
-  }
-  applyTheme(preference)
+  applyTheme("light")
   window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT))
 }
 

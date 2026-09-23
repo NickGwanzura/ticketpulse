@@ -9,7 +9,6 @@ import {
   PieChart, Store, Contact, History, UsersRound,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
-import ThemeToggle from "@/components/ui/ThemeToggle"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; badgeKey?: string }
 type NavGroup = { label?: string; items: NavItem[] }
@@ -165,7 +164,6 @@ export default function Sidebar({
           >
             <LogOut size={14} className="text-white/70" /> Sign out
           </button>
-          <ThemeToggle variant="onDark" />
         </div>
       </aside>
 
