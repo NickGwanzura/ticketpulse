@@ -9,6 +9,7 @@ import { db } from "@/db"
 import { events, eventStatusEnum } from "@/db/schema"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug, slugify } from "@/lib/slug"
+import { parseHarareDateTimeLocal } from "@/lib/event-schedule"
 
 const STATUS_VALUES = eventStatusEnum.enumValues
 
@@ -39,20 +40,6 @@ export type UpdateEventState = {
   message?: string
   error?: string
   fieldErrors?: Record<string, string>
-}
-
-function parseDateTimeLocal(value: string): Date | null {
-  if (!value) return null
-  // <input type="datetime-local"> emits "YYYY-MM-DDTHH:MM" (no timezone).
-  // We treat this as Africa/Harare (CAT, UTC+2) since that's the app's timezone.
-  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
-  if (!m) return null
-  const [_, year, month, day, hour, minute] = m
-  // CAT is UTC+2. Zimbabwe does not observe DST.
-  const catOffsetMs = 2 * 60 * 60 * 1000
-  const utcMs = Date.UTC(+year, +month - 1, +day, +hour, +minute) - catOffsetMs
-  const d = new Date(utcMs)
-  return Number.isNaN(d.getTime()) ? null : d
 }
 
 async function requireOwnership(eventId: string) {
@@ -119,13 +106,13 @@ export async function updateEventAction(
   // Non-admins can't move an event into or out of "published" here — keep whatever it already is.
   const status = guard.session.user.role === "admin" ? data.status : guard.event.status
 
-  const startsAt = parseDateTimeLocal(data.startsAt)
+  const startsAt = parseHarareDateTimeLocal(data.startsAt)
   if (!startsAt) {
     return { ok: false, error: "Invalid start date.", fieldErrors: { startsAt: "Invalid date" } }
   }
   let endsAt: Date | null = null
   if (data.endsAt) {
-    endsAt = parseDateTimeLocal(data.endsAt)
+    endsAt = parseHarareDateTimeLocal(data.endsAt)
     if (!endsAt) {
       return { ok: false, error: "Invalid end date.", fieldErrors: { endsAt: "Invalid date" } }
     }

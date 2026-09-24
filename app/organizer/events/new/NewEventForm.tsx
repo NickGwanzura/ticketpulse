@@ -15,6 +15,7 @@ import AiPricingButton from "@/components/ai/AiPricingButton"
 import AiDescriptionButton from "@/components/ai/AiDescriptionButton"
 import AiLocationSuggestButton from "@/components/ai/AiLocationSuggestButton"
 import { reportStepValidity } from "@/lib/form-step-validation"
+import { formatHarareDate, parseHarareDateTimeLocal } from "@/lib/event-schedule"
 
 const INITIAL: CreateEventState = { ok: true }
 
@@ -113,7 +114,10 @@ export default function NewEventForm() {
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("")
   const [startsAt, setStartsAt] = useState("")
+  const [endsAt, setEndsAt] = useState("")
   const [description, setDescription] = useState("")
+  const startsAtDate = startsAt ? parseHarareDateTimeLocal(startsAt) : null
+  const endsAtDate = endsAt ? parseHarareDateTimeLocal(endsAt) : null
 
   // Location fields (controlled for live geocoding preview)
   const [venue, setVenue] = useState("")
@@ -453,7 +457,7 @@ export default function NewEventForm() {
         {/* ── Step 3: Schedule ── */}
         <div data-event-step="2" className={step === 2 ? "contents" : "hidden"}>
         <div>
-          <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at</label>
+          <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at (Zimbabwe time, CAT)</label>
           <input
             id="startsAt"
             name="startsAt"
@@ -467,12 +471,14 @@ export default function NewEventForm() {
         </div>
 
         <div>
-          <label htmlFor="endsAt" className="block text-[13px] font-medium text-ink mb-1.5">Ends at</label>
+          <label htmlFor="endsAt" className="block text-[13px] font-medium text-ink mb-1.5">Ends at (Zimbabwe time, CAT)</label>
           <input
             id="endsAt"
             name="endsAt"
             type="datetime-local"
             className={inputCls(!!errs.endsAt)}
+            value={endsAt}
+            onChange={(e) => setEndsAt(e.target.value)}
           />
           <FieldError message={errs.endsAt} />
         </div>
@@ -489,7 +495,7 @@ export default function NewEventForm() {
           <AiSocialButton
             eventTitle={title}
             category={category}
-            eventDate={startsAt ? new Date(startsAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
+            eventDate={startsAtDate ? formatHarareDate(startsAtDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
             venue={venue}
             city={city}
           />
@@ -514,7 +520,8 @@ export default function NewEventForm() {
             <div className="flex justify-between sm:block"><dt className="text-ink-3">Title</dt><dd className="font-medium text-ink truncate sm:mt-0.5">{title || "—"}</dd></div>
             <div className="flex justify-between sm:block"><dt className="text-ink-3">Category</dt><dd className="font-medium text-ink sm:mt-0.5">{category || "—"}</dd></div>
             <div className="flex justify-between sm:block"><dt className="text-ink-3">Venue / City</dt><dd className="font-medium text-ink truncate sm:mt-0.5">{[venue, city].filter(Boolean).join(", ") || "—"}</dd></div>
-            <div className="flex justify-between sm:block"><dt className="text-ink-3">Starts</dt><dd className="font-medium text-ink sm:mt-0.5">{startsAt ? new Date(startsAt).toLocaleString("en-GB") : "—"}</dd></div>
+            <div className="flex justify-between sm:block"><dt className="text-ink-3">Starts (CAT)</dt><dd className="font-medium text-ink sm:mt-0.5">{startsAtDate ? `${formatHarareDate(startsAtDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${startsAt.slice(11)}` : "—"}</dd></div>
+            <div className="flex justify-between sm:block"><dt className="text-ink-3">Ends (CAT)</dt><dd className="font-medium text-ink sm:mt-0.5">{endsAtDate ? `${formatHarareDate(endsAtDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${endsAt.slice(11)}` : "—"}</dd></div>
           </dl>
         </div>
         <div className="rounded-xl border border-dashed border-line bg-paper-2/40 p-4 flex items-start gap-3">

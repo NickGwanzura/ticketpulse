@@ -16,6 +16,7 @@ import AiTagSuggest from "@/components/ai/AiTagSuggest"
 import AiSocialButton from "@/components/ai/AiSocialButton"
 import AiPricingButton from "@/components/ai/AiPricingButton"
 import DeleteEventForm from "../../DeleteEventForm"
+import { formatHarareDateTimeLocal } from "@/lib/event-schedule"
 
 const INITIAL: UpdateEventState = { ok: true }
 
@@ -109,13 +110,6 @@ type Props = {
   tiers: TierSummary[]
   showCreatedToast?: boolean
   isAdmin?: boolean
-}
-
-function toLocalInputValue(d: Date | null): string {
-  if (!d) return ""
-  // YYYY-MM-DDTHH:MM in local time
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function ReqMark() {
@@ -525,14 +519,14 @@ export default function EditEventForm({ event, tiers, showCreatedToast, isAdmin 
           </div>
 
           <div>
-            <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at<ReqMark /></label>
-            <input id="startsAt" name="startsAt" type="datetime-local" required defaultValue={toLocalInputValue(event.startsAt)} className={inputCls(!!errs.startsAt)} />
+            <label htmlFor="startsAt" className="block text-[13px] font-medium text-ink mb-1.5">Starts at (Zimbabwe time, CAT)<ReqMark /></label>
+            <input id="startsAt" name="startsAt" type="datetime-local" required defaultValue={formatHarareDateTimeLocal(event.startsAt)} className={inputCls(!!errs.startsAt)} />
             <FieldError message={errs.startsAt} />
           </div>
 
           <div>
-            <label htmlFor="endsAt" className="block text-[13px] font-medium text-ink mb-1.5">Ends at</label>
-            <input id="endsAt" name="endsAt" type="datetime-local" defaultValue={toLocalInputValue(event.endsAt)} className={inputCls(!!errs.endsAt)} />
+            <label htmlFor="endsAt" className="block text-[13px] font-medium text-ink mb-1.5">Ends at (Zimbabwe time, CAT)</label>
+            <input id="endsAt" name="endsAt" type="datetime-local" defaultValue={formatHarareDateTimeLocal(event.endsAt)} className={inputCls(!!errs.endsAt)} />
             <FieldError message={errs.endsAt} />
           </div>
 
