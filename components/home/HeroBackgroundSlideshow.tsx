@@ -9,7 +9,7 @@ const SLIDES = [
 
 export default function HeroBackgroundSlideshow({ bright = false }: { bright?: boolean }) {
   return (
-    <div className={`absolute inset-0 -z-10 overflow-hidden ${bright ? "tp-hero-bright" : "bg-navy"}`} aria-hidden="true">
+    <div className={`absolute inset-0 z-0 overflow-hidden ${bright ? "tp-hero-bright" : "bg-navy"}`} aria-hidden="true">
       {SLIDES.map((slide, index) => (
         <div
           key={slide.src}

@@ -46,35 +46,46 @@ const STEPS = [
 ]
 
 export default async function Home() {
-  const featuredEvents = await getFeaturedEvents(6)
+  const featuredEvents = await getFeaturedEvents(6).catch((error) => {
+    console.error("[home] failed to load featured events", error)
+    return []
+  })
 
-  const pastEvents = await db
-    .select({
-      id: eventsTable.id,
-      slug: eventsTable.slug,
-      title: eventsTable.title,
-      category: eventsTable.category,
-      venue: eventsTable.venue,
-      city: eventsTable.city,
-      startsAt: eventsTable.startsAt,
-      endsAt: eventsTable.endsAt,
-      coverImage: eventsTable.coverImage,
-      status: eventsTable.status,
+  const pastEvents = await Promise.resolve()
+    .then(() => db
+      .select({
+        id: eventsTable.id,
+        slug: eventsTable.slug,
+        title: eventsTable.title,
+        category: eventsTable.category,
+        venue: eventsTable.venue,
+        city: eventsTable.city,
+        startsAt: eventsTable.startsAt,
+        endsAt: eventsTable.endsAt,
+        coverImage: eventsTable.coverImage,
+        status: eventsTable.status,
+      })
+      .from(eventsTable)
+      .where(and(
+        inArray(eventsTable.status, ["published", "completed"]),
+        sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt} + INTERVAL '6 hours') < NOW()`,
+      ))
+      .orderBy(desc(sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt})`))
+      .limit(6))
+    .catch((error) => {
+      console.error("[home] failed to load past events", error)
+      return []
     })
-    .from(eventsTable)
-    .where(and(
-      inArray(eventsTable.status, ["published", "completed"]),
-      sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt} + INTERVAL '6 hours') < NOW()`,
-    ))
-    .orderBy(desc(sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt})`))
-    .limit(6)
 
   return (
     <main>
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-white text-ink">
-        <div className="pointer-events-none absolute -right-40 -top-48 h-[34rem] w-[34rem] rounded-full bg-orange-100/65 blur-3xl" aria-hidden />
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-12 pt-28 sm:pt-32 md:grid-cols-[1.02fr_0.98fr] md:gap-12 md:px-8 md:pb-16 md:pt-28">
+        <HeroBackgroundSlideshow />
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(180deg,rgba(255,255,255,.98)_0%,rgba(255,255,255,.96)_56%,rgba(255,255,255,0)_72%)] md:bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,.98)_37%,rgba(255,255,255,.9)_48%,rgba(255,255,255,.48)_58%,rgba(255,255,255,0)_68%)]" aria-hidden />
+        <div className="pointer-events-none absolute -right-40 -top-48 z-[1] h-[34rem] w-[34rem] rounded-full bg-orange-100/45 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(180deg,transparent_0%,transparent_60%,rgba(0,0,0,.22)_100%)] md:bg-[linear-gradient(90deg,transparent_47%,rgba(0,0,0,.18)_68%,rgba(0,0,0,.3)_100%)]" aria-hidden />
+        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-8 px-5 pb-12 pt-28 sm:pt-32 md:grid-cols-[1.02fr_0.98fr] md:gap-12 md:px-8 md:pb-16 md:pt-28">
           <div className="relative z-10 max-w-2xl">
             <p className="tp-fade-up inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-orange-800 sm:text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
@@ -136,37 +147,26 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="tp-fade-up-2 relative mx-auto w-full max-w-[560px] md:ml-auto">
-            <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-orange-100 via-rose-50 to-blue-50 blur-xl" aria-hidden />
-            <div className="relative isolate aspect-[1.08] overflow-hidden rounded-[2rem] border border-white bg-[#081522] shadow-[0_28px_80px_-34px_rgba(10,37,64,0.42)] sm:aspect-[1.16] md:aspect-[0.9] lg:aspect-[0.98]">
-              <HeroBackgroundSlideshow />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#07182b]/85 via-[#07182b]/10 to-[#07182b]/15" aria-hidden />
-              <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-[#07182b]/35 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-7 sm:top-7">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden />
-                Moments happen here
-              </div>
-              <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7">
-                <div className="max-w-sm text-white">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-200">Make a plan. Make a memory.</p>
-                  <p className="mt-2 font-display text-[32px] font-black leading-[0.98] tracking-[-0.025em] sm:text-[40px]">The moments you go out for.</p>
-                </div>
-                <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-white/15 bg-white/10 p-3.5 text-white backdrop-blur-md sm:p-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent"><Calendar size={19} /></span>
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-bold">Your next outing</p>
-                      <p className="mt-0.5 truncate text-[11px] text-white/75">Concerts · food · sport · more</p>
-                    </div>
+          <div className="tp-fade-up-2 relative mx-auto flex min-h-[220px] w-full max-w-[560px] flex-col justify-between py-2 sm:min-h-[280px] md:ml-auto md:min-h-[450px] md:py-5">
+            <div className="ml-auto mt-8 max-w-sm text-right text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-200">Make a plan. Make a memory.</p>
+              <p className="mt-2 font-display text-[32px] font-black leading-[0.98] tracking-[-0.025em] sm:text-[40px]">The moments you go out for.</p>
+              <div className="ml-auto mt-5 flex max-w-sm items-center justify-between gap-4 rounded-2xl border border-white/20 bg-[#07182b]/35 p-3.5 text-left text-white shadow-lg backdrop-blur-md sm:p-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent"><Calendar size={19} /></span>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-bold">Your next outing</p>
+                    <p className="mt-0.5 truncate text-[11px] text-white/75">Concerts · food · sport · more</p>
                   </div>
-                  <Link href="/events" aria-label="Browse all events" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-navy transition hover:bg-orange-100">
-                    <ArrowUpRight size={17} />
-                  </Link>
                 </div>
+                <Link href="/events" aria-label="Browse all events" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-navy transition hover:bg-orange-100">
+                  <ArrowUpRight size={17} />
+                </Link>
               </div>
-            </div>
-            <div className="absolute -bottom-4 -left-3 hidden items-center gap-2.5 rounded-2xl border border-line bg-white px-4 py-3 shadow-[0_16px_50px_-24px_rgba(10,37,64,0.35)] sm:flex md:-left-7">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><Ticket size={17} /></span>
-              <span className="text-[11px] font-bold text-ink">Your ticket, straight to your phone</span>
+              <div className="ml-auto mt-3 hidden w-fit items-center gap-2.5 rounded-xl border border-white/20 bg-[#07182b]/35 px-3 py-2 text-left text-[11px] font-bold text-white shadow-sm backdrop-blur-md sm:flex">
+                <Ticket size={15} className="text-emerald-300" />
+                Your ticket, straight to your phone
+              </div>
             </div>
           </div>
         </div>
