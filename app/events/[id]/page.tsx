@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { Calendar, CheckCircle2, Clock, DollarSign, ExternalLink, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
+import { Ban, Calendar, CheckCircle2, Clock, DollarSign, ExternalLink, Eye, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
 // Cuts DB load by ~95% for the most-hit public pages while
@@ -10,7 +10,6 @@ export const dynamicParams = true
 
 import MerchSection from "@/components/merch/MerchSection"
 import VendorSection from "@/components/vendors/VendorSection"
-import MediaSection from "@/components/media/MediaSection"
 import TicketSelector from "@/components/events/TicketSelector"
 import EventViewTracker from "@/components/events/EventViewTracker"
 import VenueMap from "@/components/events/VenueMap"
@@ -40,20 +39,24 @@ const CATEGORY_EMOJI: Record<string, string> = {
   "cocktail experience": "🍹",
 }
 
-// Public profile details captured from the linked Instagram pages. Keep this
-// limited to artist-facing descriptors; booking contacts stay off the public page.
-const PUBLIC_LINEUP_PROFILES: Record<string, { descriptor: string; audience: string }> = {
-  "_jay_dj._": { descriptor: "House music DJ", audience: "7,022 followers" },
-  reverb7: { descriptor: "Afrobeats & AfroHouse DJ · Producer", audience: "7,565 followers" },
+const SOCIAL_HOSTS: Record<string, string> = {
+  "instagram.com": "Instagram",
+  "tiktok.com": "TikTok",
+  "facebook.com": "Facebook",
+  "x.com": "X",
+  "twitter.com": "X",
+  "youtube.com": "YouTube",
+  "soundcloud.com": "SoundCloud",
+  "open.spotify.com": "Spotify",
 }
 
-function getPublicLineupProfile(socialUrl: string | null) {
-  if (!socialUrl) return null
+function socialLinkLabel(socialUrl: string) {
   try {
-    const handle = new URL(socialUrl).pathname.split("/").filter(Boolean)[0]?.toLowerCase()
-    return handle ? PUBLIC_LINEUP_PROFILES[handle] ?? null : null
+    const host = new URL(socialUrl).hostname.replace(/^www./, "").toLowerCase()
+    const name = SOCIAL_HOSTS[host]
+    return name ? `View on ${name}` : "View profile"
   } catch {
-    return null
+    return "View profile"
   }
 }
 
@@ -160,6 +163,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   if (!row) notFound()
 
   const isEventOwner = session?.user?.id === row.organizerId || session?.user?.role === "admin"
+  // Unpublished events are only visible to their organizer (as a preview).
+  const isUnpublished = row.status === "draft" || row.status === "pending_review"
+  if (isUnpublished && !isEventOwner) notFound()
+  const isCancelled = row.status === "cancelled"
   const now = new Date()
   const eventEndedAt = row.endsAt ?? row.startsAt
   const isPastEvent = eventEndedAt.getTime() < now.getTime()
@@ -256,6 +263,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     totalQuantity: t.totalQuantity,
     soldQuantity: availability?.usedQuantity ?? t.soldQuantity ?? 0,
     maxPerOrder: t.maxPerOrder ?? 10,
+    salesStart: t.salesStart ?? null,
+    salesEnd: t.salesEnd ?? null,
     earlyBirdPrice: t.earlyBirdPrice ? Number(t.earlyBirdPrice) : null,
     earlyBirdUntil: t.earlyBirdUntil ?? null,
     earlyBirdQuantity: t.earlyBirdQuantity ?? null,
@@ -285,6 +294,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const emoji = CATEGORY_EMOJI[row.category.toLowerCase()] ?? "🎫"
   const baseCurrency = tiers[0]?.currency ?? "USD"
   const lowestPrice = tiers.length ? Math.min(...tiers.map((t) => t.price)) : null
+  const allSoldOut = row.status === "sold_out" || (tiers.length > 0 && tiers.every((t) => t.totalQuantity - t.soldQuantity <= 0))
+  // Mirrors the checkout API: only published, upcoming events can be bought.
+  const canBuy = row.status === "published" && !isPastEvent && !allSoldOut
 
   // ── JSON-LD structured data (Schema.org Event) ────────────────────────────
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
@@ -294,7 +306,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     name: row.title,
     description: row.description ?? undefined,
     startDate: row.startsAt.toISOString(),
-    eventStatus: "https://schema.org/EventScheduled",
+    eventStatus: isCancelled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {
       "@type": "Place",
@@ -317,7 +329,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       "@type": "AggregateOffer",
       priceCurrency: baseCurrency,
       lowPrice: lowestPrice,
-      availability: "https://schema.org/InStock",
+      availability: allSoldOut ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
       url: `${siteUrl}/events/${row.slug}`,
     },
   }
@@ -349,8 +361,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     year: "numeric",
     timeZone,
   }).format(row.startsAt)
-  const monthDisplay = new Intl.DateTimeFormat("en-ZW", { month: "short", timeZone }).format(row.startsAt)
-  const dayDisplay = new Intl.DateTimeFormat("en-ZW", { day: "2-digit", timeZone }).format(row.startsAt)
   const timeRangeDisplay = (() => {
     const timeFormatter = new Intl.DateTimeFormat("en-ZW", {
       hour: "2-digit",
@@ -358,8 +368,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
       timeZone,
     })
     const startTime = timeFormatter.format(row.startsAt)
-    return row.endsAt ? `${startTime} - ${timeFormatter.format(row.endsAt)}` : startTime
+    return row.endsAt ? `${startTime} – ${timeFormatter.format(row.endsAt)}` : startTime
   })()
+  const dayKey = (date: Date) => date.toLocaleDateString("en-CA", { timeZone })
+  const isMultiDay = !!row.endsAt && dayKey(row.startsAt) !== dayKey(row.endsAt)
+  const isVenueTba = row.venue.trim().toLowerCase() === "tba" || row.city.trim().toLowerCase() === "tba"
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -383,6 +396,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
 
+      {isUnpublished && (
+        <div className="border-b border-amber-200 bg-amber-50">
+          <p className="mx-auto flex max-w-7xl items-center gap-2 px-5 py-3 text-[13px] font-medium text-amber-900 md:px-8">
+            <Eye size={14} aria-hidden /> Preview: this event isn&apos;t published, so only you can see it and tickets can&apos;t be bought yet.
+          </p>
+        </div>
+      )}
+
       {/* ── Hero banner (cover image only, no title overlay) ── */}
       {row.coverImage ? (
         <div className="relative w-full h-[clamp(220px,58vw,420px)] md:h-[clamp(360px,30vw,520px)] overflow-hidden bg-ink">
@@ -405,10 +426,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
       {/* Sponsor banner */}
       {row.sponsored && (
-        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-y border-amber-200">
+        <div className="bg-amber-50 border-y border-amber-200">
           <div className="max-w-7xl mx-auto px-5 md:px-8 py-3 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.12em] bg-gradient-to-r from-amber-600 to-yellow-500 text-transparent bg-clip-text">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-800">
                 Sponsored
               </span>
               {row.sponsorName && (
@@ -433,9 +454,19 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <span className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700 ring-1 ring-orange-200/80">
                   <span aria-hidden>{emoji}</span> {row.category}
                 </span>
-                {row.status === "published" && !isPastEvent && (
+                {canBuy && (
                   <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700 ring-1 ring-emerald-200/80">
                     On sale
+                  </span>
+                )}
+                {allSoldOut && !isPastEvent && !isCancelled && (
+                  <span className="inline-flex rounded-full bg-rose-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-rose-700 ring-1 ring-rose-200/80">
+                    Sold out
+                  </span>
+                )}
+                {isCancelled && (
+                  <span className="inline-flex rounded-full bg-rose-600 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+                    Cancelled
                   </span>
                 )}
                 {isPastEvent && (
@@ -449,67 +480,32 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 {row.title}
               </h1>
 
-              <div className="mt-7 grid gap-4 md:grid-cols-2">
-                <div className="group relative overflow-hidden rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50 via-paper to-amber-50 p-5 shadow-sm shadow-orange-950/[0.04]">
-                  <div className="absolute right-4 top-4 text-[72px] font-bold leading-none tracking-tighter text-orange-100 transition-transform duration-300 group-hover:scale-110" aria-hidden>
-                    {dayDisplay}
-                  </div>
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-white shadow-sm shadow-orange-900/20">
-                    <Calendar size={22} />
-                  </span>
-                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-orange-700">Date</p>
-                  <p className="mt-1 max-w-[16rem] text-[22px] font-bold leading-tight tracking-tight text-ink">{dateDisplay}</p>
-                  <p className="mt-3 inline-flex rounded-full bg-white/75 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-orange-700 ring-1 ring-orange-200/70">{monthDisplay}</p>
-                </div>
-
-                <div className="group relative overflow-hidden rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 via-paper to-cyan-50 p-5 shadow-sm shadow-sky-950/[0.04]">
-                  <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-200/35 blur-2xl transition-transform duration-300 group-hover:scale-125" aria-hidden />
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-navy text-white shadow-sm shadow-navy/20">
-                    <Clock size={22} />
-                  </span>
-                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-sky-700">Time</p>
-                  <p className="mt-1 text-[28px] font-bold leading-tight tracking-tight text-ink">{timeRangeDisplay}</p>
-                  <p className="mt-3 text-[12px] font-semibold text-ink-3">Africa/Harare time</p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-line bg-paper-2/70 p-4">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-violet-700 ring-1 ring-violet-200/70">
-                      <MapPin size={18} />
+              <dl className="mt-7 grid gap-3 sm:grid-cols-2">
+                {[
+                  { icon: Calendar, label: "Date", value: dateDisplay, sub: null },
+                  { icon: Clock, label: "Time", value: isMultiDay ? timeDisplay : timeRangeDisplay, sub: "Harare time (CAT)" },
+                  {
+                    icon: MapPin,
+                    label: "Venue",
+                    value: isVenueTba ? "Location TBA" : `${row.venue}, ${row.city}`,
+                    sub: isVenueTba ? null : row.address,
+                  },
+                  ...(row.organizerName && !row.hideOrganizerName
+                    ? [{ icon: Users, label: "Organizer", value: row.organizerName, sub: null }]
+                    : []),
+                ].map(({ icon: Icon, label, value, sub }) => (
+                  <div key={label} className="flex items-start gap-3 rounded-2xl border border-line bg-paper-2/70 p-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-paper text-brand-600 ring-1 ring-line">
+                      <Icon size={18} />
                     </span>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Venue</p>
-                      <p className="mt-1 text-[15px] font-semibold leading-snug text-ink">
-                        {row.venue.trim().toLowerCase() === "tba" || row.city.trim().toLowerCase() === "tba"
-                          ? "Location TBA"
-                          : `${row.venue}, ${row.city}`}
-                      </p>
-                      {row.address && <p className="mt-1 text-[12px] text-ink-3">{row.address}</p>}
+                    <div className="min-w-0">
+                      <dt className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">{label}</dt>
+                      <dd className="mt-1 text-[15px] font-semibold leading-snug text-ink">{value}</dd>
+                      {sub && <dd className="mt-0.5 text-[12px] text-ink-3">{sub}</dd>}
                     </div>
                   </div>
-                </div>
-
-                {row.organizerName && !row.hideOrganizerName ? (
-                  <div className="rounded-2xl border border-line bg-paper-2/70 p-4">
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-700 ring-1 ring-emerald-200/70">
-                        <Users size={18} />
-                      </span>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Organizer</p>
-                        <p className="mt-1 text-[15px] font-semibold leading-snug text-ink">{row.organizerName}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-line bg-paper-2/70 p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Full schedule</p>
-                    <p className="mt-1 text-[14px] font-semibold leading-snug text-ink">{timeDisplay}</p>
-                  </div>
-                )}
-              </div>
+                ))}
+              </dl>
 
               <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-5">
                 <ShareEventButton eventTitle={row.title} eventDescription={row.description} />
@@ -520,7 +516,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             {/* ── Description & tags ── */}
             <div>
               {row.description && (
-                <p className="text-ink-2 leading-relaxed text-[15px]">{row.description}</p>
+                <p className="text-ink-2 leading-relaxed text-[15px] whitespace-pre-line">{row.description}</p>
               )}
               {row.tags && row.tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -573,14 +569,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-3">On the lineup</p>
                     <h2 className="mt-1 text-[22px] font-bold tracking-tight text-ink">Meet the artists</h2>
                   </div>
-                  <ExternalLink size={22} className="text-pink-600" aria-hidden="true" />
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   {lineupRows.map((member) => (
                     <article key={member.id} className="rounded-2xl border border-line bg-white p-4">
-                      {(() => {
-                        const profile = getPublicLineupProfile(member.socialUrl)
-                        return (
                       <div className="flex items-start gap-3">
                         {member.imageUrl ? (
                           <img src={member.imageUrl} alt={member.name} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
@@ -591,25 +583,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                         )}
                         <div className="min-w-0">
                           <h3 className="truncate text-[15px] font-semibold text-ink">{member.name}</h3>
-                          {(member.role || profile) && (
-                            <p className="mt-0.5 text-[12px] text-ink-3">
-                              {profile?.descriptor ?? member.role}
-                              {profile?.audience && <span className="text-ink-3/75"> · {profile.audience}</span>}
-                            </p>
-                          )}
+                          {member.role && <p className="mt-0.5 text-[12px] text-ink-3">{member.role}</p>}
                         </div>
                       </div>
-                        )
-                      })()}
                       {member.bio && <p className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-ink-2">{member.bio}</p>}
                       {member.socialUrl && (
                         <a
                           href={member.socialUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-pink-200 bg-pink-50 px-3.5 text-[12px] font-semibold text-pink-700 transition hover:bg-pink-100"
+                          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-paper-2 px-3.5 text-[12px] font-semibold text-ink-2 transition hover:border-line-2 hover:text-ink"
                         >
-                          <ExternalLink size={14} /> View Instagram profile
+                          <ExternalLink size={14} /> {socialLinkLabel(member.socialUrl)}
                         </a>
                       )}
                     </article>
@@ -716,7 +701,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               eventVenue={[row.venue, row.city].filter(Boolean).join(", ")}
             />
             <VendorSection listings={vendorListingsData} eventId={row.id} eventSlug={row.slug} eventTitle={row.title} isOrganizer={isEventOwner} />
-            <MediaSection galleries={[]} eventTitle={row.title} />
           </div>
 
           <div className="lg:col-span-1 pt-10 lg:pt-6">
@@ -727,6 +711,34 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
                   This event has finished. The summary, reviews, media, and vendor information remain available for reference.
                 </p>
+              </div>
+            ) : !canBuy ? (
+              <div className="lg:sticky lg:top-24 rounded-2xl border border-line bg-paper p-7 shadow-sm shadow-ink/[0.04]">
+                {isCancelled ? (
+                  <>
+                    <Ban size={20} className="mb-3 text-rose-600" aria-hidden />
+                    <h2 className="text-[18px] font-semibold tracking-tight text-ink">This event was cancelled</h2>
+                    <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
+                      Ticket sales are closed. If you bought tickets, refunds go back to your original payment method within 7 days.
+                    </p>
+                  </>
+                ) : isUnpublished ? (
+                  <>
+                    <Eye size={20} className="mb-3 text-amber-600" aria-hidden />
+                    <h2 className="text-[18px] font-semibold tracking-tight text-ink">Not on sale yet</h2>
+                    <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
+                      Publish this event to open ticket sales. Buyers can&apos;t see this page until then.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Ticket size={20} className="mb-3 text-rose-600" aria-hidden />
+                    <h2 className="text-[18px] font-semibold tracking-tight text-ink">Sold out</h2>
+                    <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
+                      Every ticket has been sold. Share the page with friends who already have tickets, or check back in case the organizer releases more.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <TicketSelector
@@ -743,10 +755,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {!isPastEvent && lowestPrice !== null && (
+      {canBuy && lowestPrice !== null && (
         <MobileBuyBar
           label="Buy tickets"
-          primary={formatCurrency(lowestPrice, baseCurrency)}
+          primary={lowestPrice === 0 ? "Free" : formatCurrency(lowestPrice, baseCurrency)}
           secondary="From"
           href="#tickets"
         />

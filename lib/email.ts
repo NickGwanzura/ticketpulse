@@ -272,7 +272,7 @@ export function sendOrderConfirmationEmail(args: {
   return send({
     to: args.to,
     subject: `Tickets confirmed: ${args.eventTitle}`,
-    react: OrderConfirmationEmail({ ...args, ownerEmail: args.to }),
+    react: OrderConfirmationEmail(args),
     attachments: args.attachments,
   })
 }

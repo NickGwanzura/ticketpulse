@@ -11,6 +11,8 @@ interface CartLineBase {
   eventStartsAt?: string
   eventEndsAt?: string
   eventVenue?: string
+  /** Most this line may hold (per-order cap and remaining stock at add time). */
+  maxQty?: number
 }
 
 export interface TicketLine     extends CartLineBase { kind: "ticket";       tierId: string;  tierName: string; emoji: string }
@@ -43,10 +45,20 @@ interface CartContextValue {
   totalCount: number
   totalsByCurrency: Record<string, number>
   addItem: (item: CartLineInput) => void
+  /** Upsert a line with exactly `item.qty` (used when the buyer goes straight to checkout). */
+  setItem: (item: CartLineInput) => void
   removeItem: (key: string) => void
   updateQty: (key: string, qty: number) => void
   clear: () => void
-  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]) => OrderRecord
+  /** Put previously ordered lines back into the cart (e.g. after a cancelled card payment). */
+  restoreItems: (lines: CartLine[]) => void
+  /**
+   * Record an order on this device and remove its lines from the cart. With
+   * `eventSlug`, only that event's lines are ordered; other events stay in the cart.
+   */
+  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"], eventSlug?: string) => OrderRecord
+  /** Save a server-provided order record on this device without touching the cart. */
+  saveOrder: (order: OrderRecord) => void
   getOrders: () => OrderRecord[]
   getOrder: (id: string) => OrderRecord | null
 }
@@ -60,6 +72,10 @@ function keyFor(item: CartLineInput): string {
   if (item.kind === "merch")        return `merch:${item.eventSlug}:${item.itemId}:${item.size ?? ""}`
   if (item.kind === "vendor_addon") return `vendor_addon:${item.eventSlug}:${item.listingId}`
   return "item:unknown"
+}
+
+function clampQty(qty: number, maxQty?: number): number {
+  return typeof maxQty === "number" && maxQty > 0 ? Math.min(qty, maxQty) : qty
 }
 
 function makeOrderId(): string {
@@ -93,8 +109,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const key = keyFor(item)
     setItems((prev) => {
       const existing = prev.find((p) => p.key === key)
-      if (existing) return prev.map((p) => (p.key === key ? { ...p, qty: p.qty + item.qty } : p))
-      return [...prev, { ...item, key } as CartLine]
+      if (existing) {
+        const maxQty = item.maxQty ?? existing.maxQty
+        return prev.map((p) => (p.key === key ? { ...p, maxQty, qty: clampQty(p.qty + item.qty, maxQty) } : p))
+      }
+      return [...prev, { ...item, key, qty: clampQty(item.qty, item.maxQty) } as CartLine]
+    })
+  }, [])
+
+  const setItem = useCallback((item: CartLineInput) => {
+    const key = keyFor(item)
+    setItems((prev) => {
+      const line = { ...item, key, qty: clampQty(item.qty, item.maxQty) } as CartLine
+      if (prev.some((p) => p.key === key)) return prev.map((p) => (p.key === key ? line : p))
+      return [...prev, line]
+    })
+  }, [])
+
+  const restoreItems = useCallback((lines: CartLine[]) => {
+    setItems((prev) => {
+      const next = [...prev]
+      for (const raw of lines) {
+        // Server-built order lines use different keys; re-key them for the cart.
+        const { key: _serverKey, ...input } = raw
+        void _serverKey
+        const line = { ...input, key: keyFor(input as CartLineInput) } as CartLine
+        const i = next.findIndex((p) => p.key === line.key)
+        if (i >= 0) next[i] = line
+        else next.push(line)
+      }
+      return next
     })
   }, [])
 
@@ -103,7 +147,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updateQty = useCallback((key: string, qty: number) => {
-    setItems((prev) => (qty < 1 ? prev.filter((p) => p.key !== key) : prev.map((p) => (p.key === key ? { ...p, qty } : p))))
+    setItems((prev) => (qty < 1 ? prev.filter((p) => p.key !== key) : prev.map((p) => (p.key === key ? { ...p, qty: clampQty(qty, p.maxQty) } : p))))
   }, [])
 
   const clear = useCallback(() => setItems([]), [])
@@ -130,33 +174,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return getOrders().find((o) => o.id === id) ?? null
   }, [getOrders])
 
+  const saveOrder = useCallback((order: OrderRecord) => {
+    try {
+      const existing = getOrders().filter((o) => o.id !== order.id)
+      localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing]))
+    } catch (err) {
+      // The server order is authoritative. Private browsing, quota limits, or
+      // storage policy must not turn a completed payment into a false failure.
+      console.warn("[cart] saveOrder persist", err)
+    }
+  }, [getOrders])
+
   const placeOrder = useCallback(
-    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]): OrderRecord => {
+    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"], eventSlug?: string): OrderRecord => {
+      const ordered = eventSlug ? items.filter((i) => i.eventSlug === eventSlug) : items
       const order: OrderRecord = {
         id: orderId ?? makeOrderId(),
         createdAt: new Date().toISOString(),
         status: status ?? "paid",
-        items: [...items],
-        totalsByCurrency: { ...totalsByCurrency },
+        items: [...ordered],
+        totalsByCurrency: ordered.reduce<Record<string, number>>((acc, i) => {
+          acc[i.currency] = (acc[i.currency] ?? 0) + i.price * i.qty
+          return acc
+        }, {}),
         contact,
         payment,
       }
-      try {
-        const existing = getOrders()
-        localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing]))
-      } catch (err) {
-        // The server order is authoritative. Private browsing, quota limits, or
-        // storage policy must not turn a completed payment into a false failure.
-        console.warn("[cart] placeOrder persist", err)
-      }
-      setItems([])
+      saveOrder(order)
+      const orderedKeys = new Set(ordered.map((i) => i.key))
+      setItems((prev) => prev.filter((p) => !orderedKeys.has(p.key)))
       return order
     },
-    [items, totalsByCurrency, getOrders]
+    [items, saveOrder]
   )
 
   return (
-    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, removeItem, updateQty, clear, placeOrder, getOrders, getOrder }}>
+    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, setItem, removeItem, updateQty, clear, restoreItems, placeOrder, saveOrder, getOrders, getOrder }}>
       {children}
     </CartContext.Provider>
   )
