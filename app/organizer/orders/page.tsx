@@ -9,7 +9,7 @@ import { desc, eq, or, like, and, inArray, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events, eventOrganisers } from "@/db/schema"
-import type { VelocityOrderMetadata } from "@/types/velocity"
+import { activeOrderListCondition } from "@/lib/order-list-visibility"
 
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -161,7 +161,10 @@ export default async function OrganizerOrdersPage({
     ? `/api/organizer/orders/export?${exportParams.toString()}`
     : "/api/organizer/orders/export"
 
-  const conditions: ReturnType<typeof and>[] = [inArray(orders.eventId, myEventIds)]
+  const conditions: ReturnType<typeof and>[] = [
+    inArray(orders.eventId, myEventIds),
+    activeOrderListCondition,
+  ]
 
   if (query) {
     const escaped = query.replace(/%/g, "\\%").replace(/_/g, "\\_")

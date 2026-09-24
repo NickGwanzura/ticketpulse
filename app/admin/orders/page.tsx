@@ -24,6 +24,7 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events, paymentLedger } from "@/db/schema"
 import type { VelocityOrderMetadata } from "@/types/velocity"
+import { activeOrderListCondition } from "@/lib/order-list-visibility"
 
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -106,7 +107,6 @@ const FILTER_PILLS = [
   { label: "Awaiting verify",  value: "awaiting_verification" },
   { label: "Cancelled",        value: "cancelled" },
   { label: "Refunded",         value: "refunded" },
-  { label: "Expired",          value: "expired" },
 ]
 
 const LIMIT = 25
@@ -135,7 +135,7 @@ export default async function AdminOrdersPage({
     : "/api/admin/orders/export"
 
   // ── Build WHERE clause ──────────────────────────────────────────────────
-  const conditions: ReturnType<typeof and>[] = []
+  const conditions: ReturnType<typeof and>[] = [activeOrderListCondition]
 
   if (query) {
     // Escape LIKE wildcards so searching for "%" or "_" matches literally.
@@ -154,7 +154,7 @@ export default async function AdminOrdersPage({
       or(eq(orders.status, "pending"), eq(orders.status, "awaiting_verification")),
     )
   } else if (statusFilter !== "all") {
-    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "awaiting_verification" | "refunded" | "cancelled"))
+    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "awaiting_verification" | "completed" | "refunded" | "cancelled" | "expired"))
   }
 
   // Same definition + window the overview counts with, so the badge and these rows agree.
@@ -213,6 +213,10 @@ export default async function AdminOrdersPage({
   const paidOrders = allOrders.filter((o) =>
     (o.status === "paid" || o.status === "completed") && o.paymentMethod !== "complimentary",
   )
+  const paymentAttemptCount = allOrders.filter((o) => o.paymentMethod !== "complimentary").length
+  const orderSuccessRate = paymentAttemptCount > 0
+    ? `${((paidOrders.length / paymentAttemptCount) * 100).toFixed(1)}%`
+    : "—"
   const pendingOrders = allOrders.filter(
     (o) => o.status === "pending" || o.status === "awaiting_verification",
   )
@@ -241,6 +245,13 @@ export default async function AdminOrdersPage({
       icon: TrendingUp,
       tone: "text-brand-600",
       bg: "bg-green-50",
+    },
+    {
+      label: "Order success rate",
+      value: orderSuccessRate,
+      icon: TrendingUp,
+      tone: "text-emerald-700",
+      bg: "bg-emerald-50",
     },
     {
       label: "Pending / awaiting",
@@ -305,10 +316,11 @@ export default async function AdminOrdersPage({
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 tp-fade-up-1">
+        <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3 md:gap-4 tp-fade-up-1">
           {statCards.map(({ label, value, icon: Icon, tone, bg }) => (
             <div
               key={label}
+              title={label === "Order success rate" ? "Paid or completed orders ÷ all non-complimentary orders, including pending and archived attempts." : undefined}
               className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift"
             >
               <span
