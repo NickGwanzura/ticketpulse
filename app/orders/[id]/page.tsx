@@ -298,7 +298,9 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const eventTime = formatEventTime(eventStartsAt, firstLine?.eventEndsAt)
   const eventVenue = firstLine?.eventVenue
   const eventStarted = eventStartsAt ? new Date(eventStartsAt).getTime() <= now : false
-  const canRequestRefund = ticketsEnabled && !!eventStartsAt && new Date(eventStartsAt).getTime() - now > REFUND_WINDOW_MS
+  const paidAmount = Object.values(order.totalsByCurrency).reduce((sum, v) => sum + v, 0)
+  // Nothing to refund on free orders.
+  const canRequestRefund = ticketsEnabled && paidAmount > 0 && !!eventStartsAt && new Date(eventStartsAt).getTime() - now > REFUND_WINDOW_MS
   const isUnpaid = order.status === "pending" || order.status === "expired"
   const showWelcome = welcomeFlag && ticketsEnabled
   const calUrl = calendarUrl(firstLine, order.id)
