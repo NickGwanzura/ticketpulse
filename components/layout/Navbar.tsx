@@ -4,10 +4,10 @@ import Link from "next/link"
 import Logo from "@/components/ui/Logo"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import { ArrowRight, LayoutDashboard, LogOut, Menu, Plus, ShoppingBag, X } from "lucide-react"
+import { ArrowRight, ChevronDown, LayoutDashboard, LogOut, Menu, ShoppingBag, UserRound, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useCart } from "@/lib/cart-context"
-import { getDashboardPathForRole } from "@/lib/role-routes"
+import { getDashboardPathForRole, isAdminRole } from "@/lib/role-routes"
 
 export interface NavbarFeaturedItem {
   slug: string
@@ -43,7 +43,12 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   }, [pathname])
 
   const dashboardHref = getDashboardPathForRole(session?.user?.role)
-  const canCreateEvent = session?.user?.role === "organizer" || session?.user?.role === "admin"
+  const role = session?.user?.role
+  const workspaceLabel = role === "organizer" || role === "vendor" || isAdminRole(role)
+    ? "Workspace"
+    : null
+  const accountName = session?.user?.name?.trim() || session?.user?.email?.split("@")[0] || "Account"
+  const accountInitial = accountName.charAt(0).toUpperCase()
 
   return (
     <header
@@ -85,7 +90,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
           <Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
-                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${isHome ? "border-line bg-transparent" : "border-line bg-paper"} text-ink hover:border-accent/30 hover:text-accent`}
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white text-ink transition hover:border-accent/30 hover:text-accent"
           >
             <ShoppingBag size={16} />
             {ready && totalCount > 0 && (
@@ -97,37 +102,49 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
 
           {session ? (
             <>
-              {canCreateEvent && (
+              {workspaceLabel && (
                 <Link
-                  href="/organizer/events/new"
-                  className={`inline-flex h-10 items-center gap-2 rounded-sm px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-navy hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
+                  href={dashboardHref}
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-[11px] font-bold text-white shadow-sm transition hover:bg-accent active:scale-[0.99]"
                 >
-                  <Plus size={15} /> Create Event
+                  <LayoutDashboard size={15} /> {workspaceLabel}
                 </Link>
               )}
-              <Link
-                href={dashboardHref}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-paper px-4 text-[12px] font-semibold text-ink transition hover:border-accent/30 hover:text-accent"
-              >
-                <LayoutDashboard size={15} /> Dashboard
-              </Link>
-              <button
-                onClick={() => signOut()}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-[12px] font-semibold text-white transition hover:bg-accent"
-              >
-                <LogOut size={15} /> Sign out
-              </button>
+              <details className="group relative">
+                <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-line bg-white px-3 text-[12px] font-semibold text-ink transition hover:border-accent/30 hover:text-accent [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-orange-50 text-[11px] font-bold text-accent">{accountInitial}</span>
+                  <span className="max-w-28 truncate">Account</span>
+                  <ChevronDown size={14} className="text-ink-3 transition group-open:rotate-180" />
+                </summary>
+                <div className="absolute right-0 top-full z-[70] mt-2 w-60 rounded-2xl border border-line bg-white p-2 shadow-[0_18px_55px_-22px_rgba(10,37,64,0.3)]">
+                  <div className="border-b border-line px-3 py-2.5">
+                    <p className="truncate text-[13px] font-semibold text-ink">{accountName}</p>
+                    {session.user.email && <p className="mt-0.5 truncate text-[11px] text-ink-3">{session.user.email}</p>}
+                  </div>
+                  {role !== "vendor" && (
+                    <Link href="/orders" className="mt-1 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[12px] font-medium text-ink-2 transition hover:bg-paper-2 hover:text-ink">
+                      <ShoppingBag size={15} /> My tickets
+                    </Link>
+                  )}
+                  <Link href="/account" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[12px] font-medium text-ink-2 transition hover:bg-paper-2 hover:text-ink">
+                    <UserRound size={15} /> Account settings
+                  </Link>
+                  <button
+                    onClick={() => signOut()}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[12px] font-medium text-ink-2 transition hover:bg-rose-50 hover:text-rose-700"
+                  >
+                    <LogOut size={15} /> Sign out
+                  </button>
+                </div>
+              </details>
             </>
           ) : (
             <>
-              <Link href="/auth/signin" className={`rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] transition ${isHome ? "text-ink hover:text-accent" : "text-ink-2 hover:text-ink"}`}>
-                Login
+              <Link href="/how-it-works" className="rounded-full px-3 py-2 text-[11px] font-semibold text-ink-2 transition hover:text-accent">
+                For organisers
               </Link>
-              <Link
-                href="/auth/signup?role=organizer"
-                className={`inline-flex h-10 items-center gap-2 rounded-sm px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-white shadow-sm transition active:scale-[0.99] ${isHome ? "bg-navy hover:bg-accent" : "bg-accent shadow-accent/20 hover:bg-accent-hover"}`}
-              >
-                Get Started <ArrowRight size={14} />
+              <Link href="/auth/signin" className="rounded-full px-3 py-2 text-[11px] font-bold uppercase tracking-[0.1em] text-ink transition hover:text-accent">
+                Sign in
               </Link>
             </>
           )}
@@ -165,31 +182,41 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
                 {label}
               </Link>
             ))}
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="mt-2 border-t border-line pt-3">
+              <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">
+                {session ? "Your account" : "Explore TicketPulse"}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
               {session ? (
                 <>
-                  {canCreateEvent && (
-                    <Link href="/organizer/events/new" className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-bold text-white">
-                      <Plus size={15} /> Create Event
+                  {workspaceLabel && (
+                    <Link href={dashboardHref} className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[14px] font-bold text-white">
+                      <LayoutDashboard size={16} /> {workspaceLabel}
                     </Link>
                   )}
-                  <Link href={dashboardHref} className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-[14px] font-semibold text-ink">
-                    <LayoutDashboard size={15} /> Dashboard
+                  {role !== "vendor" && (
+                    <Link href="/orders" className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-[13px] font-semibold text-ink">
+                      <ShoppingBag size={15} /> My tickets
+                    </Link>
+                  )}
+                  <Link href="/account" className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-[13px] font-semibold text-ink">
+                    <UserRound size={15} /> Account
                   </Link>
-                  <button onClick={() => signOut()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-[14px] font-semibold text-white">
+                  <button onClick={() => signOut()} className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-paper-2 px-4 py-3 text-[13px] font-semibold text-ink-2">
                     <LogOut size={15} /> Sign out
                   </button>
                 </>
               ) : (
                 <>
-                  <Link href="/auth/signin" className="inline-flex items-center justify-center rounded-xl border border-line px-4 py-3 text-[14px] font-semibold text-ink">
-                    Login
+                  <Link href="/how-it-works" className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl bg-orange-50 px-4 py-3 text-[14px] font-bold text-accent">
+                    For event organisers <ArrowRight size={15} />
                   </Link>
-                  <Link href="/auth/signup?role=organizer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-[14px] font-bold text-white">
-                    Get Started <ArrowRight size={14} />
+                  <Link href="/auth/signin" className="col-span-2 inline-flex items-center justify-center rounded-xl border border-line px-4 py-3 text-[14px] font-semibold text-ink">
+                    Sign in
                   </Link>
                 </>
               )}
+              </div>
             </div>
           </div>
         </div>
