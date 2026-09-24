@@ -5,18 +5,11 @@ import { eq, desc, sql } from "drizzle-orm"
 import { z } from "zod"
 import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
-import { payouts, events, users, payoutAuditLog, notifications } from "@/db/schema"
+import { payouts, events, users, payoutAuditLog } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { sendPayoutNotificationEmail } from "@/lib/email"
-import { defaultNotificationPriority } from "@/lib/notification-priority"
 import { recordAdminAudit } from "@/lib/admin-audit"
-
-const VALID_STATUSES = ["pending", "approved", "processing", "paid", "held", "rejected", "failed", "cancelled"] as const
-type PayoutStatus = (typeof VALID_STATUSES)[number]
-
-function isPayoutStatus(value: string): value is PayoutStatus {
-  return (VALID_STATUSES as readonly string[]).includes(value)
-}
+import { PAYABLE_FROM, createPayoutAuditLog, isPayoutStatus, transitionPayout } from "@/lib/payout-transitions"
 
 // FormData.get() returns null (not undefined) for any field that's absent —
 // an unchecked checkbox, a field the form doesn't render at all, etc.
@@ -46,153 +39,6 @@ export type AdminPayoutActionResult = {
 function adminPayoutResult(ok: boolean, message: string, payoutId?: string): AdminPayoutActionResult {
   revalidatePath("/admin/payouts")
   return { ok, message, payoutId }
-}
-
-async function createAuditLog(opts: {
-  payoutId: string
-  action: string
-  fromStatus?: PayoutStatus | null
-  toStatus: PayoutStatus
-  performedBy: string
-  notes?: string | null
-}, tx?: typeof db) {
-  const client = tx ?? db
-  await client.insert(payoutAuditLog).values({
-    payoutId: opts.payoutId,
-    action: opts.action,
-    fromStatus: opts.fromStatus,
-    toStatus: opts.toStatus,
-    performedBy: opts.performedBy,
-    notes: opts.notes,
-  })
-}
-
-async function createPayoutNotification(opts: {
-  userId: string
-  type: "payout_approved" | "payout_rejected" | "payout_paid" | "payout_failed"
-  title: string
-  body: string
-  link?: string
-}, tx?: typeof db) {
-  const client = tx ?? db
-  await client.insert(notifications).values({
-    userId: opts.userId,
-    type: opts.type,
-    priority: defaultNotificationPriority(opts.type),
-    title: opts.title,
-    body: opts.body,
-    link: opts.link ?? "/payouts",
-  })
-}
-
-type PayoutRow = {
-  id: string
-  status: PayoutStatus
-  amount: string
-  currency: string | null
-  method: string
-  accountNumber: string | null
-  accountName: string | null
-  userId: string
-  eventTitle: string | null
-}
-
-/**
- * Shared status-transition machinery: fetch → validate the payout is in an
- * allowed starting state → update + audit log + optional notification, all
- * in one transaction. This used to be copy-pasted (with small variations)
- * across five separate functions — approve/reject/processing/paid/update-status.
- */
-export async function transitionPayout(opts: {
-  payoutId: string
-  action: string
-  allowedFrom: readonly string[]
-  toStatus: (typeof VALID_STATUSES)[number]
-  performedBy: string
-  extraSet?: Record<string, unknown>
-  auditNotes?: string | null
-  notify?: {
-    type: "payout_approved" | "payout_rejected" | "payout_paid" | "payout_failed"
-    title: string
-    body: (payout: PayoutRow) => string
-  }
-}): Promise<{ ok: boolean; payout?: PayoutRow; error?: "not_found" | "wrong_status" | "db_error" | "transaction_failed" }> {
-  let payout: PayoutRow | undefined
-  try {
-    const [row] = await db
-      .select({
-        id: payouts.id,
-        status: payouts.status,
-        amount: payouts.amount,
-        currency: payouts.currency,
-        method: payouts.method,
-        accountNumber: payouts.accountNumber,
-        accountName: payouts.accountName,
-        userId: payouts.userId,
-        eventTitle: events.title,
-      })
-      .from(payouts)
-      .leftJoin(events, eq(events.id, payouts.eventId))
-      .where(eq(payouts.id, opts.payoutId))
-      .limit(1)
-    payout = row as PayoutRow | undefined
-  } catch (err) {
-    log.error(`[${opts.action}] DB error`, { payoutId: opts.payoutId, error: String(err) })
-    return { ok: false, error: "db_error" }
-  }
-
-  if (!payout) {
-    log.warn(`[${opts.action}] Not found`, { payoutId: opts.payoutId })
-    return { ok: false, error: "not_found" }
-  }
-  if (!opts.allowedFrom.includes(payout.status)) {
-    log.warn(`[${opts.action}] Wrong status`, { payoutId: opts.payoutId, status: payout.status })
-    return { ok: false, error: "wrong_status", payout }
-  }
-
-  try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(payouts)
-        .set({ status: opts.toStatus, ...opts.extraSet })
-        .where(eq(payouts.id, opts.payoutId))
-
-      await createAuditLog({
-        payoutId: opts.payoutId,
-        action: opts.action,
-        fromStatus: payout!.status,
-        toStatus: opts.toStatus,
-        performedBy: opts.performedBy,
-        notes: opts.auditNotes,
-      }, tx)
-
-      if (opts.notify) {
-        await createPayoutNotification({
-          userId: payout!.userId,
-          type: opts.notify.type,
-          title: opts.notify.title,
-          body: opts.notify.body(payout!),
-        }, tx)
-      }
-    })
-
-    await recordAdminAudit({
-      actorId: opts.performedBy,
-      actorEmail: opts.performedBy.includes("@") ? opts.performedBy : null,
-      action: `payout.${opts.action}`,
-      targetType: "payout",
-      targetId: opts.payoutId,
-      before: { status: payout.status },
-      after: { status: opts.toStatus },
-      reason: opts.auditNotes,
-    })
-
-    log.info(`Payout ${opts.action}`, { payoutId: opts.payoutId, by: opts.performedBy })
-    return { ok: true, payout }
-  } catch (err) {
-    log.error(`[${opts.action}] Transaction failed`, { payoutId: opts.payoutId, error: String(err) })
-    return { ok: false, error: "transaction_failed", payout }
-  }
 }
 
 export async function getPayouts(status?: string) {
@@ -353,7 +199,7 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
         })
         .returning({ id: payouts.id })
 
-      await createAuditLog({
+      await createPayoutAuditLog({
         payoutId: result.id,
         action: "recorded_manual",
         toStatus: "paid",
@@ -457,19 +303,27 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
   const session = await requireAdmin().catch(() => null)
   if (!session) { log.warn("[mark-paid] Unauthorized", { payoutId }); revalidatePath("/admin/payouts"); return }
   const performedBy = session.user.email ?? session.user.id
+  // Money out needs evidence: a transfer, EcoCash, or cash receipt reference.
+  const proof = proofReference?.trim() ?? ""
+  if (proof.length < 3) {
+    log.warn("[mark-paid] Missing proof reference", { payoutId })
+    revalidatePath("/admin/payouts")
+    return
+  }
 
   const result = await transitionPayout({
     payoutId,
     action: "paid",
-    allowedFrom: ["pending", "approved", "processing"],
+    // A request must be approved before it can be paid.
+    allowedFrom: PAYABLE_FROM,
     toStatus: "paid",
     performedBy,
     extraSet: {
-      proofReference: proofReference?.trim() || undefined,
+      proofReference: proof,
       processedAt: new Date(),
       processedBy: performedBy,
     },
-    auditNotes: proofReference ? `Proof reference: ${proofReference}` : null,
+    auditNotes: `Proof reference: ${proof}`,
     notify: {
       type: "payout_paid",
       title: "Payout sent",
@@ -502,32 +356,6 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
       log.warn("Failed to send payout notification email", { payoutId, error: String(emailErr) })
     }
   }
-
-  revalidatePath("/admin/payouts")
-}
-
-export async function updatePayoutStatusAction(payoutId: string, status: string): Promise<void> {
-  const session = await requireAdmin().catch(() => null)
-  if (!session) { log.warn("[update-status] Unauthorized", { payoutId }); revalidatePath("/admin/payouts"); return }
-
-  if (!isPayoutStatus(status)) {
-    log.warn("[update-status] Invalid status", { payoutId, status })
-    revalidatePath("/admin/payouts")
-    return
-  }
-  const performedBy = session.user.email ?? session.user.id
-
-  await transitionPayout({
-    payoutId,
-    action: "status_updated",
-    allowedFrom: VALID_STATUSES,
-    toStatus: status as (typeof VALID_STATUSES)[number],
-    performedBy,
-    extraSet: {
-      processedAt: status === "paid" ? new Date() : undefined,
-      processedBy: status === "paid" ? performedBy : undefined,
-    },
-  })
 
   revalidatePath("/admin/payouts")
 }

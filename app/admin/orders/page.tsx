@@ -27,6 +27,7 @@ import type { VelocityOrderMetadata } from "@/types/velocity"
 
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 
 const STATUS_STYLE: Record<string, string> = {
@@ -111,6 +112,15 @@ const FILTER_PILLS = [
 
 const LIMIT = 25
 
+
+// Unpaid orders whose money should have come through the gateway can only be
+// completed by an admin who has verified the Velocity transaction reference.
+function needsProviderReference(o: { paymentMethod: string | null; totalAmount: string | null }) {
+  return !isDirectSalePaymentMethod(o.paymentMethod)
+    && o.paymentMethod !== "complimentary"
+    && o.paymentMethod !== "free"
+    && Number(o.totalAmount ?? 0) > 0
+}
 export default async function AdminOrdersPage({
   searchParams,
 }: {
@@ -493,7 +503,7 @@ export default async function AdminOrdersPage({
                               <RecheckButton orderId={o.id} variant="menu" />
                             )}
                             {(o.status === "pending" || o.status === "awaiting_verification") && (
-                              <CompleteAndSendButton orderId={o.id} variant="menu" />
+                              <CompleteAndSendButton orderId={o.id} variant="menu" requireReference={needsProviderReference(o)} />
                             )}
                             {o.status === "paid" && (
                               <>
@@ -514,6 +524,7 @@ export default async function AdminOrdersPage({
                               <>
                                 <ResendTicketsButton orderId={o.id} variant="menu" />
                                 <RegeneratePdfButton orderId={o.id} variant="menu" />
+                                <RefundButton orderId={o.id} variant="menu" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
                                   target="_blank"
@@ -636,7 +647,7 @@ export default async function AdminOrdersPage({
                         <RecheckButton orderId={o.id} variant="mobile" />
                       )}
                       {(o.status === "pending" || o.status === "awaiting_verification") && (
-                        <CompleteAndSendButton orderId={o.id} variant="mobile" />
+                        <CompleteAndSendButton orderId={o.id} variant="mobile" requireReference={needsProviderReference(o)} />
                       )}
                       {o.status === "paid" && (
                         <>
@@ -656,6 +667,7 @@ export default async function AdminOrdersPage({
                       {o.status === "completed" && (
                         <>
                           <ResendTicketsButton orderId={o.id} variant="mobile" />
+                          <RefundButton orderId={o.id} variant="mobile" />
                           <Link
                             href={`/orders/${o.id}/print`}
                             target="_blank"

@@ -117,6 +117,30 @@ function getVelocityTraces(metadata: unknown): { transactionTrace: string | null
   }
 }
 
+export class UnconfirmedPaymentError extends Error {}
+
+export const UNCONFIRMED_PAYMENT_MESSAGE =
+  "The payment provider hasn't confirmed this payment. Recheck the payment first. An admin who has verified it in Velocity can enter the transaction reference to complete it."
+
+/**
+ * Who is completing the order, and on what evidence. A gateway order
+ * (EcoCash/card) that the provider has not confirmed becomes payable
+ * organiser revenue once completed, so it needs an admin plus the provider's
+ * transaction reference. Organisers never get that override.
+ */
+export type CompletionAuthority = {
+  actor: "admin" | "organizer"
+  providerReference?: string | null
+}
+
+/** Orders whose money never passes through the payment gateway. */
+function completesWithoutGateway(order: { paymentMethod: string | null; totalAmount: string | null }) {
+  return isDirectSalePaymentMethod(order.paymentMethod)
+    || order.paymentMethod === "complimentary"
+    || order.paymentMethod === "free"
+    || Number(order.totalAmount ?? 0) === 0
+}
+
 /**
  * Mark an order as manually completed.
  * Sets order status to "completed", records payment as paid when needed,
@@ -126,6 +150,7 @@ export async function markOrderCompleteAction(
   orderId: string,
   userId: string,
   userEmail: string,
+  authority: CompletionAuthority = { actor: "organizer" },
 ): Promise<RecoveryResult> {
   const [order] = await db
     .select()
@@ -162,9 +187,15 @@ export async function markOrderCompleteAction(
       }
 
       wasPaid = current.status === "paid"
+      let providerReference: string | null = null
+      if (!wasPaid && !completesWithoutGateway(current)) {
+        const reference = authority.actor === "admin" ? authority.providerReference?.trim() : null
+        if (!reference || reference.length < 4) throw new UnconfirmedPaymentError(UNCONFIRMED_PAYMENT_MESSAGE)
+        providerReference = reference
+      }
       const now = new Date()
       completedAt = now.toISOString()
-      manualPaymentRef = current.paymentRef ?? `manual-${orderId.slice(0, 8)}`
+      manualPaymentRef = providerReference ?? current.paymentRef ?? `manual-${orderId.slice(0, 8)}`
       velocityTraces = getVelocityTraces(current.metadata)
       const currentMetadata = asMetadata(current.metadata)
       if (current.status === "expired") {
@@ -244,6 +275,7 @@ export async function markOrderCompleteAction(
       }
     })
   } catch (err) {
+    if (err instanceof UnconfirmedPaymentError) return { success: false, message: err.message }
     return {
       success: false,
       message: `Failed to complete order atomically: ${err instanceof Error ? err.message : String(err)}`,
@@ -540,6 +572,7 @@ export async function completeAndSendAction(
   userId: string,
   userEmail: string,
   options: CompletionOptions = {},
+  authority: CompletionAuthority = { actor: "organizer" },
 ): Promise<CompleteAndSendResult> {
   const [order] = await db
     .select()
@@ -566,7 +599,7 @@ export async function completeAndSendAction(
   // 2. Mark order completed (only if not already)
   let completed = order.status === "completed"
   if (!completed) {
-    const completion = await markOrderCompleteAction(orderId, userId, userEmail)
+    const completion = await markOrderCompleteAction(orderId, userId, userEmail, authority)
     if (!completion.success) {
       return {
         success: false,

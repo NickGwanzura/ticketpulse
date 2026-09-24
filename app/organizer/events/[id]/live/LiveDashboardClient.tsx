@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { formatTimeShort } from "@/lib/utils"
 import { Users, TicketCheck, Percent, ScanLine, Pause, Play, RefreshCw } from "lucide-react"
 import StatCard from "@/components/dashboard/StatCard"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -92,7 +93,7 @@ export default function LiveDashboardClient({
         {fetchError ? (
           <span className="text-rose-600 font-medium">Live data unavailable — retrying…</span>
         ) : lastUpdated ? (
-          <span className="text-ink-3">Last updated {lastUpdated.toLocaleTimeString()}</span>
+          <span className="text-ink-3">Last updated {formatTimeShort(lastUpdated)}</span>
         ) : null}
       </div>
 
@@ -147,7 +148,7 @@ export default function LiveDashboardClient({
                 <div className="text-right shrink-0 ml-4">
                   <span className="text-ink-2 block">{r.tierName}</span>
                   <span className="text-ink-3 text-[11px] block">
-                    {new Date(r.scannedAt).toLocaleTimeString()}
+                    {formatTimeShort(r.scannedAt)}
                   </span>
                 </div>
               </div>

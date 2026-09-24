@@ -10,16 +10,23 @@ type ActionState = { ok: boolean; message: string } | null
 export default function CompleteAndSendButton({
   orderId,
   variant = "desktop",
+  action = completeAndSendAction,
+  requireReference = false,
 }: {
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
+  /** Defaults to the admin action; the organizer orders page passes its own. */
+  action?: typeof completeAndSendAction
+  /** Unpaid gateway order: an admin must enter the Velocity transaction reference. */
+  requireReference?: boolean
 }) {
   const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
-    async (_prev: ActionState, _form: FormData) => {
+    async (_prev: ActionState, form: FormData) => {
       try {
-        const result = await completeAndSendAction(orderId)
+        const reference = String(form.get("providerReference") ?? "").trim() || undefined
+        const result = await action(orderId, reference)
         return { ok: result.success, message: result.message }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to complete and send"
@@ -39,7 +46,18 @@ export default function CompleteAndSendButton({
   const showFeedback = state && state !== dismissedState
 
   return (
-    <form action={formAction} className="relative inline-flex items-center">
+    <form action={formAction} className="relative inline-flex items-center gap-1">
+      {requireReference && (
+        <input
+          name="providerReference"
+          type="text"
+          required
+          minLength={4}
+          aria-label="Velocity transaction reference"
+          placeholder="Velocity ref"
+          className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/60 focus:outline-none focus:ring-1 focus:ring-brand-600/20"
+        />
+      )}
       <button
         type="submit"
         disabled={pending}

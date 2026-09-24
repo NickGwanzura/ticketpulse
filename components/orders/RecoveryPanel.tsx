@@ -19,12 +19,14 @@ interface OrderStatus {
   completedAt?: Date | null
 }
 
+type ActionResult = { fixed?: boolean; success?: boolean; message?: string }
+
 interface RecoveryActions {
-  recheckPayment?: () => Promise<void>
-  resendVerification?: () => Promise<void>
-  completeOrder?: () => Promise<void>
-  sendTickets?: () => Promise<void>
-  completeAndSend?: () => Promise<void>
+  recheckPayment?: () => Promise<ActionResult | void>
+  resendVerification?: () => Promise<ActionResult | void>
+  completeOrder?: () => Promise<ActionResult | void>
+  sendTickets?: () => Promise<ActionResult | void>
+  completeAndSend?: () => Promise<ActionResult | void>
 }
 
 interface Diagnosis {

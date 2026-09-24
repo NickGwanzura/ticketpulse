@@ -15,7 +15,7 @@ import { requireEventAccess } from "@/lib/event-access"
 import { getEventRevenueSummaries } from "@/lib/revenue-summary"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDateShort } from "@/lib/utils"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import { publishOrganizerEventAction } from "../actions"
 import PublishEventButton from "../PublishEventButton"
@@ -227,7 +227,7 @@ export default async function EventOverviewPage({
       <PageHeader
         eyebrow="Organizer"
         title={event.title}
-        subtitle={`${event.venue} · ${event.city} · ${event.startsAt.toLocaleDateString()}`}
+        subtitle={`${event.venue} · ${event.city} · ${formatDateShort(event.startsAt)}`}
         actions={
           <div className="flex items-center gap-2">
             <Link

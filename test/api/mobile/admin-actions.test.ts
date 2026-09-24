@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), transition: vi.fn(), select: vi.fn(), update: vi.fn(), insert: vi.fn() }))
 vi.mock("@/lib/mobile-organizer", () => ({ authenticateOrganizer: mocks.auth, privateHeaders: { "Cache-Control": "private, no-store" } }))
-vi.mock("@/app/admin/payouts/actions", () => ({ transitionPayout: mocks.transition }))
+vi.mock("@/lib/payout-transitions", () => ({ transitionPayout: mocks.transition, PAYABLE_FROM: ["approved", "processing"] }))
 vi.mock("@/db", () => ({ db: { select: mocks.select, update: mocks.update, insert: mocks.insert } }))
 vi.mock("@/db/schema", () => ({ users: { id: "id", name: "name", approvedAt: "approvedAt", updatedAt: "updatedAt" }, notifications: {} }))
 vi.mock("drizzle-orm", () => ({ eq: (a: unknown, b: unknown) => [a, b] }))

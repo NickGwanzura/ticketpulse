@@ -10,16 +10,19 @@ type ActionState = { ok: boolean; message: string } | null
 export default function RecheckButton({
   orderId,
   variant = "desktop",
+  action = recheckPaymentAction,
 }: {
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
+  /** Defaults to the admin action; the organizer orders page passes its own. */
+  action?: typeof recheckPaymentAction
 }) {
   const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, _form: FormData) => {
       try {
-        const result = await recheckPaymentAction(orderId)
+        const result = await action(orderId)
         return { ok: result.fixed, message: result.message }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to recheck payment"

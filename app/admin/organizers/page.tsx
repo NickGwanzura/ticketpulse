@@ -20,6 +20,7 @@ import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-o
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, users } from "@/db/schema"
+import ConfirmReasonButton from "@/app/admin/_components/ConfirmReasonButton"
 import { approveOrganizerAction, freezeOrganizerWithoutEventsAction, unfreezeOrganizerAction } from "@/app/admin/actions/users"
 import EmptyState from "@/components/dashboard/EmptyState"
 import PageHeader from "@/components/dashboard/PageHeader"
@@ -282,9 +283,14 @@ export default async function AdminOrganizersPage({
                                 <button type="submit" title="Unfreeze organizer" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-50 text-[12px] font-medium text-sky-700 hover:bg-sky-100"><Unlock size={12} /> Unfreeze</button>
                               </form>
                             ) : (
-                              <form action={freezeOrganizerWithoutEventsAction.bind(null, organizer.id)}>
-                                <button type="submit" title="Freeze organizer with no event" className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-[12px] font-medium text-slate-700 hover:bg-slate-200"><Snowflake size={12} /> Freeze</button>
-                              </form>
+                              <ConfirmReasonButton
+                                action={freezeOrganizerWithoutEventsAction.bind(null, organizer.id)}
+                                label="Freeze"
+                                confirmLabel="Freeze"
+                                prompt="Why freeze? (e.g. no reply after 2 emails)"
+                                icon={<Snowflake size={12} />}
+                                buttonClassName="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-[12px] font-medium text-slate-700 hover:bg-slate-200"
+                              />
                             ))}
                           </div>
                         </td>
@@ -318,9 +324,14 @@ export default async function AdminOrganizersPage({
                         <button type="submit" className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-sky-50 text-[12px] font-medium text-sky-700"><Unlock size={12} /> Unfreeze</button>
                       </form>
                     ) : (
-                      <form action={freezeOrganizerWithoutEventsAction.bind(null, organizer.id)}>
-                        <button type="submit" className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-100 text-[12px] font-medium text-slate-700"><Snowflake size={12} /> Freeze</button>
-                      </form>
+                      <ConfirmReasonButton
+                        action={freezeOrganizerWithoutEventsAction.bind(null, organizer.id)}
+                        label="Freeze"
+                        confirmLabel="Freeze"
+                        prompt="Why freeze?"
+                        icon={<Snowflake size={12} />}
+                        buttonClassName="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-100 text-[12px] font-medium text-slate-700"
+                      />
                     ))}
                   </div>
                 </li>

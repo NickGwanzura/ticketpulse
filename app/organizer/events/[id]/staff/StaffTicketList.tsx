@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { formatDateShort } from "@/lib/utils"
 import { QrCode, XCircle, CheckCircle, Clock, Download, Phone, Shield } from "lucide-react"
 import { cancelStaffTicketAction } from "./actions"
 
@@ -109,7 +110,7 @@ export default function StaffTicketList({
                     </span>
                   </td>
                   <td className="px-3 py-3.5 text-[12px] text-ink-3">
-                    {t.createdAt?.toLocaleDateString() ?? "—"}
+                    {(t.createdAt ? formatDateShort(t.createdAt) : "—")}
                   </td>
                   <td className="px-3 py-3.5 text-right">
                     {t.status === "available" && (
@@ -157,7 +158,7 @@ export default function StaffTicketList({
                   <Phone size={10} />
                   {t.staffPhone ?? "—"}
                 </span>
-                <span>{t.createdAt?.toLocaleDateString() ?? "—"}</span>
+                <span>{(t.createdAt ? formatDateShort(t.createdAt) : "—")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button

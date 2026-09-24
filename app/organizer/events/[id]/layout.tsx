@@ -59,6 +59,7 @@ export default async function EventLayout({
         eventSlug={event.slug ?? id}
         eventTitle={event.title}
         eventStatus={event.status}
+        isOwner={isOwner}
       />
       <main className="flex-1 min-w-0 bg-paper-2 min-h-[calc(100vh-6rem)]">
         <Breadcrumbs

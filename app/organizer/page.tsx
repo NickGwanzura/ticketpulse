@@ -5,12 +5,13 @@ import { ORDER_ISSUES, orderIssueCondition } from "@/lib/order-issues"
 import { eq, desc, or, inArray, notInArray, sql, and } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
-  Ticket, DollarSign, TrendingUp, Users,
+  Ticket, DollarSign, Users,
   Activity, Tag, Mail, MailCheck, HelpCircle, Zap,
-  CheckCircle2, ClipboardList, Wallet, ReceiptText,
+  CheckCircle2, ClipboardList, ReceiptText,
 } from "lucide-react"
 
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDateShort } from "@/lib/utils"
+import { paymentMethodLabel } from "@/lib/order-labels"
 import { db } from "@/db"
 import { events, eventOrganisers, orders, ticketTiers, tickets, users } from "@/db/schema"
 import { getEventRevenueSummaries, getOrganizerRevenueSummary } from "@/lib/revenue-summary"
@@ -219,7 +220,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, checkedIn: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]), sql`scanned_at IS NOT NULL`)).groupBy(tickets.eventId) : Promise.resolve([]),
-    eventIds.length > 0 ? db.select({ guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
+    eventIds.length > 0 ? db.select({ id: orders.id, guestName: orders.guestName, guestEmail: orders.guestEmail, totalAmount: orders.totalAmount, currency: orders.currency, paymentMethod: orders.paymentMethod, status: orders.status, createdAt: orders.createdAt, eventId: orders.eventId }).from(orders).where(and(inArray(orders.eventId, eventIds), inArray(orders.status, ["paid", "completed", "refunded"]), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)).orderBy(desc(orders.createdAt)).limit(8) : Promise.resolve([]),
     // Shared issue definitions (lib/order-issues): each count is exactly the row set its alert opens.
     eventIds.length > 0
       ? Promise.all(ORDER_ISSUES.map((issue) =>
@@ -293,6 +294,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const duplicateLedgers = issueCounts.duplicate_ledger
   const deliveryAttention = issueCounts.delivery_failed
   const lowInventoryCount = EVENTS.filter((e) => e.status === "published" && e.capacity > 0 && e.capacity - e.sold <= 10 && e.capacity - e.sold > 0 && !e.isPast).length
+  const lowInventoryEvent = EVENTS.find((e) => e.status === "published" && e.capacity > 0 && e.capacity - e.sold <= 10 && e.capacity - e.sold > 0 && !e.isPast)
   const closedSalesEvent = EVENTS.find((e) => e.status === "published" && !e.isPast && e.salesEnded)
   const closedSalesCount = EVENTS.filter((e) => e.status === "published" && !e.isPast && e.salesEnded).length
   const missingTierCount = EVENTS.filter((e) => !e.hasTiers && !e.isPast).length
@@ -310,8 +312,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     { label: "Delivery issues", value: deliveryAttention, href: "/organizer/orders?issue=delivery_failed", icon: Mail, tone: "amber" },
     { label: "Payment warnings", value: duplicateLedgers, href: "/organizer/orders?issue=duplicate_ledger", icon: Zap, tone: "amber" },
     { label: "Sales closed", value: closedSalesCount, href: closedSalesEvent ? `/organizer/events/${closedSalesEvent.id}/tiers` : "/organizer/events", icon: AlertCircle, tone: "rose" },
-    { label: "Low inventory", value: lowInventoryCount, href: "/organizer?filter=live", icon: Ticket, tone: "amber" },
-    { label: "Payout available", value: availableBalance > 0 ? 1 : 0, href: "/payouts/request", icon: Wallet, tone: "green", amount: availableBalance },
+    { label: "Low inventory", value: lowInventoryCount, href: lowInventoryEvent ? `/organizer/events/${lowInventoryEvent.id}/tiers` : "/organizer?filter=live", icon: Ticket, tone: "amber" },
     ...(lowCheckinEvent ? [{
       label: "Low check-in rate",
       value: Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100),
@@ -322,6 +323,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     }] : []),
   ].filter((item) => item.value > 0)
 
+  const totalCheckedIn = EVENTS.reduce((sum, e) => sum + e.checkedIn, 0)
   const insightEvent = EVENTS.find(e => e.status === "published" && !e.isPast && e.sold > 0) || EVENTS.find(e => e.status === "published" && !e.isPast) || EVENTS[0]
   const SALES_TOP = [...EVENTS].filter(e => e.netRevenue > 0).sort((a, b) => b.netRevenue - a.netRevenue).slice(0, 5)
   const maxRevenue = Math.max(...SALES_TOP.map(e => e.netRevenue), 1)
@@ -338,8 +340,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
               {firstName}&apos;s events
             </h1>
-            <span className="mt-2 inline-flex text-[12px] text-ink-3">
-              Event-specific TicketPulse fee on confirmed paid tickets
+            <span className="mt-2 inline-flex text-[13px] text-ink-2">
+              {liveCount === 0 ? "No events on sale right now" : `${liveCount} event${liveCount === 1 ? "" : "s"} on sale`}
+              {availableBalance > 0 && <> · {formatCurrency(availableBalance, "USD")} ready to withdraw</>}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -365,16 +368,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </Link>
           </div>
         )}
-        <Link
-          href="/organizer/scan"
-          className="lg:hidden sticky top-24 z-20 flex items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-[14px] font-bold text-paper shadow-lg shadow-ink/15"
-        >
-          <ScanLine size={16} /> Open gate scanner
-          {EVENTS.some(e => e.status === "published" && !e.isPast && e.sold > 0) && (
-            <span className="inline-flex ml-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          )}
-        </Link>
-
         {eventsTruncated && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
             <span>Showing your {rawEvents.length} most recent of {eventTotal} events. Counts and totals below cover only these.</span>
@@ -416,7 +409,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-x-0 lg:divide-x divide-line">
-              {needsAttention.map(({ label, value, display, href, icon: Icon, tone, amount }) => (
+              {needsAttention.map(({ label, value, display, href, icon: Icon, tone }) => (
                 <Link key={label} href={href} className="px-5 py-4 hover:bg-paper-2 transition-colors">
                   <div className="flex items-center justify-between gap-3">
                     <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ring-1 ${
@@ -428,7 +421,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                     </span>
                     <ArrowUpRight size={12} className="text-ink-3" />
                   </div>
-                  <p className="mt-3 text-[20px] font-bold text-ink tabular-nums">{display ?? (amount ? formatCurrency(amount, "USD") : value.toLocaleString())}</p>
+                  <p className="mt-3 text-[20px] font-bold text-ink tabular-nums">{display ?? value.toLocaleString()}</p>
                   <p className="mt-1 text-[12px] font-medium text-ink-2">{label}</p>
                 </Link>
               ))}
@@ -441,8 +434,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           {[
             { label: "Live events",    value: liveCount.toLocaleString(),            icon: Activity },
             { label: "Attending",      value: totalSold.toLocaleString(),            icon: Ticket },
-            { label: "Gross ticket sales", value: formatCurrency(gross, "USD"),       icon: DollarSign },
-            { label: "Net earnings",   value: formatCurrency(net, "USD"),            icon: TrendingUp },
+            { label: "Checked in",     value: totalCheckedIn.toLocaleString(),       icon: CheckCircle2 },
+            { label: "Drafts",         value: draftCount.toLocaleString(),           icon: ClipboardList },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="px-5 py-5">
               <div className="flex items-center gap-1.5 mb-3">
@@ -451,25 +444,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               </div>
               <p className="text-[22px] md:text-[24px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
             </div>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tp-fade-up-2">
-          {[
-            { label: "New event",      href: "/organizer/events/new", icon: Plus },
-            { label: "Scan tickets",   href: "/organizer/scan",       icon: ScanLine },
-            { label: "Payout report",  href: "/api/payouts/statement", icon: ReceiptText },
-            { label: "Manage orders",  href: "/organizer/orders",      icon: Zap },
-          ].map(({ label, href, icon: Icon }) => (
-            <Link
-              key={label}
-              href={href}
-              className="flex flex-col items-center gap-2 rounded-xl border border-line bg-paper p-4 hover:border-line-2 hover:bg-paper-2 transition-all text-[12px] font-medium text-ink-2"
-            >
-              <Icon size={18} className="text-ink-3" />
-              {label}
-            </Link>
           ))}
         </div>
 
@@ -511,7 +485,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <Link href={`/organizer/events/${e.id}`} className="flex-1 min-w-0">
                             <p className="text-[15px] font-semibold text-ink line-clamp-1">{e.title}</p>
-                            <p className="text-[12px] text-ink-3 mt-0.5">{e.venue} · {e.startsAt.toLocaleDateString()}</p>
+                            <p className="text-[12px] text-ink-3 mt-0.5">{e.venue} · {formatDateShort(e.startsAt)}</p>
                           </Link>
                           <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
@@ -526,7 +500,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           </div>
                         </div>
                         <CapacityBar sold={e.sold} capacity={e.capacity} />
-                        <div className="mt-3 flex items-center gap-3 pt-3 border-t border-line">
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 pt-2 border-t border-line">
                           {[
                             { icon: Activity, label: "Live", href: `/organizer/events/${e.id}/live` },
                             { icon: Users, label: "Attendees", href: `/organizer/events/${e.id}/attendees` },
@@ -534,7 +508,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                             { icon: HelpCircle, label: "Questions", href: `/organizer/events/${e.id}/questions` },
                             { icon: Mail, label: "Email", href: `/organizer/events/${e.id}/email` },
                           ].map(({ icon: Icon, label, href }) => (
-                            <Link key={label} href={href} className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-2 hover:text-navy transition-colors">
+                            <Link key={label} href={href} className="inline-flex min-h-10 items-center gap-1 text-[12px] font-medium text-ink-2 hover:text-navy transition-colors">
                               <Icon size={12} /> {label}
                             </Link>
                           ))}
@@ -571,7 +545,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                             <EventHealthBadges status={e.status} capacity={e.capacity} sold={e.sold} netRevenue={e.netRevenue} hasTiers={e.hasTiers} salesEnded={e.salesEnded} />
                           </Link>
                           </td>
-                          <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{e.startsAt.toLocaleDateString()}</td>
+                          <td className="px-3 py-4 text-[13px] text-ink-2 whitespace-nowrap">{formatDateShort(e.startsAt)}</td>
                           <td className="px-3 py-4 text-right min-w-[120px]">
                             <p className="text-[13px] font-medium text-ink tabular-nums">{e.sold}<span className="text-ink-3 font-normal"> / {e.capacity}</span></p>
                             <CapacityBar sold={e.sold} capacity={e.capacity} />
@@ -593,7 +567,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                                 { icon: Mail, title: "Email attendees", href: `/organizer/events/${e.id}/email` },
                               ].map(({ icon: Icon, title, href }) => (
                                 <Link key={title} href={href} title={title} aria-label={title}
-                                  className="p-1.5 rounded-md text-ink-3 hover:text-navy hover:bg-navy/5 transition-colors">
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-md text-ink-3 hover:text-navy hover:bg-navy/5 transition-colors">
                                   <Icon size={14} />
                                 </Link>
                               ))}
@@ -708,13 +682,18 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             ) : (
               <ul className="divide-y divide-line">
                 {recentOrdersRaw.map((o, index) => (
-                  <li key={`${o.guestEmail ?? "guest"}-${o.createdAt ? new Date(o.createdAt).toISOString() : index}`} className="px-5 py-3.5 flex items-center gap-3">
-                    <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "paid" || o.status === "completed" ? "bg-emerald-500" : "bg-rose-400"}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>
-                      <p className="text-[12px] text-ink-3">{o.createdAt ? timeAgo(new Date(o.createdAt)) : "—"} · {o.paymentMethod?.toUpperCase() ?? "—"}</p>
-                    </div>
-                    <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}</span>
+                  <li key={o.id ?? index}>
+                    <Link href={`/organizer/orders?q=${encodeURIComponent(o.id)}`} className="px-5 py-3.5 flex items-center gap-3 hover:bg-paper-2 transition-colors">
+                      <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "refunded" ? "bg-rose-400" : "bg-emerald-500"}`} aria-hidden />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>
+                        <p className="text-[12px] text-ink-3">
+                          {o.createdAt ? timeAgo(new Date(o.createdAt)) : "—"} · {paymentMethodLabel(o.paymentMethod)}
+                          {o.status === "refunded" && <span className="text-rose-700"> · Refunded</span>}
+                        </p>
+                      </div>
+                      <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -722,30 +701,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           </div>
         </div>
 
-        {/* Gate scanner CTA + quick links */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 tp-fade-up-3">
-          <Link href="/organizer/scan"
-            className="sm:col-span-2 lg:col-span-2 rounded-2xl bg-ink text-paper p-5 flex items-start gap-4 hover:bg-ink/90 transition-colors">
-            <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-white/10 shrink-0">
-              <ScanLine size={18} className="text-white" />
-            </span>
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.18em] text-white/60 uppercase mb-1">Gate entry</p>
-              <div className="flex items-center gap-2">
-                {EVENTS.some(e => e.status === "published" && !e.isPast && e.sold > 0) && (
-                  <span className="inline-flex w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                )}
-                <p className="text-[16px] font-bold tracking-tight text-white">Open scanner</p>
-              </div>
-              <p className="text-[13px] text-white/70 mt-1 leading-relaxed">
-                Reads PDF, mobile QR, and wallet passes. No extra hardware.
-              </p>
-            </div>
-          </Link>
+        {/* Help links */}
+        <div className="grid sm:grid-cols-2 gap-3 tp-fade-up-3">
           {[
-            { title: "Order management", body: "Complete, resend, and manage orders.", href: "/organizer/orders", icon: Zap },
             { title: "Browse vendors", body: "Catering, sound, security and more.", href: "/vendors", icon: Users },
-            { title: "Payout history", body: "Track all your payouts and balances.", href: "/payouts", icon: DollarSign },
             { title: "Help & guides", body: "Selling tips for event organizers.", href: "/help/organizers", icon: HelpCircle },
           ].map(({ title, body, href, icon: Icon }) => (
             <Link key={title} href={href} className="rounded-2xl border border-line bg-paper p-5 hover:bg-paper-2 transition-colors">

@@ -130,22 +130,22 @@ export default async function AdminOrderDetailPage({
   // ── Bound server actions for the client component ───────────────────────
   const recheckPayment = async () => {
     "use server"
-    await recheckPaymentAction(id)
+    return recheckPaymentAction(id)
   }
 
   const sendTickets = async () => {
     "use server"
-    await sendTicketsAction(id)
+    return sendTicketsAction(id)
   }
 
   const completeAndSend = async () => {
     "use server"
-    await completeAndSendAction(id)
+    return completeAndSendAction(id)
   }
 
   const resendVerification = async () => {
     "use server"
-    await resendOrderEmailAction(id)
+    return resendOrderEmailAction(id)
   }
 
   const regeneratePdf = async () => {
@@ -304,7 +304,7 @@ export default async function AdminOrderDetailPage({
               </h3>
             </div>
             <div className="p-5 md:p-6 flex flex-wrap gap-3">
-              <form action={recheckPayment}>
+              <form action={async () => { "use server"; await recheckPaymentAction(id) }}>
                 <button
                   type="submit"
                   className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-amber-700 transition-colors"
@@ -312,7 +312,7 @@ export default async function AdminOrderDetailPage({
                   <RefreshCw size={14} /> Recheck payment
                 </button>
               </form>
-              <form action={completeAndSend}>
+              <form action={async () => { "use server"; await completeAndSendAction(id) }}>
                 <button
                   type="submit"
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-emerald-700 transition-colors"
@@ -320,7 +320,7 @@ export default async function AdminOrderDetailPage({
                   <CheckCircle2 size={14} /> Complete & send
                 </button>
               </form>
-              <form action={sendTickets}>
+              <form action={async () => { "use server"; await sendTicketsAction(id) }}>
                 <button
                   type="submit"
                   className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-navy/90 transition-colors"
@@ -341,7 +341,7 @@ export default async function AdminOrderDetailPage({
               </h3>
             </div>
             <div className="p-5 md:p-6 flex flex-wrap gap-3">
-              <form action={sendTickets}>
+              <form action={async () => { "use server"; await sendTicketsAction(id) }}>
                 <button
                   type="submit"
                   className="inline-flex items-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-navy/90 transition-colors"

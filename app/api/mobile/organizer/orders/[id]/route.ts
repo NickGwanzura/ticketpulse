@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { events, orders, orderItems, tickets, ticketScanLogs, ticketTiers, users } from "@/db/schema"
 import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
 import { markOrderCompleteAction } from "@/lib/order-recovery"
-import { POST as resendTickets } from "@/app/api/orders/[id]/resend-tickets/route"
+import { resendOrderTickets } from "@/lib/resend-tickets"
 import { rateLimit } from "@/lib/rate-limit"
 
 type Context = { params: Promise<{ id: string }> }
@@ -57,19 +57,14 @@ export async function POST(request: Request, context: Context) {
   if (parsed.data.action === "complete" && identity.role !== "admin") return respond({ ok: false, error: "Admin access required" }, 403)
   if (!limiter.check(`${identity.userId}:${id}`).allowed) return respond({ ok: false, error: "Too many attempts. Please wait a minute." }, 429)
   if (parsed.data.action === "resend") {
-    // Mark the forward as organizer-authorised: `access()` above already
-    // enforced authenticateOrganizer + organizerEventScope for this order.
-    const forwarded = new Request(request.url, {
-      method: "POST",
-      headers: new Headers({ ...Object.fromEntries(request.headers), "x-organizer-scoped": "1" }),
-    })
-    const response = await resendTickets(forwarded, context)
+    // `access()` above already enforced authenticateOrganizer + organizerEventScope for this order.
+    const response = await resendOrderTickets(request, id, { organizerScoped: true })
     const data = await response.json()
     return respond({ ...data, ok: response.ok, message: response.ok ? `Tickets sent to ${data.sentTo}` : undefined }, response.status)
   }
   if (!parsed.data.confirmPayment || !["pending", "awaiting_verification", "paid"].includes(order.status ?? "")) {
     return respond({ ok: false, error: "Confirm received payment for an eligible order before continuing." }, 409)
   }
-  const completed = await markOrderCompleteAction(id, identity.userId, identity.email)
+  const completed = await markOrderCompleteAction(id, identity.userId, identity.email, { actor: "admin" })
   return respond({ ok: completed.success, message: completed.message, error: completed.success ? undefined : completed.message }, completed.success ? 200 : 409)
 }

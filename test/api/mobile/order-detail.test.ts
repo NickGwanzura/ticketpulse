@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ auth: vi.fn(), scope: vi.fn(), select: vi.fn()
 vi.mock("@/lib/mobile-organizer", () => ({ authenticateOrganizer: mocks.auth, organizerEventScope: mocks.scope, privateHeaders: { "Cache-Control": "private, no-store" } }))
 vi.mock("@/db", () => ({ db: { select: mocks.select } }))
 vi.mock("@/lib/order-recovery", () => ({ markOrderCompleteAction: mocks.complete }))
-vi.mock("@/app/api/orders/[id]/resend-tickets/route", () => ({ POST: mocks.resend }))
+vi.mock("@/lib/resend-tickets", () => ({ resendOrderTickets: mocks.resend }))
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: () => ({ check: mocks.rate }) }))
 import { GET, POST } from "@/app/api/mobile/organizer/orders/[id]/route"
 
@@ -50,7 +50,8 @@ describe("mobile order details and actions", () => {
   })
   it("records the authenticated admin identity through the existing audited workflow", async () => {
     expect((await POST(request({ action: "complete", confirmPayment: true }), context)).status).toBe(200)
-    expect(mocks.complete).toHaveBeenCalledWith(id, "admin-1", "admin@example.com")
+    // No provider reference is sent from mobile, so unpaid gateway orders stay blocked.
+    expect(mocks.complete).toHaveBeenCalledWith(id, "admin-1", "admin@example.com", { actor: "admin" })
   })
   it("preserves delivery failure and throttling responses", async () => {
     mocks.resend.mockResolvedValue(Response.json({ error: "Delivery failed" }, { status: 500 }))
