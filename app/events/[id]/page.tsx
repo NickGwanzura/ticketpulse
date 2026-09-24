@@ -72,6 +72,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       slug: events.slug,
       coverImage: events.coverImage,
       startsAt: events.startsAt,
+      endsAt: events.endsAt,
+      status: events.status,
       venue: events.venue,
       city: events.city,
     })
@@ -80,10 +82,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     .limit(1)
 
   if (!row) {
-    return { title: "Event not found" }
+    return { title: "Event not found", robots: { index: false, follow: false } }
   }
 
-  const title = `${row.title} — tickets, date, venue`
+  const isPublicEvent = ["published", "sold_out", "cancelled", "completed"].includes(row.status ?? "")
+  const isOnSale = row.status === "published" && (row.endsAt ?? row.startsAt).getTime() >= Date.now()
+  const title = isOnSale
+    ? `${row.title} tickets in ${row.city} | TicketPulse`
+    : `${row.title} — event details in ${row.city} | TicketPulse`
   const description = row.description
     ? row.description.length > 160
       ? row.description.slice(0, 157) + "..."
@@ -112,6 +118,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     alternates: {
       canonical: `${baseUrl}/events/${row.slug}`,
     },
+    ...(!isPublicEvent ? { robots: { index: false, follow: false } } : {}),
   }
 }
 
@@ -163,6 +170,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const now = new Date()
   const eventEndedAt = row.endsAt ?? row.startsAt
   const isPastEvent = eventEndedAt.getTime() < now.getTime()
+  const isPublicEvent = ["published", "sold_out", "cancelled", "completed"].includes(row.status ?? "")
 
   const [tierRows, merchRows, vendorListingRows, reviewRows, lineupRows] = await Promise.all([
     db.select().from(ticketTiers).where(eq(ticketTiers.eventId, row.id)),
@@ -283,8 +291,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   }))
 
   const emoji = CATEGORY_EMOJI[row.category.toLowerCase()] ?? "🎫"
+  const saleableTiers = row.status === "published" && !isPastEvent
+    ? tiers.filter((tier) => tier.soldQuantity < tier.totalQuantity)
+    : []
   const baseCurrency = tiers[0]?.currency ?? "USD"
-  const lowestPrice = tiers.length ? Math.min(...tiers.map((t) => t.price)) : null
+  const lowestPrice = tiers.length ? Math.min(...tiers.map((tier) => tier.price)) : null
 
   // ── JSON-LD structured data (Schema.org Event) ────────────────────────────
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
@@ -294,7 +305,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     name: row.title,
     description: row.description ?? undefined,
     startDate: row.startsAt.toISOString(),
-    eventStatus: "https://schema.org/EventScheduled",
+    endDate: row.endsAt?.toISOString(),
+    eventStatus: row.status === "cancelled"
+      ? "https://schema.org/EventCancelled"
+      : row.status === "completed" || isPastEvent
+        ? "https://schema.org/EventCompleted"
+        : "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {
       "@type": "Place",
@@ -313,13 +329,21 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           name: row.organizerName,
         }
       : undefined,
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: baseCurrency,
-      lowPrice: lowestPrice,
-      availability: "https://schema.org/InStock",
-      url: `${siteUrl}/events/${row.slug}`,
-    },
+    offers: saleableTiers.length > 0
+      ? saleableTiers.map((tier) => {
+          const earlyBirdActive = tier.earlyBirdPrice !== null && tier.earlyBirdPrice > 0 &&
+            (!tier.earlyBirdUntil || new Date(tier.earlyBirdUntil) > now) &&
+            (tier.earlyBirdQuantity === null || tier.soldQuantity < tier.earlyBirdQuantity)
+          return {
+            "@type": "Offer",
+            name: tier.name,
+            price: earlyBirdActive ? tier.earlyBirdPrice : tier.price,
+            priceCurrency: tier.currency,
+            availability: "https://schema.org/InStock",
+            url: `${siteUrl}/events/${row.slug}`,
+          }
+        })
+      : undefined,
   }
 
   // Format time range for display
@@ -374,14 +398,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   return (
     <div>
       <EventViewTracker eventId={row.id} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
+      {isPublicEvent && (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+          />
+        </>
+      )}
 
       {/* ── Hero banner (cover image only, no title overlay) ── */}
       {row.coverImage ? (

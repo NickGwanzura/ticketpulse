@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import Link from "next/link"
 import { MapPin, Calendar, Tag } from "lucide-react"
 import { db } from "@/db"
@@ -10,7 +11,7 @@ export const revalidate = 60
 
 type Props = { params: Promise<{ slug: string }> }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const [organizer] = await db
     .select({ name: users.name, organizerBio: users.organizerBio })
@@ -23,6 +24,7 @@ export async function generateMetadata({ params }: Props) {
   return {
     title: `Events by ${organizer.name ?? slug} — TicketPulse`,
     description: organizer.organizerBio ?? `Browse events organized by ${organizer.name}.`,
+    alternates: { canonical: `/o/${encodeURIComponent(slug)}` },
   }
 }
 

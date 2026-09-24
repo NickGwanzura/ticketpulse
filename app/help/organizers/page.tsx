@@ -145,6 +145,7 @@ export const metadata = {
   title: "Help for organizers",
   description:
     "How TicketPulse works for event organizers. Clear event fees, EcoCash or bank payouts, and built-in scanning.",
+  alternates: { canonical: "/help/organizers" },
 }
 
 export default function HelpOrganizersPage() {

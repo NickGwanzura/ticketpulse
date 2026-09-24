@@ -48,6 +48,7 @@ const FAQ = [
 export const metadata = {
   title: "Help for vendors",
   description: "How TicketPulse works for vendors, including applications, profiles, enquiries, packages, and booking support.",
+  alternates: { canonical: "/help/vendors" },
 }
 
 export default function HelpVendorsPage() {

@@ -2,15 +2,18 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 export const metadata: Metadata = {
-  title: "TicketPulse — Event tickets, vendors and payouts",
-  description: "Sell event tickets with QR validation, attendee tools, vendors, reviews, and payouts on one TicketPulse platform.",
+  title: "Event tickets in Zimbabwe | Concerts & events | TicketPulse",
+  description: "Discover concerts, festivals, sport, food and more across Zimbabwe. Buy event tickets with EcoCash or Visa and get your ticket straight to your phone.",
   openGraph: {
-    title: "TicketPulse — Event tickets, vendors and payouts",
-    description: "Sell event tickets with QR validation, attendee tools, vendors, reviews, and payouts on one TicketPulse platform.",
+    title: "Event tickets in Zimbabwe | Concerts & events | TicketPulse",
+    description: "Discover concerts, festivals, sport, food and more across Zimbabwe. Buy event tickets with EcoCash or Visa and get your ticket straight to your phone.",
+    url: "/",
+    type: "website",
   },
   twitter: {
-    title: "TicketPulse — Event tickets, vendors and payouts",
-    description: "Sell event tickets with QR validation, attendee tools, vendors, reviews, and payouts on one TicketPulse platform.",
+    card: "summary_large_image",
+    title: "Event tickets in Zimbabwe | Concerts & events | TicketPulse",
+    description: "Discover concerts, festivals, sport, food and more across Zimbabwe. Buy event tickets with EcoCash or Visa and get your ticket straight to your phone.",
   },
   alternates: {
     canonical: "/",
