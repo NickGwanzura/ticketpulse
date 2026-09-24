@@ -18,13 +18,12 @@ export const metadata: Metadata = {
 }
 import {
   ArrowRight, ArrowUpRight, Ticket, Smartphone, Wallet,
-  Calendar, MapPin, FileText, ScanLine, DoorOpen,
+  Calendar, MapPin, FileText, ScanLine, DoorOpen, Search,
   ReceiptText,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
 import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
-import HeroEventTypesSlider from "@/components/home/HeroEventTypesSlider"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents } from "@/lib/events"
@@ -73,41 +72,102 @@ export default async function Home() {
   return (
     <main>
       {/* HERO */}
-      <section className="relative isolate min-h-[720px] overflow-hidden bg-[#081522] text-[#fbf2e4] md:min-h-[820px]">
-        <HeroBackgroundSlideshow />
-
-        <div className="mx-auto flex min-h-[720px] max-w-7xl items-center px-5 pb-16 pt-36 sm:pb-20 md:min-h-[820px] md:px-8 md:pt-40">
-          <div className="mx-auto max-w-5xl text-center">
-            <p className="tp-fade-up text-[11px] font-bold uppercase tracking-[0.28em] text-[#f6c995]">
-              Zimbabwe&apos;s home for live moments
+      <section className="relative isolate overflow-hidden bg-white text-ink">
+        <div className="pointer-events-none absolute -right-40 -top-48 h-[34rem] w-[34rem] rounded-full bg-orange-100/65 blur-3xl" aria-hidden />
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-12 pt-28 sm:pt-32 md:grid-cols-[1.02fr_0.98fr] md:gap-12 md:px-8 md:pb-16 md:pt-28">
+          <div className="relative z-10 max-w-2xl">
+            <p className="tp-fade-up inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-orange-800 sm:text-[11px]">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+              Zimbabwe&apos;s live event guide
             </p>
-            <div className="tp-fade-up-1 mx-auto mt-7 inline-flex items-center gap-3 rounded-full border border-[#fbf2e4]/25 bg-[#081522]/45 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#fbf2e4]/85 backdrop-blur-sm">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#f47b4b]" aria-hidden />
-              Sell tickets · fill the room · know your numbers
-            </div>
-            <h1 className="tp-fade-up-2 mx-auto mt-7 max-w-5xl font-display text-[66px] font-black uppercase leading-[0.82] tracking-[-0.045em] text-[#fbf2e4] drop-shadow-[0_8px_30px_rgba(0,0,0,0.3)] sm:text-[92px] md:mt-8 md:text-[142px]">
-              Make it a <span className="text-[#f47b4b]">moment.</span>
+            <h1 className="tp-fade-up-1 mt-6 max-w-xl font-display text-[48px] font-black leading-[0.96] tracking-[-0.045em] text-navy sm:text-[64px] md:text-[72px] lg:text-[82px]">
+              Your next great <span className="text-accent">night out.</span>
             </h1>
-            <p className="tp-fade-up-3 mx-auto mt-7 max-w-2xl text-[16px] leading-relaxed text-[#fbf2e4]/78 md:text-[18px]">
-              Discover the nights worth remembering and give your guests a seamless way in. TicketPulse brings tickets, QR entry, guest lists and payouts together.
+            <p className="tp-fade-up-2 mt-5 max-w-xl text-[16px] leading-relaxed text-ink-2 sm:text-[18px]">
+              Find the concerts, food, sport and experiences everyone will be talking about. Choose your event and get straight to the good part.
             </p>
-            <div className="tp-fade-up-4 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/auth/signup?role=organizer"
-                className="group inline-flex h-13 overflow-hidden rounded-sm bg-[#f47b4b] text-[12px] font-bold uppercase tracking-[0.14em] text-[#081522] shadow-[0_18px_45px_-22px_rgba(0,0,0,0.65)] transition hover:-translate-y-0.5 hover:bg-[#ff9c6e] active:scale-[0.99]"
+
+            <form
+              action="/events"
+              method="get"
+              role="search"
+              className="tp-fade-up-3 mt-7 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-line bg-white p-2 shadow-[0_18px_55px_-36px_rgba(10,37,64,0.32)] transition focus-within:border-accent/50 focus-within:ring-4 focus-within:ring-accent/10"
+            >
+              <Search size={19} className="ml-3 shrink-0 text-ink-3" aria-hidden />
+              <label htmlFor="home-event-search" className="sr-only">Search events, venues, or cities</label>
+              <input
+                id="home-event-search"
+                name="q"
+                type="search"
+                placeholder="Search events, venues, or cities"
+                className="min-w-0 flex-1 border-0 bg-transparent px-1 py-3 text-[14px] text-ink outline-none placeholder:text-ink-3 focus:ring-0"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-[12px] font-bold text-white transition hover:bg-accent-hover sm:px-5 sm:text-[13px]"
               >
-                <span className="inline-flex items-center px-6">Start selling</span>
-                <span className="inline-flex w-12 items-center justify-center bg-[#e9683b] text-[#081522] transition group-hover:bg-[#ffb08c]"><ArrowUpRight size={16} /></span>
-              </Link>
-              <Link
-                href="/events"
-                className="group inline-flex h-13 overflow-hidden rounded-sm border border-[#fbf2e4]/45 bg-[#081522]/35 text-[12px] font-bold uppercase tracking-[0.14em] text-[#fbf2e4] backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-[#fbf2e4]/10 active:scale-[0.99]"
-              >
-                <span className="inline-flex items-center px-6">Find an event</span>
-                <span className="inline-flex w-12 items-center justify-center border-l border-[#fbf2e4]/20 text-[#f6c995] transition group-hover:bg-[#fbf2e4]/10"><ArrowUpRight size={16} /></span>
+                Find events <ArrowRight size={15} />
+              </button>
+            </form>
+
+            <div className="tp-fade-up-4 mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] font-medium text-ink-3">
+              <span className="inline-flex items-center gap-1.5"><Ticket size={14} className="text-accent" /> No account needed</span>
+              <span className="inline-flex items-center gap-1.5"><Wallet size={14} className="text-accent" /> EcoCash or Visa</span>
+              <span className="inline-flex items-center gap-1.5"><ArrowRight size={14} className="text-accent" /> Instant ticket delivery</span>
+            </div>
+
+            <div className="tp-fade-up-5 mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-5 text-[13px]">
+              <span className="font-medium text-ink-3">Planning an event?</span>
+              <Link href="/how-it-works" className="inline-flex items-center gap-1.5 font-bold text-navy transition hover:text-accent">
+                Explore TicketPulse for organisers <ArrowUpRight size={14} />
               </Link>
             </div>
-            <HeroEventTypesSlider />
+
+            <div className="mt-6 flex flex-wrap gap-2" aria-label="Browse by event type">
+              {["Concerts", "Food & Drink", "Film", "Marathons"].map((category) => (
+                <Link
+                  key={category}
+                  href={`/events?category=${encodeURIComponent(category)}`}
+                  className="rounded-full border border-line bg-white px-3.5 py-2 text-[11px] font-semibold text-ink-2 transition hover:border-accent/40 hover:bg-orange-50 hover:text-accent"
+                >
+                  {category}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="tp-fade-up-2 relative mx-auto w-full max-w-[560px] md:ml-auto">
+            <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-orange-100 via-rose-50 to-blue-50 blur-xl" aria-hidden />
+            <div className="relative isolate aspect-[1.08] overflow-hidden rounded-[2rem] border border-white bg-[#081522] shadow-[0_28px_80px_-34px_rgba(10,37,64,0.42)] sm:aspect-[1.16] md:aspect-[0.9] lg:aspect-[0.98]">
+              <HeroBackgroundSlideshow />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07182b]/85 via-[#07182b]/10 to-[#07182b]/15" aria-hidden />
+              <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-[#07182b]/35 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-md sm:left-7 sm:top-7">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden />
+                Moments happen here
+              </div>
+              <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7">
+                <div className="max-w-sm text-white">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-200">Make a plan. Make a memory.</p>
+                  <p className="mt-2 font-display text-[32px] font-black leading-[0.98] tracking-[-0.025em] sm:text-[40px]">The moments you go out for.</p>
+                </div>
+                <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-white/15 bg-white/10 p-3.5 text-white backdrop-blur-md sm:p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent"><Calendar size={19} /></span>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-bold">Your next outing</p>
+                      <p className="mt-0.5 truncate text-[11px] text-white/75">Concerts · food · sport · more</p>
+                    </div>
+                  </div>
+                  <Link href="/events" aria-label="Browse all events" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-navy transition hover:bg-orange-100">
+                    <ArrowUpRight size={17} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+            <div className="absolute -bottom-4 -left-3 hidden items-center gap-2.5 rounded-2xl border border-line bg-white px-4 py-3 shadow-[0_16px_50px_-24px_rgba(10,37,64,0.35)] sm:flex md:-left-7">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><Ticket size={17} /></span>
+              <span className="text-[11px] font-bold text-ink">Your ticket, straight to your phone</span>
+            </div>
           </div>
         </div>
       </section>
