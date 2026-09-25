@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 abstract final class Pulse {
   static const navy = Color(0xFF0A2540);
@@ -100,7 +102,7 @@ abstract final class Pulse {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        toolbarHeight: 76,
+        toolbarHeight: 64,
         titleSpacing: 24,
         iconTheme: IconThemeData(color: ink),
       ),
@@ -166,22 +168,19 @@ abstract final class Pulse {
           borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
       ),
+      // Pill buttons throughout, like the main actions in Luma and Eventbrite.
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 52),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          textStyle: text.labelLarge,
+          minimumSize: const Size(48, 54),
+          shape: const StadiumBorder(),
+          textStyle: text.labelLarge?.copyWith(fontSize: 15),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(48, 50),
           side: BorderSide(color: colors.outline),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: const StadiumBorder(),
           textStyle: text.labelLarge,
         ),
       ),
@@ -203,20 +202,101 @@ abstract final class Pulse {
   }
 }
 
+/// Logo sizes, by height. The SVG viewBox is cropped to the artwork, so the
+/// height is the visible logo height and width follows the logo's proportions.
+abstract final class BrandSize {
+  /// App bar. The logo is two stacked lines, so it needs more height than a
+  /// one-line wordmark to keep "Ticket Pulse." legible (~13px per line).
+  static const double appBar = 36;
+
+  /// Sign-in hero card.
+  static const double hero = 56;
+
+  /// Launch/loading screen.
+  static const double splash = 72;
+}
+
 class BrandWordmark extends StatelessWidget {
-  const BrandWordmark({super.key, this.light = false});
+  const BrandWordmark({
+    super.key,
+    this.light = false,
+    this.height = BrandSize.appBar,
+  });
   final bool light;
+  final double height;
+
+  /// Width / height of the cropped logo artwork (viewBox 781 × 427).
+  static const double aspectRatio = 781 / 427;
+
   @override
   Widget build(BuildContext context) => SvgPicture.asset(
     light || Theme.of(context).brightness == Brightness.dark
         ? 'assets/brand/ticketpulse-logo-white.svg'
         : 'assets/brand/ticketpulse-logo.svg',
-    width: 112,
-    height: 56,
+    height: height,
+    width: height * aspectRatio,
     fit: BoxFit.contain,
     alignment: Alignment.centerLeft,
     semanticsLabel: 'TicketPulse',
   );
+}
+
+/// Top-of-page heading used by every workspace tab so titles share one size
+/// and rhythm: eyebrow, title, optional one-line description.
+class PageHeading extends StatelessWidget {
+  const PageHeading({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    this.subtitle,
+  });
+  final String eyebrow;
+  final String title;
+  final String? subtitle;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 24),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Eyebrow(eyebrow),
+        const SizedBox(height: 10),
+        Text(title, style: Theme.of(context).textTheme.headlineMedium),
+        if (subtitle != null) ...[const SizedBox(height: 6), Text(subtitle!)],
+      ],
+    ),
+  );
+}
+
+/// Branded full-screen loading state, continuous with the navy launch splash.
+class BrandLoading extends StatelessWidget {
+  const BrandLoading({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      const AnnotatedRegion<SystemUiOverlayStyle>(
+        // Light status-bar icons on the navy background.
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: Pulse.navy,
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                BrandWordmark(light: true, height: BrandSize.splash),
+                SizedBox(height: 32),
+                SizedBox(
+                  width: 120,
+                  child: LinearProgressIndicator(
+                    color: Color(0xFFFFB38F),
+                    backgroundColor: Color(0x33FFFFFF),
+                    semanticsLabel: 'Loading your workspace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class Eyebrow extends StatelessWidget {
@@ -233,4 +313,21 @@ class Eyebrow extends StatelessWidget {
       color: color ?? Theme.of(context).textTheme.bodyMedium?.color,
     ),
   );
+}
+
+/// Opens [url] in the system browser, with a snackbar if that fails.
+Future<void> openInBrowser(BuildContext context, Uri url) async {
+  try {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception();
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open your browser. Please try again.'),
+        ),
+      );
+    }
+  }
 }

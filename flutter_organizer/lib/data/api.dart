@@ -226,12 +226,37 @@ class OrganizerApi extends ChangeNotifier {
     int offset = 0,
     String? status,
     String? query,
+    String? eventId,
   }) async => OrderPage.fromJson(
     await request(
-      '/api/mobile/organizer/orders?limit=25&offset=$offset${status == null ? '' : '&status=${Uri.encodeQueryComponent(status)}'}${query == null || query.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(query)}'}',
+      '/api/mobile/organizer/orders?limit=25&offset=$offset${eventId == null ? '' : '&eventId=${Uri.encodeQueryComponent(eventId)}'}${status == null ? '' : '&status=${Uri.encodeQueryComponent(status)}'}${query == null || query.isEmpty ? '' : '&q=${Uri.encodeQueryComponent(query)}'}',
     ),
   );
   Future<Json> payments() => request('/api/mobile/organizer/payments');
+
+  /// Requests a payout for the signed-in organizer. The server applies the
+  /// same balance and one-active-request rules as the website.
+  Future<Json> requestPayout({
+    required double amount,
+    required String method,
+    String? ecocashNumber,
+    String? accountNumber,
+    String? accountName,
+    String? bankName,
+  }) => request(
+    '/api/mobile/organizer/payouts',
+    body: {
+      'amount': amount,
+      'currency': 'USD',
+      'method': method,
+      if (method == 'ecocash') 'ecocashNumber': ecocashNumber,
+      if (method == 'bank_usd') ...{
+        'accountNumber': accountNumber,
+        'accountName': accountName,
+        'bankName': bankName,
+      },
+    },
+  );
   Future<Json> orderDetail(String id) =>
       request('/api/mobile/organizer/orders/${Uri.encodeComponent(id)}');
   Future<Json> orderAction(String id, String action) => request(

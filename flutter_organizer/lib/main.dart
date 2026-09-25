@@ -43,11 +43,7 @@ class TicketPulseApp extends StatelessWidget {
     home: ListenableBuilder(
       listenable: api,
       builder: (context, _) {
-        if (api.restoring) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+        if (api.restoring) return const BrandLoading();
         if (api.startupError != null) {
           return Scaffold(
             body: SafeArea(
@@ -57,8 +53,14 @@ class TicketPulseApp extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.cloud_off_outlined, size: 48),
-                      const SizedBox(height: 16),
+                      const BrandWordmark(height: BrandSize.hero),
+                      const SizedBox(height: 32),
+                      Icon(
+                        Icons.cloud_off_outlined,
+                        size: 32,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      const SizedBox(height: 12),
                       Text(api.startupError!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
                       FilledButton(

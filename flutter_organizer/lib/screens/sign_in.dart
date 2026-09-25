@@ -66,8 +66,8 @@ class _SignInScreenState extends State<SignInScreen> {
                       child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          BrandWordmark(light: true),
-                          SizedBox(height: 32),
+                          BrandWordmark(light: true, height: BrandSize.hero),
+                          SizedBox(height: 28),
                           Text(
                             'Every great event.\nOne step ahead.',
                             style: TextStyle(
