@@ -64,6 +64,17 @@ export async function GET(request: Request) {
         .from(tickets)
         .where(and(eq(tickets.eventId, event.id), isNotNull(tickets.scannedAt)))
 
+      // Sales by ticket type for the event page.
+      const [tierRows, tierSold] = await Promise.all([
+        db.select({ id: ticketTiers.id, name: ticketTiers.name, price: ticketTiers.price, currency: ticketTiers.currency, totalQuantity: ticketTiers.totalQuantity })
+          .from(ticketTiers).where(eq(ticketTiers.eventId, event.id)),
+        db.select({ tierId: tickets.tierId, sold: sql<number>`COUNT(*)::int` })
+          .from(tickets)
+          .where(and(eq(tickets.eventId, event.id), eq(tickets.isStaffTicket, false), sql`${tickets.status} IN ('sold', 'used')`))
+          .groupBy(tickets.tierId),
+      ])
+      const soldByTier = new Map(tierSold.map((row) => [row.tierId, Number(row.sold)]))
+
       return {
         id: event.id,
         title: event.title,
@@ -78,6 +89,14 @@ export async function GET(request: Request) {
         totalCapacity: Number(capacityAgg?.totalCapacity ?? 0),
         totalSold: Number(soldAgg?.totalSold ?? 0),
         checkedIn: Number(checkinAgg?.checkedIn ?? 0),
+        tiers: tierRows.map((tier) => ({
+          id: tier.id,
+          name: tier.name,
+          price: Number(tier.price),
+          currency: tier.currency ?? "USD",
+          capacity: tier.totalQuantity,
+          sold: soldByTier.get(tier.id) ?? 0,
+        })),
       }
     }),
   )

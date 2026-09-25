@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../design.dart';
+import 'event_widgets.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({
@@ -33,6 +36,18 @@ class _ScannerScreenState extends State<ScannerScreen>
   int _queuedScans = 0;
   String? _message;
   String _outcome = '';
+
+  /// "Event · Tier" for the last scanned ticket, shown on the result card.
+  String? _ticketLine;
+
+  /// After a valid ticket the scanner returns to the camera by itself, so
+  /// staff don't tap between every guest. Problems still wait for a tap.
+  static const _autoNextDelay = Duration(milliseconds: 1500);
+  Timer? _autoNext;
+
+  /// Guests admitted from this device since the scanner opened, per event, so
+  /// the live counter moves without waiting for the next events refresh.
+  final Map<String, int> _admittedHere = {};
   @override
   void initState() {
     super.initState();
@@ -53,9 +68,12 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void dispose() {
+    _autoNext?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _manual.dispose();
     _camera.dispose();
+    // Let the screen sleep again once the scanner is closed.
+    WakelockPlus.disable().catchError((_) {});
     super.dispose();
   }
 
@@ -70,6 +88,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Future<void> _startCamera() async {
+    // Scanning a queue: the phone must not dim or lock between guests.
+    WakelockPlus.enable().catchError((_) {});
     try {
       await _camera.start();
     } catch (_) {
@@ -118,10 +138,26 @@ class _ScannerScreenState extends State<ScannerScreen>
       }
       setState(() {
         _outcome = duplicate ? 'duplicate' : 'new';
-        _message =
-            '${duplicate ? 'Already checked in — do not admit again.' : 'Valid ticket — welcome in!'}\n${ticket['eventTitle']} · ${ticket['tierName']}';
+        _message = duplicate
+            ? 'This ticket was already scanned. Do not admit again.'
+            : 'Valid ticket. Let them through.';
+        _ticketLine = [
+          ticket['eventTitle'],
+          ticket['tierName'],
+        ].where((v) => v != null && '$v'.isNotEmpty).join(' · ');
       });
-      HapticFeedback.mediumImpact();
+      if (duplicate) {
+        await _alertFeedback(twice: true);
+      } else {
+        HapticFeedback.lightImpact();
+        _admittedHere.update(_event!.id, (n) => n + 1, ifAbsent: () => 1);
+        if (_cameraOpen) {
+          _autoNext?.cancel();
+          _autoNext = Timer(_autoNextDelay, () {
+            if (mounted && _needsReset && _outcome == 'new') _reset();
+          });
+        }
+      }
       widget.onScanned();
     } catch (e) {
       if (mounted) {
@@ -129,6 +165,7 @@ class _ScannerScreenState extends State<ScannerScreen>
           await widget.api.queueScan(code, _event!.id);
           final count = await widget.api.pendingScanCount();
           if (!mounted) return;
+          unawaited(_alertFeedback());
           setState(() {
             _queuedScans = count;
             _outcome = 'queued';
@@ -137,6 +174,7 @@ class _ScannerScreenState extends State<ScannerScreen>
           });
           return;
         }
+        unawaited(_alertFeedback());
         setState(() {
           _outcome = 'error';
           _message = e is ApiException && e.status == 0
@@ -149,50 +187,78 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
+  /// Strong feedback for anything that should stop the guest: a heavy buzz
+  /// (twice for a duplicate) and the system alert sound, distinct from the
+  /// light tap of a valid ticket, so staff notice without looking.
+  Future<void> _alertFeedback({bool twice = false}) async {
+    HapticFeedback.heavyImpact();
+    SystemSound.play(SystemSoundType.alert);
+    if (twice) {
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      HapticFeedback.heavyImpact();
+    }
+  }
+
+  void _reset() {
+    _autoNext?.cancel();
+    setState(() {
+      _needsReset = false;
+      _message = null;
+      _ticketLine = null;
+      _manual.clear();
+    });
+    if (_cameraOpen) _startCamera();
+  }
+
+  Future<void> _pickEvent(List<OrganizerEvent> eligible) async {
+    final picked = await showModalBottomSheet<OrganizerEvent>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) =>
+          _EventPickerSheet(events: eligible, selectedId: _event?.id),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _event = picked;
+        _message = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final eligible = widget.events.where((e) => e.canScan).toList();
+    if (_needsReset && !_busy && _message != null) {
+      return _ScanResult(
+        outcome: _outcome,
+        message: _message!,
+        ticketLine: _ticketLine,
+        autoAdvance: _outcome == 'new' && _cameraOpen,
+        onNext: _reset,
+      );
+    }
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       children: [
-        const Eyebrow('At the door'),
-        const SizedBox(height: 10),
-        Text(
-          'Welcome them in.',
-          style: Theme.of(context).textTheme.headlineSmall,
+        const PageHeading(
+          eyebrow: 'At the door',
+          title: 'Welcome them in.',
+          subtitle:
+              'Check tickets online. If the connection drops, scans are saved as unconfirmed and retried when you reconnect.',
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Check tickets online. If the connection drops, scans are saved as unconfirmed and retried when you reconnect.',
-        ),
-        const SizedBox(height: 24),
         if (eligible.isEmpty)
           const Text(
             'No live events to scan. Publish an event on TicketPulse and refresh your events.',
           ),
         if (eligible.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            initialValue: _event?.id,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Event'),
-            items: eligible
-                .map(
-                  (e) => DropdownMenuItem(
-                    value: e.id,
-                    child: Text(
-                      e.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged: _busy || _needsReset
-                ? null
-                : (id) => setState(() {
-                    _event = eligible.firstWhere((e) => e.id == id);
-                    _message = null;
-                  }),
+          _EventSelector(
+            event: _event,
+            checkedIn: _event == null
+                ? 0
+                : _event!.checkedIn + (_admittedHere[_event!.id] ?? 0),
+            enabled: !_busy && !_needsReset,
+            onTap: () => _pickEvent(eligible),
           ),
           const SizedBox(height: 20),
           if (_queuedScans > 0)
@@ -216,23 +282,51 @@ class _ScannerScreenState extends State<ScannerScreen>
           if (_cameraOpen)
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: SizedBox(
-                height: 260,
-                child: MobileScanner(
-                  controller: _camera,
-                  errorBuilder: (context, error) => const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'Camera unavailable. Enable camera permission in Settings or enter a code below.',
-                        textAlign: TextAlign.center,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 420),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MobileScanner(
+                        controller: _camera,
+                        errorBuilder: (context, error) => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              'Camera unavailable. Enable camera permission in Settings or enter a code below.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                        onDetect: (capture) {
+                          final code = capture.barcodes.firstOrNull?.rawValue;
+                          if (code != null) _scan(code);
+                        },
                       ),
-                    ),
+                      const IgnorePointer(child: _ScanFrame()),
+                      Positioned(
+                        right: 12,
+                        bottom: 12,
+                        child: Row(
+                          children: [
+                            _ViewfinderButton(
+                              tooltip: 'Torch',
+                              icon: Icons.flashlight_on_rounded,
+                              onPressed: () => _camera.toggleTorch(),
+                            ),
+                            const SizedBox(width: 8),
+                            _ViewfinderButton(
+                              tooltip: 'Switch camera',
+                              icon: Icons.cameraswitch_rounded,
+                              onPressed: () => _camera.switchCamera(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  onDetect: (capture) {
-                    final code = capture.barcodes.firstOrNull?.rawValue;
-                    if (code != null) _scan(code);
-                  },
                 ),
               ),
             ),
@@ -318,54 +412,320 @@ class _ScannerScreenState extends State<ScannerScreen>
               padding: EdgeInsets.all(20),
               child: Center(child: CircularProgressIndicator()),
             ),
-          if (_message != null)
-            Card(
-              color: _outcome == 'error'
-                  ? Theme.of(context).colorScheme.errorContainer
-                  : _outcome == 'queued'
-                  ? Theme.of(context).colorScheme.tertiaryContainer
-                  : Theme.of(context).colorScheme.secondaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Semantics(
-                  liveRegion: true,
-                  child: Column(
-                    children: [
-                      Icon(
-                        _outcome == 'new'
-                            ? Icons.check_circle_outline
-                            : _outcome == 'duplicate'
-                            ? Icons.warning_amber
-                            : _outcome == 'queued'
-                            ? Icons.cloud_off_outlined
-                            : Icons.error_outline,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _message!,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
+          // Errors before a scan (camera, empty code) stay inline.
+          if (_message != null && !_needsReset)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  _message!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
-            ),
-          if (_needsReset && !_busy)
-            OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  _needsReset = false;
-                  _message = null;
-                  _manual.clear();
-                });
-                if (_cameraOpen) _startCamera();
-              },
-              child: const Text('Check another ticket'),
             ),
         ],
       ],
     );
   }
+}
+
+/// Aiming frame over the camera preview: a centred square that shows guests
+/// and staff where to hold the ticket's QR code.
+class _ScanFrame extends StatelessWidget {
+  const _ScanFrame();
+  @override
+  Widget build(BuildContext context) => Center(
+    child: FractionallySizedBox(
+      widthFactor: .62,
+      heightFactor: .62,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white, width: 3),
+          borderRadius: BorderRadius.circular(18),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Tappable summary of the event being scanned, opening the picker sheet.
+class _EventSelector extends StatelessWidget {
+  const _EventSelector({
+    required this.event,
+    required this.checkedIn,
+    required this.enabled,
+    required this.onTap,
+  });
+  final OrganizerEvent? event;
+  final int checkedIn;
+  final bool enabled;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Event being scanned: ${event?.title ?? 'none'}. Change event',
+    excludeSemantics: true,
+    child: Card(
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              if (event != null)
+                SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: EventArtwork(event: event!, radius: 12),
+                ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Eyebrow('Scanning for'),
+                    const SizedBox(height: 4),
+                    Text(
+                      event?.title ?? 'Choose an event',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    if (event != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '$checkedIn of ${event!.sold} checked in',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.unfold_more_rounded,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Bottom sheet of selectable event cards (after Luma's ticket picker).
+class _EventPickerSheet extends StatelessWidget {
+  const _EventPickerSheet({required this.events, required this.selectedId});
+  final List<OrganizerEvent> events;
+  final String? selectedId;
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Select event', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                itemCount: events.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  final event = events[i];
+                  final selected = event.id == selectedId;
+                  return Material(
+                    color: selected ? colors.primaryContainer : colors.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: selected ? colors.primary : colors.outline,
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context, event),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              selected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.radio_button_unchecked_rounded,
+                              color: selected
+                                  ? colors.primary
+                                  : Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.color,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    event.title,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  InfoLine(
+                                    icon: Icons.schedule_rounded,
+                                    text: eventWhen(event.startsAt),
+                                  ),
+                                  InfoLine(
+                                    icon: Icons.how_to_reg_outlined,
+                                    text:
+                                        '${event.checkedIn} of ${event.sold} checked in',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-screen scan result (after Eventbrite's order confirmation): big clear
+/// verdict, the ticket, and one action to scan the next guest.
+class _ScanResult extends StatelessWidget {
+  const _ScanResult({
+    required this.outcome,
+    required this.message,
+    required this.ticketLine,
+    required this.autoAdvance,
+    required this.onNext,
+  });
+  final String outcome, message;
+  final String? ticketLine;
+
+  /// True when the scanner will return to the camera by itself.
+  final bool autoAdvance;
+  final VoidCallback onNext;
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (headline, icon, accent) = switch (outcome) {
+      'new' => (
+        'Welcome in',
+        Icons.check_circle_rounded,
+        const Color(0xFF047857),
+      ),
+      'duplicate' => (
+        'Already checked in',
+        Icons.warning_rounded,
+        const Color(0xFFB45309),
+      ),
+      'queued' => (
+        'Saved offline',
+        Icons.cloud_off_rounded,
+        const Color(0xFF1D4ED8),
+      ),
+      _ => (
+        'Can\'t admit this ticket',
+        Icons.cancel_rounded,
+        const Color(0xFFBE123C),
+      ),
+    };
+    final tint = Color.alphaBlend(
+      accent.withValues(alpha: dark ? .22 : .10),
+      Theme.of(context).scaffoldBackgroundColor,
+    );
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        color: tint,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          children: [
+            Icon(icon, size: 72, color: accent),
+            const SizedBox(height: 24),
+            Text(
+              headline,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineLarge?.copyWith(fontSize: 38, height: 1.1),
+            ),
+            const SizedBox(height: 12),
+            Text(message, style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 32),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (ticketLine != null && ticketLine!.isNotEmpty) ...[
+                      Text(
+                        ticketLine!,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    FilledButton(
+                      autofocus: true,
+                      onPressed: onNext,
+                      child: const Text('Check another ticket'),
+                    ),
+                    if (autoAdvance) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Back to the camera in a moment…',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Round translucent button over the camera preview.
+class _ViewfinderButton extends StatelessWidget {
+  const _ViewfinderButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: onPressed,
+    style: IconButton.styleFrom(
+      backgroundColor: const Color(0x99000000),
+      foregroundColor: Colors.white,
+      fixedSize: const Size(48, 48),
+    ),
+    icon: Icon(icon, size: 22),
+  );
 }

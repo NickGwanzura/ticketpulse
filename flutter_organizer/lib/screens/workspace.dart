@@ -6,8 +6,10 @@ import '../data/models.dart';
 import 'scanner.dart';
 import 'order_detail.dart';
 import 'overview_widgets.dart';
+import 'event_detail.dart';
+import 'event_widgets.dart';
+import 'payout_request.dart';
 import '../design.dart';
-import 'package:intl/intl.dart';
 
 class OrganizerWorkspace extends StatefulWidget {
   const OrganizerWorkspace({super.key, required this.api});
@@ -21,6 +23,9 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
   bool _eventsDirty = false;
   int _notificationUnread = 0;
   OrganizerEvent? _scanEvent;
+
+  /// Event whose orders the Orders tab is filtered to (from the event page).
+  OrganizerEvent? _ordersEvent;
   late Future<List<OrganizerEvent>> _events;
   Timer? _pollTimer;
   @override
@@ -68,6 +73,116 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
     _scanEvent = event;
     _tab = 3;
   });
+
+  /// Soonest upcoming (or in-progress) event, for the Home "Next up" card.
+  OrganizerEvent? _nextEvent(List<OrganizerEvent> events) {
+    final upcoming = _sortedUpcoming(
+      events.where((e) => e.isUpcoming && e.startsAt != null),
+    );
+    return upcoming.isEmpty ? null : upcoming.first;
+  }
+
+  List<OrganizerEvent> _sortedUpcoming(Iterable<OrganizerEvent> events) =>
+      events.toList()..sort(
+        (a, b) => (a.startsAt ?? DateTime(9999)).compareTo(
+          b.startsAt ?? DateTime(9999),
+        ),
+      );
+
+  List<Widget> _eventRows(Iterable<OrganizerEvent> events) => [
+    for (final (i, event) in events.indexed) ...[
+      if (i > 0) const Divider(height: 1),
+      EventRow(event: event, onTap: () => _openEvent(event)),
+    ],
+  ];
+
+  Future<void> _openEvent(OrganizerEvent event) async {
+    final action = await showEventDetail(context, widget.api, event);
+    if (!mounted) return;
+    switch (action) {
+      case EventAction.scan:
+        _scan(event);
+      case EventAction.orders:
+        setState(() {
+          _ordersEvent = event;
+          _tab = 2;
+        });
+      case null:
+        break;
+    }
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await widget.api.signOut();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not clear saved credentials. Retry sign out.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAccount() {
+    final user = widget.api.user;
+    final name = user?['name']?.toString() ?? 'Organizer';
+    final email = user?['email']?.toString();
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  _AccountAvatar(name: name, radius: 26),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: Theme.of(sheetContext).textTheme.titleMedium,
+                        ),
+                        if (email != null) Text(email),
+                        Text(statusLabel(user?['role']?.toString() ?? '')),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  openWebsite(context, widget.api, '/organizer');
+                },
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open TicketPulse website'),
+              ),
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  _signOut();
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Sign out'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _showNotifications() async {
     Json data;
@@ -128,53 +243,58 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const BrandWordmark(),
-      actions: [
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: _showNotifications,
-          icon: Badge(
-            isLabelVisible: _notificationUnread > 0,
-            label: Text('$_notificationUnread'),
-            child: const Icon(Icons.notifications_none_rounded),
-          ),
-        ),
-        PopupMenuButton<String>(
-          tooltip: 'Account',
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: 'signout',
-              child: Row(
-                children: [
-                  Icon(Icons.logout, size: 18),
-                  SizedBox(width: 12),
-                  Text('Sign out'),
-                ],
+      titleSpacing: 20,
+      title: Row(
+        children: [
+          Semantics(
+            button: true,
+            label: 'Account',
+            child: InkWell(
+              onTap: _showAccount,
+              customBorder: const CircleBorder(),
+              child: _AccountAvatar(
+                name: widget.api.user?['name']?.toString() ?? 'Organizer',
               ),
             ),
-          ],
-          onSelected: (_) async {
-            try {
-              await widget.api.signOut();
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Could not clear saved credentials. Retry sign out.',
-                    ),
+          ),
+          const SizedBox(width: 12),
+          const BrandWordmark(),
+        ],
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x140A2540),
+                  blurRadius: 18,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Create an event',
+                  onPressed: () =>
+                      openWebsite(context, widget.api, '/organizer/events/new'),
+                  icon: const Icon(Icons.add_rounded),
+                ),
+                IconButton(
+                  tooltip: 'Notifications',
+                  onPressed: _showNotifications,
+                  icon: Badge(
+                    isLabelVisible: _notificationUnread > 0,
+                    label: Text('$_notificationUnread'),
+                    child: const Icon(Icons.notifications_none_rounded),
                   ),
-                );
-              }
-            }
-          },
-          icon: CircleAvatar(
-            radius: 18,
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: Icon(
-              Icons.person_outline_rounded,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
             ),
           ),
         ),
@@ -185,7 +305,12 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 920),
           child: switch (_tab) {
-            2 => OrdersScreen(api: widget.api),
+            2 => OrdersScreen(
+              key: ValueKey(_ordersEvent?.id),
+              api: widget.api,
+              event: _ordersEvent,
+              onClearEvent: () => setState(() => _ordersEvent = null),
+            ),
             4 =>
               widget.api.user?['role'] == 'admin'
                   ? AdminScreen(api: widget.api)
@@ -217,46 +342,40 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       if (_tab == 0) ...[
-                        const Eyebrow('Your workspace'),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Welcome, ${widget.api.user?['name'] ?? 'organizer'}',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                        PageHeading(
+                          eyebrow: 'Your workspace',
+                          title:
+                              'Welcome, ${widget.api.user?['name'] ?? 'organizer'}',
+                          subtitle: 'Great events start with a clear view.',
                         ),
-                        const SizedBox(height: 6),
-                        const Text('Great events start with a clear view.'),
-                        const SizedBox(height: 24),
+                        if (_nextEvent(events) case final next?) ...[
+                          NextEventCard(
+                            event: next,
+                            onOpen: () => _openEvent(next),
+                            onScan: () => _scan(next),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         OverviewSummary(events: events),
-                        const SizedBox(height: 14),
-                        ScanShortcut(onTap: () => setState(() => _tab = 3)),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Your events',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => setState(() => _tab = 1),
-                              child: const Text('View all'),
-                            ),
-                          ],
+                        // The "Next up" card already offers Scan for its event.
+                        if (!(_nextEvent(events)?.canScan ?? false)) ...[
+                          const SizedBox(height: 14),
+                          ScanShortcut(onTap: () => setState(() => _tab = 3)),
+                        ],
+                        const SizedBox(height: 28),
+                        _SectionLink(
+                          title: 'Your events',
+                          semanticLabel: 'View all events',
+                          onTap: () => setState(() => _tab = 1),
                         ),
-                        const SizedBox(height: 8),
                       ] else ...[
-                        const Eyebrow('Make it happen'),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Your events',
-                          style: Theme.of(context).textTheme.headlineLarge,
+                        PageHeading(
+                          eyebrow: 'Make it happen',
+                          title: 'Your events',
+                          subtitle: events.length == 1
+                              ? '1 event · every detail in one place'
+                              : '${events.length} events · every detail in one place',
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${events.length} events · every detail in one place',
-                        ),
-                        const SizedBox(height: 24),
                       ],
                       if (events.isEmpty)
                         const EmptyState(
@@ -265,8 +384,21 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
                           message:
                               'Create an event on TicketPulse, then refresh to manage it here.',
                         ),
-                      for (final event in (_tab == 0 ? events.take(3) : events))
-                        EventCard(event: event, onScan: () => _scan(event)),
+                      if (_tab == 0)
+                        ..._eventRows(events.take(3))
+                      else ...[
+                        if (events.any((e) => e.isUpcoming)) ...[
+                          const _ListLabel('Upcoming'),
+                          ..._eventRows(
+                            _sortedUpcoming(events.where((e) => e.isUpcoming)),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                        if (events.any((e) => !e.isUpcoming)) ...[
+                          const _ListLabel('Past'),
+                          ..._eventRows(events.where((e) => !e.isUpcoming)),
+                        ],
+                      ],
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: () => openWebsite(
@@ -286,34 +418,124 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
         ),
       ),
     ),
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: _tab,
-      onDestinationSelected: (value) => setState(() {
-        if (_eventsDirty && (value == 0 || value == 1)) {
-          _events = widget.api.events();
-          _eventsDirty = false;
-        }
-        _tab = value;
-      }),
-      destinations: [
-        NavigationDestination(
-          icon: Icon(Icons.space_dashboard_outlined),
-          label: 'Home',
+    bottomNavigationBar: SafeArea(
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      // Floating bar with a soft shadow (Luma-style), rather than a docked bar.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A0A2540),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
-        NavigationDestination(
-          icon: Icon(Icons.event_outlined),
-          label: 'Events',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: NavigationBar(
+            height: 68,
+            selectedIndex: _tab,
+            onDestinationSelected: (value) => setState(() {
+              if (_eventsDirty && (value == 0 || value == 1)) {
+                _events = widget.api.events();
+                _eventsDirty = false;
+              }
+              if (value != 2) _ordersEvent = null;
+              _tab = value;
+            }),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.space_dashboard_outlined),
+                selectedIcon: Icon(Icons.space_dashboard_rounded),
+                label: 'Home',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.event_outlined),
+                selectedIcon: Icon(Icons.event_rounded),
+                label: 'Events',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long_rounded),
+                label: 'Orders',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.qr_code_scanner),
+                selectedIcon: Icon(Icons.qr_code_scanner_rounded),
+                label: 'Scan',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.account_balance_wallet_outlined),
+                selectedIcon: const Icon(Icons.account_balance_wallet_rounded),
+                label: widget.api.user?['role'] == 'admin'
+                    ? 'Admin'
+                    : 'Payments',
+              ),
+            ],
+          ),
         ),
-        NavigationDestination(
-          icon: Icon(Icons.receipt_long_outlined),
-          label: 'Orders',
+      ),
+    ),
+  );
+}
+
+/// Round avatar with the organizer's initials.
+class _AccountAvatar extends StatelessWidget {
+  const _AccountAvatar({required this.name, this.radius = 20});
+  final String name;
+  final double radius;
+  @override
+  Widget build(BuildContext context) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    final initials = parts.take(2).map((p) => p[0].toUpperCase()).join();
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Pulse.navy,
+      child: Text(
+        initials.isEmpty ? '?' : initials,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: radius * .75,
+          fontWeight: FontWeight.w600,
         ),
-        NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
-        NavigationDestination(
-          icon: Icon(Icons.account_balance_wallet_outlined),
-          label: widget.api.user?['role'] == 'admin' ? 'Admin' : 'Payments',
+      ),
+    );
+  }
+}
+
+/// Section title that links to the full list: "Your events ›".
+class _SectionLink extends StatelessWidget {
+  const _SectionLink({
+    required this.title,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+  final String title, semanticLabel;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: semanticLabel,
+    excludeSemantics: true,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 }
@@ -339,164 +561,74 @@ class _NotificationRow extends StatelessWidget {
   );
 }
 
-class EventCard extends StatelessWidget {
-  const EventCard({super.key, required this.event, required this.onScan});
-  final OrganizerEvent event;
-  final VoidCallback onScan;
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final date = event.startsAt?.toLocal();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 54,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          date == null
-                              ? 'TBC'
-                              : DateFormat('MMM').format(date).toUpperCase(),
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontSize: 10,
-                            letterSpacing: 1,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          date == null ? '—' : DateFormat('dd').format(date),
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontSize: 24,
-                            height: 1,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        StatusChip(event.displayStatus),
-                        const SizedBox(height: 7),
-                        Text(
-                          event.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          [
-                            event.venue,
-                            event.city,
-                          ].where((s) => s.isNotEmpty).join(' · '),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 8,
-                children: [
-                  Text(
-                    '${event.sold} sold',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    '/ ${event.capacity} capacity',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 9),
-              LinearProgressIndicator(
-                value: event.capacity > 0
-                    ? (event.sold / event.capacity).clamp(0.0, 1.0)
-                    : 0,
-                semanticsLabel:
-                    '${event.sold} of ${event.capacity} tickets sold',
-              ),
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      '${event.checkedIn} checked in',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                  if (event.canScan)
-                    TextButton.icon(
-                      onPressed: onScan,
-                      icon: const Icon(Icons.qr_code_scanner, size: 16),
-                      label: const Text('Scan tickets'),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key, required this.api});
+  const OrdersScreen({
+    super.key,
+    required this.api,
+    this.event,
+    this.onClearEvent,
+  });
   final OrganizerApi api;
+
+  /// When set, only this event's orders are listed (opened from its page).
+  final OrganizerEvent? event;
+  final VoidCallback? onClearEvent;
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
 }
+
+/// Status filters shown as chips; less common states sit behind "More".
+const _primaryStatuses = ['paid', 'pending', 'refunded'];
+const _moreStatuses = [
+  'completed',
+  'awaiting_verification',
+  'cancelled',
+  'expired',
+];
 
 class _OrdersScreenState extends State<OrdersScreen> {
   final List<Json> _orders = [];
   String? _status, _error;
   final _search = TextEditingController();
   String _query = '';
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
+  Timer? _debounce;
   bool _busy = false, _more = true;
+
+  /// Ignore responses from searches the user has already moved past.
+  int _generation = 0;
+
   @override
   void initState() {
     super.initState();
     _load(reset: true);
   }
 
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// Search as you type, after a short pause so every keystroke isn't a request.
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted || value.trim() == _query) return;
+      _query = value.trim();
+      _load(reset: true);
+    });
+  }
+
+  void _setStatus(String? status) {
+    if (status == _status) return;
+    _status = status;
+    _load(reset: true);
+  }
+
   Future<void> _load({bool reset = false}) async {
-    if (_busy) return;
+    if (_busy && !reset) return;
+    final generation = ++_generation;
     setState(() {
       _busy = true;
       _error = null;
@@ -510,17 +642,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
         offset: _orders.length,
         status: _status,
         query: _query,
+        eventId: widget.event?.id,
       );
-      if (mounted) {
+      if (mounted && generation == _generation) {
         setState(() {
           _orders.addAll(page.orders);
           _more = page.hasMore;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted && generation == _generation) setState(() => _error = '$e');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && generation == _generation) setState(() => _busy = false);
     }
   }
 
@@ -531,28 +664,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        Eyebrow(
-          widget.api.user?['role'] == 'admin'
+        PageHeading(
+          eyebrow: widget.api.user?['role'] == 'admin'
               ? 'Operations & support'
               : 'Every ticket counts',
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Sales & orders',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          widget.api.user?['role'] == 'admin'
+          title: 'Sales & orders',
+          subtitle: widget.api.user?['role'] == 'admin'
               ? 'Find a buyer, inspect an order, and resolve ticket issues.'
               : 'Sales, buyer details, and entry for your events.',
         ),
-        const SizedBox(height: 20),
         TextField(
           controller: _search,
-          enabled: !_busy,
           textInputAction: TextInputAction.search,
+          onChanged: (value) {
+            setState(() {});
+            _onSearchChanged(value);
+          },
           onSubmitted: (value) {
+            _debounce?.cancel();
             _query = value.trim();
             _load(reset: true);
           },
@@ -560,45 +689,75 @@ class _OrdersScreenState extends State<OrdersScreen> {
             labelText: 'Search orders',
             hintText: 'Buyer, email, event, or reference',
             prefixIcon: const Icon(Icons.search),
-            suffixIcon: IconButton(
-              tooltip: 'Search orders',
-              onPressed: _busy
-                  ? null
-                  : () {
-                      _query = _search.text.trim();
-                      _load(reset: true);
+            suffixIcon: _search.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _search.clear();
+                      _onSearchChanged('');
+                      setState(() {});
                     },
-              icon: const Icon(Icons.arrow_forward_rounded),
-            ),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
           ),
         ),
-        const SizedBox(height: 20),
-        DropdownButtonFormField<String>(
-          initialValue: _status ?? 'all',
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Order status'),
-          items:
-              [
-                    'all',
-                    'paid',
-                    'completed',
-                    'pending',
-                    'awaiting_verification',
-                    'refunded',
-                    'cancelled',
-                    'expired',
-                  ]
-                  .map(
-                    (s) =>
-                        DropdownMenuItem(value: s, child: Text(statusLabel(s))),
-                  )
-                  .toList(),
-          onChanged: _busy
-              ? null
-              : (value) {
-                  _status = value == 'all' ? null : value;
-                  _load(reset: true);
-                },
+        const SizedBox(height: 14),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              if (widget.event != null) ...[
+                InputChip(
+                  avatar: const Icon(Icons.event_rounded, size: 18),
+                  label: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 180),
+                    child: Text(
+                      widget.event!.title,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  tooltip: 'Show orders for all events',
+                  onDeleted: widget.onClearEvent,
+                ),
+                const SizedBox(width: 8),
+              ],
+              ChoiceChip(
+                label: const Text('All'),
+                selected: _status == null,
+                onSelected: (_) => _setStatus(null),
+              ),
+              for (final status in _primaryStatuses) ...[
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: Text(statusLabel(status)),
+                  selected: _status == status,
+                  onSelected: (_) => _setStatus(status),
+                ),
+              ],
+              const SizedBox(width: 8),
+              PopupMenuButton<String>(
+                tooltip: 'More statuses',
+                onSelected: _setStatus,
+                itemBuilder: (_) => [
+                  for (final status in _moreStatuses)
+                    CheckedPopupMenuItem(
+                      value: status,
+                      checked: _status == status,
+                      child: Text(statusLabel(status)),
+                    ),
+                ],
+                child: Chip(
+                  label: Text(
+                    _moreStatuses.contains(_status)
+                        ? statusLabel(_status!)
+                        : 'More',
+                  ),
+                  avatar: const Icon(Icons.expand_more_rounded, size: 18),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 20),
         for (final order in _orders)
@@ -620,10 +779,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
             child: Center(child: CircularProgressIndicator()),
           ),
         if (!_busy && _error == null && _orders.isEmpty)
-          const EmptyState(
+          EmptyState(
             icon: Icons.receipt_long_outlined,
-            title: 'No orders yet',
-            message: 'Orders matching this status will appear here.',
+            title: _query.isNotEmpty ? 'No matching orders' : 'No orders yet',
+            message: _query.isNotEmpty
+                ? 'Try a buyer name, email, or order reference.'
+                : 'Orders matching this filter will appear here.',
           ),
         if (!_busy && _error == null && _more && _orders.isNotEmpty)
           OutlinedButton(
@@ -675,21 +836,20 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       final data = snapshot.data!, summary = data['summary'] as Json;
       final payouts = (data['payouts'] as List).cast<Json>();
       final currency = data['currency'] as String;
+      final available = number(summary['availableBalance']).toDouble();
+      final activePayout = data['activePayout'] == true;
+      final canRequest = !activePayout && available >= 1;
       return RefreshIndicator(
         onRefresh: _reload,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            const Eyebrow('The bigger picture'),
-            const SizedBox(height: 10),
-            Text(
-              'Your money, clearly',
-              style: Theme.of(context).textTheme.headlineSmall,
+            const PageHeading(
+              eyebrow: 'The bigger picture',
+              title: 'Your money, clearly',
+              subtitle: 'Personal payout balance from your owned events.',
             ),
-            const SizedBox(height: 8),
-            const Text('Personal payout balance from your owned events.'),
-            const SizedBox(height: 24),
             Card(
               color: Pulse.navy,
               child: Padding(
@@ -765,10 +925,39 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
+            FilledButton.icon(
+              onPressed: canRequest
+                  ? () async {
+                      final sent = await showPayoutRequest(
+                        context,
+                        widget.api,
+                        available: available,
+                        lastDestination: data['lastDestination'] as Json?,
+                      );
+                      if (sent) _reload();
+                    }
+                  : null,
+              icon: const Icon(Icons.payments_outlined),
+              label: const Text('Request payout'),
+            ),
+            if (!canRequest)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  activePayout
+                      ? 'Your current request is being processed. You can request again once it’s paid or rejected.'
+                      : 'Nothing to withdraw yet. Confirmed ticket sales show up here after fees.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontSize: 13),
+                ),
+              ),
+            const SizedBox(height: 4),
+            TextButton.icon(
               onPressed: () => openWebsite(context, widget.api, '/payouts'),
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Manage payouts on the website'),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('Payout details on the website'),
             ),
             const SizedBox(height: 24),
             Text(
@@ -906,17 +1095,12 @@ class _AdminScreenState extends State<AdminScreen> {
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            const Eyebrow('Control room'),
-            const SizedBox(height: 10),
-            Text(
-              'Admin operations & support',
-              style: Theme.of(context).textTheme.headlineLarge,
+            const PageHeading(
+              eyebrow: 'Control room',
+              title: 'Admin operations & support',
+              subtitle:
+                  'Monitor orders, payouts, events, and organizer support from one place.',
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Monitor orders, payouts, events, and organizer support from one place.',
-            ),
-            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
@@ -1000,7 +1184,9 @@ Widget _buildRecentOrders(
                   title: Text(
                     row['eventTitle']?.toString() ?? 'Untitled event',
                   ),
-                  subtitle: Text('$buyer · ${row['status'] ?? 'pending'}'),
+                  subtitle: Text(
+                    '$buyer · ${statusLabel(row['status']?.toString() ?? 'pending')}',
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () =>
                       showOrderDetail(context, api, row['id'].toString()),
@@ -1088,8 +1274,8 @@ Widget _buildPayoutQueue(
             itemBuilder: (_) => [
               if (payout['status'] == 'pending')
                 const PopupMenuItem(value: 'approve', child: Text('Approve')),
-              if (payout['status'] == 'pending' ||
-                  payout['status'] == 'approved' ||
+              // A payout must be approved before it can be paid.
+              if (payout['status'] == 'approved' ||
                   payout['status'] == 'processing')
                 const PopupMenuItem(value: 'paid', child: Text('Mark paid')),
               if (payout['status'] == 'approved')
@@ -1175,16 +1361,20 @@ Future<void> _runPayoutAction(
     controller.dispose();
     if (reason == null || reason.isEmpty) return;
   } else if (action == 'paid') {
+    // Money out needs evidence; the server rejects a paid payout without it.
+    final controller = TextEditingController();
     proofReference = await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
-        final controller = TextEditingController();
-        return AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
           title: const Text('Mark payout paid'),
           content: TextField(
             controller: controller,
+            autofocus: true,
+            onChanged: (_) => setDialogState(() {}),
             decoration: const InputDecoration(
-              labelText: 'Proof reference (optional)',
+              labelText: 'Transfer or receipt reference',
+              helperText: 'Required: the EcoCash, bank, or cash reference.',
             ),
           ),
           actions: [
@@ -1193,15 +1383,17 @@ Future<void> _runPayoutAction(
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () =>
-                  Navigator.pop(dialogContext, controller.text.trim()),
+              onPressed: controller.text.trim().length < 3
+                  ? null
+                  : () => Navigator.pop(dialogContext, controller.text.trim()),
               child: const Text('Mark paid'),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
-    if (proofReference == null) return;
+    controller.dispose();
+    if (proofReference == null || proofReference.isEmpty) return;
   }
   try {
     await api.adminPayoutAction(
@@ -1420,7 +1612,15 @@ class EmptyState extends StatelessWidget {
       width: double.infinity,
       child: Column(
         children: [
-          Icon(icon, size: 40),
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Icon(
+              icon,
+              size: 28,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
             title,
@@ -1456,4 +1656,15 @@ Future<void> openWebsite(
       );
     }
   }
+}
+
+/// Small section label inside a list ("Upcoming", "Past").
+class _ListLabel extends StatelessWidget {
+  const _ListLabel(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Text(text, style: Theme.of(context).textTheme.titleLarge),
+  );
 }

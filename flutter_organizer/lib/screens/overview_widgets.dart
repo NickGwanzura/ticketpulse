@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../design.dart';
@@ -169,4 +170,158 @@ class ScanShortcut extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// "Starts in 2 h 40 min", "Happening now", or "Tomorrow" style countdown.
+String countdownLabel(OrganizerEvent event, DateTime now) {
+  final start = event.startsAt?.toLocal();
+  if (start == null) return 'Date to be confirmed';
+  final end = event.endsAt?.toLocal();
+  if (!start.isAfter(now)) {
+    return end == null || end.isAfter(now) ? 'Happening now' : 'Finished';
+  }
+  final diff = start.difference(now);
+  if (diff.inMinutes < 60) {
+    return 'Starts in ${diff.inMinutes.clamp(1, 59)} min';
+  }
+  if (diff.inHours < 24) {
+    final minutes = diff.inMinutes % 60;
+    return 'Starts in ${diff.inHours} h${minutes == 0 ? '' : ' $minutes min'}';
+  }
+  // Calendar days, so an event at 6pm tomorrow reads "tomorrow", not "2 days".
+  final days = DateUtils.dateOnly(
+    start,
+  ).difference(DateUtils.dateOnly(now)).inDays;
+  return days <= 1 ? 'Starts tomorrow' : 'Starts in $days days';
+}
+
+/// The organizer's next (or current) event, front and centre on Home.
+class NextEventCard extends StatefulWidget {
+  const NextEventCard({
+    super.key,
+    required this.event,
+    required this.onOpen,
+    required this.onScan,
+  });
+  final OrganizerEvent event;
+  final VoidCallback onOpen, onScan;
+  @override
+  State<NextEventCard> createState() => _NextEventCardState();
+}
+
+class _NextEventCardState extends State<NextEventCard> {
+  late DateTime _now = DateTime.now();
+  Timer? _tick;
+  @override
+  void initState() {
+    super.initState();
+    // Keep the countdown honest while the app stays open.
+    _tick = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.event;
+    final live = countdownLabel(event, _now) == 'Happening now';
+    const muted = Color(0xFFB5C9DA);
+    return Semantics(
+      container: true,
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Pulse.navy,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (live)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF34D399),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                Eyebrow(live ? 'Happening now' : 'Next up', color: muted),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              event.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+                letterSpacing: -.4,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              live
+                  ? '${event.checkedIn} of ${event.sold} checked in'
+                  : countdownLabel(event, _now),
+              style: const TextStyle(
+                color: Color(0xFFFFB38F),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              event.capacity > 0
+                  ? '${event.sold} of ${event.capacity} tickets sold'
+                  : '${event.sold} tickets sold',
+              style: const TextStyle(color: muted, fontSize: 13),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                if (event.canScan) ...[
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Pulse.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: widget.onScan,
+                      icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                      label: const Text('Scan'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Color(0xFF35526E)),
+                      minimumSize: const Size(48, 54),
+                    ),
+                    onPressed: widget.onOpen,
+                    child: const Text('Details'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
