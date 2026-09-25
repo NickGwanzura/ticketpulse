@@ -20,9 +20,15 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 import CompleteButton from "@/app/admin/_components/CompleteButton"
 import SendTicketsButton from "@/app/admin/_components/SendTicketsButton"
 import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
-import ResendButton from "@/app/admin/_components/ResendButton"
 import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RecheckButton from "@/app/admin/_components/RecheckButton"
+import {
+  organizerCompleteAndSendAction,
+  organizerMarkOrderCompleteAction,
+  organizerRecheckPaymentAction,
+  organizerSendTicketsAction,
+} from "@/app/organizer/actions"
+import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
 
 const STATUS_STYLE: Record<string, string> = {
   paid:                   "bg-emerald-50 text-emerald-700",
@@ -97,6 +103,15 @@ const LIMIT = 25
 
 
 
+
+// Money for these orders should arrive through the payment gateway, so an
+// unpaid one can only be settled by rechecking with the provider.
+function isGatewayPayment(o: { paymentMethod: string | null; totalAmount: string | null }) {
+  return !isDirectSalePaymentMethod(o.paymentMethod)
+    && o.paymentMethod !== "complimentary"
+    && o.paymentMethod !== "free"
+    && Number(o.totalAmount ?? 0) > 0
+}
 export default async function OrganizerOrdersPage({
   searchParams,
 }: {
@@ -374,27 +389,19 @@ export default async function OrganizerOrdersPage({
                           </td>
                           <td className="px-5 py-3.5 text-right">
                             <div className="flex items-center justify-end gap-1 max-w-[280px] flex-wrap">
-                              {(o.status === "paid" || o.status === "awaiting_verification") && (
-                                <ResendButton
-                                  orderId={o.id}
-                                  status={o.status ?? ""}
-                                  variant="desktop"
-                                />
-                              )}
-                              {o.status === "pending" && (
-                                <RecheckButton orderId={o.id} variant="desktop" />
-                              )}
                               {(o.status === "pending" || o.status === "awaiting_verification") && (
-                                <CompleteAndSendButton orderId={o.id} variant="desktop" />
+                                isGatewayPayment(o)
+                                  ? <RecheckButton orderId={o.id} variant="desktop" action={organizerRecheckPaymentAction} />
+                                  : <CompleteAndSendButton orderId={o.id} variant="desktop" action={organizerCompleteAndSendAction} />
                               )}
                               {o.status === "paid" && (
                                 <>
-                                  <CompleteButton orderId={o.id} variant="desktop" />
-                                  <SendTicketsButton orderId={o.id} variant="desktop" />
+                                  <CompleteButton orderId={o.id} variant="desktop" action={organizerMarkOrderCompleteAction} />
+                                  <SendTicketsButton orderId={o.id} variant="desktop" action={organizerSendTicketsAction} />
                                 </>
                               )}
                               {o.status === "completed" && (
-                                <ResendTicketsButton orderId={o.id} variant="desktop" />
+                                <ResendTicketsButton orderId={o.id} variant="desktop" action={organizerSendTicketsAction} />
                               )}
                               <Link
                                 href={`/orders/${o.id}`}
@@ -445,27 +452,19 @@ export default async function OrganizerOrdersPage({
                         <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {(o.status === "paid" || o.status === "awaiting_verification") && (
-                          <ResendButton
-                            orderId={o.id}
-                            status={o.status ?? ""}
-                            variant="mobile"
-                          />
-                        )}
-                        {o.status === "pending" && (
-                          <RecheckButton orderId={o.id} variant="mobile" />
-                        )}
                         {(o.status === "pending" || o.status === "awaiting_verification") && (
-                          <CompleteAndSendButton orderId={o.id} variant="mobile" />
+                          isGatewayPayment(o)
+                            ? <RecheckButton orderId={o.id} variant="mobile" action={organizerRecheckPaymentAction} />
+                            : <CompleteAndSendButton orderId={o.id} variant="mobile" action={organizerCompleteAndSendAction} />
                         )}
                         {o.status === "paid" && (
                           <>
-                            <CompleteButton orderId={o.id} variant="mobile" />
-                            <SendTicketsButton orderId={o.id} variant="mobile" />
+                            <CompleteButton orderId={o.id} variant="mobile" action={organizerMarkOrderCompleteAction} />
+                            <SendTicketsButton orderId={o.id} variant="mobile" action={organizerSendTicketsAction} />
                           </>
                         )}
                         {o.status === "completed" && (
-                          <ResendTicketsButton orderId={o.id} variant="mobile" />
+                          <ResendTicketsButton orderId={o.id} variant="mobile" action={organizerSendTicketsAction} />
                         )}
                         <Link
                           href={`/orders/${o.id}`}

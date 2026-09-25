@@ -7,8 +7,8 @@ import { db } from "@/db"
 import { orders } from "@/db/schema"
 import { requireAdmin } from "@/lib/auth-guard"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
-import { log } from "@/lib/logger"
 import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
+import { recheckOrderPayment, type RecheckResult } from "@/lib/payment-recheck"
 
 function revalidateVelocityViews() {
   revalidatePath("/admin")
@@ -17,51 +17,11 @@ function revalidateVelocityViews() {
   revalidatePath("/admin/velocity")
 }
 
-export async function recheckPaymentAction(
-  orderId: string,
-): Promise<{ fixed: boolean; message: string; details?: Record<string, unknown> }> {
+export async function recheckPaymentAction(orderId: string): Promise<RecheckResult> {
   const session = await requireAdmin()
-  const result = await reconcileVelocityOrder({
-    orderId,
-    source: "admin_recheck",
-    actorEmail: session.user.email,
-  })
-
-  if (!result.paid) {
-    revalidateVelocityViews()
-    return {
-      fixed: false,
-      message: `${result.state}: ${result.message ?? "Payment was not confirmed"}`,
-      details: {
-        state: result.state,
-        transactionTrace: result.transactionTrace,
-        salesOrderTrace: result.salesOrderTrace,
-        providerHttpStatus: result.providerHttpStatus,
-      },
-    }
-  }
-
-  try {
-    const delivery = await deliverTicketForPaidOrder(orderId)
-    revalidateVelocityViews()
-    return {
-      fixed: true,
-      message: `Payment confirmed and every local completion field was updated atomically. Delivery: ${delivery.status}; tickets: ${delivery.ticketCount}; email: ${delivery.emailSent ? "sent" : delivery.error ?? "pending retry"}.`,
-      details: {
-        invoiceId: result.invoiceId,
-        transactionTrace: result.transactionTrace,
-        newlySettled: result.newlySettled,
-      },
-    }
-  } catch (error) {
-    log.error("recheckPaymentAction - delivery failed after atomic settlement", { orderId, error: String(error) })
-    revalidateVelocityViews()
-    return {
-      fixed: true,
-      message: `Payment and ledger were fixed, but ticket delivery failed and will be retried by cron: ${error instanceof Error ? error.message : String(error)}`,
-      details: { invoiceId: result.invoiceId, transactionTrace: result.transactionTrace },
-    }
-  }
+  const result = await recheckOrderPayment(orderId, { source: "admin_recheck", actorEmail: session.user.email })
+  revalidateVelocityViews()
+  return result
 }
 
 export async function pollAllVelocityOrdersAction(): Promise<{

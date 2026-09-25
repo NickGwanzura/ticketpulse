@@ -3,7 +3,7 @@ import EventCard from "@/components/events/EventCard"
 import HeroEventCard from "@/components/events/HeroEventCard"
 import EventWaitlist from "@/components/events/EventWaitlist"
 import Link from "next/link"
-import { Search, Ticket, Users, Store, Calendar } from "lucide-react"
+import { Search } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Upcoming events in Zimbabwe",
@@ -19,25 +19,10 @@ export const metadata: Metadata = {
 export const revalidate = 60
 
 import { db } from "@/db"
-import { events, ticketTiers, tickets, orders, users } from "@/db/schema"
-import { and, asc, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
+import { events, ticketTiers, tickets } from "@/db/schema"
+import { and, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
 
 const CATEGORIES = ["All", "Concerts", "Food & Drink", "Cocktail Experience", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
-
-// Simple stat card for the hero view
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: number | string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-line bg-paper px-4 py-3.5">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-navy/10 text-navy">
-        <Icon size={18} />
-      </span>
-      <div>
-        <p className="text-[18px] font-bold tabular-nums text-ink">{typeof value === "number" ? value.toLocaleString() : value}</p>
-        <p className="text-[12px] text-ink-3 font-medium">{label}</p>
-      </div>
-    </div>
-  )
-}
 
 export default async function EventsPage({
   searchParams,
@@ -177,21 +162,8 @@ export default async function EventsPage({
     }
   })
 
-  // ─── Platform stats (only needed for single-event hero view) ─────────────
+  // A single upcoming event gets the large hero card instead of a grid.
   const isHeroView = eventCards.length === 1 && !query && activeCategory === "all"
-
-  const heroStats = { paidOrders: 0, ticketsSold: 0, organizers: 0 }
-
-  if (isHeroView) {
-    const [paidOrdersResult, ticketsSoldResult, organizerCountResult] = await Promise.all([
-      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(orders).where(and(eq(orders.status, "paid"), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)),
-      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(tickets).leftJoin(orders, eq(orders.id, tickets.orderId)).where(and(eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]), sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`)),
-      db.select({ count: sql<number>`COALESCE(COUNT(*), 0)::int` }).from(users).where(eq(users.role, "organizer")),
-    ])
-    heroStats.paidOrders = Number(paidOrdersResult[0]?.count ?? 0)
-    heroStats.ticketsSold = Number(ticketsSoldResult[0]?.count ?? 0)
-    heroStats.organizers = Number(organizerCountResult[0]?.count ?? 0)
-  }
 
   const firstEvent = isHeroView ? eventCards[0] : null
 
@@ -234,14 +206,6 @@ export default async function EventsPage({
               soldQuantity={firstEvent.soldQuantity}
               totalQuantity={firstEvent.totalQuantity}
             />
-
-            {/* Platform stats bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard icon={Ticket} label="Tickets sold" value={heroStats.ticketsSold} />
-              <StatCard icon={Calendar} label="Events hosted" value={eventCards.length} />
-              <StatCard icon={Users} label="Organizers" value={heroStats.organizers} />
-              <StatCard icon={Store} label="Paid orders" value={heroStats.paidOrders} />
-            </div>
 
             {/* Waitlist */}
             <EventWaitlist />

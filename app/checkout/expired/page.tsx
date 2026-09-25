@@ -1,11 +1,13 @@
 "use client"
-import Link from "next/link"
 import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import { Clock, ArrowRight, Mail } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { CheckCircle2, Clock, MessageCircle, ArrowRight, XCircle } from "lucide-react"
 import { orderAuthHeaders } from "@/lib/order-auth-client"
+import { SUPPORT_WHATSAPP } from "@/lib/order-labels"
+import Button from "@/components/ui/Button"
 
 function ExpiredInner() {
+  const router = useRouter()
   const params = useSearchParams()
   const orderId = params.get("ref")
   const ref = orderId ? orderId.slice(0, 8).toUpperCase() : null
@@ -27,7 +29,12 @@ function ExpiredInner() {
           const next = await response.json()
           const nextStatus = next.status ?? null
           setStatus(nextStatus)
-          if (next.paid || ["expired", "cancelled", "refunded"].includes(nextStatus)) return
+          if (next.paid) {
+            // Late confirmation: take the buyer straight to their tickets.
+            router.replace(`/orders/${orderId}?welcome=1`)
+            return
+          }
+          if (["expired", "cancelled", "refunded"].includes(nextStatus)) return
         }
       } catch {
         // Keep the recovery page usable through temporary network failures.
@@ -43,22 +50,34 @@ function ExpiredInner() {
       controller.abort()
       if (timer) clearTimeout(timer)
     }
-  }, [orderId])
+  }, [orderId, router])
   const paid = status === "paid" || status === "completed"
   const closed = status === "expired" || status === "cancelled"
+  const whatsappText = encodeURIComponent(`Hi TicketPulse, I need help with payment reference ${ref ?? "(no reference)"}.`)
+
+  const Icon = paid ? CheckCircle2 : closed ? XCircle : Clock
+  const tone = paid
+    ? "bg-green-50 ring-green-200 text-green-700"
+    : closed
+    ? "bg-paper-2 ring-line text-ink-3"
+    : "bg-amber-50 ring-amber-200 text-amber-600"
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-5">
+    <div className="min-h-[70vh] flex items-center justify-center px-5 py-12">
       <div className="max-w-md w-full text-center">
-        <span className="inline-flex w-16 h-16 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-200 mb-6">
-          <Clock size={28} className="text-amber-600" />
+        <span className={`inline-flex w-16 h-16 items-center justify-center rounded-2xl ring-1 mb-6 ${tone}`}>
+          <Icon size={28} />
         </span>
 
         <h1 className="text-[28px] font-bold tracking-tight text-ink leading-tight">
-          {paid ? "Payment confirmed" : closed ? "Order closed" : "Awaiting payment confirmation"}
+          {paid ? "Payment confirmed" : closed ? "Payment not completed" : "Still confirming your payment"}
         </h1>
         <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">
-          {paid ? "Your payment is confirmed. View your order for your tickets." : closed ? "This order is closed. If money was deducted, contact us before paying again." : "Confirmation is taking longer than expected. Your payment may still complete. Please do not pay again while we check."}
+          {paid
+            ? "Your payment is confirmed. Taking you to your tickets…"
+            : closed
+            ? "This payment didn't go through, so no tickets were issued."
+            : "Confirmation is taking longer than usual. Your payment may still complete. Please don't pay again while we keep checking."}
         </p>
 
         {ref && (
@@ -70,29 +89,26 @@ function ExpiredInner() {
           </p>
         )}
 
-        <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-left space-y-1.5">
-          <p className="text-[13px] font-semibold text-amber-800">Was money deducted?</p>
-          <p className="text-[13px] text-amber-700">
-            If money was deducted and your ticket hasn&apos;t arrived, WhatsApp +263 78 868 9923 with your reference. We&apos;ll review the payment.
-          </p>
-          <p className="text-[13px] text-amber-700">
-            Contact us with your reference number and we&apos;ll sort it out promptly.
-          </p>
-        </div>
+        {!paid && (
+          <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4 text-left">
+            <p className="text-[13px] font-semibold text-amber-900">Was money deducted?</p>
+            <p className="mt-1 text-[13px] text-amber-800">
+              Don&apos;t pay again. WhatsApp us with the reference above and we&apos;ll check the payment and send your tickets.
+            </p>
+          </div>
+        )}
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href={orderId ? `/orders/${orderId}` : "/orders/lookup"}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
-          >
-            View order <ArrowRight size={14} />
-          </Link>
-          <Link
-            href="https://wa.me/263788689923"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition"
-          >
-            <Mail size={14} /> WhatsApp support
-          </Link>
+          {orderId && (
+            <Button href={`/orders/${orderId}${closed ? "" : "?welcome=1"}`} size="lg">
+              {closed ? "View order & try again" : "View order"} <ArrowRight size={14} />
+            </Button>
+          )}
+          {!paid && (
+            <Button href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${whatsappText}`} variant="secondary" size="lg" target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={14} /> WhatsApp support
+            </Button>
+          )}
         </div>
       </div>
     </div>

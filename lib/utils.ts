@@ -20,10 +20,18 @@ export function formatCurrency(amount: number, currency = "USD") {
   }).format(amount)
 }
 
+/**
+ * TicketPulse events happen in Zimbabwe, so dates render in Harare time
+ * regardless of where the code runs (servers run in UTC, which shifted
+ * evening events to the wrong day). Pass `timeZone` to override.
+ */
+export const APP_TIME_ZONE = "Africa/Harare"
+
 export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en-ZW", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: APP_TIME_ZONE,
     ...options,
   }).format(new Date(date))
 }
@@ -33,6 +41,15 @@ export function formatDateShort(date: Date | string) {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: APP_TIME_ZONE,
+  }).format(new Date(date))
+}
+
+export function formatTimeShort(date: Date | string) {
+  return new Intl.DateTimeFormat("en-ZW", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: APP_TIME_ZONE,
   }).format(new Date(date))
 }
 

@@ -6,16 +6,16 @@
  * The order QR codes and buyer details are authority-bearing, so
  * `/api/orders/[id]/*` requires the caller to prove they own the order
  * (see lib/order-access.ts). Guests have no session, so the proof is the
- * email the order was placed with — the same address the confirmation mail
- * went to and the one `/orders/lookup` already accepts as ownership.
+ * order's access signature: the checkout API returns it when the order is
+ * created, and every emailed order link carries it as `?sig=`.
  *
- * The buyer's email is remembered at checkout (and re-remembered whenever an
- * order payload is loaded here), so subsequent fetches on this device carry it
- * automatically. An authenticated owner needs no header at all — the session
- * satisfies the server-side check.
+ * The signature is remembered per order on this device, so later fetches carry
+ * it automatically. An authenticated owner needs no header at all — the
+ * session satisfies the server-side check.
  */
 
-const KEY = "tp_order_owner_emails"
+const KEY = "tp_order_access"
+const SIG_RE = /^[a-f0-9]{64}$/i
 
 function readMap(): Record<string, string> {
   if (typeof window === "undefined") return {}
@@ -26,23 +26,28 @@ function readMap(): Record<string, string> {
   }
 }
 
-/** Remember which email belongs to an order, so later fetches can prove it. */
-export function rememberOrderOwner(orderId: string, email: string | null | undefined) {
-  if (typeof window === "undefined" || !orderId || !email) return
+/** Remember an order's access signature so later fetches can prove ownership. */
+export function rememberOrderAccess(orderId: string, signature: string | null | undefined) {
+  if (typeof window === "undefined" || !orderId || !signature || !SIG_RE.test(signature)) return
   try {
     const map = readMap()
-    map[orderId] = email.trim().toLowerCase()
+    map[orderId] = signature
     window.localStorage.setItem(KEY, JSON.stringify(map))
   } catch {
     /* storage unavailable — fetches will fall back to the session */
   }
 }
 
+/** The best known signature for `orderId`: an explicit one (from the URL) wins. */
+export function orderAccessSignatureFor(orderId: string, signature?: string | null): string | null {
+  if (signature && SIG_RE.test(signature)) return signature
+  return readMap()[orderId] ?? null
+}
+
 /** Headers proving ownership of `orderId`, or empty when unknown. */
 export function orderAuthHeaders(orderId: string, signature?: string | null): Record<string, string> {
-  if (signature) return { "x-ticket-signature": signature }
-  const email = readMap()[orderId]
-  return email ? { "x-order-email": email } : {}
+  const sig = orderAccessSignatureFor(orderId, signature)
+  return sig ? { "x-ticket-signature": sig } : {}
 }
 
 /**
@@ -50,7 +55,6 @@ export function orderAuthHeaders(orderId: string, signature?: string | null): Re
  * Wallet pass download) that cannot set request headers.
  */
 export function orderOwnerQuery(orderId: string, signature?: string | null): string {
-  if (signature) return `?sig=${encodeURIComponent(signature)}`
-  const email = readMap()[orderId]
-  return email ? `?email=${encodeURIComponent(email)}` : ""
+  const sig = orderAccessSignatureFor(orderId, signature)
+  return sig ? `?sig=${encodeURIComponent(sig)}` : ""
 }

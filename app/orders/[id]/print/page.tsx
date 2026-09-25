@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
-import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
+import { orderAuthHeaders, rememberOrderAccess } from "@/lib/order-auth-client"
 import { formatDate } from "@/lib/utils"
 import {
   ArrowLeft, Download, Calendar, MapPin, ShieldCheck,
@@ -66,8 +66,10 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
-        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
-        setOrder(data)
+        if (data) {
+          rememberOrderAccess(id, accessSignature)
+          setOrder(data)
+        }
         setFetching(false)
       })
       .catch(() => setFetching(false))

@@ -23,11 +23,8 @@ type Props = {
   lines: OrderLine[]
   total: string
   currency: string
+  /** Signed order link (`generateOrderAccessUrl`): the buyer's proof of ownership. */
   ticketUrl: string
-  url?: string
-  /** Recipient address — included in the order link so the buyer's browser can
-   *  prove ownership of the order (see lib/order-access.ts). */
-  ownerEmail?: string | null
 }
 
 export default function OrderConfirmationEmail({
@@ -40,8 +37,6 @@ export default function OrderConfirmationEmail({
   total,
   currency,
   ticketUrl,
-  url = BRAND.url,
-  ownerEmail,
 }: Props) {
   const first = buyerName?.split(" ")[0]?.trim()
   return (
@@ -171,7 +166,7 @@ export default function OrderConfirmationEmail({
         <Text style={{ fontSize: 13, color: BRAND.ink2, margin: 0, lineHeight: "20px" }}>
           Need to refund or change tickets? You can manage this order from your{" "}
           <a
-            href={`${url}/orders/${orderId}${ownerEmail ? `?email=${encodeURIComponent(ownerEmail.toLowerCase())}` : ""}`}
+            href={ticketUrl}
             style={{ color: BRAND.blue, textDecoration: "underline" }}
           >
             order page

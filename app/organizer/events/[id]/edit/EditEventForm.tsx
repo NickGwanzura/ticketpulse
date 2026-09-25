@@ -10,7 +10,7 @@ import ImageUploader from "@/components/ui/ImageUploader"
 import VenueMap from "@/components/events/VenueMap"
 import { updateEventAction, type UpdateEventState } from "./actions"
 import { deleteTierAction } from "../tiers/actions"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, formatDateShort } from "@/lib/utils"
 import AiModerateButton from "@/components/ai/AiModerateButton"
 import AiTagSuggest from "@/components/ai/AiTagSuggest"
 import AiSocialButton from "@/components/ai/AiSocialButton"
@@ -552,7 +552,7 @@ export default function EditEventForm({ event, tiers, showCreatedToast, isAdmin 
             <AiSocialButton
               eventTitle={event.title}
               category={event.category}
-              eventDate={event.startsAt.toLocaleDateString()}
+              eventDate={formatDateShort(event.startsAt)}
               venue={event.venue}
               city={event.city}
             />

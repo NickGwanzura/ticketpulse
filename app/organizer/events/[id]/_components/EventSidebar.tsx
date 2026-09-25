@@ -6,14 +6,16 @@ import {
   Ticket, ImageIcon, ShoppingBag, Store, Activity, Mail,
   Tag, UserPlus, QrCode, Users, ExternalLink, Settings,
   HelpCircle, Wallet, ScanLine, LayoutDashboard, ChevronLeft,
-  BarChart2, Search, Music2, Percent, CalendarDays, Share2, MailOpen,
+  BarChart2, Search, Music2, Percent, TrendingUp,
   MessageSquare,
 } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
 type NavGroup = { label?: string; items: NavItem[] }
 
-const NAV_GROUPS = (eventId: string): NavGroup[] => [
+// Recurring, Affiliates and Email templates pages exist but are "Coming soon"
+// placeholders, so they stay out of the nav until they work.
+const NAV_GROUPS = (eventId: string, isOwner: boolean): NavGroup[] => [
   {
     items: [
       { label: "Overview", href: `/organizer/events/${eventId}`, icon: LayoutDashboard },
@@ -28,7 +30,8 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
       { label: "Lineup",        href: `/organizer/events/${eventId}/lineup`,    icon: Music2 },
       { label: "Capacity",      href: `/organizer/events/${eventId}/capacity`,  icon: BarChart2 },
       { label: "Live feed",     href: `/organizer/events/${eventId}/live`, icon: Activity },
-      { label: "Scanner",       href: "/organizer/scan", icon: ScanLine },
+      { label: "Sales funnel",  href: `/organizer/events/${eventId}/funnel`, icon: TrendingUp },
+      { label: "Scanner",       href: `/organizer/scan?event=${eventId}`, icon: ScanLine },
     ],
   },
   {
@@ -47,7 +50,8 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
       { label: "Merch",         href: `/organizer/events/${eventId}/merch`, icon: ShoppingBag },
       { label: "Vendors",       href: `/organizer/events/${eventId}/vendors`, icon: Store },
       { label: "Staff",         href: `/organizer/events/${eventId}/staff`, icon: QrCode },
-      { label: "Organisers",    href: `/organizer/events/${eventId}/organisers`, icon: UserPlus },
+      // Owner-only: co-organisers cannot manage the team.
+      ...(isOwner ? [{ label: "Organisers", href: `/organizer/events/${eventId}/organisers`, icon: UserPlus }] : []),
     ],
   },
   {
@@ -55,38 +59,43 @@ const NAV_GROUPS = (eventId: string): NavGroup[] => [
     items: [
       { label: "SEO",             href: `/organizer/events/${eventId}/seo`,             icon: Search },
       { label: "Fee handling",    href: `/organizer/events/${eventId}/platform-fees`,   icon: Percent },
-      { label: "Recurring",       href: `/organizer/events/${eventId}/recurring`,       icon: CalendarDays },
-      { label: "Affiliates",      href: `/organizer/events/${eventId}/affiliates`,      icon: Share2 },
-      { label: "Email templates", href: `/organizer/events/${eventId}/email-templates`, icon: MailOpen },
     ],
   },
-  {
-    label: "Money",
-    items: [
-      { label: "Payouts", href: "/payouts", icon: Wallet },
-    ],
-  },
+  // Payouts go to the event owner only.
+  ...(isOwner ? [{ label: "Money", items: [{ label: "Payouts", href: "/payouts", icon: Wallet }] }] : []),
 ]
 
 // Flat list for mobile tab strip (all items in order)
-const NAV_FLAT = (eventId: string): NavItem[] =>
-  NAV_GROUPS(eventId).flatMap((g) => g.items)
+const NAV_FLAT = (eventId: string, isOwner: boolean): NavItem[] =>
+  NAV_GROUPS(eventId, isOwner).flatMap((g) => g.items)
+
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  published: { label: "Published", className: "bg-emerald-500/20 text-emerald-300" },
+  sold_out: { label: "Sold out", className: "bg-emerald-500/20 text-emerald-300" },
+  pending_review: { label: "Pending review", className: "bg-amber-400/15 text-amber-300" },
+  draft: { label: "Draft", className: "bg-amber-400/15 text-amber-300" },
+  cancelled: { label: "Cancelled", className: "bg-rose-500/20 text-rose-300" },
+  completed: { label: "Completed", className: "bg-white/10 text-white/70" },
+}
 
 type Props = {
   eventId: string
   eventSlug: string
   eventTitle: string
   eventStatus: string | null
+  /** Owner or admin. Co-organisers don't see team or payout links. */
+  isOwner: boolean
 }
 
-export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStatus }: Props) {
+export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStatus, isOwner }: Props) {
   const pathname = usePathname()
-  const groups = NAV_GROUPS(eventId)
-  const flat = NAV_FLAT(eventId)
-  const isPublished = eventStatus === "published"
-  const isPendingReview = eventStatus === "pending_review"
+  const groups = NAV_GROUPS(eventId, isOwner)
+  const flat = NAV_FLAT(eventId, isOwner)
+  const isPublished = eventStatus === "published" || eventStatus === "sold_out"
+  const badge = STATUS_BADGE[eventStatus ?? "draft"] ?? STATUS_BADGE.draft
 
-  const isActive = (href: string) => {
+  const isActive = (rawHref: string) => {
+    const href = rawHref.split("?")[0]
     if (pathname === href) return true
     if (href.endsWith(`/${eventId}`)) return pathname === href
     return pathname.startsWith(`${href}/`)
@@ -108,12 +117,8 @@ export default function EventSidebar({ eventId, eventSlug, eventTitle, eventStat
           <p className="text-[13px] font-semibold text-white leading-snug truncate" title={eventTitle}>
             {eventTitle}
           </p>
-          <span className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            isPublished
-              ? "bg-emerald-500/20 text-emerald-300"
-              : "bg-amber-400/15 text-amber-300"
-          }`}>
-            {isPublished ? "Published" : isPendingReview ? "Pending review" : "Draft"}
+          <span className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>
+            {badge.label}
           </span>
         </div>
 

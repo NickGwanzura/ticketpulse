@@ -315,12 +315,16 @@ export async function cancelTicketsAction(ticketIds: string[]) {
  * Wraps lib/delivery.ts for use as a server action from the admin UI.
  */
 
-export async function markOrderCompleteAction(orderId: string) {
+/**
+ * `providerReference` is the Velocity transaction reference an admin has
+ * verified. It is only needed (and only honoured) for unpaid gateway orders.
+ */
+export async function markOrderCompleteAction(orderId: string, providerReference?: string) {
   const session = await requireAdmin()
 
   const { markOrderCompleteAction: completeAction } = await import("@/lib/order-recovery")
-  const result = await completeAction(orderId, session.user.id, session.user.email ?? "admin")
-  await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, after: { result: typeof result === "object" ? result : String(result) } })
+  const result = await completeAction(orderId, session.user.id, session.user.email ?? "admin", { actor: "admin", providerReference })
+  await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, reason: providerReference ? `Provider reference: ${providerReference}` : undefined, after: { result: typeof result === "object" ? result : String(result) } })
   return result
 }
 
@@ -337,11 +341,15 @@ export async function sendTicketsAction(orderId: string) {
 /**
  * Complete order and send tickets in one idempotent action.
  */
-export async function completeAndSendAction(orderId: string) {
+export async function completeAndSendAction(orderId: string, providerReference?: string) {
   const session = await requireAdmin()
 
   const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
-  return combinedAction(orderId, session.user.id, session.user.email ?? "admin")
+  const result = await combinedAction(orderId, session.user.id, session.user.email ?? "admin", {}, { actor: "admin", providerReference })
+  if (providerReference) {
+    await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, reason: `Provider reference: ${providerReference}`, after: { result: result.message } })
+  }
+  return result
 }
 
 export type OfflineOrderInput = {
@@ -434,8 +442,13 @@ export async function createOfflineOrderAction(input: OfflineOrderInput) {
     source: "offline_manual_issue",
   })
 
+  // An admin recorded money TicketPulse collected outside the gateway; the
+  // offline payment reference stands in for a provider reference.
   const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
-  const result = await combinedAction(order.id, session.user.id, session.user.email ?? "admin")
+  const result = await combinedAction(order.id, session.user.id, session.user.email ?? "admin", {}, {
+    actor: "admin",
+    providerReference: input.paymentRef?.trim() || `offline-${order.id.slice(0, 8)}`,
+  })
 
   revalidatePath("/admin/orders")
   revalidatePath("/admin/tickets")
@@ -511,27 +524,62 @@ export async function markFeeDueSettledAction(feeDueId: string, note?: string) {
   return { success: true }
 }
 
-export async function refundOrderAction(orderId: string) {
+const REFUND_METHOD_LABEL = {
+  ecocash: "EcoCash",
+  card: "card (Velocity)",
+  bank: "bank transfer",
+  cash: "cash",
+} as const
+
+export type RefundMethod = keyof typeof REFUND_METHOD_LABEL
+
+/**
+ * Record a refund that an admin has ALREADY sent back to the buyer (TicketPulse
+ * has no automated provider refund). The method and reference of that money
+ * movement are required so every refund is traceable; the buyer is emailed.
+ */
+export async function refundOrderAction(
+  orderId: string,
+  details: { method: RefundMethod; reference: string; reason?: string },
+) {
   const session = await requireAdmin()
 
+  const method = details?.method
+  const reference = details?.reference?.trim() ?? ""
+  if (!method || !(method in REFUND_METHOD_LABEL)) throw new Error("Choose how the money was returned")
+  if (reference.length < 3) throw new Error("Add the refund transaction or receipt reference")
+  const reason = details.reason?.trim() || null
+
   const [order] = await db
-    .select({ id: orders.id, status: orders.status, eventId: orders.eventId, totalAmount: orders.totalAmount })
+    .select({
+      id: orders.id,
+      status: orders.status,
+      eventId: orders.eventId,
+      totalAmount: orders.totalAmount,
+      currency: orders.currency,
+      guestEmail: orders.guestEmail,
+      guestName: orders.guestName,
+    })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1)
 
   if (!order) throw new Error("Order not found")
-  if (order.status !== "paid") {
-    throw new Error("Only paid orders can be refunded")
+  if (order.status !== "paid" && order.status !== "completed") {
+    throw new Error("Only paid or completed orders can be refunded")
   }
+  const fromStatus = order.status
 
   // Wrap all mutations in a single transaction so a failure mid-way
   // rolls everything back.
   await db.transaction(async (tx) => {
-    await tx
+    // Compare-and-set so two admins cannot refund the same order twice.
+    const updated = await tx
       .update(orders)
       .set({ status: "refunded", updatedAt: new Date() })
-      .where(eq(orders.id, orderId))
+      .where(and(eq(orders.id, orderId), eq(orders.status, fromStatus)))
+      .returning({ id: orders.id })
+    if (updated.length === 0) throw new Error("This order changed while you were refunding it. Refresh and try again.")
 
     const orderTickets = await tx
       .select({ id: tickets.id, tierId: tickets.tierId })
@@ -565,12 +613,18 @@ export async function refundOrderAction(orderId: string) {
       salesOrderTrace: `refund-${orderId.slice(0, 8)}`,
       invoiceId: `refund-${orderId.slice(0, 8)}`,
       amount: `-${order.totalAmount}`,
-      currency: "USD",
+      currency: order.currency ?? "USD",
       processor: "manual",
       velocityPollStatus: "MANUAL_REFUND",
       localStatus: "refunded",
       source: "admin_refund",
-      rawPayload: { refundedBy: session.user.email ?? session.user.id, refundedAt: new Date().toISOString() },
+      rawPayload: {
+        refundedBy: session.user.email ?? session.user.id,
+        refundedAt: new Date().toISOString(),
+        refundMethod: method,
+        refundReference: reference,
+        reason,
+      },
     })
   })
 
@@ -600,7 +654,33 @@ export async function refundOrderAction(orderId: string) {
     log.error("refundOrderAction - clawback check failed", { orderId, error: String(err) })
   }
 
-  await recordAdminAction(session, { action: "order.refund", targetType: "order", targetId: orderId, before: { status: order.status, totalAmount: order.totalAmount }, after: { status: "refunded" } })
+  await recordAdminAction(session, {
+    action: "order.refund",
+    targetType: "order",
+    targetId: orderId,
+    reason: [`${REFUND_METHOD_LABEL[method]} ref ${reference}`, reason].filter(Boolean).join(" · "),
+    before: { status: fromStatus, totalAmount: order.totalAmount },
+    after: { status: "refunded" },
+  })
+
+  if (order.guestEmail) {
+    try {
+      const [event] = await db.select({ title: events.title }).from(events).where(eq(events.id, order.eventId)).limit(1)
+      const { orderRefundedEmail } = await import("@/lib/email-templates")
+      const tpl = orderRefundedEmail({
+        name: order.guestName,
+        eventTitle: event?.title ?? "your event",
+        orderId,
+        amount: Number(order.totalAmount ?? 0),
+        currency: order.currency ?? "USD",
+        methodLabel: REFUND_METHOD_LABEL[method],
+        reference,
+      })
+      await sendEmail({ to: order.guestEmail, subject: `Refund processed: ${event?.title ?? "your order"}`, html: tpl.html, text: tpl.text })
+    } catch (err) {
+      log.warn("refundOrderAction - buyer email failed", { orderId, error: String(err) })
+    }
+  }
 
   revalidatePath("/admin/tickets")
   revalidatePath("/admin/orders")

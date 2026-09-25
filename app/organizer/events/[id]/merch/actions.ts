@@ -8,6 +8,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, merchItems } from "@/db/schema"
+import { requireEventAccessForUser } from "@/lib/event-access"
 
 async function requireEventOwnership(eventId: string) {
   const session = await auth()
@@ -20,7 +21,8 @@ async function requireEventOwnership(eventId: string) {
     .where(eq(events.id, eventId))
     .limit(1)
   if (!row) return { ok: false as const, redirectTo: "/organizer" }
-  if (row.organizerId !== session.user.id && session.user.role !== "admin") {
+  // Shared rule: owner, invited co-organiser, or admin; frozen accounts blocked.
+  if (!(await requireEventAccessForUser(row.id, session.user)).allowed) {
     return { ok: false as const, redirectTo: "/organizer" }
   }
   return { ok: true as const, session, event: row }
@@ -41,7 +43,8 @@ async function requireMerchOwnership(merchId: string) {
     .where(eq(merchItems.id, merchId))
     .limit(1)
   if (!row) return { ok: false as const, redirectTo: "/organizer" }
-  if (row.organizerId !== session.user.id && session.user.role !== "admin") {
+  // Shared rule: owner, invited co-organiser, or admin; frozen accounts blocked.
+  if (!(await requireEventAccessForUser(row.eventId, session.user)).allowed) {
     return { ok: false as const, redirectTo: "/organizer" }
   }
   return { ok: true as const, session, merch: row }

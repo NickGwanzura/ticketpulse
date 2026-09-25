@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateOrganizer, privateHeaders } from "@/lib/mobile-organizer"
-import { transitionPayout } from "@/app/admin/payouts/actions"
+import { PAYABLE_FROM, transitionPayout } from "@/lib/payout-transitions"
 
 type Context = { params: Promise<{ id: string }> }
 const respond = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: privateHeaders })
@@ -22,10 +22,11 @@ export async function POST(request: Request, context: Context) {
   const performedBy = identity.email ?? identity.userId
   const action = parsed.data.action
   if (action === "reject" && !parsed.data.reason) return respond({ ok: false, error: "A rejection reason is required." }, 400)
+  if (action === "paid" && !parsed.data.proofReference) return respond({ ok: false, error: "Add the transfer or receipt reference before marking a payout paid." }, 400)
   const result = await transitionPayout({
     payoutId: id,
     action,
-    allowedFrom: action === "approve" || action === "reject" ? ["pending"] : action === "processing" ? ["approved"] : ["pending", "approved", "processing"],
+    allowedFrom: action === "approve" || action === "reject" ? ["pending"] : action === "processing" ? ["approved"] : PAYABLE_FROM,
     toStatus: action === "approve" ? "approved" : action === "reject" ? "rejected" : action,
     performedBy,
     extraSet: action === "approve" ? { reviewedBy: performedBy } : action === "reject" ? { rejectionReason: parsed.data.reason, reviewedBy: performedBy } : action === "paid" ? { proofReference: parsed.data.proofReference, processedAt: new Date(), processedBy: performedBy } : undefined,

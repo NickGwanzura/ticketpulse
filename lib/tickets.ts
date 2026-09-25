@@ -50,13 +50,21 @@ export function signTicketPayload(ticketId: string, orderId: string): string {
 }
 
 /**
+ * Order-level access token. Handed to the buyer's browser at checkout and
+ * embedded in emailed order links; it is the only guest proof of ownership.
+ */
+export function orderAccessSignature(orderId: string): string {
+  return signTicketPayload(orderId, orderId)
+}
+
+/**
  * Guest-safe order link for transactional emails and lookup results.
  * The order id remains visible for routing, while the signature proves that
  * the link was minted by TicketPulse without exposing the buyer's email.
  */
 export function generateOrderAccessUrl(orderId: string, baseUrl?: string): string {
   const origin = (baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech").replace(/\/$/, "")
-  const signature = signTicketPayload(orderId, orderId)
+  const signature = orderAccessSignature(orderId)
   return `${origin}/orders/${encodeURIComponent(orderId)}?sig=${encodeURIComponent(signature)}`
 }
 

@@ -25,6 +25,7 @@ import {
   ReceiptText,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
+import Button from "@/components/ui/Button"
 import HeroEventCard from "@/components/events/HeroEventCard"
 import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
@@ -35,9 +36,9 @@ import { events as eventsTable } from "@/db/schema"
 import { and, desc, inArray, sql } from "drizzle-orm"
 
 const FAQ = [
-  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name, email, and phone. Tickets land in your inbox, WhatsApp, and SMS the moment payment clears. Keep the secure ticket link or use your checkout email to recover the order later." },
-  { q: "How do I get my ticket after I buy?",       a: "Instantly after payment clears. You get a printable PDF ticket by email, a mobile QR in your TicketPulse account, a WhatsApp message, and an SMS with your ticket details — all at once. You can also find and resend tickets from order lookup." },
-  { q: "What payments do you accept?",              a: "EcoCash and Visa cards. Both clear instantly at checkout." },
+  { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name and email (plus your number for EcoCash). Your tickets are emailed the moment payment clears, and sent on WhatsApp too if you add your number. Lost the email? Use Find my tickets and we'll email you a fresh link." },
+  { q: "How do I get my ticket after I buy?",       a: "As soon as payment clears, your QR tickets appear on screen and a printable PDF is emailed to you. Add your phone number at checkout to get them on WhatsApp as well. All your orders live under My tickets on the device you bought on." },
+  { q: "What payments do you accept?",              a: "EcoCash, Visa and Mastercard. EcoCash asks you to approve a prompt on your phone; cards go through a secure payment page." },
   { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse deducts the 6% fee from confirmed ticket sales and shows gross, fee, paid out, pending, and available balance before withdrawal." },
 ]
 
@@ -74,7 +75,7 @@ export default async function Home() {
         sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt} + INTERVAL '6 hours') < NOW()`,
       ))
       .orderBy(desc(sql`COALESCE(${eventsTable.endsAt}, ${eventsTable.startsAt})`))
-      .limit(6))
+      .limit(3))
     .catch((error) => {
       console.error("[home] failed to load past events", error)
       return []
@@ -141,7 +142,7 @@ export default async function Home() {
               {["Concerts", "Food & Drink", "Film", "Marathons"].map((category) => (
                 <Link
                   key={category}
-                  href={`/events?category=${encodeURIComponent(category)}`}
+                  href={`/events?category=${encodeURIComponent(category.replace(/s$/, "").toLowerCase())}`}
                   className="rounded-full border border-line bg-white px-3.5 py-2 text-[11px] font-semibold text-ink-2 transition hover:border-accent/40 hover:bg-orange-50 hover:text-accent"
                 >
                   {category}
@@ -230,32 +231,32 @@ export default async function Home() {
       {pastEvents.length > 0 && (
         <section className="bg-paper px-5 py-14 md:px-8 md:py-18 border-t border-line">
           <div className="mx-auto max-w-7xl">
-          <div className="rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-50 via-paper to-rose-50 p-4 md:p-5">
+          <div className="rounded-2xl border border-line bg-paper-2 p-4 md:p-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-700">Past events</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">Past events</p>
                 <h3 className="mt-1 text-[18px] font-bold tracking-tight text-ink">Events already run through TicketPulse</h3>
               </div>
-              <Link href="/events?past=1" className="inline-flex items-center gap-1 text-[13px] font-semibold text-violet-700 hover:underline">
+              <Link href="/events?view=past" className="inline-flex min-h-11 items-center gap-1 text-[13px] font-semibold text-ink hover:underline">
                 View past events <ArrowUpRight size={13} />
               </Link>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
-              {pastEvents.slice(0, 3).map((event) => (
-                  <Link key={event.id} href={`/events/${event.slug}`} className="tp-premium-card overflow-hidden rounded-xl border border-paper/80 bg-paper/85 shadow-sm shadow-ink/[0.03] transition hover:border-violet-200 hover:bg-paper">
-                    <div className="relative h-24 bg-gradient-to-br from-violet-100 to-rose-100">
+              {pastEvents.map((event) => (
+                  <Link key={event.id} href={`/events/${event.slug}`} className="tp-premium-card overflow-hidden rounded-xl border border-line bg-paper shadow-sm shadow-ink/[0.03] transition hover:border-line-2">
+                    <div className="relative h-24 bg-paper-3">
                       {event.coverImage ? (
                         <>
                           <img src={event.coverImage} alt={`${event.title} event cover`} className="h-full w-full object-cover" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
                         </>
                       ) : null}
-                      <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-violet-700 shadow-sm">
+                      <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2 shadow-sm">
                         Completed
                       </span>
                     </div>
                     <div className="p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-700">{event.category}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600">{event.category}</p>
                       <h4 className="mt-1 line-clamp-1 text-[15px] font-bold text-ink">{event.title}</h4>
                       <p className="mt-2 flex items-center gap-1.5 text-[12px] text-ink-3"><Calendar size={12} /> {formatDateShort(event.startsAt)}</p>
                       <p className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-3"><MapPin size={12} /> <span className="line-clamp-1">{event.venue} · {event.city}</span></p>
@@ -278,12 +279,7 @@ export default async function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {STEPS.map(({ icon: Icon, title, body }, i) => {
-            const stepTone = [
-              { bg: "from-sky-50 to-paper", icon: "bg-sky-100 ring-sky-200/70", text: "text-sky-700", number: "text-sky-100" },
-              { bg: "from-emerald-50 to-paper", icon: "bg-emerald-100 ring-emerald-200/70", text: "text-emerald-700", number: "text-emerald-100" },
-              { bg: "from-violet-50 to-paper", icon: "bg-violet-100 ring-violet-200/70", text: "text-violet-700", number: "text-violet-100" },
-              { bg: "from-amber-50 to-paper", icon: "bg-amber-100 ring-amber-200/70", text: "text-amber-700", number: "text-amber-100" },
-            ][i]
+            const stepTone = { bg: "from-paper to-paper", icon: "bg-brand-50 ring-brand-200/70", text: "text-brand-600", number: "text-paper-3" }
             return (
             <div
               key={title}
@@ -314,9 +310,9 @@ export default async function Home() {
         {/* End-to-end strip */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {[
-            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-blue-soft to-paper-2",   ring: "ring-brand-500/15",   accent: "text-brand-600" },
-            { icon: Smartphone, k: "Mobile QR",           v: "Live in your account on any device. Same code as the PDF. Pick whichever you have on hand.", tone: "from-green-50 to-paper-2", ring: "ring-green-200/60", accent: "text-green-700" },
-            { icon: DoorOpen,   k: "Organizer benefits",  v: "Health checks, payout ledgers, reconciliation warnings, broadcasts, attendee exports, reviews, and scanner reports are included.", tone: "from-violet-50 to-paper-2", ring: "ring-violet-200/60", accent: "text-violet-700" },
+            { icon: FileText,   k: "Printable PDF",       v: "A4 ticket emailed at checkout. Print at home or keep it as a backup if your phone dies.", tone: "from-brand-50 to-brand-50", ring: "ring-brand-200/60", accent: "text-brand-600" },
+            { icon: Smartphone, k: "Mobile QR",           v: "Open My tickets on the phone you bought with, or the link in your email. Same code as the PDF.", tone: "from-brand-50 to-brand-50", ring: "ring-brand-200/60", accent: "text-brand-600" },
+            { icon: DoorOpen,   k: "Organizer benefits",  v: "Health checks, payout ledgers, reconciliation warnings, broadcasts, attendee exports, reviews, and scanner reports are included.", tone: "from-brand-50 to-brand-50", ring: "ring-brand-200/60", accent: "text-brand-600" },
           ].map(({ icon: Icon, k, v, tone, ring, accent }, i) => (
             <div
               key={k}
@@ -367,25 +363,19 @@ export default async function Home() {
       </section>
 
       <section className="px-5 md:px-8 py-14 md:py-18">
-        <div className="mx-auto max-w-4xl rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/10 via-paper to-paper-2 p-7 text-center md:p-10">
+        <div className="mx-auto max-w-4xl rounded-3xl border border-line bg-paper-2 p-7 text-center md:p-10">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Ready to launch?</p>
           <h2 className="mt-3 text-[28px] font-bold tracking-tight text-ink md:text-[40px]">Start selling tickets on TicketPulse.</h2>
           <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-relaxed text-ink-2">
             Create your organiser account, publish your event, accept EcoCash and Visa, and scan tickets at the gate.
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/auth/signup?role=organizer"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 text-[14px] font-bold text-white shadow-sm shadow-accent/20 transition hover:bg-accent-hover active:scale-[0.99]"
-            >
-              Get Started <ArrowRight size={15} />
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-line bg-paper px-6 text-[14px] font-semibold text-ink transition hover:border-accent/30 hover:text-accent"
-            >
+            <Button href="/auth/signup?role=organizer" size="lg">
+              Get started <ArrowRight size={15} />
+            </Button>
+            <Button href="/pricing" variant="secondary" size="lg">
               View pricing
-            </Link>
+            </Button>
           </div>
         </div>
       </section>

@@ -608,3 +608,52 @@ export function magicLinkEmail(opts: { url: string; host: string }): {
 }
 
 // ─── Sale notification (organiser / admin) ────────────────────────────────────
+
+// ─── Order refunded (buyer) ────────────────────────────────────────────────
+
+export function orderRefundedEmail(opts: {
+  name?: string | null
+  eventTitle: string
+  orderId: string
+  amount: number
+  currency: string
+  methodLabel: string
+  reference: string
+}): { html: string; text: string } {
+  const first = opts.name?.split(" ")[0]?.trim()
+  const heading = first ? `Your refund is on its way, ${first}` : "Your refund is on its way"
+  const amount = formatMoney(opts.amount, opts.currency)
+  const orderRef = opts.orderId.slice(0, 8).toUpperCase()
+  const supportUrl = `${APP_URL}/contact`
+  const body = `
+    <p style="margin:0 0 14px;">
+      We&rsquo;ve refunded <strong>${escape(amount)}</strong> for your order
+      <strong>${escape(orderRef)}</strong> (${escape(opts.eventTitle)}).
+    </p>
+    <p style="margin:0 0 14px;">
+      Refunded via ${escape(opts.methodLabel)} &middot; reference ${escape(opts.reference)}.
+      Depending on your provider it can take a few days to show.
+    </p>
+    <p style="margin:0;">
+      The tickets on this order are no longer valid for entry.
+    </p>`
+
+  const html = layout({
+    preheader: `${amount} refunded for ${opts.eventTitle}.`,
+    heading,
+    body,
+    cta: { label: "Contact support", href: supportUrl },
+  })
+
+  const text = [
+    heading,
+    "",
+    `We've refunded ${amount} for your order ${orderRef} (${opts.eventTitle}).`,
+    `Refunded via ${opts.methodLabel} · reference ${opts.reference}. It can take a few days to show.`,
+    "The tickets on this order are no longer valid for entry.",
+    "",
+    `Support: ${supportUrl}`,
+  ].join("\n")
+
+  return { html, text }
+}

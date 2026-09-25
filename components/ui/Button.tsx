@@ -48,22 +48,24 @@ function classes({ variant = "primary", size = "md", fullWidth, loading, classNa
 }
 
 export default function Button(props: ButtonProps | LinkProps) {
-  const { variant, size, fullWidth, loading, className, children } = props
+  // Pull out the styling props so they never reach the DOM, and so a caller's
+  // `className` is merged into the computed classes instead of replacing them.
+  const { variant, size, fullWidth, loading, className, children, ...domProps } = props
   const cls = classes({ variant, size, fullWidth, loading, className })
 
   if ("href" in props && props.href !== undefined) {
-    const { href, ...rest } = props as LinkProps
+    const { href, ...rest } = domProps as Omit<LinkProps, keyof CommonProps>
     return (
-      <Link href={href} className={cls} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)}>
+      <Link href={href} {...(rest as AnchorHTMLAttributes<HTMLAnchorElement>)} className={cls}>
         {loading && <Loader2 size={14} className="animate-spin shrink-0" />}
         {children}
       </Link>
     )
   }
 
-  const { disabled, ...rest } = props as ButtonProps
+  const { disabled, ...rest } = domProps as Omit<ButtonProps, keyof CommonProps>
   return (
-    <button className={cls} disabled={disabled || loading} {...(rest as ButtonHTMLAttributes<HTMLButtonElement>)}>
+    <button {...(rest as ButtonHTMLAttributes<HTMLButtonElement>)} className={cls} disabled={disabled || loading}>
       {loading && <Loader2 size={14} className="animate-spin shrink-0" />}
       {children}
     </button>

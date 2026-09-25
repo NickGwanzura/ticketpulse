@@ -42,12 +42,15 @@ async function authorizeTransfer(ticketId: string, ticketOrderId: string, suppli
   if (!order) return { ok: false as const, reason: "not_found" as const }
 
   // Path 1: signed ticket payload — proves the caller holds the buyer's link.
+  // Either the ticket's own signature or the order-level one (from the
+  // buyer's order link, which already grants access to every ticket in it).
   if (suppliedSignature && /^[a-f0-9]{64}$/i.test(suppliedSignature)) {
-    const expected = signTicketPayload(ticketId, ticketOrderId)
     const a = Buffer.from(suppliedSignature, "hex")
-    const b = Buffer.from(expected, "hex")
-    if (a.length === b.length && timingSafeEqual(a, b)) {
-      return { ok: true as const, order }
+    for (const expected of [signTicketPayload(ticketId, ticketOrderId), signTicketPayload(ticketOrderId, ticketOrderId)]) {
+      const b = Buffer.from(expected, "hex")
+      if (a.length === b.length && timingSafeEqual(a, b)) {
+        return { ok: true as const, order }
+      }
     }
   }
 

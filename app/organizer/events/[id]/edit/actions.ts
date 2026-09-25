@@ -10,6 +10,7 @@ import { events, eventStatusEnum } from "@/db/schema"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug, slugify } from "@/lib/slug"
 import { parseHarareDateTimeLocal } from "@/lib/event-schedule"
+import { requireEventAccessForUser } from "@/lib/event-access"
 
 const STATUS_VALUES = eventStatusEnum.enumValues
 
@@ -53,7 +54,8 @@ async function requireOwnership(eventId: string) {
     .where(eq(events.id, eventId))
     .limit(1)
   if (!row) return { ok: false as const, redirectTo: "/organizer" }
-  if (row.organizerId !== session.user.id && session.user.role !== "admin") {
+  // Shared rule: owner, invited co-organiser, or admin; frozen accounts blocked.
+  if (!(await requireEventAccessForUser(row.id, session.user)).allowed) {
     return { ok: false as const, redirectTo: "/organizer" }
   }
   return { ok: true as const, session, event: row }

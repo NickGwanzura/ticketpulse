@@ -264,8 +264,15 @@ export async function approveOrganizerAction(userId: string) {
 /**
  * Reject/unapprove an organizer account (sets approvedAt to null).
  */
-export async function rejectOrganizerAction(userId: string) {
+function requiredReason(formData?: FormData): string {
+  const reason = String(formData?.get("reason") ?? "").trim()
+  if (reason.length < 5) throw new Error("Add a reason (at least 5 characters)")
+  return reason
+}
+
+export async function rejectOrganizerAction(userId: string, formData?: FormData) {
   const session = await requireAdmin()
+  const reason = requiredReason(formData)
 
   const [organizer] = await db
     .select({ email: users.email, name: users.name, role: users.role, approvedAt: users.approvedAt })
@@ -282,7 +289,7 @@ export async function rejectOrganizerAction(userId: string) {
     .set({ approvedAt: null, updatedAt: new Date() })
     .where(and(eq(users.id, userId), eq(users.role, "organizer")))
 
-  await recordAdminAction(session, { action: "organizer.reject", targetType: "organizer", targetId: userId, before: { approved: organizer.approvedAt != null }, after: { approved: false } })
+  await recordAdminAction(session, { action: "organizer.reject", targetType: "organizer", targetId: userId, before: { approved: organizer.approvedAt != null }, after: { approved: false }, reason })
 
   if (organizer?.email) {
     const { sendEmail } = await import("@/lib/email")
@@ -308,8 +315,9 @@ export async function rejectOrganizerAction(userId: string) {
  * This is intentionally silent: it changes access control and does not send
  * an email or notification. Admins can reverse it with unfreezeOrganizerAction.
  */
-export async function freezeOrganizerWithoutEventsAction(userId: string) {
+export async function freezeOrganizerWithoutEventsAction(userId: string, formData?: FormData) {
   const session = await requireAdmin()
+  const reason = requiredReason(formData)
 
   const [organizer] = await db
     .select({
@@ -337,7 +345,7 @@ export async function freezeOrganizerWithoutEventsAction(userId: string) {
     })
     .where(eq(users.id, userId))
 
-  await recordAdminAction(session, { action: "organizer.freeze", targetType: "organizer", targetId: userId, before: { frozen: false }, after: { frozen: true }, reason: "Frozen by admin: no event created" })
+  await recordAdminAction(session, { action: "organizer.freeze", targetType: "organizer", targetId: userId, before: { frozen: false }, after: { frozen: true }, reason: `Frozen (no event created): ${reason}` })
 
   revalidatePath("/admin/organizers")
   revalidatePath("/admin/users")

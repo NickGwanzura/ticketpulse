@@ -17,9 +17,10 @@ import { signTicketPayload } from "@/lib/tickets"
  *   1. Authenticated owner / admin  → session whose id or email matches the order
  *   2. Organizer of the order's event → scoped staff access
  *   3. Guest buyer with no account  → must prove possession of the signed
- *      ticket payload (`signTicketPayload`) OR match the order's own
- *      guestEmail (lowercased) — the same email the confirmation was sent to
- *      and the address `/orders/lookup` already treats as proof of ownership.
+ *      ticket payload (`signTicketPayload`). The browser receives it at
+ *      checkout and every emailed order link carries it. Knowing the buyer's
+ *      email is NOT proof: emails are guessable and widely shared, and the QR
+ *      is an admission credential.
  *
  * Callers pass whatever credentials they have; this helper decides.
  */
@@ -42,9 +43,8 @@ export type OrderAccessOrder = {
 export async function authorizeOrderAccess(
   orderId: string,
   creds: {
-    /** E.164/raw order signature from the ticket link, or an email the caller claims. */
+    /** Order or ticket signature from the buyer's link. */
     signature?: string | null
-    email?: string | null
     /** Ticket id used with `signature`; defaults to the order id for order-level links. */
     ticketId?: string | null
     /** Already-resolved organizer scope, if the caller checked it. */
@@ -94,29 +94,17 @@ export async function authorizeOrderAccess(
     }
   }
 
-  // Guest proof-of-ownership: the caller knows the email the order was placed
-  // with. This is the same bar `/orders/lookup` applies before listing orders.
-  const claimed = creds.email?.trim().toLowerCase()
-  if (claimed) {
-    const ownerEmails = [order.guestEmail, order.buyerEmail]
-      .filter(Boolean)
-      .map((e) => e!.toLowerCase())
-    if (ownerEmails.includes(claimed)) return { ok: true, order }
-  }
-
   return { ok: false, reason: "forbidden" }
 }
 
 /** Extract caller credentials from headers/query shared by the order routes. */
 export function orderAccessCredsFrom(req: Request): {
   signature: string | null
-  email: string | null
   ticketId: string | null
 } {
   const url = new URL(req.url)
   return {
     signature: req.headers.get("x-ticket-signature") ?? url.searchParams.get("sig"),
-    email: req.headers.get("x-order-email") ?? url.searchParams.get("email"),
     ticketId: url.searchParams.get("ticketId"),
   }
 }

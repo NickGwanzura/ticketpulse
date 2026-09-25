@@ -13,7 +13,7 @@ import { isDefinitiveRejection, VelocityApiError } from "@/lib/velocity/api-erro
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
-import { generateOrderAccessUrl } from "@/lib/tickets"
+import { generateOrderAccessUrl, orderAccessSignature } from "@/lib/tickets"
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
@@ -408,15 +408,18 @@ export async function POST(req: Request) {
     rawBody = await req.json()
     parsed = Body.parse(rawBody)
   } catch (err) {
-    const detail = err instanceof Error ? err.message : null
-    // Log full validation failure for debugging
+    // Log full validation failure for debugging; buyers get a readable summary
+    // instead of the serialized Zod issue list.
+    let error = "Please check your details and try again."
     if (err instanceof z.ZodError) {
       console.error("[checkout] validation failed:", JSON.stringify(err.issues))
+      const fields = Array.from(new Set(err.issues.map((i) => String(i.path[0] ?? "")).filter(Boolean)))
+      const labels: Record<string, string> = { email: "email address", name: "name", phone: "phone number", items: "ticket selection" }
+      if (fields.length > 0) {
+        error = `Please check your ${fields.map((f) => labels[f] ?? f).join(", ")}.`
+      }
     }
-    return NextResponse.json(
-      { error: "Invalid request — " + (detail ?? "check your details and try again") },
-      { status: 400 },
-    )
+    return NextResponse.json({ error }, { status: 400 })
   }
 
   const [event] = await db.select().from(events).where(eq(events.slug, parsed.eventSlug)).limit(1)
@@ -483,7 +486,7 @@ export async function POST(req: Request) {
   for (const item of ticketItems) {
     const tier = tierById.get(item.tierId)
     if (!tier) {
-      return NextResponse.json({ error: `Tier ${item.tierId} not in event` }, { status: 400 })
+      return NextResponse.json({ error: "One of the ticket types in your cart is no longer available. Remove it and try again." }, { status: 400 })
     }
     if (tier.salesStart && new Date(tier.salesStart) > now) {
       return NextResponse.json({ error: `"${tier.name}" is not yet available for purchase` }, { status: 400 })
@@ -732,6 +735,7 @@ export async function POST(req: Request) {
       success: true,
       paymentMethod: isCard ? "CARD" : "ECOCASH",
       orderId: resumable.id,
+      accessSignature: orderAccessSignature(resumable.id),
       salesOrderTrace: vm.salesOrderTrace,
       transactionTrace: resolvedTransactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
@@ -919,6 +923,7 @@ export async function POST(req: Request) {
         success: true,
         paymentMethod: isCard ? "CARD" : "ECOCASH",
         orderId: concurrent.id,
+        accessSignature: orderAccessSignature(concurrent.id),
         salesOrderTrace: vm.salesOrderTrace,
         transactionTrace: resolvedTransactionTrace,
         flow: isCard ? "velocity-redirect" : "velocity-seamless",
@@ -981,6 +986,7 @@ export async function POST(req: Request) {
       success: true,
       paymentMethod: "FREE",
       orderId,
+      accessSignature: orderAccessSignature(orderId),
       flow: "free",
       amount: 0,
       currency,
@@ -1329,6 +1335,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         error: "The card payment provider did not return a checkout page. Your order is being held for reconciliation; try again shortly or choose EcoCash.",
         orderId,
+        accessSignature: orderAccessSignature(orderId),
         recoverable: true,
       }, { status: 502 })
     }
@@ -1337,6 +1344,7 @@ export async function POST(req: Request) {
       success: true,
       paymentMethod: isCard ? "CARD" : "ECOCASH",
       orderId,
+      accessSignature: orderAccessSignature(orderId),
       salesOrderTrace,
       transactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
@@ -1383,7 +1391,7 @@ export async function POST(req: Request) {
       await cancelWithInventoryRelease()
     }
     if (isAmbiguous && parsed.paymentMethod === "velocity-ecocash") {
-      return NextResponse.json({ success: true, orderId, paymentMethod: "ECOCASH", flow: "velocity-seamless", pollRequired: true, awaitingConfirmation: true, amount: total, currency,
+      return NextResponse.json({ success: true, orderId, accessSignature: orderAccessSignature(orderId), paymentMethod: "ECOCASH", flow: "velocity-seamless", pollRequired: true, awaitingConfirmation: true, amount: total, currency,
         message: "Payment confirmation is delayed. Please do not pay again; we are checking your order." })
     }
     return NextResponse.json({ error: message }, { status: 502 })

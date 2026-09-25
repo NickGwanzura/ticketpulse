@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation"
 import { eq, desc, and } from "drizzle-orm"
+import { formatDateShort } from "@/lib/utils"
 import Link from "next/link"
 import { ArrowLeft, Users, Mail, Clock, CheckCircle, XCircle, X } from "lucide-react"
 
@@ -123,8 +124,8 @@ export default async function OrganisersPage({ params }: { params: Promise<Route
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium text-ink truncate">{invite.email}</p>
                       <p className="text-[12px] text-ink-3">
-                        Invited {invite.createdAt?.toLocaleDateString()} &middot;
-                        Expires {invite.expiresAt.toLocaleDateString()}
+                        Invited {(invite.createdAt ? formatDateShort(invite.createdAt) : "—")} &middot;
+                        Expires {formatDateShort(invite.expiresAt)}
                       </p>
                     </div>
                   </div>

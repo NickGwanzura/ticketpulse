@@ -23,6 +23,7 @@ import { ACTIVE_PAYOUT_STATUSES } from "@/lib/revenue-summary"
 import { ORDER_ISSUES, ORDER_ISSUE_WINDOW_DAYS, orderIssueCondition, orderIssueWindowStart } from "@/lib/order-issues"
 import { HEARTBEAT_KEYS, ageLabel, getHeartbeats } from "@/lib/heartbeat"
 import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
+import ConfirmReasonButton from "@/app/admin/_components/ConfirmReasonButton"
 import { approveOrganizerAction, rejectOrganizerAction, verifyUserEmailAction } from "@/app/admin/actions/users"
 import RejectEventButton from "@/app/admin/actions/RejectEventButton"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -168,6 +169,7 @@ export default async function AdminOverviewPage() {
     db.select({
       count: sql<number>`COUNT(*)::int`,
       total: sql<string>`COALESCE(SUM(${payouts.amount}), 0)`,
+      currencies: sql<string>`COALESCE(string_agg(DISTINCT COALESCE(${payouts.currency}, 'USD'), ','), 'USD')`,
     })
       .from(payouts)
       .where(inArray(payouts.status, [...ACTIVE_PAYOUT_STATUSES])),
@@ -238,6 +240,11 @@ export default async function AdminOverviewPage() {
   const velocityPaid = velocityCountRow?.paid ?? 0
   const pendingPayouts = pendingPayoutsRow?.count ?? 0
   const pendingPayoutTotal = Number(pendingPayoutsRow?.total ?? 0)
+  const pendingPayoutCurrencies = (pendingPayoutsRow?.currencies ?? "USD").split(",")
+  // Never add different currencies together as if they were one amount.
+  const pendingPayoutAmount = pendingPayoutCurrencies.length === 1
+    ? formatCurrency(pendingPayoutTotal, pendingPayoutCurrencies[0])
+    : `mixed currencies (${pendingPayoutCurrencies.join(", ")})`
   const pendingReviews = pendingReviewsRow?.count ?? 0
   const paidNoTickets = orderIssueCounts.paid_no_tickets
   const deliveryAttention = orderIssueCounts.delivery_failed
@@ -258,13 +265,18 @@ export default async function AdminOverviewPage() {
     { label: "Delivery attention", value: deliveryAttention, href: "/admin/orders?issue=delivery_failed", icon: FileWarning, tone: "amber" as const, detail: `Ticket or email delivery needs action (last ${ORDER_ISSUE_WINDOW_DAYS} days)` },
     { label: "Duplicate ledgers", value: duplicateLedgers, href: "/admin/orders?issue=duplicate_ledger", icon: AlertTriangle, tone: "rose" as const, detail: `Multiple settled payment records (last ${ORDER_ISSUE_WINDOW_DAYS} days)` },
     { label: "Velocity pending", value: velocityPending, href: "/admin/velocity?status=pending", icon: Zap, tone: "amber" as const, detail: "Gateway confirmations unresolved" },
-    { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "amber" as const, detail: `${formatCurrency(pendingPayoutTotal, "USD")} awaiting review` },
+    { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "amber" as const, detail: `${pendingPayoutAmount} awaiting review` },
     { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue" as const, detail: "Customer reviews awaiting moderation" },
-    { label: "Stale event drafts", value: staleDraftCount, href: "/admin/events?status=draft", icon: FileWarning, tone: "amber" as const, detail: "Draft events untouched for 14+ days" },
     { label: "Old event reviews", value: staleReviewCount, href: "/admin/events?status=pending_review", icon: CalendarCheck, tone: "amber" as const, detail: "Publish requests waiting over 24 hours" },
+    { label: "Approvals & verification", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events, organisers awaiting approval, and unverified attendee/vendor accounts" },
+  ].filter((item) => item.value > 0)
+
+  // Informational counts: worth watching, but not admin work, so they are
+  // shown separately and never added to the "needs attention" total.
+  const watchList = [
+    { label: "Stale event drafts", value: staleDraftCount, href: "/admin/events?status=draft", icon: FileWarning, tone: "amber" as const, detail: "Draft events untouched for 14+ days" },
     { label: "Frozen organisers", value: frozenOrganizerCount, href: "/admin/organizers?status=frozen", icon: Users, tone: "blue" as const, detail: "No-event accounts paused from organiser tools" },
     { label: "No-event organisers", value: noEventOrganizerCount, href: "/admin/organizers?status=no_event", icon: Users, tone: "blue" as const, detail: "Accounts needing onboarding follow-up" },
-    { label: "Approvals & verification", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events, organisers awaiting approval, and unverified attendee/vendor accounts" },
   ].filter((item) => item.value > 0)
 
   const actionCount = operationsQueue.reduce((total, item) => total + item.value, 0)
@@ -368,11 +380,27 @@ export default async function AdminOverviewPage() {
           )}
         </section>
 
+        {watchList.length > 0 && (
+          <section aria-label="Keep an eye on" className="rounded-2xl border border-line bg-paper px-5 py-4">
+            <h2 className="text-[13px] font-semibold text-ink-2">Keep an eye on</h2>
+            <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+              {watchList.map(({ label, value, href, detail }) => (
+                <li key={label}>
+                  <Link href={href} className="inline-flex min-h-9 items-center gap-2 text-[13px] text-ink-2 hover:text-ink" title={detail}>
+                    <span className="font-semibold tabular-nums text-ink">{value.toLocaleString()}</span> {label.toLowerCase()}
+                    <ArrowUpRight size={11} className="text-ink-3" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section aria-label="Platform totals" className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-line border border-line rounded-2xl bg-paper overflow-hidden">
           {[
             { label: "Live / upcoming events", value: activeEvents.toLocaleString(), sub: "currently published" },
             { label: "Paid orders", value: velocityPaid.toLocaleString(), sub: "Velocity confirmed" },
-            { label: "Pending payouts", value: pendingPayouts.toLocaleString(), sub: pendingPayouts > 0 ? formatCurrency(pendingPayoutTotal, "USD") + " waiting" : "nothing waiting" },
+            { label: "Pending payouts", value: pendingPayouts.toLocaleString(), sub: pendingPayouts > 0 ? pendingPayoutAmount + " waiting" : "nothing waiting" },
             { label: "New users", value: newUsers.toLocaleString(), sub: "this month" },
           ].map(({ label, value, sub }) => (
             <div key={label} className="px-5 py-5">
@@ -398,7 +426,7 @@ export default async function AdminOverviewPage() {
                 const status = orderStatus(order.status)
                 return (
                   <li key={order.id} className="px-5 py-3 flex items-center gap-3 hover:bg-paper-2 transition-colors">
-                    <Link href={`/admin/orders?q=${encodeURIComponent(order.id)}`} className="flex-1 min-w-0">
+                    <Link href={`/admin/orders/${order.id}`} className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-ink truncate">{order.contactName ?? "Guest"}</p>
                       <p className="text-[11px] text-ink-3 truncate">{order.eventTitle ?? "Event unavailable"}</p>
                     </Link>
@@ -475,9 +503,13 @@ export default async function AdminOverviewPage() {
                     <p className="text-[12px] text-ink-2">{organizer.email}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <form action={rejectOrganizerAction.bind(null, organizer.id)}>
-                      <button type="submit" className="min-h-10 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-2 text-[13px] font-semibold hover:bg-rose-100 transition-colors">Reject</button>
-                    </form>
+                    <ConfirmReasonButton
+                      action={rejectOrganizerAction.bind(null, organizer.id)}
+                      label="Reject"
+                      confirmLabel="Reject"
+                      prompt="Reason (kept in the audit log)"
+                      buttonClassName="min-h-10 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-4 py-2 text-[13px] font-semibold hover:bg-rose-100 transition-colors"
+                    />
                     <form action={approveOrganizerAction.bind(null, organizer.id)}>
                       <button type="submit" className="min-h-10 rounded-lg bg-ink text-paper px-4 py-2 text-[13px] font-semibold hover:bg-ink/85 transition-colors">Approve</button>
                     </form>

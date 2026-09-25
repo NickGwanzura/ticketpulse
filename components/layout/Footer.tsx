@@ -19,6 +19,7 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
     title: "Buyers",
     links: [
       ["Browse events", "/events"],
+      ["My tickets", "/orders"],
       ["Find my order", "/orders/lookup"],
       ["Help center", "/help"],
       ["Reviews", "/reviews/new"],

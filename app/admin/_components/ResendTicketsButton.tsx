@@ -10,16 +10,19 @@ type ActionState = { ok: boolean; message: string } | null
 export default function ResendTicketsButton({
   orderId,
   variant = "desktop",
+  action = sendTicketsAction,
 }: {
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
+  /** Defaults to the admin action; the organizer orders page passes its own. */
+  action?: typeof sendTicketsAction
 }) {
   const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, _form: FormData) => {
       try {
-        const result = await sendTicketsAction(orderId)
+        const result = await action(orderId)
         if (result.emailSent) {
           return { ok: true, message: "Tickets resent successfully" }
         }

@@ -13,6 +13,8 @@ import NotificationBell from "@/components/notifications/NotificationBell"
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; badgeKey?: string }
 type NavGroup = { label?: string; items: NavItem[] }
 
+// Grouped by the job an admin is doing: daily money/order work first, then
+// approvals, then reference data and settings.
 const NAV_GROUPS: NavGroup[] = [
   {
     items: [
@@ -22,31 +24,36 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operations",
     items: [
-      { label: "Communications", href: "/admin/communications", icon: Megaphone },
+      { label: "Orders",         href: "/admin/orders",         icon: Receipt },
       { label: "Payments",       href: "/admin/payments",       icon: CreditCard },
       { label: "Velocity",       href: "/admin/velocity",       icon: Activity },
       { label: "Reconciliation", href: "/admin/reconciliation", icon: GitCompareArrows },
+      { label: "Communications", href: "/admin/communications", icon: Megaphone },
     ],
   },
   {
-    label: "Data",
+    label: "Approvals",
     items: [
-      { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-      { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
-      { label: "Users",     href: "/admin/users",     icon: Users },
+      { label: "Events",     href: "/admin/events",     icon: Calendar,   badgeKey: "pendingEvents" },
       { label: "Organizers", href: "/admin/organizers", icon: UsersRound, badgeKey: "pendingOrganizers" },
-      { label: "Customers", href: "/admin/customers", icon: Contact },
-      { label: "Events",    href: "/admin/events",    icon: Calendar, badgeKey: "pendingEvents" },
-      { label: "Orders",    href: "/admin/orders",    icon: Receipt },
-      { label: "Reviews",   href: "/admin/reviews",   icon: Star },
-      { label: "Vendors",   href: "/admin/vendors",   icon: Store, badgeKey: "pendingVendors" },
+      { label: "Vendors",    href: "/admin/vendors",    icon: Store,      badgeKey: "pendingVendors" },
+      { label: "Reviews",    href: "/admin/reviews",    icon: Star,       badgeKey: "pendingReviews" },
     ],
   },
   {
     label: "Finance",
     items: [
-      { label: "Payouts", href: "/admin/payouts", icon: Wallet },
+      { label: "Payouts",        href: "/admin/payouts",        icon: Wallet,     badgeKey: "pendingPayouts" },
       { label: "Organizer fees", href: "/admin/organizer-fees", icon: CreditCard },
+    ],
+  },
+  {
+    label: "People & data",
+    items: [
+      { label: "Users",     href: "/admin/users",     icon: Users },
+      { label: "Customers", href: "/admin/customers", icon: Contact },
+      { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
     ],
   },
   {
@@ -69,12 +76,16 @@ export default function Sidebar({
   pendingEventCount = 0,
   pendingVendorCount = 0,
   pendingOrganizerCount = 0,
+  pendingPayoutCount = 0,
+  pendingReviewCount = 0,
 }: {
   name: string
   email: string
   pendingEventCount?: number
   pendingVendorCount?: number
   pendingOrganizerCount?: number
+  pendingPayoutCount?: number
+  pendingReviewCount?: number
 }) {
   const pathname = usePathname()
   const isActive = (href: string) =>
@@ -84,6 +95,8 @@ export default function Sidebar({
     if (key === "pendingEvents") return pendingEventCount
     if (key === "pendingVendors") return pendingVendorCount
     if (key === "pendingOrganizers") return pendingOrganizerCount
+    if (key === "pendingPayouts") return pendingPayoutCount
+    if (key === "pendingReviews") return pendingReviewCount
     return undefined
   }
 

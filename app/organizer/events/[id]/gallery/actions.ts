@@ -9,6 +9,7 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, eventGalleries, galleryPhotos } from "@/db/schema"
 import { deleteByPublicUrl } from "@/lib/r2"
+import { requireEventAccessForUser } from "@/lib/event-access"
 
 // ─── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -23,7 +24,8 @@ async function requireEventOwnership(eventId: string) {
     .where(eq(events.id, eventId))
     .limit(1)
   if (!row) return { ok: false as const, redirectTo: "/organizer" }
-  if (row.organizerId !== session.user.id && session.user.role !== "admin") {
+  // Shared rule: owner, invited co-organiser, or admin; frozen accounts blocked.
+  if (!(await requireEventAccessForUser(row.id, session.user)).allowed) {
     return { ok: false as const, redirectTo: "/organizer" }
   }
   return { ok: true as const, session, event: row }
@@ -45,7 +47,8 @@ async function requireGalleryOwnership(galleryId: string) {
     .where(eq(eventGalleries.id, galleryId))
     .limit(1)
   if (!row) return { ok: false as const, redirectTo: "/organizer" }
-  if (row.organizerId !== session.user.id && session.user.role !== "admin") {
+  // Shared rule: owner, invited co-organiser, or admin; frozen accounts blocked.
+  if (!(await requireEventAccessForUser(row.eventId, session.user)).allowed) {
     return { ok: false as const, redirectTo: "/organizer" }
   }
   return { ok: true as const, session, gallery: row }

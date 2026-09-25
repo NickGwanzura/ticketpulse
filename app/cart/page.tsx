@@ -6,6 +6,7 @@ import {
   ArrowLeft, ArrowRight, Minus, Plus, Trash2, ShieldCheck, Sparkles, Pencil,
 } from "lucide-react"
 import EmptyTickets from "@/components/EmptyTickets"
+import Button from "@/components/ui/Button"
 import { useState, useRef, useEffect } from "react"
 
 function groupByEvent(items: CartLine[]) {
@@ -29,6 +30,12 @@ function lineLabel(line: CartLine) {
   if (line.kind === "merch")        return line.size ? `${line.name} · ${line.size}` : line.name
   if (line.kind === "vendor_addon") return `${line.vendorName} · ${line.packageName}`
   return "Item"
+}
+
+const KIND_LABEL: Record<CartLine["kind"], string> = {
+  ticket: "Ticket",
+  merch: "Merch",
+  vendor_addon: "Add-on",
 }
 
 function EditableQty({ value, min, max, onChange }: {
@@ -74,8 +81,9 @@ function EditableQty({ value, min, max, onChange }: {
         setDraft(String(value))
         setEditing(true)
       }}
-      className="group relative inline-flex items-center justify-center w-7 h-8 cursor-text"
+      className="group relative inline-flex items-center justify-center w-9 h-11 cursor-text"
       title="Click to edit quantity"
+      aria-label={`Quantity ${value}, click to edit`}
     >
       <span className="text-sm font-semibold text-ink tabular-nums">{value}</span>
       <Pencil size={10} className="absolute -right-2.5 -top-1 text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -118,12 +126,12 @@ export default function CartPage() {
           Browse events, pick your tier, and they&apos;ll land here for one quick checkout.
         </p>
         <div className="mt-7 flex flex-wrap gap-2 justify-center">
-          <Link href="/events" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition">
+          <Button href="/events" size="lg">
             Browse events <ArrowRight size={14} />
-          </Link>
-          <Link href="/" className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-sm font-medium text-ink hover:border-line-2 transition-colors">
-            <ArrowLeft size={14} /> Home
-          </Link>
+          </Button>
+          <Button href="/orders" variant="secondary" size="lg">
+            <ArrowLeft size={14} /> My tickets
+          </Button>
         </div>
       </div>
     )
@@ -131,6 +139,10 @@ export default function CartPage() {
 
   const groups = groupByEvent(items)
   const lineCount = items.reduce((s, i) => s + i.qty, 0)
+  // Payments are per event, so a multi-event cart checks out one event at a time.
+  const multiEvent = groups.length > 1
+  const checkoutHref = (slug: string) => `/checkout?event=${encodeURIComponent(slug)}`
+  const firstCheckoutHref = checkoutHref(groups[0].eventSlug)
 
   return (
     <div>
@@ -155,9 +167,15 @@ export default function CartPage() {
                     {group.eventTitle}
                   </Link>
                 </div>
-                <Link href={`/events/${group.eventSlug}`} className="hidden sm:inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all shrink-0">
-                  Add more <ArrowRight size={12} />
-                </Link>
+                {multiEvent ? (
+                  <Button href={checkoutHref(group.eventSlug)} size="sm" className="shrink-0">
+                    Check out <ArrowRight size={12} />
+                  </Button>
+                ) : (
+                  <Link href={`/events/${group.eventSlug}`} className="hidden sm:inline-flex items-center gap-1 text-[13px] font-semibold text-navy hover:gap-1.5 transition-all shrink-0">
+                    Add more <ArrowRight size={12} />
+                  </Link>
+                )}
               </div>
 
               <ul className="divide-y divide-line">
@@ -167,7 +185,7 @@ export default function CartPage() {
                       {lineEmoji(line)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">{line.kind}</p>
+                      <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase">{KIND_LABEL[line.kind]}</p>
                       <p className="text-[14px] font-semibold tracking-tight text-ink mt-0.5">{lineLabel(line)}</p>
                       <p className="text-[13px] text-ink-3 mt-0.5">
                         {formatCurrency(line.price, line.currency)} × {line.qty}
@@ -176,20 +194,22 @@ export default function CartPage() {
                       <div className="mt-3 inline-flex items-center gap-1">
                         <button
                           onClick={() => updateQty(line.key, line.qty - 1)}
-                          aria-label="Decrease"
-                          className="w-8 h-8 rounded-md border border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2 flex items-center justify-center transition-colors"
+                          aria-label={`Remove one ${lineLabel(line)}`}
+                          className="w-11 h-11 rounded-md border border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2 flex items-center justify-center transition-colors"
                         >
                           <Minus size={13} />
                         </button>
                         <EditableQty
                           value={line.qty}
                           min={1}
+                          max={line.maxQty}
                           onChange={(v) => updateQty(line.key, v)}
                         />
                         <button
                           onClick={() => updateQty(line.key, line.qty + 1)}
-                          aria-label="Increase"
-                          className="w-8 h-8 rounded-md border border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2 flex items-center justify-center transition-colors"
+                          disabled={line.maxQty !== undefined && line.qty >= line.maxQty}
+                          aria-label={`Add one ${lineLabel(line)}`}
+                          className="w-11 h-11 rounded-md border border-line bg-paper text-ink-2 hover:text-ink hover:border-line-2 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
                         >
                           <Plus size={13} />
                         </button>
@@ -201,8 +221,8 @@ export default function CartPage() {
                       </span>
                       <button
                         onClick={() => removeItem(line.key)}
-                        aria-label="Remove"
-                        className="text-ink-3 hover:text-rose-600 transition-colors p-1"
+                        aria-label={`Remove ${lineLabel(line)} from cart`}
+                        className="text-ink-3 hover:text-rose-600 transition-colors p-2.5 -m-1.5"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -215,7 +235,7 @@ export default function CartPage() {
 
           <div className="flex items-center justify-between pt-2">
             <button
-              onClick={clear}
+              onClick={() => { if (window.confirm("Remove everything from your cart?")) clear() }}
               className="text-[13px] font-medium text-ink-3 hover:text-rose-600 transition-colors inline-flex items-center gap-1.5"
             >
               <Trash2 size={13} /> Clear cart
@@ -248,12 +268,15 @@ export default function CartPage() {
               <span className="text-green-700 font-medium">Free</span>
             </div>
 
-            <Link
-              href="/checkout"
-              className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 active:scale-[0.99] transition"
-            >
-              Proceed to checkout <ArrowRight size={15} />
-            </Link>
+            {multiEvent ? (
+              <p className="mt-5 rounded-xl bg-paper-2 px-4 py-3 text-[13px] leading-relaxed text-ink-2 ring-1 ring-line">
+                Your cart has items for {groups.length} events. Each event is paid separately, so use the <span className="font-semibold text-ink">Check out</span> button on each event.
+              </p>
+            ) : (
+              <Button href={firstCheckoutHref} size="lg" fullWidth className="mt-5">
+                Proceed to checkout <ArrowRight size={15} />
+              </Button>
+            )}
 
             <ul className="mt-5 space-y-2 text-[12px] text-ink-2">
               <li className="flex items-center gap-2">
@@ -269,7 +292,7 @@ export default function CartPage() {
             <div className="mt-5 pt-5 border-t border-line">
               <p className="text-[10px] font-semibold tracking-widest text-ink-3 uppercase mb-2">Accepted payments</p>
               <div className="flex gap-1.5 flex-wrap">
-                {["EcoCash", "Card"].map((m) => (
+                {["EcoCash", "Visa", "Mastercard"].map((m) => (
                   <span key={m} className="text-[11px] font-medium bg-paper-2 border border-line text-ink-2 px-2 py-1 rounded-md">
                     {m}
                   </span>
@@ -291,12 +314,11 @@ export default function CartPage() {
               ))}
             </p>
           </div>
-          <Link
-            href="/checkout"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 active:scale-[0.99] transition shrink-0"
-          >
-            Checkout <ArrowRight size={13} />
-          </Link>
+          {!multiEvent && (
+            <Button href={firstCheckoutHref} size="md" className="shrink-0">
+              Checkout <ArrowRight size={13} />
+            </Button>
+          )}
         </div>
       </div>
     </div>

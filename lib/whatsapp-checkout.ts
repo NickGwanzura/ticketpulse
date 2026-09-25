@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { events, ticketTiers, whatsappCheckoutSessions } from "@/db/schema"
 import { sendText } from "@/lib/whatsapp"
 import { log } from "@/lib/logger"
+import { orderAccessSignature } from "@/lib/tickets"
 
 const TRIGGER_PATTERN = /early\s*bird/i
 const RESTART_PATTERN = /^(cancel|restart|stop)$/i
@@ -307,7 +308,7 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
     // On the website the buyer's browser polls the status endpoint, which
     // confirms the payment with Velocity, finalizes the order, and triggers
     // ticket delivery. There's no browser here, so poll it ourselves.
-    await pollPaymentUntilSettled(chatId, data.orderId, selfUrl, session.guestEmail ?? undefined)
+    await pollPaymentUntilSettled(chatId, data.orderId, selfUrl)
   } catch (err) {
     log.error("whatsapp-checkout — completeCheckout failed", { chatId, error: err instanceof Error ? err.message : String(err) })
     await upsertSession(chatId, { step: "cancelled" })
@@ -315,7 +316,7 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
   }
 }
 
-async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl: string, buyerEmail?: string): Promise<void> {
+async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl: string): Promise<void> {
   const POLL_INTERVAL_MS = 6_000
   const MAX_POLLS = 20 // ~2 minutes
 
@@ -324,7 +325,7 @@ async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl:
     try {
       const res = await fetch(`${selfUrl}/api/checkout/velocity/status/${orderId}`, {
         signal: AbortSignal.timeout(15_000),
-        headers: buyerEmail ? { "x-order-email": buyerEmail } : undefined,
+        headers: { "x-ticket-signature": orderAccessSignature(orderId) },
       })
       if (!res.ok) continue
       const status = await res.json()

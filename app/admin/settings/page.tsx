@@ -1,5 +1,6 @@
 import { Settings as SettingsIcon } from "lucide-react"
 import PageHeader from "@/components/dashboard/PageHeader"
+import { formatDate } from "@/lib/utils"
 import { getPlatformSettings, updatePlatformSettings } from "./actions"
 import { Save } from "lucide-react"
 
@@ -113,7 +114,7 @@ export default async function AdminSettingsPage() {
 
           <div className="px-5 md:px-6 py-4 border-t border-line bg-paper-2 flex items-center justify-between gap-3">
             <p className="text-[12px] text-ink-3">
-              Last updated {settings.updatedAt ? new Date(settings.updatedAt).toLocaleString() : "—"}
+              Last updated {settings.updatedAt ? formatDate(settings.updatedAt) : "—"}
             </p>
             <button
               type="submit"

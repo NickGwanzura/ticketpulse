@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { formatDateShort } from "@/lib/utils"
 import {
   Search, UserCheck, ShieldCheck, Store, User, ShieldAlert, Users,
   BadgeCheck, BadgeX, MailCheck, MailX,
@@ -253,7 +254,7 @@ export default async function AdminUsersPage({
                           {u.role === "organizer" ? (
                             u.approvedAt ? (
                               <span className="inline-flex items-center gap-1 text-[12px] font-medium text-emerald-700">
-                                <BadgeCheck size={13} /> Approved <span className="text-ink-3 font-normal">{new Date(u.approvedAt).toLocaleDateString()}</span>
+                                <BadgeCheck size={13} /> Approved <span className="text-ink-3 font-normal">{formatDateShort(u.approvedAt)}</span>
                               </span>
                             ) : (
                               <form action={approveOrganizerAction.bind(null, u.id)}>
@@ -275,7 +276,7 @@ export default async function AdminUsersPage({
                           )}
                         </td>
                         <td className="px-3 py-3.5 text-[13px] text-ink-2 whitespace-nowrap">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
+                          {u.createdAt ? formatDateShort(u.createdAt) : "—"}
                         </td>
                         <td className="px-3 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1">

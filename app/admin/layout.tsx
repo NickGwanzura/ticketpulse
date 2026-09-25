@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
-import { and, eq, isNull, sql } from "drizzle-orm"
+import { and, eq, inArray, isNull, sql } from "drizzle-orm"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/db"
-import { events, users, vendors } from "@/db/schema"
+import { events, payouts, reviews, users, vendors } from "@/db/schema"
+import { ACTIVE_PAYOUT_STATUSES } from "@/lib/revenue-summary"
 import Sidebar from "./_components/Sidebar"
 
 export const metadata: Metadata = {
@@ -26,11 +27,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     db.select({ count: sql<number>`COUNT(*)::int` })
       .from(users)
       .where(and(eq(users.role, "organizer"), isNull(users.approvedAt))),
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(payouts).where(inArray(payouts.status, [...ACTIVE_PAYOUT_STATUSES])),
+    db.select({ count: sql<number>`COUNT(*)::int` }).from(reviews).where(eq(reviews.status, "pending")),
   ]).catch((error) => {
     console.error("[admin] layout badge counts failed", error)
     return null
   })
-  const [[pendingEventsRow], [pendingVendorsRow], [pendingOrganizersRow]] = counts ?? [[], [], []]
+  const [[pendingEventsRow], [pendingVendorsRow], [pendingOrganizersRow], [pendingPayoutsRow], [pendingReviewsRow]] = counts ?? [[], [], [], [], []]
 
   return (
     <div className="lg:flex lg:items-start">
@@ -40,6 +43,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         pendingEventCount={pendingEventsRow?.count ?? 0}
         pendingVendorCount={pendingVendorsRow?.count ?? 0}
         pendingOrganizerCount={pendingOrganizersRow?.count ?? 0}
+        pendingPayoutCount={pendingPayoutsRow?.count ?? 0}
+        pendingReviewCount={pendingReviewsRow?.count ?? 0}
       />
       <main className="flex-1 min-w-0 bg-paper-2 min-h-[calc(100vh-6rem)]">
         {children}
