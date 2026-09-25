@@ -368,31 +368,22 @@ export async function getSalesOrderById(salesOrderId: string): Promise<VelocityS
 
 export async function pollTransaction(
   transactionTrace: string,
-  reference: VelocityPollReference = {},
+  _reference: VelocityPollReference = {},
 ): Promise<PollTransactionResponse> {
   const config = getConfig()
-  // Velocity's route parameter is the workflow/transaction trace. The
-  // provider-assigned transaction UUID belongs in the body only. Supplying
-  // that UUID in the URL makes Velocity look for a workflow with the UUID and
-  // returns HTTP 500 ("Workflow instance with that ID does not exist").
+  // The current Velocity poll contract uses the transaction trace in the
+  // route and defines no request body. Keep the optional reference parameter
+  // for callers using the older integration signature.
   const path = `/transactions/poll/${encodeURIComponent(transactionTrace)}`
   const url = `${config.baseUrl}${path}`
-  const bodyReference = reference.transactionId ?? reference.transactionSessionId
-  const requestBody: { id?: string; trace: string } = bodyReference ? {
-    id: bodyReference,
-    trace: transactionTrace,
-  } : { trace: transactionTrace }
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     "x-api-key": config.apiKey,
   }
 
   log.info("velocity request", {
     method: "PUT",
     path,
-    hasTransactionId: Boolean(reference.transactionId),
-    hasSessionReference: Boolean(reference.transactionSessionId),
   })
   const start = Date.now()
 
@@ -400,7 +391,6 @@ export async function pollTransaction(
     const response = await velocityFetch(url, {
       method: "PUT",
       headers,
-      body: JSON.stringify(requestBody),
       next: { revalidate: 0 },
     })
     const elapsed = Date.now() - start

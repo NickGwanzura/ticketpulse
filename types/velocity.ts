@@ -128,9 +128,9 @@ export interface PollTransactionResponse {
 }
 
 export interface VelocityPollReference {
-  /** Provider transaction UUID. Preferred for the /transactions/poll/{id} path. */
+  /** Retained for compatibility; current polling uses the transaction trace only. */
   transactionId?: string | null
-  /** Hosted VMC session reference retained as a fallback provider identifier. */
+  /** Retained for compatibility; not sent to the current poll endpoint. */
   transactionSessionId?: string | null
 }
 

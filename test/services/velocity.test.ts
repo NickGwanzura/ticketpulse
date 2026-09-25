@@ -310,7 +310,7 @@ describe("velocity service", () => {
   })
 
   describe("pollTransaction", () => {
-    it("uses the transaction trace in the path and sends both provider references in the PUT body", async () => {
+    it("uses the transaction trace in the path and sends no PUT body", async () => {
       mockFetch({
         body: {
           state: "done",
@@ -335,13 +335,14 @@ describe("velocity service", () => {
         `https://api.velocity.test/transactions/poll/${MOCK_TRANSACTION_TRACE}`,
         expect.objectContaining({
           method: "PUT",
-          body: JSON.stringify({ id: "txn-id-001", trace: MOCK_TRANSACTION_TRACE }),
           signal: expect.any(AbortSignal),
         }),
       )
+      const requestOptions = vi.mocked(global.fetch).mock.calls[0]?.[1]
+      expect(requestOptions).not.toHaveProperty("body")
     })
 
-    it("sends a trace-only body for legacy orders without another provider reference", async () => {
+    it("sends no body for legacy orders without another provider reference", async () => {
       mockFetch({
         body: {
           state: "done",
@@ -356,9 +357,11 @@ describe("velocity service", () => {
       expect(global.fetch).toHaveBeenCalledWith(
         `https://api.velocity.test/transactions/poll/${MOCK_TRANSACTION_TRACE}`,
         expect.objectContaining({
-          body: JSON.stringify({ trace: MOCK_TRANSACTION_TRACE }),
+          method: "PUT",
         }),
       )
+      const requestOptions = vi.mocked(global.fetch).mock.calls[0]?.[1]
+      expect(requestOptions).not.toHaveProperty("body")
     })
 
     it("includes Velocity error details in structured poll failures", async () => {

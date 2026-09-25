@@ -7,7 +7,7 @@ import { useOrderTickets } from "@/lib/use-order-tickets"
 import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import {
-  ArrowRight, Mail, Smartphone, Calendar, Download, ArrowUpRight, Sparkles, Share2, CalendarPlus, Loader2,
+  ArrowRight, Mail, Smartphone, Calendar, Download, ArrowUpRight, Sparkles, Share2, CalendarPlus, Loader2, Clock, CircleAlert,
 } from "lucide-react"
 import QrCode from "@/components/QrCode"
 import AnimatedCheck from "@/components/AnimatedCheck"
@@ -29,37 +29,51 @@ export default function CheckoutSuccessPage() {
 function CheckoutSuccessInner() {
   const params = useSearchParams()
   const id = params.get("id") ?? ""
-  const { ready, getOrder } = useCart()
+  const signature = params.get("sig")
+  const { ready } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
-  const [fetching, setFetching] = useState(false)
-  const { qrByTier, loading: ticketsLoading } = useOrderTickets(id, order?.status === "paid")
+  const [fetching, setFetching] = useState(true)
+  const [loadError, setLoadError] = useState<"not_found" | "unavailable" | null>(null)
+  const requestKey = `${id}:${signature ?? ""}`
+  const [loadedRequestKey, setLoadedRequestKey] = useState("")
+  const { qrByTier, loading: ticketsLoading } = useOrderTickets(
+    id,
+    order?.status === "paid" || order?.status === "completed",
+  )
 
   useEffect(() => {
     if (!ready) return
 
-    // Try localStorage first
-    const local = getOrder(id)
-    if (local) {
-      const timer = window.setTimeout(() => setOrder(local), 0)
-      return () => window.clearTimeout(timer)
-    }
-
-    // Fall back to server-side API on the next task so effect setup stays synchronous.
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
       setFetching(true)
       fetch(`/api/orders/${id}/data`, {
-        headers: orderAuthHeaders(id),
+        cache: "no-store",
+        headers: orderAuthHeaders(id, signature),
         signal: controller.signal,
       })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data: OrderRecord | null) => {
-          if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
+        .then(async (response) => {
+          if (!response.ok) {
+            setOrder(null)
+            setLoadError(response.status === 404 ? "not_found" : "unavailable")
+            return
+          }
+          const data = (await response.json()) as OrderRecord & { guestEmail?: string | null }
+          if (data) rememberOrderOwner(id, data.guestEmail ?? data.contact?.email)
           setOrder(data)
-          setFetching(false)
+          setLoadError(null)
         })
         .catch(() => {
-          if (!controller.signal.aborted) setFetching(false)
+          if (!controller.signal.aborted) {
+            setOrder(null)
+            setLoadError("unavailable")
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setLoadedRequestKey(requestKey)
+            setFetching(false)
+          }
         })
     }, 0)
 
@@ -67,9 +81,9 @@ function CheckoutSuccessInner() {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [ready, id, getOrder])
+  }, [ready, id, signature, requestKey])
 
-  if (!ready || fetching) {
+  if (!ready || fetching || loadedRequestKey !== requestKey) {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
         <div className="h-12 w-12 mx-auto bg-paper-2 rounded-2xl animate-pulse" />
@@ -80,13 +94,49 @@ function CheckoutSuccessInner() {
   if (!order) {
     return (
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
-        <h1 className="text-[26px] font-bold tracking-tight text-ink">Order not found</h1>
-        <p className="mt-2 text-[15px] text-ink-2">We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</p>
-        <p className="mt-1 text-[13px] text-ink-3">If you just completed a purchase, check your email — it may take a moment to appear here.</p>
-        <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
-          See your orders <ArrowRight size={14} />
+        <h1 className="text-[26px] font-bold tracking-tight text-ink">
+          {loadError === "not_found" ? "Order not found" : "We couldn’t verify your order"}
+        </h1>
+        <p className="mt-2 text-[15px] text-ink-2">
+          {loadError === "not_found"
+            ? <>We couldn&apos;t find an order with id <span className="font-mono text-ink">{id}</span>.</>
+            : "We couldn’t check the latest payment status. No payment confirmation is being shown; please check your order again shortly."}
+        </p>
+        <Link href="/orders/lookup" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition">
+          Find your order <ArrowRight size={14} />
         </Link>
       </div>
+    )
+  }
+
+  const isPaid = order.status === "paid" || order.status === "completed"
+  if (!isPaid) {
+    const isClosed = ["expired", "cancelled", "refunded"].includes(String(order.status).toLowerCase())
+    return (
+      <main className="min-h-[65vh] flex items-center justify-center px-5 py-16">
+        <section className="max-w-lg w-full text-center">
+          <span className={`inline-flex w-16 h-16 items-center justify-center rounded-2xl ring-1 mb-6 ${isClosed ? "bg-rose-50 ring-rose-200" : "bg-amber-50 ring-amber-200"}`}>
+            {isClosed ? <CircleAlert size={28} className="text-rose-600" /> : <Clock size={28} className="text-amber-600" />}
+          </span>
+          <h1 className="text-[28px] font-bold tracking-tight text-ink">
+            {isClosed ? "Payment wasn’t confirmed" : "Payment confirmation pending"}
+          </h1>
+          <p className="mt-3 text-[15px] text-ink-2 leading-relaxed">
+            {isClosed
+              ? "This order is not marked as paid, so no tickets are available. If you believe money was deducted, contact support before trying again."
+              : "We haven’t received final payment confirmation yet. If you approved the payment or money was deducted, please don’t pay again while we check."}
+          </p>
+          <p className="mt-5 text-[12px] text-ink-3 font-mono">
+            Order <span className="ml-1 rounded bg-paper-2 px-2 py-1 text-ink">{order.id}</span>
+          </p>
+          <Link
+            href={isClosed ? `/orders/${order.id}` : `/orders/${order.id}?welcome=1`}
+            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 transition"
+          >
+            Check order status <ArrowRight size={14} />
+          </Link>
+        </section>
+      </main>
     )
   }
 
