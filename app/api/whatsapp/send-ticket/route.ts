@@ -152,7 +152,7 @@ export async function POST(req: Request) {
         tierId: tickets.tierId,
       })
       .from(tickets)
-      .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded"])))
+      .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded", "refund_pending"])))
 
     // ── Build the text message ─────────────────────────────────────────────
     const eventDate = ev.startsAt

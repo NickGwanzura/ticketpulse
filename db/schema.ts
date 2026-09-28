@@ -31,8 +31,17 @@ export const ticketStatusEnum = pgEnum("ticket_status", [
   "reserved",
   "sold",
   "used",
+  "refund_pending",
   "refunded",
   "cancelled",
+])
+
+export const refundRequestStatusEnum = pgEnum("refund_request_status", [
+  "requested",
+  "approved",
+  "rejected",
+  "confirmed",
+  "failed",
 ])
 
 export const orderStatusEnum = pgEnum("order_status", [
@@ -408,6 +417,48 @@ export const orderItems = pgTable("order_items", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
 }, (table) => [
   index("order_items_order_id_idx").on(table.orderId),
+])
+
+// Refunds are requests until an administrator confirms a completed refund in
+// the payment provider. Ticket status is not changed to `refunded` before then.
+export const refundRequests = pgTable("refund_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "restrict" }),
+  status: refundRequestStatusEnum("status").default("requested").notNull(),
+  source: text("source").default("buyer").notNull(),
+  requestedByEmail: text("requested_by_email").notNull(),
+  reason: text("reason").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD").notNull(),
+  outsideStandardWindow: boolean("outside_standard_window").default(false).notNull(),
+  externalKey: text("external_key"),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
+  providerReference: text("provider_reference"),
+  providerConfirmedBy: text("provider_confirmed_by"),
+  providerConfirmedAt: timestamp("provider_confirmed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("refund_requests_order_idx").on(table.orderId),
+  index("refund_requests_event_status_idx").on(table.eventId, table.status),
+  index("refund_requests_status_created_idx").on(table.status, table.createdAt),
+  uniqueIndex("refund_requests_external_key_idx").on(table.externalKey),
+  uniqueIndex("refund_requests_provider_reference_idx").on(table.providerReference),
+])
+
+export const refundRequestTickets = pgTable("refund_request_tickets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  refundRequestId: uuid("refund_request_id").notNull().references(() => refundRequests.id, { onDelete: "cascade" }),
+  ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "restrict" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("refund_request_tickets_request_ticket_idx").on(table.refundRequestId, table.ticketId),
+  index("refund_request_tickets_ticket_idx").on(table.ticketId),
 ])
 
 // ─── TIER 1: Merchandise ─────────────────────────────────────────────────────

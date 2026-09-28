@@ -7,6 +7,7 @@ import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, CreditCard,
   PieChart, Store, Contact, History, UsersRound,
+  RotateCcw,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
@@ -46,6 +47,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Finance",
     items: [
       { label: "Payouts", href: "/admin/payouts", icon: Wallet },
+      { label: "Refunds", href: "/admin/refunds", icon: RotateCcw },
       { label: "Organizer fees", href: "/admin/organizer-fees", icon: CreditCard },
     ],
   },

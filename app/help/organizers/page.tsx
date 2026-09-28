@@ -113,7 +113,7 @@ const FAQS = [
   },
   {
     q: "What happens if I cancel my event?",
-    a: "Cancelled events trigger automatic refunds to all buyers. No payout is issued for cancelled events, and buyers are notified immediately by email and WhatsApp.",
+    a: "If an event must be cancelled, contact TicketPulse. Once it is marked cancelled, eligible unused tickets on paid Velocity orders are queued for refund processing and buyers are emailed. TicketPulse staff submit the refunds in Velocity; an order is marked refunded only after the provider confirms success. Other payment methods, used tickets, and exceptional cases need support review. Do not promise an automatic refund date to buyers.",
   },
   {
     q: "How many organizers can manage one event?",

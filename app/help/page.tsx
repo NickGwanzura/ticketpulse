@@ -20,7 +20,7 @@ const POPULAR = [
   { q: "I paid but did not receive my tickets. What should I do?", a: "Check your email spam folder first, then open Orders with the same email used at checkout. If money was deducted, contact support with your order reference, payment phone or card name, event name, and payment time." },
   { q: "How do I transfer a ticket to someone else?", a: "Open the ticket in your account, tap Transfer, and enter the recipient's email. The recipient gets a secure link and the ticket is moved to them once accepted." },
   { q: "My QR code is not scanning at the gate.", a: "Open the ticket from your account or email and increase screen brightness. If it still fails, ask gate staff to use manual lookup with your ticket code or order email." },
-  { q: "When will I get my refund?", a: "Approved refunds usually appear in the original payment method within 24 to 72 hours, depending on the provider. EcoCash refunds are often faster." },
+  { q: "When will I get my refund?", a: "We’ll update your order only after the payment provider confirms the refund. After confirmation, the time it takes to appear depends on the provider and original payment method." },
   { q: "What if I lose my phone before the event?", a: "Sign in on another device and open your ticket. If you cannot sign in, bring photo ID and the order email to the gate or contact support before arrival." },
   { q: "How do organizers get paid?", a: "Organizers request payouts from their dashboard. TicketPulse deducts the platform fee and transfers the available balance to the selected EcoCash or bank account." },
   { q: "Can I buy tickets for a group?", a: "Yes. Choose the quantity you need at checkout. Each ticket gets its own QR code, so share or transfer tickets carefully before the event." },
@@ -74,9 +74,10 @@ const GUIDE_SECTIONS = [
     id: "refunds",
     title: "Refunds",
     items: [
-      "Refunds go back to the original payment method where possible.",
-      "Cancelled or refunded tickets are invalidated automatically.",
-      "For event cancellations, watch your email for organizer and TicketPulse updates.",
+      "Open your order and select the unused tickets you want refunded. Partial requests are supported.",
+      "Standard voluntary requests must be made at least 24 hours before the event. Later requests can be submitted for exception review; applicable statutory rights are not limited.",
+      "A request does not move money. TicketPulse confirms a refund only after the payment provider confirms success; provider posting times vary.",
+      "For a cancelled event, eligible unused tickets on paid Velocity orders are queued for processing. We email you when the provider outcome is confirmed.",
     ],
   },
   {

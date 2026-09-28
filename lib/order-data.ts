@@ -35,6 +35,7 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
 
     // Map DB status to the client-side union.
     const clientStatus = order.status === "paid" ? "paid" as const
+      : order.status === "completed" ? "completed" as const
       : order.status === "pending" ? "pending" as const
       : order.status === "expired" ? "expired" as const
       : "refunded" as const

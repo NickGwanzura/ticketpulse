@@ -7,6 +7,7 @@ import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
 import { orderAuthHeaders, orderOwnerQuery, rememberOrderOwner } from "@/lib/order-auth-client"
 import { formatCurrency, formatDate } from "@/lib/utils"
+import RefundRequestPanel from "./RefundRequestPanel"
 import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet } from "lucide-react"
 import QrCode from "@/components/QrCode"
 
@@ -525,6 +526,13 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               </div>
             )}
           </div>
+          {ticketsEnabled && tickets.length > 0 && (
+            <RefundRequestPanel
+              orderId={order.id}
+              buyerEmail={order.contact.email}
+              signature={accessSignature}
+            />
+          )}
         </aside>
       </div>
     </div>

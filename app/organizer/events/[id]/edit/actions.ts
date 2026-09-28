@@ -10,6 +10,7 @@ import { events, eventStatusEnum } from "@/db/schema"
 import { geocodeFromLocation } from "@/lib/geocode"
 import { generateUniqueSlug, slugify } from "@/lib/slug"
 import { parseHarareDateTimeLocal } from "@/lib/event-schedule"
+import { queueCancelledEventRefunds } from "@/lib/refund-service"
 
 const STATUS_VALUES = eventStatusEnum.enumValues
 
@@ -184,6 +185,10 @@ export async function updateEventAction(
       updatedAt:     new Date(),
     })
     .where(eq(events.id, data.id))
+
+  if (status === "cancelled") {
+    await queueCancelledEventRefunds(data.id)
+  }
 
   revalidatePath("/organizer")
   revalidatePath(`/organizer/events/${data.id}/edit`)

@@ -73,7 +73,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     .select({ id: tickets.id, qrCode: tickets.qrCode, tierName: ticketTiers.name, holderName: tickets.holderName })
     .from(tickets)
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
-    .where(and(eq(tickets.orderId, id), notInArray(tickets.status, ["cancelled", "refunded"])))
+    .where(and(eq(tickets.orderId, id), notInArray(tickets.status, ["cancelled", "refunded", "refund_pending"])))
 
   if (orderTickets.length === 0) {
     return NextResponse.json({ error: "No tickets found" }, { status: 404 })
