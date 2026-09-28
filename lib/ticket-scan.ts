@@ -24,7 +24,7 @@ type LookupTicket = {
   eventId: string
   scannedAt: Date | null
   orderId: string | null
-  status: "available" | "reserved" | "sold" | "used" | "refunded" | "cancelled" | null
+  status: "available" | "reserved" | "sold" | "used" | "refund_pending" | "refunded" | "cancelled" | null
   orderStatus: "pending" | "awaiting_verification" | "paid" | "completed" | "cancelled" | "refunded" | "expired" | null
   eventStatus: "draft" | "pending_review" | "published" | "sold_out" | "cancelled" | "completed" | null
   eventStartsAt: Date | null
@@ -161,6 +161,8 @@ export async function markTicketScanned(
     const reason =
       ticket.status === "cancelled"
         ? "This ticket has been cancelled."
+        : ticket.status === "refund_pending"
+          ? "This ticket is temporarily unavailable while a refund is being processed."
         : ticket.status === "refunded"
           ? "This ticket has been refunded."
           : "This ticket is not active for entry."

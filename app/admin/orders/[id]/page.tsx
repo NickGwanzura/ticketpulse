@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, inArray } from "drizzle-orm"
 import { ArrowLeft, CreditCard, Ticket, Calendar,
   Clock, User, MapPin, Smartphone, ExternalLink,
   Send, CheckCircle2, RefreshCw, FileDown,
@@ -9,13 +9,14 @@ import { ArrowLeft, CreditCard, Ticket, Calendar,
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { orders, events, paymentLedger, tickets, ticketTiers, users } from "@/db/schema"
+import { orders, events, paymentLedger, tickets, ticketTiers, users, refundRequests, refundRequestTickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { auditOrderPaymentLedger } from "@/lib/payment-ledger-audit"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import RefundCaseAdminPanel, { type RefundCaseView } from "@/app/admin/_components/RefundCaseAdminPanel"
 import {
   recheckPaymentAction,
 } from "@/app/admin/actions/velocity"
@@ -92,6 +93,44 @@ export default async function AdminOrderDetailPage({
     .from(tickets)
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
     .where(eq(tickets.orderId, id))
+
+  const refundRows = await db
+    .select({
+      id: refundRequests.id,
+      status: refundRequests.status,
+      source: refundRequests.source,
+      requestedByEmail: refundRequests.requestedByEmail,
+      reason: refundRequests.reason,
+      amount: refundRequests.amount,
+      currency: refundRequests.currency,
+      outsideStandardWindow: refundRequests.outsideStandardWindow,
+      requestedAt: refundRequests.requestedAt,
+      reviewNote: refundRequests.reviewNote,
+      providerReference: refundRequests.providerReference,
+      providerConfirmedAt: refundRequests.providerConfirmedAt,
+    })
+    .from(refundRequests)
+    .where(eq(refundRequests.orderId, id))
+    .orderBy(desc(refundRequests.requestedAt))
+  const refundTicketRows = refundRows.length > 0
+    ? await db
+        .select({ requestId: refundRequestTickets.refundRequestId, id: tickets.id, tierName: ticketTiers.name, amount: refundRequestTickets.amount })
+        .from(refundRequestTickets)
+        .innerJoin(tickets, eq(tickets.id, refundRequestTickets.ticketId))
+        .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
+        .where(inArray(refundRequestTickets.refundRequestId, refundRows.map((row) => row.id)))
+    : []
+  const refundTicketMap = new Map<string, RefundCaseView["tickets"]>()
+  for (const row of refundTicketRows) {
+    const list = refundTicketMap.get(row.requestId) ?? []
+    list.push({ id: row.id, tierName: row.tierName ?? "Ticket", amount: row.amount })
+    refundTicketMap.set(row.requestId, list)
+  }
+  const refundCases: RefundCaseView[] = refundRows.map((row) => ({
+    ...row,
+    status: row.status as RefundCaseView["status"],
+    tickets: refundTicketMap.get(row.id) ?? [],
+  }))
 
   const ledgerEntries = await db
     .select({
@@ -294,6 +333,14 @@ export default async function AdminOrderDetailPage({
             )}
           </div>
         </div>
+
+        <section className="rounded-2xl border border-line bg-paper p-5 md:p-6">
+          <div className="mb-4">
+            <h3 className="text-[15px] font-semibold tracking-tight text-ink">Refund requests</h3>
+            <p className="mt-1 text-[12px] leading-5 text-ink-2">Issue approved refunds in Velocity first. Only enter the reference after Velocity confirms success; pending tickets are held until a result is recorded.</p>
+          </div>
+          <RefundCaseAdminPanel cases={refundCases} />
+        </section>
 
         {/* Recovery Actions */}
         {order.status !== "paid" && order.status !== "completed" && order.status !== "cancelled" && order.status !== "refunded" && (

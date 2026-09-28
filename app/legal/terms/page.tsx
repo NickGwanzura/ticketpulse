@@ -39,11 +39,12 @@ export default function TermsPage() {
         {
           id: "refunds", title: "Refunds and cancellations",
           body: <>
-            <p>You may cancel and receive a full refund up to 24 hours before the event start time. After that, refunds are at the organizer&apos;s discretion.</p>
+            <p>For standard voluntary cancellations, you may request a full refund or a partial refund for selected unused tickets up to 24 hours before the event start time. Requests made inside the final 24 hours or after the event are reviewed as exceptions and may be approved at the organiser&apos;s discretion. This standard policy does not limit any rights you may have under applicable law.</p>
             <ul>
-              <li>If an event is cancelled, refunds are processed automatically within 7 days.</li>
-              <li>Refunds return to the original payment method.</li>
-              <li>Booking fees of &lt; USD 1 are non-refundable on user-initiated cancellations.</li>
+              <li>If an event is cancelled, eligible unused tickets on paid Velocity orders are queued for refund processing. Other payment methods and exceptional cases are reviewed by TicketPulse support.</li>
+              <li>Refunds are returned to the original payment method where supported. A request is not a completed refund: TicketPulse records it as refunded only after the payment provider confirms success. Provider posting times may vary.</li>
+              <li>Used, transferred, or already-refunded tickets are not eligible for a standard ticket refund.</li>
+              <li>Any fee exclusions are subject to applicable consumer law and do not remove statutory refund rights.</li>
             </ul>
           </>,
         },

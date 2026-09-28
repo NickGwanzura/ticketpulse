@@ -39,7 +39,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     })
     .from(tickets)
     .leftJoin(ticketTiers, eq(ticketTiers.id, tickets.tierId))
-    .where(and(eq(tickets.orderId, id), notInArray(tickets.status, ["cancelled", "refunded"])))
+    .where(and(eq(tickets.orderId, id), notInArray(tickets.status, ["cancelled", "refunded", "refund_pending"])))
     .orderBy(asc(tickets.createdAt), asc(tickets.id))
   return NextResponse.json(rows.map((row) => ({
     ...row,

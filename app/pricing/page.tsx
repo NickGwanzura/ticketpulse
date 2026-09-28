@@ -85,7 +85,7 @@ const FAQ = [
   { q: "Is the gate scanner included in the 6%?", a: "Yes. The 6% covers the full pipeline: sale, printable PDF + mobile QR delivery, and our gate-scanner app for organizers. No extra per-scan charge, no third-party scanner fees, no separate hardware to buy." },
   { q: "Are there processing fees?",          a: "TicketPulse covers EcoCash processing fees out of our 6% on amounts under USD 50. For Visa card payments above USD 50, a 2.5% processor fee is passed through." },
   { q: "When do payouts arrive?",             a: "Payout requests normally take about 24 hours, plus or minus depending on bank processing times and TicketPulse review." },
-  { q: "Can I refund attendees?",             a: "Yes, full or partial, any time. Funds are returned to the original payment method automatically." },
+  { q: "Can I refund attendees?",             a: "Attendees can request a full refund or a partial refund for selected unused tickets up to 24 hours before the event. Later requests are reviewed as exceptions, and applicable statutory rights are not limited. TicketPulse marks a refund complete only after the payment provider confirms it; it is not automatic." },
   { q: "Can the fee be negotiated for large festivals?", a: "Yes. Our standard rate is 6% but we offer custom rates for large-scale festivals and high-volume events. Get in touch on WhatsApp or email and we will sort something out." },
 ]
 

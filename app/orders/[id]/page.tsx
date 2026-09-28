@@ -12,6 +12,7 @@ import {
   ArrowLeft, ArrowUpRight, Calendar, CalendarPlus, Clock, Mail, MapPin, Smartphone, Download, Printer, Loader2, Search, Send,
   RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet, Share2, RotateCcw, Maximize2, MessageCircle,
 } from "lucide-react"
+import RefundRequestPanel from "./RefundRequestPanel"
 import QrCode from "@/components/QrCode"
 import AnimatedCheck from "@/components/AnimatedCheck"
 import Confetti from "@/components/Confetti"
@@ -691,6 +692,12 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               </div>
             )}
           </div>
+          {ticketsEnabled && tickets.length > 0 && (
+            <RefundRequestPanel
+              orderId={order.id}
+              signature={accessSignature}
+            />
+          )}
         </aside>
       </div>
 

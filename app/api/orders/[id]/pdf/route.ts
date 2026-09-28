@@ -48,7 +48,7 @@ export async function GET(
       tierId: tickets.tierId,
     })
     .from(tickets)
-    .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded"])))
+    .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded", "refund_pending"])))
 
   if (orderTickets.length === 0) {
     return NextResponse.json({ error: "No tickets found for this order" }, { status: 404 })
