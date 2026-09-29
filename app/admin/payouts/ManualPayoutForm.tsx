@@ -30,6 +30,8 @@ export default function ManualPayoutForm({
   events: EventOption[]
 }) {
   const [selectedOrganizer, setSelectedOrganizer] = useState("")
+  const [selectedEventId, setSelectedEventId] = useState("")
+  const [method, setMethod] = useState<"ecocash" | "bank_usd">("bank_usd")
   const filteredEvents = useMemo(
     () => events.filter((event) => event.organizerId === selectedOrganizer),
     [events, selectedOrganizer],
@@ -69,7 +71,10 @@ export default function ManualPayoutForm({
             name="userId"
             required
             value={selectedOrganizer}
-            onChange={(event) => setSelectedOrganizer(event.target.value)}
+            onChange={(event) => {
+              setSelectedOrganizer(event.target.value)
+              setSelectedEventId("")
+            }}
             className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy"
           >
             <option value="" disabled>Select organiser...</option>
@@ -82,14 +87,16 @@ export default function ManualPayoutForm({
           </select>
         </label>
         <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
-          Event (optional)
+          Event
           <select
             name="eventId"
-            defaultValue=""
+            required
+            value={selectedEventId}
+            onChange={(event) => setSelectedEventId(event.target.value)}
             disabled={!selectedOrganizer}
             className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <option value="">Not tied to one event</option>
+            <option value="" disabled>Select one event...</option>
             {filteredEvents.map((event) => (
               <option key={event.id} value={event.id}>{event.title}</option>
             ))}
@@ -104,10 +111,9 @@ export default function ManualPayoutForm({
         </label>
         <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
           Method
-          <select name="method" required defaultValue="cash" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
-            <option value="cash">Cash</option>
+          <select name="method" required value={method} onChange={(event) => setMethod(event.target.value as "ecocash" | "bank_usd")} className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy">
             <option value="ecocash">EcoCash</option>
-            <option value="bank_usd">Bank transfer</option>
+            <option value="bank_usd">USD bank transfer</option>
           </select>
         </label>
         <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
@@ -116,9 +122,31 @@ export default function ManualPayoutForm({
         </label>
         <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
           Reference
-          <input name="proofReference" required placeholder="Receipt / transfer ref" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+          <input name="proofReference" required minLength={3} maxLength={200} placeholder="Provider receipt / transfer ref" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
         </label>
       </div>
+
+      {method === "ecocash" ? (
+        <label className="block space-y-1.5 text-[12px] font-semibold text-ink-2">
+          EcoCash recipient number
+          <input name="ecocashNumber" type="tel" required maxLength={32} pattern="[0-9+ ]+" placeholder="0771 234 567" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+        </label>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+            Bank name
+            <input name="bankName" required minLength={2} maxLength={64} placeholder="e.g. CBZ" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+          </label>
+          <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+            Account number
+            <input name="accountNumber" required minLength={5} maxLength={100} placeholder="Account number" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+          </label>
+          <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
+            Account holder
+            <input name="accountName" required minLength={2} maxLength={128} placeholder="Name on account" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
+          </label>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-[1.6fr_auto] md:items-end">
         <label className="space-y-1.5 text-[12px] font-semibold text-ink-2">
@@ -126,15 +154,6 @@ export default function ManualPayoutForm({
           <input name="notes" maxLength={500} placeholder="e.g. Paid at the office after The Sunday Table" className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-navy" />
         </label>
       </div>
-
-      <label className="flex items-start gap-2 text-[12px] text-ink-2">
-        <input name="confirmOverage" type="checkbox" value="true" className="mt-0.5" />
-        <span>
-          Record this even if it&apos;s more than the event&apos;s available balance right now.
-          Leave unchecked unless you&apos;ve already checked reconciliation — this is how
-          duplicate/phantom settlement payouts have happened before.
-        </span>
-      </label>
 
       <div className="flex justify-end">
         <button

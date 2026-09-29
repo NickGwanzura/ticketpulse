@@ -5,7 +5,7 @@ import Link from "next/link"
 import {
   Ticket, Users, DollarSign, Activity, Mail, MessageCircle,
   Tag, QrCode, ShoppingBag, ImageIcon, Store, ArrowUpRight,
-  TrendingUp, Calendar, ScanLine, HelpCircle, Wallet, CheckCircle2,
+  TrendingUp, Calendar, ScanLine, HelpCircle, Wallet, ReceiptText, CheckCircle2,
   AlertTriangle, ClipboardCheck, Star,
 } from "lucide-react"
 
@@ -380,12 +380,22 @@ export default async function EventOverviewPage({
                 <p className="text-[16px] font-semibold tracking-tight text-ink">Event payout ledger</p>
                 <p className="text-[12px] text-ink-2 mt-0.5">Gross, TicketPulse fee, paid payouts, and available balance for this event only.</p>
               </div>
-              <Link
-                href="/payouts"
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2 transition-colors"
-              >
-                <Wallet size={13} /> Payouts
-              </Link>
+              <div className="flex items-center gap-2">
+                {access.role === "owner" && (
+                  <Link
+                    href={`/api/payouts/statement?eventId=${encodeURIComponent(id)}`}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2 transition-colors"
+                  >
+                    <ReceiptText size={13} /> Download PDF
+                  </Link>
+                )}
+                <Link
+                  href="/payouts"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2 transition-colors"
+                >
+                  <Wallet size={13} /> Payouts
+                </Link>
+              </div>
             </div>
 
             <dl className="grid grid-cols-2 md:grid-cols-5 gap-3 text-[12px]">

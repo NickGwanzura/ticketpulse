@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { eq, desc } from "drizzle-orm"
+import { and, eq, desc } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { payouts, users, events } from "@/db/schema"
-import { getOrganizerRevenueSummary } from "@/lib/revenue-summary"
+import { getEventRevenueSummaries, getOrganizerRevenueSummary } from "@/lib/revenue-summary"
 import { log } from "@/lib/logger"
 
 /**
@@ -20,9 +20,37 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url)
   const requestedUserId = url.searchParams.get("userId")
-  const userId = requestedUserId && session.user.role === "admin" ? requestedUserId : session.user.id
+  const eventId = url.searchParams.get("eventId")
+  let userId = requestedUserId && session.user.role === "admin" ? requestedUserId : session.user.id
+  let eventTitle: string | undefined
 
   try {
+    if (eventId) {
+      // `events.id` is a UUID column; reject malformed input before it reaches Postgres.
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
+        return NextResponse.json({ error: "Invalid event ID" }, { status: 400 })
+      }
+
+      const [event] = await db
+        .select({ id: events.id, title: events.title, organizerId: events.organizerId })
+        .from(events)
+        .where(eq(events.id, eventId))
+        .limit(1)
+
+      if (!event) {
+        return NextResponse.json({ error: "Event not found" }, { status: 404 })
+      }
+      if (session.user.role !== "admin" && event.organizerId !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      if (requestedUserId && session.user.role === "admin" && requestedUserId !== event.organizerId) {
+        return NextResponse.json({ error: "Event does not belong to the requested organiser" }, { status: 400 })
+      }
+
+      userId = event.organizerId
+      eventTitle = event.title
+    }
+
     const [organizer] = await db
       .select({ id: users.id, name: users.name, email: users.email })
       .from(users)
@@ -33,7 +61,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Organizer not found" }, { status: 404 })
     }
 
-    const summary = await getOrganizerRevenueSummary(userId)
+    const summary = eventId
+      ? (await getEventRevenueSummaries([eventId])).get(eventId)
+      : await getOrganizerRevenueSummary(userId)
+
+    if (!summary) {
+      return NextResponse.json({ error: "Statement data not found" }, { status: 404 })
+    }
 
     const payoutRows = await db
       .select({
@@ -42,19 +76,24 @@ export async function GET(req: Request) {
         currency: payouts.currency,
         status: payouts.status,
         method: payouts.method,
+        recipientName: payouts.accountName,
+        reference: payouts.proofReference,
         eventTitle: events.title,
         createdAt: payouts.createdAt,
         processedAt: payouts.processedAt,
       })
       .from(payouts)
       .leftJoin(events, eq(events.id, payouts.eventId))
-      .where(eq(payouts.userId, userId))
+      .where(eventId
+        ? and(eq(payouts.userId, userId), eq(payouts.eventId, eventId))
+        : eq(payouts.userId, userId))
       .orderBy(desc(payouts.createdAt))
 
     const { generatePayoutStatementPdfBuffer } = await import("@/lib/pdf/payout-statement-document")
     const pdfBuffer = await generatePayoutStatementPdfBuffer({
       organizerName: organizer.name ?? "Organiser",
       organizerEmail: organizer.email ?? "",
+      eventTitle,
       generatedAt: new Date(),
       grossRevenue: summary.grossRevenue,
       platformFee: summary.platformFee,
@@ -74,11 +113,14 @@ export async function GET(req: Request) {
     })
 
     const date = new Date().toISOString().slice(0, 10)
+    const eventFilename = eventTitle
+      ? `_${eventTitle.normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60)}`
+      : ""
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="TicketPulse_Payout_Statement_${date}.pdf"`,
+        "Content-Disposition": `attachment; filename="TicketPulse_Payout_Statement${eventFilename}_${date}.pdf"`,
         "Content-Length": String(pdfBuffer.length),
       },
     })

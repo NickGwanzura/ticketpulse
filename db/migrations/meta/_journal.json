@@ -64,6 +64,13 @@
       "when": 1790588694643,
       "tag": "0008_refund_provider_confirmation",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790668800000,
+      "tag": "0009_usd_event_payout_policy",
+      "breakpoints": true
     }
   ]
 }

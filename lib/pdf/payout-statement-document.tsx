@@ -10,6 +10,7 @@ import {
 export type PayoutStatementData = {
   organizerName: string
   organizerEmail: string
+  eventTitle?: string
   generatedAt: Date
   grossRevenue: number
   platformFee: number
@@ -27,6 +28,8 @@ export type PayoutStatementData = {
     currency: string
     status: string
     method: string
+    recipientName: string | null
+    reference: string | null
     eventTitle: string | null
     createdAt: Date | null
     processedAt: Date | null
@@ -99,9 +102,11 @@ const styles = StyleSheet.create({
   trHead: { backgroundColor: COLORS.paper2, fontWeight: "bold" },
   trLast: { borderBottom: "none" },
   colEvent: { flex: 2 },
+  colRecipient: { flex: 1.6 },
   colMethod: { flex: 1 },
-  colStatus: { flex: 1 },
-  colDate: { flex: 1 },
+  colStatus: { flex: 0.8 },
+  colReference: { flex: 1.2 },
+  colDate: { flex: 0.9 },
   colAmount: { flex: 1, textAlign: "right" },
   footer: {
     position: "absolute",
@@ -126,6 +131,16 @@ function formatDate(d: Date | null) {
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
 
+function formatMethod(method: string) {
+  switch (method) {
+    case "ecocash": return "EcoCash"
+    case "bank_usd": return "USD bank"
+    case "bank_zar": return "ZAR bank"
+    case "cash": return "Cash"
+    default: return method
+  }
+}
+
 function PayoutStatementDocument({ data }: { data: PayoutStatementData }) {
   return (
     <Document>
@@ -139,8 +154,12 @@ function PayoutStatementDocument({ data }: { data: PayoutStatementData }) {
         </View>
 
         <View style={styles.organizerBlock}>
-          <Text style={styles.organizerName}>{data.organizerName}</Text>
-          <Text style={styles.organizerEmail}>{data.organizerEmail}</Text>
+          <Text style={styles.organizerName}>{data.eventTitle ?? data.organizerName}</Text>
+          <Text style={styles.organizerEmail}>
+            {data.eventTitle
+              ? `Organiser: ${data.organizerName}${data.organizerEmail ? ` · ${data.organizerEmail}` : ""}`
+              : data.organizerEmail}
+          </Text>
         </View>
 
         <View style={styles.heroGrid}>
@@ -195,9 +214,14 @@ function PayoutStatementDocument({ data }: { data: PayoutStatementData }) {
         <Text style={styles.sectionTitle}>Payout history</Text>
         <View style={styles.table}>
           <View style={[styles.tr, styles.trHead]}>
-            <Text style={styles.colEvent}>Event</Text>
+            {data.eventTitle ? (
+              <Text style={styles.colRecipient}>Recipient / account</Text>
+            ) : (
+              <Text style={styles.colEvent}>Event</Text>
+            )}
             <Text style={styles.colMethod}>Method</Text>
             <Text style={styles.colStatus}>Status</Text>
+            {data.eventTitle && <Text style={styles.colReference}>Reference</Text>}
             <Text style={styles.colDate}>Date</Text>
             <Text style={styles.colAmount}>Amount</Text>
           </View>
@@ -208,9 +232,14 @@ function PayoutStatementDocument({ data }: { data: PayoutStatementData }) {
           )}
           {data.payouts.map((p, i) => (
             <View key={p.id} style={[styles.tr, i === data.payouts.length - 1 ? styles.trLast : {}]}>
-              <Text style={styles.colEvent}>{p.eventTitle ?? "General"}</Text>
-              <Text style={styles.colMethod}>{p.method}</Text>
+              {data.eventTitle ? (
+                <Text style={styles.colRecipient}>{p.recipientName ?? "Not recorded"}</Text>
+              ) : (
+                <Text style={styles.colEvent}>{p.eventTitle ?? "General"}</Text>
+              )}
+              <Text style={styles.colMethod}>{formatMethod(p.method)}</Text>
               <Text style={styles.colStatus}>{p.status}</Text>
+              {data.eventTitle && <Text style={styles.colReference}>{p.reference ?? "—"}</Text>}
               <Text style={styles.colDate}>{formatDate(p.processedAt ?? p.createdAt)}</Text>
               <Text style={styles.colAmount}>{money(p.amount, p.currency)}</Text>
             </View>

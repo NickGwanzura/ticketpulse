@@ -32,12 +32,28 @@ type BalanceData = {
   platformFee: number
   confirmedOrderCount: number
   confirmedTicketCount: number
+  events: PayoutEventOption[]
+}
+
+type PayoutEventOption = {
+  id: string
+  title: string
+  availableBalance: number
+  grossRevenue: number
+  platformFee: number
+  netRevenue: number
+  paidOut: number
+  pendingTotal: number
+  commissionRate: number
+  confirmedOrderCount: number
+  confirmedTicketCount: number
 }
 
 export default function PayoutForm({ balance }: { balance: BalanceData }) {
   const router = useRouter()
   const { toast } = useToast()
   const [method, setMethod] = useState<PayoutMethod>("bank_usd")
+  const [selectedEventId, setSelectedEventId] = useState(balance.events[0]?.id ?? "")
   const [amount, setAmount] = useState("")
   const [ecocashNumber, setEcocashNumber] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
@@ -64,8 +80,10 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
   }, [state?.error])
 
   const parsedAmount = parseFloat(amount) || 0
-  const exceedsBalance = parsedAmount > balance.availableBalance
-  const remainingAfterRequest = Math.max(0, balance.availableBalance - parsedAmount)
+  const selectedEvent = balance.events.find((event) => event.id === selectedEventId) ?? null
+  const eventAvailableBalance = selectedEvent?.availableBalance ?? 0
+  const exceedsBalance = parsedAmount > eventAvailableBalance
+  const remainingAfterRequest = Math.max(0, eventAvailableBalance - parsedAmount)
 
   return (
     <div className="tp-fade-up">
@@ -83,7 +101,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
           <div className="px-6 pt-6 pb-4 border-b border-line">
             <h1 className="text-[22px] font-bold tracking-tight text-ink">Request payout</h1>
             <p className="text-[14px] text-ink-2 mt-1">
-              Available balance: <span className="font-semibold text-ink tabular-nums">{formatCurrency(balance.availableBalance, "USD")}</span>
+              Available across your events: <span className="font-semibold text-ink tabular-nums">{formatCurrency(balance.availableBalance, "USD")}</span>
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2">
               <div className="rounded-lg bg-paper-2 px-3 py-2">
@@ -110,6 +128,26 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
               </div>
             )}
 
+            <div>
+              <label htmlFor="payout-event" className="text-[13px] font-semibold text-ink mb-1.5 block">Event to pay out</label>
+              <select
+                id="payout-event"
+                name="eventId"
+                value={selectedEventId}
+                onChange={(event) => setSelectedEventId(event.target.value)}
+                required
+                className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600"
+              >
+                <option value="" disabled>Select one event...</option>
+                {balance.events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.title} — {formatCurrency(event.availableBalance, "USD")} available
+                  </option>
+                ))}
+              </select>
+              {selectedEvent && <p className="mt-1.5 text-[12px] text-ink-3">Available for {selectedEvent.title}: {formatCurrency(eventAvailableBalance, "USD")}</p>}
+            </div>
+
             {/* Amount */}
             <div>
               <label className="text-[13px] font-semibold text-ink mb-1.5 block">Amount (USD)</label>
@@ -120,7 +158,7 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                   type="number"
                   step="0.01"
                   min="1"
-                  max={balance.availableBalance}
+                  max={eventAvailableBalance}
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -133,13 +171,13 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                   <AlertCircle size={12} /> Amount exceeds available balance
                 </p>
               )}
-              {balance.availableBalance > 0 && (
+              {eventAvailableBalance > 0 && (
                 <button
                   type="button"
-                  onClick={() => setAmount(balance.availableBalance.toFixed(2))}
+                  onClick={() => setAmount(eventAvailableBalance.toFixed(2))}
                   className="text-[12px] text-brand-600 font-medium hover:text-brand-700 mt-1.5 transition-colors"
                 >
-                  Max: {formatCurrency(balance.availableBalance, "USD")}
+                  Max: {formatCurrency(eventAvailableBalance, "USD")}
                 </button>
               )}
             </div>
@@ -238,32 +276,32 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
                 <div>
                   <p className="text-[13px] font-semibold text-ink">Payout calculation</p>
                   <p className="text-[12px] text-ink-2 mt-0.5">
-                    TicketPulse deducts {balance.commissionRate}% from confirmed paid ticket sales before funds become available.
+                    TicketPulse deducts {selectedEvent?.commissionRate ?? 0}% from confirmed paid ticket sales for this event before funds become available.
                   </p>
                 </div>
               </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
                 <dt className="text-ink-3">Gross confirmed tickets</dt>
-                <dd className="text-right font-semibold text-ink tabular-nums">{formatCurrency(balance.grossRevenue, "USD")}</dd>
+                <dd className="text-right font-semibold text-ink tabular-nums">{formatCurrency(selectedEvent?.grossRevenue ?? 0, "USD")}</dd>
                 <dt className="text-ink-3">TicketPulse fee</dt>
-                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(balance.platformFee, "USD")}</dd>
+                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(selectedEvent?.platformFee ?? 0, "USD")}</dd>
                 <dt className="text-ink-3">Already paid</dt>
-                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(balance.totalPaidOut, "USD")}</dd>
+                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(selectedEvent?.paidOut ?? 0, "USD")}</dd>
                 <dt className="text-ink-3">Pending requests</dt>
-                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(balance.pendingTotal, "USD")}</dd>
+                <dd className="text-right font-semibold text-ink tabular-nums">-{formatCurrency(selectedEvent?.pendingTotal ?? 0, "USD")}</dd>
                 <dt className="text-ink">Remaining after this request</dt>
                 <dd className="text-right font-bold text-ink tabular-nums">{formatCurrency(remainingAfterRequest, "USD")}</dd>
               </dl>
             </div>
 
             <p className="rounded-xl bg-amber-50 px-4 py-3 text-[12px] leading-5 text-amber-800">
-              After you submit, you will receive a confirmation email. Payouts usually take about 24 hours, plus or minus depending on bank processing times and TicketPulse review.
+              After you submit, we&apos;ll send a confirmation by email and WhatsApp. Payouts usually take about 24 hours, depending on bank processing times and TicketPulse review.
             </p>
 
             {/* Submit */}
             <button
               type="submit"
-              disabled={pending || !amount || parseFloat(amount) <= 0 || exceedsBalance}
+              disabled={pending || !selectedEvent || !amount || parseFloat(amount) <= 0 || exceedsBalance}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.99]"
             >
               {pending ? (
@@ -280,15 +318,15 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
         <div className="mt-4 rounded-xl border border-line bg-paper p-5 grid grid-cols-3 gap-4 text-center text-[13px]">
           <div>
             <p className="text-ink-3 mb-0.5">TicketPulse fee</p>
-            <p className="font-semibold text-ink">{balance.commissionRate}%</p>
+            <p className="font-semibold text-ink">{selectedEvent?.commissionRate ?? 0}%</p>
           </div>
           <div>
             <p className="text-ink-3 mb-0.5">Gross</p>
-            <p className="font-semibold text-ink tabular-nums">{formatCurrency(balance.grossRevenue, "USD")}</p>
+            <p className="font-semibold text-ink tabular-nums">{formatCurrency(selectedEvent?.grossRevenue ?? 0, "USD")}</p>
           </div>
           <div>
             <p className="text-ink-3 mb-0.5">Net</p>
-            <p className="font-semibold text-ink tabular-nums">{formatCurrency(balance.totalEarned, "USD")}</p>
+            <p className="font-semibold text-ink tabular-nums">{formatCurrency(selectedEvent?.netRevenue ?? 0, "USD")}</p>
           </div>
         </div>
       </div>
