@@ -50,6 +50,7 @@ void main() {
           api: api,
           available: 120.5,
           lastDestination: last,
+          events: [OrganizerEvent.fromJson({'id': 'event-1', 'title': 'Sunset Mimosa'})],
         ),
       ),
     );
@@ -87,6 +88,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(posted.single, {
       'amount': 60.25,
+      'eventId': 'event-1',
       'currency': 'USD',
       'method': 'ecocash',
       'ecocashNumber': '0771234567',

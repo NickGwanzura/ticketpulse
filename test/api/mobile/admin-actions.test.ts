@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), transition: vi.fn(), select: vi.fn(), update: vi.fn(), insert: vi.fn() }))
 vi.mock("@/lib/mobile-organizer", () => ({ authenticateOrganizer: mocks.auth, privateHeaders: { "Cache-Control": "private, no-store" } }))
-vi.mock("@/lib/payout-transitions", () => ({ transitionPayout: mocks.transition, PAYABLE_FROM: ["approved", "processing"] }))
+vi.mock("@/lib/payout-transitions", () => ({ transitionPayout: mocks.transition }))
 vi.mock("@/db", () => ({ db: { select: mocks.select, update: mocks.update, insert: mocks.insert } }))
 vi.mock("@/db/schema", () => ({ users: { id: "id", name: "name", approvedAt: "approvedAt", updatedAt: "updatedAt" }, notifications: {} }))
 vi.mock("drizzle-orm", () => ({ eq: (a: unknown, b: unknown) => [a, b] }))
@@ -26,11 +26,22 @@ beforeEach(() => {
 describe("mobile admin mutations", () => {
   it("routes payout approval through the audited transition", async () => {
     expect((await payout(request({ action: "approve" }), context)).status).toBe(200)
-    expect(mocks.transition).toHaveBeenCalledWith(expect.objectContaining({ payoutId: id, toStatus: "approved", performedBy: "admin@example.com" }))
+    expect(mocks.transition).toHaveBeenCalledWith(expect.objectContaining({
+      payoutId: id,
+      action: "approve",
+      performedBy: { userId: "admin-1", email: "admin@example.com" },
+    }))
   })
   it("requires a reason when rejecting a payout", async () => {
     expect((await payout(request({ action: "reject" }), context)).status).toBe(400)
     expect(mocks.transition).not.toHaveBeenCalled()
+  })
+  it("requires provider proof before marking a payout paid", async () => {
+    expect((await payout(request({ action: "paid" }), context)).status).toBe(400)
+    expect(mocks.transition).not.toHaveBeenCalled()
+
+    expect((await payout(request({ action: "paid", proofReference: "BANK-123" }), context)).status).toBe(200)
+    expect(mocks.transition).toHaveBeenCalledWith(expect.objectContaining({ action: "paid", proofReference: "BANK-123" }))
   })
   it("updates organizer approval and records a notification", async () => {
     expect((await organizer(request({ action: "approve" }), context)).status).toBe(200)

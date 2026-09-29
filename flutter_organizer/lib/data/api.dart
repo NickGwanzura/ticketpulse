@@ -238,6 +238,7 @@ class OrganizerApi extends ChangeNotifier {
   /// same balance and one-active-request rules as the website.
   Future<Json> requestPayout({
     required double amount,
+    required String eventId,
     required String method,
     String? ecocashNumber,
     String? accountNumber,
@@ -247,6 +248,7 @@ class OrganizerApi extends ChangeNotifier {
     '/api/mobile/organizer/payouts',
     body: {
       'amount': amount,
+      'eventId': eventId,
       'currency': 'USD',
       'method': method,
       if (method == 'ecocash') 'ecocashNumber': ecocashNumber,

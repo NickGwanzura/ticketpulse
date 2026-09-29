@@ -30,6 +30,7 @@ export async function POST(request: Request) {
 
   const result = await submitPayoutRequest(identity.userId, identity.email ?? identity.userId, {
     amount: input.amount,
+    eventId: input.eventId,
     currency: input.currency ?? "USD",
     method: input.method,
     ecocashNumber: input.ecocashNumber,

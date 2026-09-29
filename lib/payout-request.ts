@@ -1,17 +1,19 @@
 import "server-only"
 
-import { eq, and, inArray } from "drizzle-orm"
+import { eq, and, inArray, sql } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
-import { payouts, users, payoutAuditLog } from "@/db/schema"
+import { payouts, users, payoutAuditLog, events } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { adminEmail, sendEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
-import { getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT } from "@/lib/revenue-summary"
+import { getEventRevenueSummaries, getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT } from "@/lib/revenue-summary"
+import { sendPayoutNotice } from "@/lib/payout-notifications"
 
 /** Raw payout request fields, as submitted by the website form or mobile app. */
 export type PayoutRequestInput = {
   amount: unknown
+  eventId: unknown
   currency?: unknown
   method: unknown
   ecocashNumber?: unknown
@@ -37,6 +39,7 @@ const ecocashPattern = /^(\+?263|0)?7[1789]\d{7}$/
 const RequestPayoutSchema = z
   .object({
     amount: z.coerce.number({ error: "Enter a valid payout amount." }),
+    eventId: z.string().uuid("Choose one event for this payout."),
     currency: z.string().nullish().transform((c) => c ?? "USD"),
     method: z.enum(VALID_METHODS, { error: "Choose a valid payout method." }),
     ecocashNumber: z.string().trim().nullish().transform((v) => v ?? ""),
@@ -95,6 +98,11 @@ function destinationLabel(opts: {
   return [opts.bankName, opts.accountName, opts.accountNumber].filter(Boolean).join(" · ")
 }
 
+function isUsableWhatsAppNumber(value: string | null | undefined): value is string {
+  const digits = value?.replace(/\D/g, "") ?? ""
+  return digits.length >= 9 && digits.length <= 15
+}
+
 function payoutRequestEmailHtml(opts: {
   heading: string
   intro: string
@@ -102,6 +110,7 @@ function payoutRequestEmailHtml(opts: {
   organizerName?: string | null
   organizerEmail?: string | null
   amount: number
+  eventTitle: string
   grossRevenue: number
   commissionRate: number
   platformFee: number
@@ -113,6 +122,7 @@ function payoutRequestEmailHtml(opts: {
 }) {
   const rows = [
     ["Requested payout", money(opts.amount)],
+    ["Event", opts.eventTitle],
     ["Confirmed ticket revenue", money(opts.grossRevenue)],
     [`TicketPulse fee (${opts.commissionRate}%)`, money(opts.platformFee)],
     ["Available before request", money(opts.availableBalance)],
@@ -148,6 +158,7 @@ function payoutRequestEmailHtml(opts: {
 function payoutRequestEmailText(opts: {
   payoutId: string
   amount: number
+  eventTitle: string
   grossRevenue: number
   commissionRate: number
   platformFee: number
@@ -158,6 +169,7 @@ function payoutRequestEmailText(opts: {
   return [
     `Payout request: ${opts.payoutId}`,
     `Requested payout: ${money(opts.amount)}`,
+    `Event: ${opts.eventTitle}`,
     `Confirmed ticket revenue: ${money(opts.grossRevenue)}`,
     `TicketPulse fee (${opts.commissionRate}%): ${money(opts.platformFee)}`,
     `Available before request: ${money(opts.availableBalance)}`,
@@ -222,27 +234,50 @@ export async function submitPayoutRequest(
     log.warn("[request-payout] Validation failed", { issues: parsed.error.issues })
     return fail(message)
   }
-  const { amount, currency, method, ecocashNumber, accountNumber, accountName, bankName } = parsed.data
+  const { amount, eventId, currency, method, ecocashNumber, accountNumber, accountName, bankName } = parsed.data
+
+  const [event] = await db
+    .select({ id: events.id, title: events.title })
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.organizerId, userId)))
+    .limit(1)
+  if (!event) return fail("Choose an event that belongs to your organiser account.")
 
   // Check available balance
   let balance: Awaited<ReturnType<typeof fetchBalanceForUser>>
+  let eventSummary: Awaited<ReturnType<typeof getEventRevenueSummaries>> extends Map<string, infer T> ? T | undefined : never
   try {
-    balance = await fetchBalanceForUser(userId)
+    const [organizerBalance, eventSummaries] = await Promise.all([
+      fetchBalanceForUser(userId),
+      getEventRevenueSummaries([eventId]),
+    ])
+    balance = organizerBalance
+    eventSummary = eventSummaries.get(eventId)
   } catch (err) {
     log.error("[request-payout] Balance fetch failed", { error: String(err) })
     return fail("We could not calculate your payout balance. Please try again.")
   }
-  const { availableBalance } = balance
-  if (availableBalance <= 0) { log.warn("[request-payout] No funds available"); return fail("There is no available balance to withdraw yet.") }
-  if (amount > availableBalance) { log.warn("[request-payout] Insufficient balance"); return fail(`You can request up to ${money(availableBalance)} right now.`) }
+  if (!eventSummary) return fail("We could not calculate this event's payout balance. Please try again.")
+  const availableBalance = Math.min(balance.availableBalance, eventSummary.availableBalance)
+  if (availableBalance <= 0) { log.warn("[request-payout] No event funds available", { eventId }); return fail("This event has no available balance to withdraw yet.") }
+  if (amount > availableBalance) { log.warn("[request-payout] Insufficient event balance", { eventId }); return fail(`You can request up to ${money(availableBalance)} for this event right now.`) }
 
   const [organizer] = await db
-    .select({ name: users.name, email: users.email })
+    .select({ name: users.name, email: users.email, phone: users.phone })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1)
 
   const cleanAmount = Number(amount.toFixed(2))
+  const whatsappPhone = isUsableWhatsAppNumber(organizer?.phone)
+    ? organizer.phone.trim()
+    : method === "ecocash" && isUsableWhatsAppNumber(ecocashNumber)
+      ? ecocashNumber
+      : ""
+  if (!organizer?.email || !z.string().email().safeParse(organizer.email).success || !whatsappPhone) {
+    log.warn("[request-payout] Missing payout notification contact", { userId, hasEmail: Boolean(organizer?.email), hasPhone: Boolean(whatsappPhone) })
+    return fail("Add a valid email address and WhatsApp number to your profile before requesting a payout.")
+  }
   const methodName = methodLabel(method)
   const destination = destinationLabel({
     method,
@@ -256,9 +291,17 @@ export async function submitPayoutRequest(
   // the transaction to close the TOCTOU window between the balance read and insert.
   // A partial unique index (payouts_one_active_per_user) also catches the race
   // at READ COMMITTED; the unique-violation check below covers that path too.
-  let inserted: { id: string } | undefined
+  let inserted: { id: string; availableBalance: number } | undefined
   try {
     inserted = await db.transaction(async (tx) => {
+      const [lockedOrganizer] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for("update")
+        .limit(1)
+      if (!lockedOrganizer) throw new Error("ORGANIZER_NOT_FOUND")
+
       const [existingPending] = await tx
         .select({ id: payouts.id })
         .from(payouts)
@@ -274,10 +317,30 @@ export async function submitPayoutRequest(
         throw new Error("ALREADY_PENDING")
       }
 
+      const [organizerPayoutTotals] = await tx
+        .select({
+          paid: sql<string>`COALESCE(SUM(CASE WHEN ${payouts.status} = 'paid' THEN ${payouts.amount} ELSE 0 END), 0)`,
+          reserved: sql<string>`COALESCE(SUM(CASE WHEN ${payouts.status} IN ('pending', 'approved', 'processing') THEN ${payouts.amount} ELSE 0 END), 0)`,
+        })
+        .from(payouts)
+        .where(eq(payouts.userId, userId))
+      const [eventPayoutTotals] = await tx
+        .select({
+          paid: sql<string>`COALESCE(SUM(CASE WHEN ${payouts.status} = 'paid' THEN ${payouts.amount} ELSE 0 END), 0)`,
+          reserved: sql<string>`COALESCE(SUM(CASE WHEN ${payouts.status} IN ('pending', 'approved', 'processing') THEN ${payouts.amount} ELSE 0 END), 0)`,
+        })
+        .from(payouts)
+        .where(eq(payouts.eventId, eventId))
+      const organizerAvailable = Math.max(0, balance.totalEarned - Number(organizerPayoutTotals?.paid ?? 0) - Number(organizerPayoutTotals?.reserved ?? 0) - balance.outstandingClawbacks)
+      const eventAvailable = Math.max(0, eventSummary.netRevenue - Number(eventPayoutTotals?.paid ?? 0) - Number(eventPayoutTotals?.reserved ?? 0) - eventSummary.outstandingClawbacks)
+      const currentAvailable = Math.min(organizerAvailable, eventAvailable)
+      if (amount > currentAvailable) throw new Error(`INSUFFICIENT_BALANCE:${currentAvailable.toFixed(2)}`)
+
       const [result] = await tx
         .insert(payouts)
         .values({
           userId,
+          eventId,
           amount: cleanAmount.toFixed(2),
           currency,
           method,
@@ -286,15 +349,19 @@ export async function submitPayoutRequest(
           accountName: method === "ecocash" ? organizer?.name ?? undefined : accountName,
           bankName: method === "ecocash" ? "EcoCash" : bankName,
           balanceSnapshot: {
-            grossRevenue: Number(balance.grossRevenue.toFixed(2)),
-            platformFeePercent: balance.commissionRate,
-            platformFee: balance.platformFee,
-            netRevenue: balance.totalEarned,
-            paidOut: balance.totalPaidOut,
-            activePending: balance.pendingTotal,
-            availableBeforeRequest: availableBalance,
-            confirmedOrderCount: balance.confirmedOrderCount,
-            confirmedTicketCount: balance.confirmedTicketCount,
+            grossRevenue: eventSummary.grossRevenue,
+            platformFeePercent: eventSummary.commissionRate,
+            platformFee: eventSummary.platformFee,
+            netRevenue: eventSummary.netRevenue,
+            paidOut: Number(eventPayoutTotals?.paid ?? 0),
+            activePending: Number(eventPayoutTotals?.reserved ?? 0),
+            availableBeforeRequest: currentAvailable,
+            eventId,
+            eventTitle: event.title,
+            eventAvailableBeforeRequest: eventAvailable,
+            organizerAvailableBeforeRequest: organizerAvailable,
+            confirmedOrderCount: eventSummary.confirmedOrderCount,
+            confirmedTicketCount: eventSummary.confirmedTicketCount,
             destination,
           },
         })
@@ -305,10 +372,10 @@ export async function submitPayoutRequest(
         action: "requested",
         toStatus: "pending",
         performedBy,
-        notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested via ${methodName}. Gross tickets ${balance.grossRevenue.toFixed(2)} less ${balance.commissionRate}% fee.`,
+        notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested for ${event.title} via ${methodName}. Event gross tickets ${eventSummary.grossRevenue.toFixed(2)} less ${eventSummary.commissionRate}% fee.`,
       })
 
-      return result
+      return { ...result, availableBalance: currentAvailable }
     })
   } catch (txErr) {
     const message = String(txErr)
@@ -316,6 +383,11 @@ export async function submitPayoutRequest(
       log.warn("[request-payout] Already pending", { userId })
       return fail("You already have an active payout request. Wait for it to be processed before requesting another one.")
     }
+    if (message.includes("INSUFFICIENT_BALANCE:")) {
+      const available = Number(message.split("INSUFFICIENT_BALANCE:")[1])
+      return fail(`This event's available balance is now ${money(available)}. Refresh and try again.`)
+    }
+    if (message.includes("ORGANIZER_NOT_FOUND")) return fail("Organizer not found.")
     log.error("[request-payout] Transaction failed", { error: String(txErr) })
     return fail("We could not submit the payout request. Please try again.")
   }
@@ -331,27 +403,26 @@ export async function submitPayoutRequest(
     organizerName: organizer?.name,
     organizerEmail: organizer?.email,
     amount: cleanAmount,
-    grossRevenue: balance.grossRevenue,
-    commissionRate: balance.commissionRate,
-    platformFee: balance.platformFee,
-    availableBalance,
+    eventTitle: event.title,
+    grossRevenue: eventSummary.grossRevenue,
+    commissionRate: eventSummary.commissionRate,
+    platformFee: eventSummary.platformFee,
+    availableBalance: inserted.availableBalance,
     method: methodName,
     destination,
   }
 
-  if (organizer?.email) {
-    sendEmail({
-      to: organizer.email,
-      subject: "Payout request received",
-      html: payoutRequestEmailHtml({
-        ...emailArgs,
-        heading: "Your payout request was received",
-        intro: "Thanks. TicketPulse has received your payout request and queued it for admin review.",
-        url: `${baseUrl}/payouts`,
-      }),
-      text: payoutRequestEmailText(emailArgs),
-    }).catch((err) => log.warn("requestPayoutAction - organizer email failed", { payoutId: inserted.id, error: String(err) }))
-  }
+  await sendPayoutNotice({
+    payoutId: inserted.id,
+    organizerName: organizer.name,
+    email: organizer.email,
+    phone: whatsappPhone,
+    ecocashNumber: method === "ecocash" ? ecocashNumber : null,
+    amount: cleanAmount,
+    method,
+    status: "requested",
+    eventTitle: event.title,
+  })
 
   sendEmail({
     to: adminEmail,

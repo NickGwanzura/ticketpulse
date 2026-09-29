@@ -9,18 +9,38 @@ Future<bool> showPayoutRequest(
   OrganizerApi api, {
   required double available,
   Json? lastDestination,
-}) async =>
-    await Navigator.of(context).push<bool>(
+}) async {
+  late final List<OrganizerEvent> events;
+  try {
+    events = await api.events();
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load your events: $error')),
+      );
+    }
+    return false;
+  }
+  if (!context.mounted) return false;
+  if (events.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Create an event before requesting a payout.')),
+    );
+    return false;
+  }
+  return await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => PayoutRequestScreen(
           api: api,
           available: available,
           lastDestination: lastDestination,
+          events: events,
         ),
       ),
     ) ??
     false;
+}
 
 // Same rules as the website (lib/payout-request.ts); the server re-checks.
 final _ecocashPattern = RegExp(r'^(\+?263|0)?7[1789]\d{7}$');
@@ -31,10 +51,12 @@ class PayoutRequestScreen extends StatefulWidget {
     super.key,
     required this.api,
     required this.available,
+    required this.events,
     this.lastDestination,
   });
   final OrganizerApi api;
   final double available;
+  final List<OrganizerEvent> events;
   final Json? lastDestination;
   @override
   State<PayoutRequestScreen> createState() => _PayoutRequestScreenState();
@@ -45,6 +67,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
   late final TextEditingController _amount;
   late final TextEditingController _ecocash, _account, _holder, _bank;
   late String _method;
+  late String? _eventId;
   bool _busy = false;
   String? _error;
 
@@ -53,6 +76,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
     super.initState();
     final last = widget.lastDestination ?? const {};
     _method = last['method'] == 'bank_usd' ? 'bank_usd' : 'ecocash';
+    _eventId = widget.events.isEmpty ? null : widget.events.first.id;
     _amount = TextEditingController(text: _format(widget.available));
     _ecocash = TextEditingController(text: '${last['ecocashNumber'] ?? ''}');
     _account = TextEditingController(text: '${last['accountNumber'] ?? ''}');
@@ -95,6 +119,7 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
     try {
       await widget.api.requestPayout(
         amount: amount,
+        eventId: _eventId!,
         method: _method,
         ecocashNumber: _ecocash.text.replaceAll(' ', ''),
         accountNumber: _account.text.trim(),
@@ -161,6 +186,32 @@ class _PayoutRequestScreenState extends State<PayoutRequestScreen> {
                         Text(
                           money(widget.available),
                           style: text.headlineLarge,
+                        ),
+                        const SizedBox(height: 18),
+                        DropdownButtonFormField<String>(
+                          value: _eventId,
+                          decoration: const InputDecoration(
+                            labelText: 'Event for this payout',
+                          ),
+                          items: widget.events
+                              .map(
+                                (event) => DropdownMenuItem(
+                                  value: event.id,
+                                  child: Text(event.title),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _busy
+                              ? null
+                              : (value) => setState(() => _eventId = value),
+                          validator: (value) => value == null
+                              ? 'Choose the event this payout is for'
+                              : null,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Each payout is recorded against one event. The available amount is verified for that event before submission.',
+                          style: text.bodySmall,
                         ),
                         const SizedBox(height: 24),
                         TextFormField(

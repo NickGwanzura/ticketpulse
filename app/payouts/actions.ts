@@ -97,6 +97,7 @@ export async function requestPayoutAction(formData: FormData): Promise<PayoutAct
 
   const result = await submitPayoutRequest(session.user.id, session.user.email ?? session.user.id, {
     amount: formData.get("amount"),
+    eventId: formData.get("eventId"),
     currency: formData.get("currency"),
     method: formData.get("method"),
     ecocashNumber: formData.get("ecocashNumber"),

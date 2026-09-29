@@ -22,15 +22,15 @@ beforeEach(() => {
 
 describe("mobile payout request", () => {
   it("always requests for the signed-in organizer, ignoring any user in the body", async () => {
-    const response = await POST(request({ userId: "someone-else", amount: 50, method: "ecocash", ecocashNumber: "0771234567" }))
+    const response = await POST(request({ userId: "someone-else", eventId: "event-1", amount: 50, method: "ecocash", ecocashNumber: "0771234567" }))
     expect(response.status).toBe(201)
-    expect(mocks.submit).toHaveBeenCalledWith("org-1", "org@example.com", expect.objectContaining({ amount: 50, method: "ecocash", currency: "USD" }))
+    expect(mocks.submit).toHaveBeenCalledWith("org-1", "org@example.com", expect.objectContaining({ eventId: "event-1", amount: 50, method: "ecocash", currency: "USD" }))
     expect(await response.json()).toEqual({ ok: true, message: "Payout request submitted.", payoutId: "p-1" })
   })
 
   it("returns the validation message when the request is rejected", async () => {
     mocks.submit.mockResolvedValue({ ok: false, message: "You can request up to $20.00 right now." })
-    const response = await POST(request({ amount: 50, method: "ecocash" }))
+    const response = await POST(request({ eventId: "event-1", amount: 50, method: "ecocash" }))
     expect(response.status).toBe(400)
     expect(await response.json()).toEqual({ ok: false, error: "You can request up to $20.00 right now." })
   })

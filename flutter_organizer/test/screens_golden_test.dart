@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:ticketpulse_organizer/data/api.dart';
+import 'package:ticketpulse_organizer/data/models.dart';
 import 'package:ticketpulse_organizer/design.dart';
 import 'package:ticketpulse_organizer/main.dart';
 import 'package:ticketpulse_organizer/screens/payout_request.dart';
@@ -275,7 +276,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: Pulse.theme(Brightness.light),
-        home: PayoutRequestScreen(api: api, available: 1284.5),
+        home: PayoutRequestScreen(
+          api: api,
+          available: 1284.5,
+          events: [OrganizerEvent.fromJson({'id': 'event-1', 'title': 'Sunset Mimosa'})],
+        ),
       ),
     );
     await tester.pumpAndSettle();

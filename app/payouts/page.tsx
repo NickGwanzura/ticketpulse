@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<PayoutStatus, string> = {
 function payoutMethodLabel(payout: { method: string }) {
   if (payout.method === "cash") return "Manual cash"
   if (payout.method === "ecocash") return "EcoCash"
+  if (payout.method === "bank_zar") return "Legacy ZAR bank transfer"
   return "USD Bank"
 }
 
@@ -215,7 +216,7 @@ export default async function PayoutsDashboardPage() {
               </span>
               <div>
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(availableBalance, "USD")} available</p>
-                <p className="text-[13px] text-ink-2">Request a payout to your EcoCash wallet or bank account.</p>
+                <p className="text-[13px] text-ink-2">Request a USD payout to your EcoCash wallet or USD bank account.</p>
               </div>
             </div>
             <Link
