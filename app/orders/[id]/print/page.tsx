@@ -24,6 +24,43 @@ type CanonicalTicket = {
   tierName: string | null
 }
 
+type LoadFailureKind = "not_found" | "forbidden" | "rate_limited" | "unavailable" | "network"
+type LoadFailure = { kind: LoadFailureKind; status: number | null; requestId: string }
+
+function newRequestId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID()
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16)
+    return (char === "x" ? random : (random & 0x3) | 0x8).toString(16)
+  })
+}
+
+function failureKind(status: number): LoadFailureKind {
+  if (status === 404) return "not_found"
+  if (status === 403) return "forbidden"
+  if (status === 429) return "rate_limited"
+  return "unavailable"
+}
+
+function failureDescription(failure: LoadFailure, subject: string) {
+  switch (failure.kind) {
+    case "not_found": return `${subject} could not be found (404).`
+    case "forbidden": return `We couldn't verify access to ${subject.toLowerCase()} (403). Open the link from your confirmation email and try again.`
+    case "rate_limited": return `There were too many requests for ${subject.toLowerCase()}. Wait a moment, then retry.`
+    case "unavailable": return failure.status
+      ? `${subject} couldn't be loaded (HTTP ${failure.status}). Please retry in a moment.`
+      : `${subject} couldn't be loaded. Please retry in a moment.`
+    case "network": return `We couldn't reach the service to load ${subject.toLowerCase()}. Check your connection and retry.`
+  }
+}
+
+function responseRequestId(response: Response, fallback: string) {
+  const value = response.headers.get("x-request-id")
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : fallback
+}
+
 // ─── QR code SVG generator ───────────────────────────────────────────────────
 
 async function qrDataUrl(value: string): Promise<string> {
@@ -47,8 +84,12 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   const { ready, getOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
+  const [orderFailure, setOrderFailure] = useState<LoadFailure | null>(null)
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({})
   const [canonicalTickets, setCanonicalTickets] = useState<CanonicalTicket[]>([])
+  const [ticketFailure, setTicketFailure] = useState<LoadFailure | null>(null)
+  const [ticketsLoading, setTicketsLoading] = useState(true)
+  const [retryCount, setRetryCount] = useState(0)
   const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
@@ -63,26 +104,79 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     }
 
     setFetching(!local)
-    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
-      .then((r) => (r.ok ? r.json() : null))
+    const requestId = newRequestId()
+    let active = true
+    fetch(`/api/orders/${id}/data`, {
+      headers: { ...orderAuthHeaders(id, accessSignature), "x-request-id": requestId },
+    })
+      .then(async (response) => {
+        const responseId = responseRequestId(response, requestId)
+        if (!response.ok) {
+          if (active) {
+            setOrderFailure({ kind: failureKind(response.status), status: response.status, requestId: responseId })
+            if (!local) setOrder(null)
+            setFetching(false)
+          }
+          return null
+        }
+        return response.json() as Promise<OrderRecord>
+      })
       .then((data: OrderRecord | null) => {
+        if (!active) return
         if (data) {
           rememberOrderAccess(id, accessSignature)
           setOrder(data)
+          setOrderFailure(null)
         }
         setFetching(false)
       })
-      .catch(() => setFetching(false))
-  }, [ready, id, getOrder, accessSignature])
+      .catch(() => {
+        if (!active) return
+        setOrderFailure({ kind: "network", status: null, requestId })
+        setFetching(false)
+      })
+
+    return () => { active = false }
+  }, [ready, id, getOrder, accessSignature, retryCount])
 
   useEffect(() => {
     if (!ready) return
 
-    fetch(`/api/orders/${id}/tickets`, { headers: orderAuthHeaders(id, accessSignature) })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: CanonicalTicket[]) => setCanonicalTickets(Array.isArray(rows) ? rows : []))
-      .catch(() => setCanonicalTickets([]))
-  }, [ready, id, accessSignature])
+    const requestId = newRequestId()
+    let active = true
+    fetch(`/api/orders/${id}/tickets`, {
+      headers: { ...orderAuthHeaders(id, accessSignature), "x-request-id": requestId },
+    })
+      .then(async (response) => {
+        const responseId = responseRequestId(response, requestId)
+        if (!response.ok) {
+          if (active) setTicketFailure({ kind: failureKind(response.status), status: response.status, requestId: responseId })
+          return null
+        }
+        return response.json() as Promise<CanonicalTicket[]>
+      })
+      .then((rows) => {
+        if (!active) return
+        if (rows) {
+          setCanonicalTickets(Array.isArray(rows) ? rows : [])
+          setTicketFailure(null)
+        }
+        setTicketsLoading(false)
+      })
+      .catch(() => {
+        if (!active) return
+        setTicketFailure({ kind: "network", status: null, requestId })
+        setTicketsLoading(false)
+      })
+
+    return () => { active = false }
+  }, [ready, id, accessSignature, retryCount])
+
+  const retryLoads = () => {
+    if (!order) setFetching(true)
+    setTicketsLoading(true)
+    setRetryCount((count) => count + 1)
+  }
 
   // Generate scanner-compatible QR code data URLs from canonical DB tickets.
   useEffect(() => {
@@ -127,11 +221,29 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
   }
 
   if (!order) {
+    const title = orderFailure?.kind === "not_found"
+      ? "Order not found"
+      : orderFailure?.kind === "forbidden"
+        ? "Order access could not be verified"
+        : "We couldn't load this order"
+
     return (
       <main className="min-h-screen bg-[#f4f7fa] px-5 py-20 text-center">
-        <h1 className="text-[26px] font-bold tracking-tight text-[#0a2540]">Order not found</h1>
-        <p className="mt-2 text-[14px] text-[#5a6d7c]">No order with id <span className="font-mono">{id}</span>.</p>
+        <h1 className="text-[26px] font-bold tracking-tight text-[#0a2540]">{title}</h1>
+        <p className="mt-2 text-[14px] text-[#5a6d7c]">
+          {orderFailure
+            ? failureDescription(orderFailure, "this order")
+            : <>No order with id <span className="font-mono">{id}</span>.</>}
+        </p>
+        {orderFailure && <p className="mt-2 text-[12px] text-[#5a6d7c]">Reference: <span className="font-mono">{orderFailure.requestId}</span></p>}
         <p className="mt-1 text-[13px] text-[#5a6d7c]">If you just purchased, check your email — it may take a moment to appear here.</p>
+        <button
+          type="button"
+          onClick={retryLoads}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl border border-[#cbd5e1] bg-white px-5 py-3 text-sm font-semibold text-[#0a2540] hover:bg-slate-50 transition"
+        >
+          Retry loading order
+        </button>
         <Link href="/orders" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0a2540] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1a3550] transition">
           <ArrowLeft size={14} /> All orders
         </Link>
@@ -218,6 +330,28 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
       {/* ── Tickets ──────────────────────────────────────────────────────── */}
       <div className="max-w-[210mm] mx-auto px-4 md:px-8 py-8 md:py-10 space-y-6 print:space-y-0 print:max-w-none print:px-0 print:py-0">
+        {orderFailure && (
+          <div role="status" className="tp-no-print flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <div>
+              <p className="font-semibold">Order details could not be refreshed</p>
+              <p className="mt-1">{failureDescription(orderFailure, "this order")} Reference: <span className="font-mono">{orderFailure.requestId}</span></p>
+            </div>
+            <button type="button" onClick={retryLoads} className="rounded-lg border border-amber-300 bg-white px-3 py-2 font-semibold hover:bg-amber-100">
+              Retry
+            </button>
+          </div>
+        )}
+        {ticketFailure && (
+          <div role="alert" className="tp-no-print flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
+            <div>
+              <p className="font-semibold">Ticket details could not be loaded</p>
+              <p className="mt-1">{failureDescription(ticketFailure, "these tickets")} Printable QR codes may be unavailable. Reference: <span className="font-mono">{ticketFailure.requestId}</span></p>
+            </div>
+            <button type="button" onClick={retryLoads} disabled={ticketsLoading} className="rounded-lg border border-rose-300 bg-white px-3 py-2 font-semibold hover:bg-rose-100 disabled:opacity-50">
+              {ticketsLoading ? "Retrying…" : "Retry"}
+            </button>
+          </div>
+        )}
         {flat.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[#e2e8f0] bg-white p-8 text-center text-sm text-[#5a6d7c]">
             No ticketable items in this order.

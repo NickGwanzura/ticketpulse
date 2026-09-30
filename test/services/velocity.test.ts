@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import type { PollTransactionResponse } from "@/types/velocity"
 
+const logMocks = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+}))
+
+vi.mock("@/lib/logger", () => ({ log: logMocks }))
+
 const MOCK_SALES_ORDER_TRACE = "so-trace-001"
 const MOCK_TRANSACTION_TRACE = "tx-trace-001"
 
@@ -34,6 +43,7 @@ describe("velocity service", () => {
 
   beforeEach(async () => {
     vi.resetModules()
+    vi.clearAllMocks()
     process.env.VELOCITY_API_KEY = "test-key-123"
     process.env.VELOCITY_BASE_URL = "https://api.velocity.test"
     process.env.VELOCITY_ITEM_CODE = "tp001"
@@ -253,7 +263,8 @@ describe("velocity service", () => {
     })
 
     it("throws on API error", async () => {
-      mockFetch({ status: 400, body: { message: "Invalid item code" } })
+      const privateMarker = "provider-private-marker-2847"
+      mockFetch({ status: 400, body: { message: `Invalid item code: ${privateMarker}` } })
 
       await expect(
         mod.createSalesOrder({
@@ -265,7 +276,9 @@ describe("velocity service", () => {
           authorized: true,
           items: [{ itemCode: "bad", qty: 1, unitPrice: 10, amount: 10 }],
         }),
-      ).rejects.toThrow()
+      ).rejects.toThrow("Velocity API error: Velocity rejected the request as invalid")
+
+      expect(JSON.stringify(logMocks.error.mock.calls)).not.toContain(privateMarker)
     })
   })
 
@@ -306,6 +319,69 @@ describe("velocity service", () => {
       expect(result.body.trace).toBe(MOCK_TRANSACTION_TRACE)
       expect(result.body.pollStatus).toBe("PENDING")
       expect(result.body.amount).toBe(50)
+    })
+
+    it("does not write provider response values to application logs", async () => {
+      const privateMarker = "buyer-private-marker-8391"
+      mockFetch({
+        body: {
+          state: "gatewayPayment",
+          status: "manual",
+          redirectUrl: `https://velocity.test/payment/session?sig=${privateMarker}`,
+          customerEmail: `${privateMarker}@example.test`,
+          body: {
+            id: "txn-id-001",
+            trace: MOCK_TRANSACTION_TRACE,
+            amount: 50,
+            debitPhone: "+263771234567",
+            paymentStatus: "INITIATED",
+            pollStatus: "PENDING",
+          },
+          workflowId: "617",
+        },
+      })
+
+      await mod.initiateTransaction({
+        amount: 50,
+        paymentProcessorLabel: "ECOCASH",
+        debitPhone: "+263771234567",
+        debitRegion: "ZW",
+        debitCurrency: "USD",
+        debitRef: "ticketpulse",
+        creditPhone: "+263700000000",
+        creditRegion: "ZW",
+        creditAccount: "+263700000000",
+        type: "REQUEST",
+        authType: "REMOTE",
+        salesOrderId: MOCK_SALES_ORDER_TRACE,
+      })
+
+      expect(JSON.stringify(logMocks.info.mock.calls)).not.toContain(privateMarker)
+      expect(JSON.stringify(logMocks.info.mock.calls)).toContain('"keys"')
+    })
+
+    it("logs provider error field names without logging response values", async () => {
+      const privateMarker = "provider-private-marker-4920"
+      mockFetch({ status: 400, body: { message: privateMarker, customerPhone: "+263771234567" } })
+
+      await expect(mod.initiateTransaction({
+        amount: 50,
+        paymentProcessorLabel: "ECOCASH",
+        debitPhone: "+263771234567",
+        debitRegion: "ZW",
+        debitCurrency: "USD",
+        debitRef: "ticketpulse",
+        creditPhone: "+263700000000",
+        creditRegion: "ZW",
+        creditAccount: "+263700000000",
+        type: "REQUEST",
+        authType: "REMOTE",
+        salesOrderId: MOCK_SALES_ORDER_TRACE,
+      })).rejects.toThrow()
+
+      expect(JSON.stringify(logMocks.error.mock.calls)).not.toContain(privateMarker)
+      expect(JSON.stringify(logMocks.error.mock.calls)).not.toContain("+263771234567")
+      expect(JSON.stringify(logMocks.error.mock.calls)).toContain("responseFields")
     })
   })
 
@@ -364,7 +440,7 @@ describe("velocity service", () => {
       expect(requestOptions).not.toHaveProperty("body")
     })
 
-    it("includes Velocity error details in structured poll failures", async () => {
+    it("preserves only recognized safe categories in structured poll failures", async () => {
       mockFetch({
         status: 400,
         body: { message: "Invalid request", errors: ["Max poll attempts reached for transaction: trace-1"] },
@@ -372,9 +448,7 @@ describe("velocity service", () => {
 
       const result = await mod.pollTransaction("trace-1")
 
-      expect(result.errorMessage).toBe(
-        "Invalid request: Max poll attempts reached for transaction: trace-1",
-      )
+      expect(result.errorMessage).toBe("Velocity max poll attempts reached")
     })
 
     it("returns SUCCESS when payment is confirmed", async () => {
@@ -395,6 +469,33 @@ describe("velocity service", () => {
 
       const result = await mod.pollTransaction(MOCK_TRANSACTION_TRACE)
       expect(result.body.pollStatus).toBe("SUCCESS")
+    })
+
+    it("logs only safe status fields from a poll response", async () => {
+      const privateMarker = "poll-private-marker-9283"
+      mockFetch({
+        body: {
+          state: "done",
+          status: "finished",
+          redirectUrl: `https://velocity.test/payment/session?sig=${privateMarker}`,
+          body: {
+            id: "txn-id-001",
+            trace: MOCK_TRANSACTION_TRACE,
+            amount: 50,
+            customerPhone: "+263771234567",
+            paymentStatus: "SUCCESS",
+            pollStatus: "SUCCESS",
+          },
+          workflowId: "617",
+        },
+      })
+
+      await mod.pollTransaction(MOCK_TRANSACTION_TRACE)
+
+      const logs = JSON.stringify(logMocks.info.mock.calls)
+      expect(logs).not.toContain(privateMarker)
+      expect(logs).not.toContain("+263771234567")
+      expect(logs).toContain('"pollStatus":"SUCCESS"')
     })
 
     it("returns FAILED when payment fails", async () => {
@@ -444,7 +545,7 @@ describe("velocity service", () => {
       expect(result.body.pollStatus).toBe("UNKNOWN")
       expect(result.body.paymentStatus).toBe("UNKNOWN")
       expect(result.httpStatus).toBe(400)
-      expect(result.errorMessage).toBe("Transaction failed")
+      expect(result.errorMessage).toBe("Velocity API returned status 400")
       expect(result.state).toBe("provider_error")
     })
 
@@ -455,7 +556,7 @@ describe("velocity service", () => {
       expect(result.body.pollStatus).toBe("UNKNOWN")
       expect(result.body.paymentStatus).toBe("UNKNOWN")
       expect(result.httpStatus).toBe(500)
-      expect(result.errorMessage).toBe("Internal server error")
+      expect(result.errorMessage).toBe("Velocity API returned status 500")
     })
 
     it("handles network errors gracefully – returns structured response", async () => {

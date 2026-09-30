@@ -6,6 +6,8 @@ import { payouts, events, payoutAuditLog, notifications } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { defaultNotificationPriority } from "@/lib/notification-priority"
 import { recordAdminAudit } from "@/lib/admin-audit"
+import { queuePayoutNotificationDeliveries } from "@/lib/payout-notification-outbox"
+import type { PayoutNotificationEvent } from "@/lib/payout-notification-content"
 
 /**
  * Payout status machinery. This lives outside `app/admin/payouts/actions.ts`
@@ -66,7 +68,7 @@ export async function createPayoutAuditLog(opts: {
 
 export async function createPayoutNotification(opts: {
   userId: string
-  type: "payout_approved" | "payout_rejected" | "payout_paid" | "payout_failed"
+  type: PayoutNotificationEvent
   title: string
   body: string
   link?: string
@@ -107,7 +109,7 @@ export async function transitionPayout(opts: {
   extraSet?: PayoutTransitionFields
   auditNotes?: string | null
   notify?: {
-    type: "payout_approved" | "payout_rejected" | "payout_paid" | "payout_failed"
+    type: PayoutNotificationEvent
     title: string
     body: (payout: PayoutRow) => string
   }
@@ -173,6 +175,7 @@ export async function transitionPayout(opts: {
           title: opts.notify.title,
           body: opts.notify.body(current),
         }, tx)
+        await queuePayoutNotificationDeliveries(opts.payoutId, opts.notify.type, tx)
       }
       return true
     })

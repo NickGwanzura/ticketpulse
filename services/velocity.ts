@@ -18,22 +18,48 @@ import type {
 } from "@/types/velocity"
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
-const SENSITIVE_VELOCITY_KEYS = new Set([
-  "debitPhone",
-  "creditPhone",
-  "creditAccount",
-  "phone",
-])
+function safeVelocityPath(path: string): string {
+  return path
+    .split("/")
+    .map((segment) => segment === "" || /^[a-z-]+$/i.test(segment) ? segment : "[redacted]")
+    .join("/")
+}
 
-function redactVelocityPayload(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redactVelocityPayload)
-  if (!value || typeof value !== "object") return value
-  return Object.fromEntries(
-    Object.entries(value).map(([key, nested]) => [
-      key,
-      SENSITIVE_VELOCITY_KEYS.has(key) ? "[REDACTED]" : redactVelocityPayload(nested),
-    ]),
-  )
+function responseShape(value: unknown): { type: string; keys?: string[] } {
+  if (Array.isArray(value)) return { type: "array" }
+  if (value === null) return { type: "null" }
+  if (typeof value === "object") {
+    return { type: "object", keys: Object.keys(value).slice(0, 20) }
+  }
+  return { type: typeof value }
+}
+
+function parsedErrorFields(rawBody: string | null): string[] {
+  if (!rawBody) return []
+  try {
+    const value: unknown = JSON.parse(rawBody)
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+      ? Object.keys(value).slice(0, 20)
+      : []
+  } catch {
+    return []
+  }
+}
+
+function safeStatus(value: unknown): string {
+  return typeof value === "string" && /^[a-z_-]{1,32}$/i.test(value)
+    ? value
+    : "unrecognized"
+}
+
+function safeProviderErrorMessage(message: string, httpStatus: number): string {
+  const normalized = message.toLowerCase()
+  if (/max(?:imum)? poll attempts reached/.test(normalized)) return "Velocity max poll attempts reached"
+  if (/not fully paid|outstanding/.test(normalized)) return "Velocity sales order is not fully paid"
+  if (/unauthori[sz]ed|authentication|invalid api key/.test(normalized)) return "Velocity authorization failed"
+  if (/not found/.test(normalized)) return "Velocity resource not found"
+  if (/invalid|validation/.test(normalized)) return "Velocity rejected the request as invalid"
+  return `Velocity API returned status ${httpStatus}`
 }
 
 function getRequestTimeoutMs(): number {
@@ -128,7 +154,7 @@ async function velocityRequest<T>(
 
   log.info(`velocity request`, {
     method,
-    path,
+    path: safeVelocityPath(path),
   })
 
   const start = Date.now()
@@ -144,10 +170,12 @@ async function velocityRequest<T>(
       } catch {}
       log.error(`velocity request failed`, {
         status: response.status,
-        path,
+        path: safeVelocityPath(path),
         elapsed,
-        requestBody: options.body ? JSON.stringify(redactVelocityPayload(options.body)).slice(0, 2000) : undefined,
-        errorBody,
+        requestFields: options.body && typeof options.body === "object"
+          ? Object.keys(options.body).slice(0, 20)
+          : undefined,
+        responseFields: parsedErrorFields(errorBody),
       })
 
       let errorMessage: string
@@ -159,10 +187,10 @@ async function velocityRequest<T>(
           const details = Array.isArray(parsed.errors) && parsed.errors.length
             ? (parsed.errors as unknown[]).join("; ")
             : (parsed.message as string | undefined) ?? errorBody
-          errorMessage = `Velocity API error: ${details}`
+          errorMessage = `Velocity API error: ${safeProviderErrorMessage(details, response.status)}`
         } catch {
-          parsedErrorBody = { rawBody: errorBody.slice(0, 500) }
-          errorMessage = `Velocity API error: ${errorBody}`
+          parsedErrorBody = null
+          errorMessage = `Velocity API returned status ${response.status}`
         }
       } else {
         errorMessage = `Velocity API returned status ${response.status}`
@@ -174,14 +202,13 @@ async function velocityRequest<T>(
           type: "VELOCITY_API_UNEXPECTED_FORMAT",
           severity: response.status >= 500 ? "high" : "critical",
           title: `Velocity API error (${response.status})`,
-          detail: `${method} ${path} returned HTTP ${response.status}: ${errorMessage.slice(0, 300)}`,
+          detail: `${method} ${safeVelocityPath(path)} returned HTTP ${response.status}`,
           context: {
-            path,
+            path: safeVelocityPath(path),
             method,
             httpStatus: response.status,
             elapsed,
-            errorPreview: errorMessage.slice(0, 500),
-            parsedErrorBody: parsedErrorBody ? Object.keys(parsedErrorBody).slice(0, 10) : null,
+            responseFields: parsedErrorBody ? Object.keys(parsedErrorBody).slice(0, 20) : [],
           },
         }).catch(() => {})
       }
@@ -194,13 +221,13 @@ async function velocityRequest<T>(
     try {
       data = JSON.parse(responseText) as T
     } catch {
-      throw new Error(`Velocity API returned non-JSON response: ${responseText.slice(0, 500)}`)
+      throw new VelocityApiError("Velocity API returned a non-JSON response", response.status, path)
     }
 
     log.info(`velocity response`, {
-      path,
+      path: safeVelocityPath(path),
       elapsed,
-      body: JSON.stringify(data).slice(0, 2000),
+      ...responseShape(data),
     })
 
     return data
@@ -212,8 +239,8 @@ async function velocityRequest<T>(
 
     // Genuine network errors (fetch threw, DNS failure, timeout, etc.)
     log.error(`velocity network error`, {
-      path,
-      error: err instanceof Error ? err.message : String(err),
+      path: safeVelocityPath(path),
+      errorType: err instanceof Error ? err.name : "UnknownError",
     })
 
     // Alert on network errors to Velocity API
@@ -221,11 +248,11 @@ async function velocityRequest<T>(
       type: "VELOCITY_NETWORK_ERROR",
       severity: "high",
       title: "Network error communicating with Velocity",
-      detail: `${method} ${path} failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-      context: { path, method },
+      detail: `${method} ${safeVelocityPath(path)} failed before receiving a response`,
+      context: { path: safeVelocityPath(path), method },
     }).catch(() => {})
 
-    throw new Error(`Network error communicating with Velocity Africa: ${err instanceof Error ? err.message : "Unknown error"}`)
+    throw new Error("Network error communicating with Velocity Africa")
   }
 }
 
@@ -383,7 +410,7 @@ export async function pollTransaction(
 
   log.info("velocity request", {
     method: "PUT",
-    path,
+    path: safeVelocityPath(path),
   })
   const start = Date.now()
 
@@ -406,11 +433,14 @@ export async function pollTransaction(
     const providerErrors = Array.isArray(parsed.errors)
       ? parsed.errors.filter((entry): entry is string => typeof entry === "string")
       : []
-    const providerError = !response.ok
+    const providerErrorText = !response.ok
       ? [
           typeof parsed.message === "string" ? parsed.message : `Velocity returned HTTP ${response.status}`,
           ...providerErrors,
         ].filter(Boolean).join(": ")
+      : null
+    const providerError = providerErrorText
+      ? safeProviderErrorMessage(providerErrorText, response.status)
       : null
 
     // Ensure the response has a body property at the top level. A provider
@@ -435,19 +465,22 @@ export async function pollTransaction(
     }
 
     log.info("velocity response", {
-      path,
+      path: safeVelocityPath(path),
       httpStatus: response.status,
       elapsed,
-      body: JSON.stringify(data).slice(0, 2000),
+      state: safeStatus(data.state),
+      status: safeStatus(data.status),
+      paymentStatus: safeStatus(data.body.paymentStatus),
+      pollStatus: safeStatus(data.body.pollStatus),
     })
 
     return data
   } catch (err) {
     const elapsed = Date.now() - start
     log.error("pollTransaction - network error", {
-      transactionTrace,
+      path: safeVelocityPath(path),
       elapsed,
-      error: err instanceof Error ? err.message : String(err),
+      errorType: err instanceof Error ? err.name : "UnknownError",
     })
 
     return {
@@ -462,7 +495,7 @@ export async function pollTransaction(
       },
       workflowId: "",
       httpStatus: null,
-      errorMessage: err instanceof Error ? err.message : String(err),
+      errorMessage: "Network error communicating with Velocity",
     } as PollTransactionResponse
   }
 }
@@ -503,7 +536,7 @@ export async function finalizeWorkflow(
     if (msg.includes("not fully paid") || msg.includes("outstanding")) {
       log.warn("finalizeWorkflow - sales order not yet reconciled, retrying in 3 s", {
         salesOrderTrace,
-        error: err instanceof Error ? err.message : String(err),
+        reason: "sales_order_not_yet_reconciled",
       })
       await new Promise((r) => setTimeout(r, 3000))
       return velocityRequest<FinalizeWorkflowResponse>(

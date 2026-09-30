@@ -855,6 +855,18 @@ export const payoutMethodEnum = pgEnum("payout_method", [
   "cash",
 ])
 
+export const payoutNotificationEventEnum = pgEnum("payout_notification_event", [
+  "payout_requested",
+  "payout_approved",
+  "payout_processing",
+  "payout_rejected",
+  "payout_paid",
+  "payout_failed",
+])
+
+export const payoutNotificationChannelEnum = pgEnum("payout_notification_channel", ["email", "whatsapp"])
+export const payoutNotificationDeliveryStatusEnum = pgEnum("payout_notification_delivery_status", ["pending", "sending", "sent", "failed"])
+
 export const payouts = pgTable("payouts", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -899,6 +911,29 @@ export const payoutAuditLog = pgTable("payout_audit_log", {
 }, (table) => [
   index("payout_audit_log_payout_id_idx").on(table.payoutId),
   index("payout_audit_log_created_idx").on(table.createdAt),
+])
+
+// Durable channel-delivery outbox. The notification event and payout ID are
+// enough to rebuild a message from the payout record without duplicating
+// recipients or bank/EcoCash details in another table.
+export const payoutNotificationDeliveries = pgTable("payout_notification_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  payoutId: uuid("payout_id").notNull().references(() => payouts.id, { onDelete: "cascade" }),
+  eventType: payoutNotificationEventEnum("event_type").notNull(),
+  channel: payoutNotificationChannelEnum("channel").notNull(),
+  status: payoutNotificationDeliveryStatusEnum("status").default("pending").notNull(),
+  attemptCount: integer("attempt_count").default(0).notNull(),
+  nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  lockedAt: timestamp("locked_at"),
+  deliveredAt: timestamp("delivered_at"),
+  providerMessageId: text("provider_message_id"),
+  lastErrorCode: text("last_error_code"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("payout_notification_delivery_event_channel_idx").on(table.payoutId, table.eventType, table.channel),
+  index("payout_notification_delivery_retry_idx").on(table.status, table.nextAttemptAt),
+  index("payout_notification_delivery_payout_idx").on(table.payoutId),
 ])
 
 // ─── Administrative Audit Log ───────────────────────────────────────────────
@@ -1068,6 +1103,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "payout_paid",
   "payout_rejected",
   "payout_approved",
+  "payout_processing",
   "payout_failed",
   "event_published",
   "event_sold_out",

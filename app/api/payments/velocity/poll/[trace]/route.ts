@@ -27,7 +27,7 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
   const result = await pollTransaction(trace)
   const normalized = normalizeVelocityPollResponse(result)
 
-  log.info("velocity poll transaction - raw response", {
+  log.info("velocity poll transaction - response summary", {
     transactionTrace: trace,
     httpStatus: result.state === "network_error" ? 0 : undefined,
     velocityState: result.state,
@@ -35,7 +35,6 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
     paymentStatus: result.body?.paymentStatus,
     pollStatus: result.body?.pollStatus,
     amount: result.body?.amount,
-    fullBody: JSON.stringify(result).slice(0, 5000),
   })
 
   log.info("velocity poll transaction - normalized", {

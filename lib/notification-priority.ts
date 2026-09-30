@@ -15,6 +15,7 @@ const PRIORITY_BY_TYPE: Partial<Record<NotificationType, NotificationPriority>> 
   order_refunded: "high",
   payout_paid: "normal",
   payout_approved: "normal",
+  payout_processing: "normal",
   payout_requested: "normal",
   order_paid: "normal",
   ticket_issued: "normal",

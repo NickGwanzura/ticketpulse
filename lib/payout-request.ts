@@ -8,6 +8,8 @@ import { log } from "@/lib/logger"
 import { adminEmail, sendEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/url-config"
 import { getOrganizerRevenueSummary, PLATFORM_FEE_PERCENT } from "@/lib/revenue-summary"
+import { createPayoutNotification } from "@/lib/payout-transitions"
+import { queuePayoutNotificationDeliveries } from "@/lib/payout-notification-outbox"
 
 /** Raw payout request fields, as submitted by the website form or mobile app. */
 export type PayoutRequestInput = {
@@ -308,6 +310,14 @@ export async function submitPayoutRequest(
         notes: `Payout of ${cleanAmount.toFixed(2)} ${currency} requested via ${methodName}. Gross tickets ${balance.grossRevenue.toFixed(2)} less ${balance.commissionRate}% fee.`,
       })
 
+      await createPayoutNotification({
+        userId,
+        type: "payout_requested",
+        title: "Payout request received",
+        body: `Your payout request for ${money(cleanAmount)} is waiting for review.`,
+      }, tx)
+      await queuePayoutNotificationDeliveries(result.id, "payout_requested", tx)
+
       return result
     })
   } catch (txErr) {
@@ -337,20 +347,6 @@ export async function submitPayoutRequest(
     availableBalance,
     method: methodName,
     destination,
-  }
-
-  if (organizer?.email) {
-    sendEmail({
-      to: organizer.email,
-      subject: "Payout request received",
-      html: payoutRequestEmailHtml({
-        ...emailArgs,
-        heading: "Your payout request was received",
-        intro: "Thanks. TicketPulse has received your payout request and queued it for admin review.",
-        url: `${baseUrl}/payouts`,
-      }),
-      text: payoutRequestEmailText(emailArgs),
-    }).catch((err) => log.warn("requestPayoutAction - organizer email failed", { payoutId: inserted.id, error: String(err) }))
   }
 
   sendEmail({

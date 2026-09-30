@@ -183,11 +183,7 @@ export default function Footer() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-5 text-[12px] text-white/46 md:flex-row md:items-center md:justify-between md:px-8">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href="/help" className="inline-flex items-center gap-2 text-white/58 transition hover:text-white">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-70 animate-ping" />
-                <span className="relative block h-2 w-2 rounded-full bg-emerald-400" />
-              </span>
-              All systems operational
+              Help &amp; support
             </Link>
             <span className="hidden text-white/15 md:inline">/</span>
             <span>© {new Date().getFullYear()} TicketPulse. Built in Harare.</span>

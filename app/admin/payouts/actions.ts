@@ -1,15 +1,15 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { eq, desc, sql } from "drizzle-orm"
+import { eq, desc, sql, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
-import { payouts, events, users, payoutAuditLog } from "@/db/schema"
+import { payouts, events, users, payoutAuditLog, payoutNotificationDeliveries } from "@/db/schema"
 import { log } from "@/lib/logger"
-import { sendPayoutNotificationEmail } from "@/lib/email"
 import { recordAdminAudit } from "@/lib/admin-audit"
-import { PAYABLE_FROM, createPayoutAuditLog, isPayoutStatus, transitionPayout } from "@/lib/payout-transitions"
+import { PAYABLE_FROM, createPayoutAuditLog, createPayoutNotification, isPayoutStatus, transitionPayout } from "@/lib/payout-transitions"
+import { queuePayoutNotificationDeliveries, requeueFailedPayoutNotifications } from "@/lib/payout-notification-outbox"
 
 // FormData.get() returns null (not undefined) for any field that's absent —
 // an unchecked checkbox, a field the form doesn't render at all, etc.
@@ -99,8 +99,33 @@ export async function getPayouts(status?: string) {
     })
     .from(payouts)
 
+  const deliveryRows = payoutRows.length > 0
+    ? await db.select({
+      payoutId: payoutNotificationDeliveries.payoutId,
+      eventType: payoutNotificationDeliveries.eventType,
+      channel: payoutNotificationDeliveries.channel,
+      status: payoutNotificationDeliveries.status,
+      attemptCount: payoutNotificationDeliveries.attemptCount,
+      lastErrorCode: payoutNotificationDeliveries.lastErrorCode,
+      deliveredAt: payoutNotificationDeliveries.deliveredAt,
+    })
+      .from(payoutNotificationDeliveries)
+      .where(inArray(payoutNotificationDeliveries.payoutId, payoutRows.map((payout) => payout.id)))
+      .orderBy(desc(payoutNotificationDeliveries.createdAt))
+    : []
+
+  const deliveriesByPayout = new Map<string, typeof deliveryRows>()
+  for (const delivery of deliveryRows) {
+    const current = deliveriesByPayout.get(delivery.payoutId) ?? []
+    current.push(delivery)
+    deliveriesByPayout.set(delivery.payoutId, current)
+  }
+
   return {
-    payouts: payoutRows,
+    payouts: payoutRows.map((payout) => ({
+      ...payout,
+      notificationDeliveries: deliveriesByPayout.get(payout.id) ?? [],
+    })),
     stats: statsResult[0] ?? {
       pending: 0, approved: 0, processing: 0, paid: 0,
       held: 0, rejected: 0, failed: 0, cancelled: 0, pendingTotal: 0,
@@ -207,6 +232,14 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
         notes: `Manual payout of ${cleanAmount.toFixed(2)} ${currency} recorded (paid ${paidDate.toISOString().slice(0, 10)}). Ref: ${proofReference}`,
       }, tx)
 
+      await createPayoutNotification({
+        userId,
+        type: "payout_paid",
+        title: "Payout sent",
+        body: `A payout of ${cleanAmount.toFixed(2)} ${currency} was recorded as paid.`,
+      }, tx)
+      await queuePayoutNotificationDeliveries(result.id, "payout_paid", tx)
+
       return result
     })
 
@@ -294,6 +327,11 @@ export async function markPayoutProcessingAction(payoutId: string): Promise<void
     allowedFrom: ["approved"],
     toStatus: "processing",
     performedBy: session.user.email ?? session.user.id,
+    notify: {
+      type: "payout_processing",
+      title: "Payout being processed",
+      body: (payout) => `Your payout of ${Number(payout.amount).toFixed(2)} ${payout.currency ?? "USD"} is now being processed.`,
+    },
   })
 
   revalidatePath("/admin/payouts")
@@ -311,7 +349,7 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
     return
   }
 
-  const result = await transitionPayout({
+  await transitionPayout({
     payoutId,
     action: "paid",
     // A request must be approved before it can be paid.
@@ -331,32 +369,21 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
     },
   })
 
-  if (result.ok && result.payout) {
-    // Email notification (non-DB — fire-and-forget even if it fails)
-    try {
-      const [user] = await db
-        .select({ name: users.name, email: users.email })
-        .from(users)
-        .where(eq(users.id, result.payout.userId))
-        .limit(1)
+  revalidatePath("/admin/payouts")
+}
 
-      if (user?.email) {
-        await sendPayoutNotificationEmail({
-          to: user.email,
-          organizerName: user.name,
-          payoutId,
-          amount: String(result.payout.amount),
-          currency: result.payout.currency ?? "USD",
-          method: result.payout.method === "ecocash" ? "EcoCash" : "USD Bank",
-          destination: result.payout.accountName ?? result.payout.accountNumber ?? "nominated account",
-          eventTitle: result.payout.eventTitle ?? "Event",
-        })
-      }
-    } catch (emailErr) {
-      log.warn("Failed to send payout notification email", { payoutId, error: String(emailErr) })
-    }
+export async function retryPayoutNotificationAction(payoutId: string): Promise<void> {
+  const session = await requireAdmin().catch(() => null)
+  if (!session) {
+    log.warn("[retry-payout-notification] Unauthorized", { payoutId })
+    return
   }
+  if (!z.string().uuid().safeParse(payoutId).success) return
 
+  const count = await requeueFailedPayoutNotifications(payoutId)
+  if (count > 0) {
+    log.info("Payout notification deliveries requeued", { payoutId, count, by: session.user.email ?? session.user.id })
+  }
   revalidatePath("/admin/payouts")
 }
 

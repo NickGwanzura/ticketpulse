@@ -13,7 +13,7 @@ import { events, users } from "@/db/schema"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import {
   getPayouts, approvePayoutAction, rejectPayoutAction,
-  markPayoutPaidAction, markPayoutProcessingAction,
+  markPayoutPaidAction, markPayoutProcessingAction, retryPayoutNotificationAction,
 } from "./actions"
 import ManualPayoutForm from "./ManualPayoutForm"
 import Badge from "@/components/ui/Badge"
@@ -27,6 +27,20 @@ const TABS: { key: PayoutStatus | "all"; label: string }[] = [
   { key: "held",      label: "Held" },
   { key: "rejected",  label: "Rejected" },
 ]
+
+function deliveryLabel(deliveries: { channel: string; status: string; lastErrorCode?: string | null }[], channel: "email" | "whatsapp") {
+  const rows = deliveries.filter((delivery) => delivery.channel === channel)
+  if (rows.length === 0) return "not tracked"
+  const failed = rows.filter((delivery) => delivery.status === "failed").length
+  const pending = rows.filter((delivery) => delivery.status === "pending" || delivery.status === "sending").length
+  const sent = rows.filter((delivery) => delivery.status === "sent").length
+  const errorCodes = [...new Set(rows.filter((delivery) => delivery.status === "failed").map((delivery) => delivery.lastErrorCode).filter(Boolean))]
+  return [
+    failed > 0 ? `${failed} failed${errorCodes.length ? ` (${errorCodes.join(", ")})` : ""}` : null,
+    pending > 0 ? `${pending} queued` : null,
+    sent > 0 ? `${sent} sent` : null,
+  ].filter(Boolean).join(" · ")
+}
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const session = await auth()
@@ -205,6 +219,15 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         ? p.accountNumber
                         : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
                     </p>
+                    <div className="mt-2 rounded-lg bg-paper-2 px-3 py-2 text-[11px] text-ink-2">
+                      <p>Email: {deliveryLabel(p.notificationDeliveries, "email")}</p>
+                      <p>WhatsApp: {deliveryLabel(p.notificationDeliveries, "whatsapp")}</p>
+                      {p.notificationDeliveries.some((delivery) => delivery.status === "failed") && (
+                        <form action={async () => { "use server"; await retryPayoutNotificationAction(p.id) }}>
+                          <button type="submit" className="mt-1 font-semibold text-amber-800 underline underline-offset-2">Retry failed notices</button>
+                        </form>
+                      )}
+                    </div>
 
                     {/* Mobile action buttons */}
                     {p.status === "pending" && (

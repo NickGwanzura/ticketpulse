@@ -135,7 +135,7 @@ async function recoverCardRedirectUrl(
         log.info("velocity checkout - recovered redirect URL from re-initiated transaction", {
           orderId,
           transactionTrace,
-          newRedirectPreview: `${newRedirect.slice(0, 80)}...`,
+          redirectUrlRecovered: true,
         })
         return {
           redirectUrl: newRedirect,
@@ -158,7 +158,7 @@ async function recoverCardRedirectUrl(
     log.error("velocity checkout - redirect URL recovery failed", {
       orderId,
       transactionTrace,
-      error: err instanceof Error ? err.message : String(err),
+      errorType: err instanceof Error ? err.name : "UnknownError",
     })
     return { redirectUrl: null, transactionTrace: null, transactionId: null, attempted: recoveryAttempted }
   }
@@ -709,7 +709,7 @@ export async function POST(req: Request) {
       )
     }
     const isCard = resumable.paymentMethod === "velocity-card"
-    log.info("velocity checkout - resuming existing order", { orderId: resumable.id, email: parsed.email })
+    log.info("velocity checkout - resuming existing order", { orderId: resumable.id })
 
     // For card payments, attempt to recover the redirect URL so the buyer
     // actually gets sent to Velocity's hosted checkout instead of being
@@ -880,7 +880,10 @@ export async function POST(req: Request) {
   } catch (err) {
     // Reservation failed (tier sold out) or DB error — surface as 409
     const msg = err instanceof Error ? err.message : "Checkout failed"
-    log.warn("velocity checkout - order creation failed", { error: msg, email: parsed.email, eventId: event.id })
+    log.warn("velocity checkout - order creation failed", {
+      errorType: err instanceof Error ? err.name : "UnknownError",
+      eventId: event.id,
+    })
     return NextResponse.json({ error: msg }, { status: 409 })
   }
 
@@ -999,7 +1002,7 @@ export async function POST(req: Request) {
     const currentDate = new Date().toISOString().split("T")[0]
 
     const velocityCustomerId = await getDefaultCustomerId()
-    log.info("velocity checkout - using default customer UUID", { customerId: velocityCustomerId })
+    log.info("velocity checkout - using default customer")
 
     const ticketQty = ticketItems.reduce((s, i) => s + i.quantity, 0)
     const salesOrderPayload = {
@@ -1019,7 +1022,12 @@ export async function POST(req: Request) {
       ],
     }
 
-    log.info("velocity checkout - creating sales order", { orderId, payload: salesOrderPayload })
+    log.info("velocity checkout - creating sales order", {
+      orderId,
+      itemCount: salesOrderPayload.items.length,
+      amount: total,
+      currency,
+    })
     const salesOrder = await createSalesOrder(salesOrderPayload)
     const salesOrderTrace = salesOrder.body.trace
     const salesOrderId = salesOrder.body.id ?? salesOrderTrace
@@ -1159,7 +1167,7 @@ export async function POST(req: Request) {
             log.info("velocity checkout - redirect URL recovered on retry", {
               orderId,
               attempt,
-              retryRedirectPreview: `${retryUrl.slice(0, 80)}...`,
+              redirectUrlRecovered: true,
             })
             transaction = retryTx
             redirectUrl = retryUrl
@@ -1178,7 +1186,7 @@ export async function POST(req: Request) {
           log.warn("velocity checkout - redirect URL retry attempt failed", {
             orderId,
             attempt,
-            error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+            errorType: retryErr instanceof Error ? retryErr.name : "UnknownError",
           })
         }
       }
@@ -1200,13 +1208,10 @@ export async function POST(req: Request) {
         trace: transactionTrace,
         pollStatus,
         paymentStatus: transactionBody?.paymentStatus ?? null,
-        externalId: transaction.externalId ?? null,
         redirectUrlFound: !!redirectUrl,
-        redirectUrlPreview: redirectUrl ? `${redirectUrl.slice(0, 80)}...` : null,
         bodyType: transactionBody === null ? "null" : typeof transactionBody,
         allBodyKeys: transactionBody ? Object.keys(transactionBody).join(", ") : "",
         allResponseKeys: Object.keys(transaction).join(", "),
-        message: transaction.message ?? null,
       })
 
     if (!transactionTrace) {
@@ -1247,7 +1252,7 @@ export async function POST(req: Request) {
         orderId,
         processor,
         authType,
-        responseBody: JSON.stringify(transaction).slice(0, 2000),
+        responseFields: Object.keys(transaction).slice(0, 20),
       })
 
       // Fire alert for missing transaction trace
@@ -1255,7 +1260,7 @@ export async function POST(req: Request) {
         "Transaction missing trace",
         orderId,
         parsed.paymentMethod,
-        { processor, authType, responseBodyPreview: JSON.stringify(transaction).slice(0, 500) },
+        { processor, authType, responseFields: Object.keys(transaction).slice(0, 20) },
       )
 
       const userMsg = isCard
@@ -1314,7 +1319,7 @@ export async function POST(req: Request) {
         authType,
         transactionTrace: transactionTrace ?? "(no trace)",
         retriesAttempted: VMC_REDIRECT_RETRIES,
-        transactionBody: transactionBody ? JSON.stringify(transactionBody).slice(0, 2000) : "null",
+        responseFields: Object.keys(transaction).slice(0, 20),
         allResponseKeys: Object.keys(transaction).join(", "),
       })
 
@@ -1354,8 +1359,7 @@ export async function POST(req: Request) {
       currency,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Checkout failed"
-    log.error("velocity checkout failed", { orderId, error: message })
+    const errorType = err instanceof Error ? err.name : "UnknownError"
 
     // A network/timeout error talking to Velocity is ambiguous — the request
     // (createSalesOrder or initiateTransaction) may have actually gone through
@@ -1369,9 +1373,17 @@ export async function POST(req: Request) {
     // is known, instead of orphaning it.
     const isAmbiguous = !isDefinitiveRejection(err)
     await db.update(orders).set({
-      metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{initiationError}', ${JSON.stringify({ stage: initiationStage, ambiguous: isAmbiguous, httpStatus: err instanceof VelocityApiError ? err.httpStatus : null, occurredAt: new Date().toISOString(), message: message.slice(0, 300) })}::jsonb)`,
+      metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{initiationError}', ${JSON.stringify({ stage: initiationStage, ambiguous: isAmbiguous, httpStatus: err instanceof VelocityApiError ? err.httpStatus : null, errorType, occurredAt: new Date().toISOString() })}::jsonb)`,
       updatedAt: new Date(),
     }).where(and(eq(orders.id, orderId), inArray(orders.status, ["pending", "awaiting_verification"]))).catch((error) => log.error("checkout - failed to persist initiation diagnostic", { orderId, error: String(error) }))
+
+    log.error("velocity checkout failed", {
+      orderId,
+      errorType,
+      httpStatus: err instanceof VelocityApiError ? err.httpStatus : null,
+      stage: initiationStage,
+      ambiguous: isAmbiguous,
+    })
 
     alertPaymentAnomaly({
       type: "TRANSACTION_API_ERROR",
@@ -1380,11 +1392,11 @@ export async function POST(req: Request) {
         ? "Velocity request timed out — order left pending for reconciliation"
         : "Velocity API error during checkout",
       detail: isAmbiguous
-        ? `Checkout for order ${orderId} (${parsed.paymentMethod}) hit an ambiguous network/timeout error: ${message.slice(0, 300)}. Order left pending — the buyer may still complete payment.`
-        : `Checkout for order ${orderId} (${parsed.paymentMethod}) hit a Velocity API error: ${message.slice(0, 300)}. The buyer was shown an error and can retry.`,
+        ? `Checkout for order ${orderId} (${parsed.paymentMethod}) failed before the provider response could be confirmed. Order left pending for reconciliation.`
+        : `Checkout for order ${orderId} (${parsed.paymentMethod}) was rejected by the payment provider. The buyer can retry.`,
       orderId,
       paymentMethod: parsed.paymentMethod,
-      context: { errorMessage: message.slice(0, 500), isAmbiguous },
+      context: { stage: initiationStage, errorType, httpStatus: err instanceof VelocityApiError ? err.httpStatus : null, isAmbiguous },
     }).catch(() => {})
 
     if (!isAmbiguous) {
@@ -1394,6 +1406,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, orderId, accessSignature: orderAccessSignature(orderId), paymentMethod: "ECOCASH", flow: "velocity-seamless", pollRequired: true, awaitingConfirmation: true, amount: total, currency,
         message: "Payment confirmation is delayed. Please do not pay again; we are checking your order." })
     }
-    return NextResponse.json({ error: message }, { status: 502 })
+    return NextResponse.json({
+      error: isAmbiguous
+        ? "Payment is still being confirmed. Please do not pay again; check your order shortly."
+        : "We could not start the payment. Please check your details and try again.",
+    }, { status: 502 })
   }
 }

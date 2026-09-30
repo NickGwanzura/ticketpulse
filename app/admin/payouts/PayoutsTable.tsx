@@ -1,11 +1,12 @@
 "use client"
 
-import { CheckCircle2, Send, Smartphone, Building2, XCircle, Banknote } from "lucide-react"
+import { CheckCircle2, Send, Smartphone, Building2, XCircle, Banknote, Mail, MessageCircle, RotateCw } from "lucide-react"
 import DataTable, { type DataTableColumn } from "@/components/ui/DataTable"
 import Badge, { type BadgeTone } from "@/components/ui/Badge"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import {
   approvePayoutAction, rejectPayoutAction, markPayoutPaidAction, markPayoutProcessingAction,
+  retryPayoutNotificationAction,
   type getPayouts,
 } from "./actions"
 import PayoutsBulkActions from "./PayoutsBulkActions"
@@ -46,6 +47,26 @@ export function payoutMethodLabel(payout: { method: string }) {
 }
 
 export type PayoutRow = Awaited<ReturnType<typeof getPayouts>>["payouts"][number]
+
+function deliveryCounts(payout: PayoutRow, channel: "email" | "whatsapp") {
+  const rows = payout.notificationDeliveries.filter((delivery) => delivery.channel === channel)
+  return {
+    total: rows.length,
+    sent: rows.filter((delivery) => delivery.status === "sent").length,
+    pending: rows.filter((delivery) => delivery.status === "pending" || delivery.status === "sending").length,
+    failed: rows.filter((delivery) => delivery.status === "failed").length,
+    errorCodes: [...new Set(rows.filter((delivery) => delivery.status === "failed").map((delivery) => delivery.lastErrorCode).filter(Boolean))],
+  }
+}
+
+function deliveryLabel(counts: ReturnType<typeof deliveryCounts>) {
+  if (counts.total === 0) return "Not tracked"
+  return [
+    counts.failed > 0 ? `${counts.failed} failed${counts.errorCodes.length ? ` (${counts.errorCodes.join(", ")})` : ""}` : null,
+    counts.pending > 0 ? `${counts.pending} queued` : null,
+    counts.sent > 0 ? `${counts.sent} sent` : null,
+  ].filter(Boolean).join(" · ")
+}
 
 function payoutActionsCell(p: PayoutRow) {
   return (
@@ -177,6 +198,29 @@ const PAYOUT_COLUMNS: DataTableColumn<PayoutRow>[] = [
         {formatCurrency(Number(p.amount), p.currency)}
       </span>
     ),
+  },
+  {
+    key: "notifications",
+    label: "Notifications",
+    exportValue: (p) => p.notificationDeliveries.map((delivery) => `${delivery.eventType}:${delivery.channel}:${delivery.status}`).join("; "),
+    render: (p) => {
+      const email = deliveryCounts(p, "email")
+      const whatsapp = deliveryCounts(p, "whatsapp")
+      const hasFailures = email.failed + whatsapp.failed > 0
+      return (
+        <div className="space-y-1 text-[11px] text-ink-2">
+          <p className="flex items-center gap-1.5"><Mail size={11} /> Email: {deliveryLabel(email)}</p>
+          <p className="flex items-center gap-1.5"><MessageCircle size={11} /> WhatsApp: {deliveryLabel(whatsapp)}</p>
+          {hasFailures && (
+            <form action={async () => { await retryPayoutNotificationAction(p.id) }}>
+              <button type="submit" className="mt-1 inline-flex items-center gap-1 rounded-md border border-amber-300 px-2 py-1 font-semibold text-amber-800 hover:bg-amber-50">
+                <RotateCw size={10} /> Retry failed
+              </button>
+            </form>
+          )}
+        </div>
+      )
+    },
   },
   {
     key: "actions",

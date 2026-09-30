@@ -75,8 +75,9 @@ export async function POST(req: Request) {
       await releaseLock(lockKey)
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to create sales order"
-    log.error("create-sales-order failed", { error: message })
-    return NextResponse.json({ error: message }, { status: 502 })
+    log.error("create-sales-order failed", {
+      errorType: err instanceof Error ? err.name : "UnknownError",
+    })
+    return NextResponse.json({ error: "Failed to create the payment order. Please try again." }, { status: 502 })
   }
 }

@@ -35,9 +35,11 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
       invoiceRef: result.body.invoice.id,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to finalize workflow"
-    log.error("finalize-workflow failed", { salesOrderTrace: trace, error: message })
-    return NextResponse.json({ error: message }, { status: 502 })
+    log.error("finalize-workflow failed", {
+      salesOrderTrace: trace,
+      errorType: err instanceof Error ? err.name : "UnknownError",
+    })
+    return NextResponse.json({ error: "Failed to finalize the payment. Please try again." }, { status: 502 })
   } finally {
     await releaseLock(lockKey)
   }

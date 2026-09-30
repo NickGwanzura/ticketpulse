@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     { key: "paymentFollowups", path: "/api/cron/payment-followups", critical: false },
     { key: "cleanupLogs", path: "/api/cron/cleanup-logs", critical: false },
     { key: "whatsappWatchdog", path: "/api/cron/whatsapp-watchdog", critical: false },
+    { key: "payoutNotifications", path: "/api/cron/payout-notifications", critical: false },
     { key: "reconciliationDigest", path: "/api/cron/reconciliation-digest", critical: false },
   ] as const
 

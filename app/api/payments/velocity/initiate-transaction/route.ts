@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       if (!transactionTrace) {
         log.error("velocity initiate transaction missing trace", {
           salesOrderTrace,
-          responseBody: JSON.stringify(result).slice(0, 2000),
+          responseFields: Object.keys(result).slice(0, 20),
         })
         return NextResponse.json({
           error: "Velocity did not return a transaction reference. Please try again.",
@@ -94,8 +94,9 @@ export async function POST(req: Request) {
       await releaseLock(lockKey)
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to initiate transaction"
-    log.error("initiate-transaction failed", { error: message })
-    return NextResponse.json({ error: message }, { status: 502 })
+    log.error("initiate-transaction failed", {
+      errorType: err instanceof Error ? err.name : "UnknownError",
+    })
+    return NextResponse.json({ error: "Failed to initiate the payment. Please try again." }, { status: 502 })
   }
 }
