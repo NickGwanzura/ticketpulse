@@ -342,16 +342,10 @@ export async function POST(req: Request) {
     rawBody = await req.json()
     parsed = Body.parse(rawBody)
   } catch (err) {
-    // Log full validation failure for debugging; buyers get a readable summary
-    // instead of the serialized Zod issue list.
-    let error = "Please check your details and try again."
+    const detail = err instanceof Error ? err.message : null
+    // Log full validation failure for debugging
     if (err instanceof z.ZodError) {
       console.error("[checkout] validation failed:", JSON.stringify(err.issues))
-      const fields = Array.from(new Set(err.issues.map((i) => String(i.path[0] ?? "")).filter(Boolean)))
-      const labels: Record<string, string> = { email: "email address", name: "name", phone: "phone number", items: "ticket selection" }
-      if (fields.length > 0) {
-        error = `Please check your ${fields.map((f) => labels[f] ?? f).join(", ")}.`
-      }
     }
     return checkoutJson(
       { error: "Invalid request — " + (detail ?? "check your details and try again") },
@@ -839,7 +833,6 @@ export async function POST(req: Request) {
       success: true,
       paymentMethod: "FREE",
       orderId,
-      accessSignature: orderAccessSignature(orderId),
       flow: "free",
       amount: 0,
       currency,
@@ -1151,7 +1144,6 @@ export async function POST(req: Request) {
       return checkoutJson({
         error: "The card payment provider did not return a checkout page. Your order is being held for reconciliation; try again shortly or choose EcoCash.",
         orderId,
-        accessSignature: orderAccessSignature(orderId),
         recoverable: true,
       }, { status: 502 })
     }
@@ -1160,7 +1152,6 @@ export async function POST(req: Request) {
       success: true,
       paymentMethod: isCard ? "CARD" : "ECOCASH",
       orderId,
-      accessSignature: orderAccessSignature(orderId),
       salesOrderTrace,
       transactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",

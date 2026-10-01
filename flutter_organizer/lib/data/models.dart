@@ -22,13 +22,6 @@ String statusLabel(String value) {
       : label[0].toUpperCase() + label.substring(1);
 }
 
-String? _httpsUrl(dynamic value) {
-  final uri = Uri.tryParse('${value ?? ''}');
-  return uri != null && uri.scheme == 'https' && uri.hasAuthority
-      ? uri.toString()
-      : null;
-}
-
 class OrganizerEvent {
   OrganizerEvent.fromJson(Json json)
     : id = json['id'] as String,
@@ -38,35 +31,12 @@ class OrganizerEvent {
       endsAt = DateTime.tryParse('${json['endsAt']}'),
       venue = json['venue'] as String? ?? 'Venue to be confirmed',
       city = json['city'] as String? ?? '',
-      slug = json['slug'] as String?,
-      category = json['category'] as String?,
-      coverImage = _httpsUrl(json['coverImage']),
       sold = number(json['totalSold']).toInt(),
       capacity = number(json['totalCapacity']).toInt(),
-      checkedIn = number(json['checkedIn']).toInt(),
-      tiers = (json['tiers'] is List)
-          ? (json['tiers'] as List)
-                .whereType<Json>()
-                .map(TierSales.fromJson)
-                .toList()
-          : const [];
+      checkedIn = number(json['checkedIn']).toInt();
   final String id, title, status, venue, city;
-  final String? slug, category;
-
-  /// Cover artwork URL, only when it is an absolute https URL.
-  final String? coverImage;
   final DateTime? startsAt, endsAt;
   final int sold, capacity, checkedIn;
-
-  /// Sales by ticket type (empty on older servers).
-  final List<TierSales> tiers;
-
-  bool get isUpcoming =>
-      !isFinished &&
-      (startsAt == null ||
-          startsAt!.isAfter(
-            DateTime.now().subtract(const Duration(hours: 12)),
-          ));
   bool get isFinished => endsAt != null && !endsAt!.isAfter(DateTime.now());
   bool get canScan =>
       !isFinished && (status == 'published' || status == 'sold_out');

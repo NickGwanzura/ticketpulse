@@ -6,9 +6,8 @@ import CheckoutPaymentNotice from "@/app/checkout/CheckoutPaymentNotice"
 import { useCart } from "@/lib/cart-context"
 import { orderAuthHeaders, rememberOrderAccess, orderOwnerQuery } from "@/lib/order-auth-client"
 import { formatCurrency } from "@/lib/utils"
-import Button from "@/components/ui/Button"
 import {
-  ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check, AlertTriangle,
+  ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
 } from "lucide-react"
 
 type CheckoutResponse = {
@@ -16,7 +15,6 @@ type CheckoutResponse = {
   paymentMethod: "CARD" | "ECOCASH" | "FREE"
   flow: "velocity-seamless" | "velocity-redirect" | "free"
   orderId: string
-  accessSignature?: string
   salesOrderTrace?: string
   transactionTrace?: string
   pollRequired?: true
@@ -47,9 +45,6 @@ const POLL_TIMEOUT_MS = 5.5 * 60 * 1000
 // Key prefix used to persist polling state across page refresh.
 const POLL_SESSION_KEY = "polling"
 
-const INPUT_CLASS = "w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
-const LABEL_CLASS = "mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2"
-
 function clearPollingSession() {
   try {
     sessionStorage.removeItem(`${POLL_SESSION_KEY}:orderId`)
@@ -57,20 +52,16 @@ function clearPollingSession() {
     sessionStorage.removeItem(`${POLL_SESSION_KEY}:email`)
     sessionStorage.removeItem(`${POLL_SESSION_KEY}:phone`)
     sessionStorage.removeItem(`${POLL_SESSION_KEY}:method`)
-    sessionStorage.removeItem(`${POLL_SESSION_KEY}:event`)
   } catch { /* sessionStorage may be unavailable */ }
 }
 
-type PollingContact = { name: string; email: string; phone: string; method: string; eventSlug: string }
-
-function savePollingSession(orderId: string, contact: PollingContact) {
+function savePollingSession(orderId: string, contact: { name: string; email: string; phone: string; method: string }) {
   try {
     sessionStorage.setItem(`${POLL_SESSION_KEY}:orderId`, orderId)
     sessionStorage.setItem(`${POLL_SESSION_KEY}:name`, contact.name)
     sessionStorage.setItem(`${POLL_SESSION_KEY}:email`, contact.email)
     sessionStorage.setItem(`${POLL_SESSION_KEY}:phone`, contact.phone)
     sessionStorage.setItem(`${POLL_SESSION_KEY}:method`, contact.method)
-    sessionStorage.setItem(`${POLL_SESSION_KEY}:event`, contact.eventSlug)
   } catch { /* sessionStorage may be unavailable */ }
 }
 
@@ -111,7 +102,7 @@ function CheckoutInner() {
       if (savedOrderId) {
         const name = sessionStorage.getItem(`${POLL_SESSION_KEY}:name`)
         const email = sessionStorage.getItem(`${POLL_SESSION_KEY}:email`)
-        const phone = sessionStorage.getItem(`${POLL_SESSION_KEY}:phone`) ?? ""
+        const phone = sessionStorage.getItem(`${POLL_SESSION_KEY}:phone`)
         const method = sessionStorage.getItem(`${POLL_SESSION_KEY}:method`)
         if (name && email && phone !== null && method) {
           queueMicrotask(() => {
@@ -220,7 +211,6 @@ function CheckoutInner() {
           clearPollingSession()
           const isExpired = data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
           setPollingOrderId(null)
-          setPollNotice(null)
           setSubmitting(false)
           if (isExpired || data.pollStatus === "EVENT_ENDED") {
             router.replace("/checkout/expired?ref=" + pollingOrderId + "&" + orderOwnerQuery(pollingOrderId).slice(1))
@@ -232,8 +222,6 @@ function CheckoutInner() {
           return
         }
 
-        // Non-terminal problems are shown inside the waiting overlay, where
-        // the buyer is looking, and polling continues.
         if (data.pollStatus === "UNKNOWN") {
           setPollMessage("We couldn't confirm your payment status. If money was deducted, your tickets will be sent once confirmed. Contact support.")
         }
@@ -264,58 +252,36 @@ function CheckoutInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollingOrderId, saveOrder, removeItem, router])
 
-  // Fetch event questions once the event is known
+  // Fetch event questions once cart is ready
   useEffect(() => {
-    if (!ready || !activeEvent) return
-    fetch(`/api/checkout/questions?eventSlug=${encodeURIComponent(activeEvent)}`, { cache: "no-store" })
+    if (!ready || items.length === 0) return
+    const ticketItem = items.find((i) => i.kind === "ticket")
+    if (!ticketItem) return
+    fetch(`/api/checkout/questions?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.questions) setEventQuestions(data.questions)
       })
       .catch(() => { /* questions are optional */ })
-  }, [ready, activeEvent])
+  }, [ready, items])
 
-  if (!ready) return <CheckoutSkeleton />
-
-  // An in-flight payment must keep its overlay even though the cart is empty
-  // (e.g. after a refresh while waiting for EcoCash approval).
-  if (cartItems.length === 0 && !pollingOrderId) {
+  if (!ready) {
     return (
-      <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
-        <h1 className="text-[26px] font-bold tracking-tight text-ink">Nothing to check out yet</h1>
-        <p className="mt-2 text-[15px] text-ink-2">Add tickets to your cart first.</p>
-        <Button href="/events" size="lg" className="mt-6">
-          Browse events <ArrowRight size={14} />
-        </Button>
+      <div className="max-w-5xl mx-auto px-5 md:px-8 py-20">
+        <div className="h-8 w-40 bg-paper-2 rounded animate-pulse mb-6" />
+        <div className="h-64 bg-paper-2 rounded-2xl animate-pulse" />
       </div>
     )
   }
 
-  if (!activeEvent && !pollingOrderId) {
-    const groups = eventSlugs.map((slug) => {
-      const lines = cartItems.filter((i) => i.eventSlug === slug)
-      return { slug, title: lines[0]?.eventTitle ?? slug, count: lines.reduce((s, i) => s + i.qty, 0) }
-    })
+  if (items.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-5 md:px-8 py-16 md:py-20">
-        <h1 className="text-[26px] font-bold tracking-tight text-ink">Which event are you paying for?</h1>
-        <p className="mt-2 text-[15px] text-ink-2">Each event is paid separately. Pick one to check out now; the rest stay in your cart.</p>
-        <ul className="mt-6 space-y-3">
-          {groups.map((g) => (
-            <li key={g.slug}>
-              <Link
-                href={`/checkout?event=${encodeURIComponent(g.slug)}`}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-paper p-5 transition hover:border-line-2"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-semibold text-ink">{g.title}</span>
-                  <span className="text-[13px] text-ink-3">{g.count} {g.count === 1 ? "item" : "items"}</span>
-                </span>
-                <ArrowRight size={16} className="shrink-0 text-ink-3" />
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <div className="max-w-3xl mx-auto px-5 md:px-8 py-16 md:py-24 text-center">
+        <h1 className="text-[26px] font-bold tracking-tight text-ink">Nothing to check out yet</h1>
+        <p className="mt-2 text-[15px] text-ink-2">Add tickets to your cart first.</p>
+        <Link href="/events" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition">
+          Browse events <ArrowRight size={14} />
+        </Link>
       </div>
     )
   }
@@ -323,8 +289,7 @@ function CheckoutInner() {
   const checkoutGroups = [...new Map(items.filter(i => i.kind === 'ticket').map(i => [i.eventSlug + ':' + i.currency, i])).values()]
   if (checkoutGroups.length > 1) return <div className="mx-auto max-w-xl space-y-4 p-8"><h1 className="text-xl font-bold">Choose an order to check out</h1><p>Each event and currency has its own payment.</p>{checkoutGroups.map(item => <Link key={item.key} className="block rounded-lg border border-line p-4" href={'/checkout?event=' + encodeURIComponent(item.eventSlug) + '&currency=' + encodeURIComponent(item.currency)}>{item.eventTitle} · {item.currency} <ArrowRight size={14} /></Link>)}</div>
   const lineCount = items.reduce((s, i) => s + i.qty, 0)
-  const eventTitle = items[0]?.eventTitle ?? ""
-  const otherEventCount = eventSlugs.length - 1
+  const firstEventTitle = items[0]?.eventTitle ?? ""
 
   // Compute the final total for the CTA label
   const firstCurrency = Object.keys(totalsByCurrency)[0] ?? "USD"
@@ -334,45 +299,26 @@ function CheckoutInner() {
   const currentQuote = serverQuote?.inputKey === inputKey ? serverQuote : null
   const finalTotal = currentQuote?.amount ?? estimatedTotal
   const isFree = finalTotal === 0
-  const isEcoCash = !isFree && form.payment === "velocity-ecocash"
-
-  const applyPromo = async () => {
-    const code = promoInput.trim().toUpperCase()
-    if (!code || !activeEvent || promoLoading) return
-    setPromoLoading(true)
-    setPromoError(null)
-    try {
-      const res = await fetch(`/api/checkout/validate-promo?eventSlug=${encodeURIComponent(activeEvent)}&code=${encodeURIComponent(code)}`)
-      const data = await res.json()
-      if (data.valid) {
-        const val = Number(data.value)
-        const discount = data.type === "percent"
-          ? Math.round(rawTotal * (val / 100) * 100) / 100
-          : Math.min(val, rawTotal)
-        setAppliedPromo({ code: data.code, type: data.type, value: val, discount })
-        setPromoInput("")
-      } else {
-        setPromoError(data.error ?? "Invalid promo code")
-      }
-    } catch {
-      setPromoError("Failed to validate promo code")
-    } finally {
-      setPromoLoading(false)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (submitting || !activeEvent) return
+    if (submitting) return
     setSubmitError(null)
     setErrorOrderId(null)
     setSubmitting(true)
 
+    const eventLines = items
     const ticketLines = items.filter((i) => i.kind === "ticket")
     const merchLines = items.filter((i) => i.kind === "merch")
     const vendorAddonLines = items.filter((i) => i.kind === "vendor_addon")
     if (ticketLines.length === 0) {
-      setSubmitError("Your order has no tickets. Add a ticket to continue.")
+      setSubmitError("Your cart has no tickets. Add a ticket to continue.")
+      setSubmitting(false)
+      return
+    }
+    const slugs = new Set(eventLines.map((i) => i.eventSlug))
+    if (slugs.size > 1) {
+      setSubmitError("You have items for multiple events. Please check out one event at a time.")
       setSubmitting(false)
       return
     }
@@ -392,7 +338,7 @@ function CheckoutInner() {
         name: form.name,
         phone: form.phone,
         paymentMethod: form.payment,
-        eventSlug: activeEvent,
+        eventSlug: ticketLines[0].eventSlug,
         items: [
           ...ticketLines.map((l) => ({ kind: "ticket" as const, tierId: l.tierId, quantity: l.qty })),
           ...merchLines.map((l) => ({ kind: "merch" as const, itemId: l.itemId, quantity: l.qty, size: l.size })),
@@ -425,7 +371,7 @@ function CheckoutInner() {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        let errorMsg = "Checkout failed. Please try again."
+        let errorMsg = "Checkout failed"
         try {
           const errBody = await res.json()
           errorMsg = errBody.error ?? errorMsg
@@ -436,13 +382,14 @@ function CheckoutInner() {
           }
           if (errBody.quote) setServerQuote({ ...errBody.quote, inputKey })
         } catch { /* use default */ }
+        if (res.status === 502) throw new Error(errorMsg || "Payment service is temporarily unavailable. Please try again.")
         throw new Error(errorMsg)
       }
       const data = (await res.json()) as CheckoutResponse
       rememberOrderAccess(data.orderId, data.accessSignature)
       try { sessionStorage.setItem("tp_checkout_request_order", data.orderId) } catch { /* optional storage */ }
 
-      const contactData: PollingContact = { name: form.name, email: form.email, phone: form.phone, method: form.payment, eventSlug: activeEvent }
+      const contactData = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
 
       if (data.flow === "free") {
         await saveCanonicalOrder(data.orderId)
@@ -475,14 +422,6 @@ function CheckoutInner() {
     }
   }
 
-  const payLabel = isFree
-    ? <><Check size={14} /> Claim free tickets</>
-    : form.payment === "velocity-card"
-    ? <><CreditCard size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} by card</>
-    : <><Smartphone size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} with EcoCash</>
-
-  const payButtonClass = "inline-flex w-full items-center justify-center gap-2 rounded-sm bg-cta px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-chrome shadow-sm transition hover:bg-cta-hover active:scale-[0.99] disabled:opacity-80"
-
   return (
     <div className="min-h-screen bg-paper text-ink">
       {pollingOrderId && (
@@ -491,12 +430,9 @@ function CheckoutInner() {
           phone={form.phone}
           message={pollMessage}
           orderId={pollingOrderId}
-          notice={pollNotice}
-          onStopWaiting={() => {
-            const orderId = pollingOrderId
+          onCancel={() => {
             clearPollingSession()
             setPollingOrderId(null)
-            setPollNotice(null)
             setSubmitting(false)
             router.push("/orders/" + pollingOrderId + orderOwnerQuery(pollingOrderId))
           }}
@@ -505,64 +441,55 @@ function CheckoutInner() {
 
       {/* Header */}
       <div className="border-b border-line bg-paper">
-        <div className="mx-auto max-w-5xl px-5 pb-6 pt-8 md:px-8 md:pb-10 md:pt-12">
+        <div className="mx-auto max-w-5xl px-5 pb-8 pt-12 md:px-8 md:pb-12 md:pt-16">
           <Link
             href="/cart"
-            className="mb-5 inline-flex min-h-11 items-center gap-1 text-[11px] font-bold uppercase tracking-[0.16em] text-ink-3 transition-colors hover:text-accent"
+            className="mb-8 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.16em] text-ink-3 transition-colors hover:text-accent"
           >
             <ChevronLeft size={12} /> Back to cart
           </Link>
-          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-3">Checkout</p>
-          <h1 className="mt-2 font-display text-[34px] font-black uppercase leading-[0.9] tracking-[-0.03em] text-ink md:text-[56px]">
-            {eventTitle || "Your tickets"}
-          </h1>
-          <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-2">
-            Add your details and choose how to pay. Your tickets arrive by email as soon as payment clears.
-          </p>
-          {otherEventCount > 0 && (
-            <p className="mt-3 text-[13px] text-ink-3">
-              You also have items for {otherEventCount} other {otherEventCount === 1 ? "event" : "events"} in your cart. They stay there for a separate checkout.
+          <div className="max-w-2xl">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-ink-3">TicketPulse checkout</p>
+            <h1 className="mt-4 font-display text-[58px] font-black uppercase leading-[0.84] tracking-[-0.04em] text-ink sm:text-[76px] md:text-[104px]">
+              Your event.<br /><span className="text-cta">Your ticket.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-[14px] leading-relaxed text-ink-2 md:text-[15px]">
+              {firstEventTitle ? <>You&apos;re booking <strong className="font-semibold text-ink">{firstEventTitle}</strong>. Complete your details below and choose how you&apos;d like to pay.</> : "Complete your details below and choose how you&apos;d like to pay."}
             </p>
-          )}
+          </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mx-auto grid max-w-5xl grid-cols-1 gap-5 px-5 py-8 md:px-8 md:py-12 lg:grid-cols-[1.08fr_0.92fr] lg:gap-6">
         {/* Left: form fields */}
         <div className="space-y-5">
-          {returnError && RETURN_ERRORS[returnError] && !submitError && (
-            <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
-              <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden />
-              <p>{RETURN_ERRORS[returnError]}</p>
-            </div>
-          )}
-
           {/* Contact */}
           <div className="rounded-[1.25rem] border border-line-2 bg-paper p-5 shadow-[0_12px_35px_-28px_rgba(10,37,64,0.45)] md:p-7">
             <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Your details</h2>
-            <p className="mb-5 text-[13px] text-ink-3">Where should we send your tickets?</p>
+            <p className="mb-5 text-[13px] text-ink-3">Where should we send your ticket?</p>
 
             <div className="space-y-3.5">
               <div>
-                <label htmlFor="checkout-name" className={LABEL_CLASS}>Full name</label>
+                    <label htmlFor="checkout-name" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">Full name</label>
                 <div className="relative">
                   <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                   <input
                     id="checkout-name"
                     type="text"
                     required
+                    autoFocus
                     autoComplete="name"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Tendai Moyo"
-                    className={INPUT_CLASS}
+                    className="w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div className={`grid grid-cols-1 gap-3.5 ${!isFree && form.payment === "velocity-ecocash" ? "sm:grid-cols-2" : ""}`}>
                 <div>
-                  <label htmlFor="checkout-email" className={LABEL_CLASS}>Email for your tickets</label>
+                  <label htmlFor="checkout-email" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">Email for your ticket</label>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                     <input
@@ -574,33 +501,29 @@ function CheckoutInner() {
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
                       placeholder="you@example.com"
-                      className={INPUT_CLASS}
+                      className="w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                     />
                   </div>
                 </div>
-                <div>
-                  <label htmlFor="checkout-phone" className={LABEL_CLASS}>
-                    {isEcoCash ? "EcoCash number" : <>WhatsApp number <span className="font-medium normal-case tracking-normal text-ink-3">(optional)</span></>}
-                  </label>
-                  <div className="relative">
-                    <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
-                    <input
-                      id="checkout-phone"
-                      type="tel"
-                      required={isEcoCash}
-                      autoComplete="tel"
-                      inputMode="tel"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      placeholder="077 123 4567"
-                      aria-describedby="checkout-phone-hint"
-                      className={INPUT_CLASS}
-                    />
+                {!isFree && form.payment === "velocity-ecocash" && (
+                  <div>
+                    <label htmlFor="checkout-phone" className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">EcoCash number</label>
+                    <div className="relative">
+                      <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
+                      <input
+                        id="checkout-phone"
+                        type="tel"
+                        required
+                        autoComplete="tel"
+                        inputMode="tel"
+                        value={form.phone}
+                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        placeholder="+263 77…"
+                        className="w-full rounded-md border border-input bg-paper py-3 pl-9 pr-4 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
+                      />
+                    </div>
                   </div>
-                  <p id="checkout-phone-hint" className="mt-1 text-[11px] text-ink-3">
-                    {isEcoCash ? "The wallet that gets the payment prompt. We also send your tickets here on WhatsApp." : "Add it to get your tickets on WhatsApp too."}
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -614,7 +537,7 @@ function CheckoutInner() {
               <div className="space-y-3.5">
                 {eventQuestions.map((q) => (
                   <div key={q.id}>
-                    <label htmlFor={`checkout-question-${q.id}`} className={LABEL_CLASS}>
+                    <label htmlFor={`checkout-question-${q.id}`} className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">
                       {q.question}
                       {q.required && <span className="text-red-500 ml-0.5">*</span>}
                     </label>
@@ -634,47 +557,52 @@ function CheckoutInner() {
           )}
 
           {/* Payment method — hidden for free orders */}
-          {!isFree && (
-            <fieldset className="rounded-[1.25rem] border border-line-2 bg-paper p-5 md:p-7">
-              <legend className="sr-only">Payment method</legend>
-              <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Choose how to pay</h2>
-              {form.payment === "velocity-ecocash" && <CheckoutPaymentNotice />}
-              <div className="space-y-2">
-                {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
-                  const checked = form.payment === value
-                  return (
-                    <label
-                      key={value}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-cta/20 ${
-                        checked
-                          ? "border-cta bg-brand-50 ring-1 ring-cta/20"
-                          : "border-line-2 bg-paper hover:border-ink/40 hover:bg-paper-2"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={value}
-                        checked={checked}
-                        onChange={(e) => setForm({ ...form, payment: e.target.value as PaymentMethodValue })}
-                        className="sr-only"
-                      />
-                      <span className={`inline-flex w-9 h-9 items-center justify-center rounded-lg shrink-0 ${
-                        checked ? "bg-cta text-chrome" : "bg-paper-3 text-ink-2"
-                      }`}>
-                        <Icon size={15} />
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-ink">{label}</p>
-                        <p className="text-[12px] text-ink-3">{body}</p>
-                      </div>
-                      {checked && <Check size={14} className="shrink-0 text-cta" />}
-                    </label>
-                  )
-                })}
-              </div>
-            </fieldset>
-          )}
+          {!isFree && <div className="rounded-[1.25rem] border border-line-2 bg-paper p-5 md:p-7">
+            <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Choose how to pay</h2>
+            <CheckoutPaymentNotice />
+            <div className="space-y-2">
+              {PAYMENT_METHODS.map(({ value, label, body, icon: Icon }) => {
+                const checked = form.payment === value
+                const isEcoCash = value === "velocity-ecocash"
+                return (
+                  <label
+                    key={value}
+                    className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                      checked
+                        ? "border-cta bg-brand-50 ring-1 ring-cta/20"
+                        : "border-line-2 bg-paper hover:border-ink/40 hover:bg-paper-2"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={value}
+                      checked={checked}
+                      onChange={(e) => setForm({ ...form, payment: e.target.value as PaymentMethodValue })}
+                      className="sr-only"
+                    />
+                    <span className={`inline-flex w-9 h-9 items-center justify-center rounded-lg shrink-0 ${
+                      checked ? "bg-cta text-chrome" : "bg-paper-3 text-ink-2"
+                    }`}>
+                      <Icon size={15} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="flex flex-wrap items-center gap-2 text-[13px] font-semibold text-ink">
+                        {label}
+                        {isEcoCash && (
+                          <span className="tp-fast-badge inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-accent ring-1 ring-cta/25">
+                            Fast
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[12px] text-ink-3">{body}</p>
+                    </div>
+                    {checked && <Check size={14} className="shrink-0 text-cta" />}
+                  </label>
+                )
+              })}
+            </div>
+          </div>}
 
           {/* Error state */}
           {currentQuote && (
@@ -685,7 +613,7 @@ function CheckoutInner() {
             </div>
           )}
           {submitError && (
-            <div role="alert" className="text-[13px] text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 space-y-1">
+            <div role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3 space-y-1">
               <p>{submitError}</p>
               {errorOrderId && (
                 <Link
@@ -724,12 +652,12 @@ function CheckoutInner() {
             <div className="flex items-start justify-between gap-4 border-b border-line-2 pb-5">
               <div>
                 <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink-3">Order summary</h2>
-                <p className="mt-1 text-[12px] text-ink-3">{lineCount} {lineCount === 1 ? "item" : "items"}</p>
+                <p className="mt-1 text-[12px] text-ink-3">{lineCount} {lineCount === 1 ? "ticket" : "tickets"}</p>
               </div>
               <span className="font-display text-[32px] font-black leading-none tracking-[-0.04em] text-ink">{formatCurrency(finalTotal, firstCurrency)}</span>
             </div>
 
-            <ul className="space-y-2.5 my-4 max-h-64 overflow-y-auto">
+            <ul className="space-y-2.5 mb-4 max-h-64 overflow-y-auto">
               {items.map((line) => (
                 <li key={line.key} className="flex items-start gap-3 text-[13px]">
                   <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-line-2 mt-1.5" />
@@ -739,7 +667,7 @@ function CheckoutInner() {
                         : line.kind === "merch" ? line.name
                         : `${line.vendorName} · ${line.packageName}`}
                     </p>
-                    <p className="text-ink-3 text-[12px]">×{line.qty}</p>
+                    <p className="text-ink-3 text-[12px] line-clamp-1">{line.eventTitle} · ×{line.qty}</p>
                   </div>
                   <span className="font-semibold tracking-tight text-ink whitespace-nowrap">
                     {formatCurrency((line.kind === "ticket" ? currentQuote?.lines?.find(item => item.tierId === line.tierId)?.unitPrice ?? line.price : line.price) * line.qty, line.currency)}
@@ -759,7 +687,7 @@ function CheckoutInner() {
                     <button
                       type="button"
                       onClick={() => { setAppliedPromo(null); setPromoInput(""); setPromoError(null) }}
-                      className="min-h-9 px-1 text-[12px] text-ink-3 hover:text-red-500 transition"
+                      className="text-[12px] text-ink-3 hover:text-red-500 transition"
                     >
                       Remove
                     </button>
@@ -772,22 +700,12 @@ function CheckoutInner() {
               ) : (
                 <div className="space-y-2">
                   <div className="flex gap-2">
-                    <label htmlFor="checkout-promo" className="sr-only">Promo code</label>
                     <input
-                      id="checkout-promo"
                       type="text"
                       value={promoInput}
                       onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => {
-                        // Enter would otherwise submit the whole form and start the payment.
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          void applyPromo()
-                        }
-                      }}
                       placeholder="Promo code"
-                      autoComplete="off"
-                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                     />
                     <button
                       type="button"
@@ -827,7 +745,7 @@ function CheckoutInner() {
                       Apply
                     </button>
                   </div>
-                  {promoError && <p role="alert" className="text-[12px] text-red-600">{promoError}</p>}
+                  {promoError && <p className="text-[12px] text-red-500">{promoError}</p>}
                 </div>
               )}
             </div>
@@ -872,21 +790,12 @@ function CheckoutInner() {
             </button>
 
             <p className="mt-3 text-[11px] text-ink-3 text-center inline-flex items-center justify-center gap-1.5 w-full">
-              <Lock size={10} /> Payments processed securely. Card details never touch TicketPulse.
+              <Lock size={10} /> Secured by TicketPulse
             </p>
           </div>
         </aside>
       </form>
     </div>
-  )
-}
-
-function TermsNote() {
-  return (
-    <p className="mt-2.5 text-center text-[11px] leading-relaxed text-ink-3">
-      By paying you agree to the <Link href="/legal/terms" className="underline underline-offset-2 hover:text-ink">terms</Link>.
-      Full refunds up to 24 hours before the event.
-    </p>
   )
 }
 
@@ -913,7 +822,12 @@ function PaymentWaitingOverlay({
   }, [])
   const isCard = method === "velocity-card"
   const [timeLeftMs, setTimeLeftMs] = useState<number>(POLL_TIMEOUT_MS)
-  const [confirmingStop, setConfirmingStop] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel() }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [onCancel])
 
   useEffect(() => {
     const key = `poll_started:${orderId}`
@@ -944,28 +858,28 @@ function PaymentWaitingOverlay({
       }} className="relative max-h-[90dvh] w-full max-w-sm overflow-y-auto py-4 text-center">
         {/* Pulse rings */}
         <div className="relative mx-auto mb-7 w-20 h-20">
-          <span className="absolute inset-0 rounded-full bg-white/10 animate-ping motion-reduce:animate-none" style={{ animationDuration: "1.5s" }} />
+          <span className="absolute inset-0 rounded-full bg-white/10 animate-ping" style={{ animationDuration: "1.5s" }} />
           <span className="absolute inset-0 rounded-full bg-white/[0.07]" />
           <span className="relative z-10 inline-flex w-full h-full items-center justify-center rounded-full bg-white/15">
             {isCard ? <CreditCard size={30} className="text-white" /> : <Smartphone size={30} className="text-white" />}
           </span>
         </div>
 
-        <p className="text-[11px] font-semibold tracking-[0.2em] text-white/50 uppercase mb-2">
+        <p className="text-[11px] font-semibold tracking-[0.2em] text-white/40 uppercase mb-2">
           {isCard ? "Card payment" : "EcoCash"}
         </p>
         <h2 className="text-[24px] font-bold text-white tracking-tight">
           {isCard ? "Checking card payment" : "Check your phone"}
         </h2>
-        <p className="mt-3 text-[15px] text-white/70 leading-relaxed max-w-xs mx-auto">
+        <p className="mt-3 text-[15px] text-white/60 leading-relaxed max-w-xs mx-auto">
           {isCard
             ? "Your order is recorded. Open your order or contact support if the hosted payment page did not open."
             : <>Approve the EcoCash prompt sent to{" "}<span className="font-semibold text-white">{phone}</span></>
           }
         </p>
 
-        <div role="status" className="mt-7 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white/75">
-          <Loader2 size={13} className="animate-spin text-white/60" />
+        <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[13px] text-white/70">
+          <Loader2 size={13} className="animate-spin text-white/50" />
           Waiting for confirmation…
         </div>
 

@@ -40,8 +40,9 @@ export type OrderAccessOrder = {
 export async function authorizeOrderAccess(
   orderId: string,
   creds: {
-    /** Order or ticket signature from the buyer's link. */
+    /** E.164/raw order signature from the ticket link, or an email the caller claims. */
     signature?: string | null
+    email?: string | null
     /** Ticket id used with `signature`; defaults to the order id for order-level links. */
     ticketId?: string | null
     /** Already-resolved organizer scope, if the caller checked it. */
@@ -98,11 +99,13 @@ export async function authorizeOrderAccess(
 /** Extract caller credentials from headers/query shared by the order routes. */
 export function orderAccessCredsFrom(req: Request): {
   signature: string | null
+  email: string | null
   ticketId: string | null
 } {
   const url = new URL(req.url)
   return {
     signature: req.headers.get("x-ticket-signature") ?? url.searchParams.get("sig"),
+    email: req.headers.get("x-order-email") ?? url.searchParams.get("email"),
     ticketId: url.searchParams.get("ticketId"),
   }
 }

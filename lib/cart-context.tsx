@@ -9,11 +9,10 @@ interface CartLineBase {
   price: number
   currency: string
   qty: number
+  maxQty?: number
   eventStartsAt?: string
   eventEndsAt?: string
   eventVenue?: string
-  /** Most this line may hold (per-order cap and remaining stock at add time). */
-  maxQty?: number
 }
 
 export interface TicketLine     extends CartLineBase { kind: "ticket";       tierId: string;  tierName: string; emoji: string }
@@ -46,10 +45,9 @@ interface CartContextValue {
   totalCount: number
   totalsByCurrency: Record<string, number>
   addItem: (item: CartLineInput) => void
-  /** Upsert a line with exactly `item.qty` (used when the buyer goes straight to checkout). */
-  setItem: (item: CartLineInput) => void
   removeItem: (key: string) => void
   updateQty: (key: string, qty: number) => void
+  restoreItems: (items: CartLine[]) => void
   clear: () => void
   placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]) => OrderRecord
   saveOrder: (order: OrderRecord) => void
@@ -66,10 +64,6 @@ function keyFor(item: CartLineInput): string {
   if (item.kind === "merch")        return `merch:${item.eventSlug}:${item.itemId}:${item.size ?? ""}`
   if (item.kind === "vendor_addon") return `vendor_addon:${item.eventSlug}:${item.listingId}`
   return "item:unknown"
-}
-
-function clampQty(qty: number, maxQty?: number): number {
-  return typeof maxQty === "number" && maxQty > 0 ? Math.min(qty, maxQty) : qty
 }
 
 function makeOrderId(): string {
@@ -103,36 +97,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const key = keyFor(item)
     setItems((prev) => {
       const existing = prev.find((p) => p.key === key)
-      if (existing) {
-        const maxQty = item.maxQty ?? existing.maxQty
-        return prev.map((p) => (p.key === key ? { ...p, maxQty, qty: clampQty(p.qty + item.qty, maxQty) } : p))
-      }
-      return [...prev, { ...item, key, qty: clampQty(item.qty, item.maxQty) } as CartLine]
-    })
-  }, [])
-
-  const setItem = useCallback((item: CartLineInput) => {
-    const key = keyFor(item)
-    setItems((prev) => {
-      const line = { ...item, key, qty: clampQty(item.qty, item.maxQty) } as CartLine
-      if (prev.some((p) => p.key === key)) return prev.map((p) => (p.key === key ? line : p))
-      return [...prev, line]
-    })
-  }, [])
-
-  const restoreItems = useCallback((lines: CartLine[]) => {
-    setItems((prev) => {
-      const next = [...prev]
-      for (const raw of lines) {
-        // Server-built order lines use different keys; re-key them for the cart.
-        const { key: _serverKey, ...input } = raw
-        void _serverKey
-        const line = { ...input, key: keyFor(input as CartLineInput) } as CartLine
-        const i = next.findIndex((p) => p.key === line.key)
-        if (i >= 0) next[i] = line
-        else next.push(line)
-      }
-      return next
+      if (existing) return prev.map((p) => (p.key === key ? { ...p, qty: p.qty + item.qty } : p))
+      return [...prev, { ...item, key } as CartLine]
     })
   }, [])
 
@@ -141,8 +107,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updateQty = useCallback((key: string, qty: number) => {
-    setItems((prev) => (qty < 1 ? prev.filter((p) => p.key !== key) : prev.map((p) => (p.key === key ? { ...p, qty: clampQty(qty, p.maxQty) } : p))))
+    setItems((prev) => (qty < 1 ? prev.filter((p) => p.key !== key) : prev.map((p) => (p.key === key ? { ...p, qty } : p))))
   }, [])
+
+  const restoreItems = useCallback((nextItems: CartLine[]) => setItems(nextItems), [])
 
   const clear = useCallback(() => setItems([]), [])
 
@@ -174,17 +142,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [getOrders])
 
   const placeOrder = useCallback(
-    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"], eventSlug?: string): OrderRecord => {
-      const ordered = eventSlug ? items.filter((i) => i.eventSlug === eventSlug) : items
+    (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]): OrderRecord => {
       const order: OrderRecord = {
         id: orderId ?? makeOrderId(),
         createdAt: new Date().toISOString(),
         status: status ?? "paid",
-        items: [...ordered],
-        totalsByCurrency: ordered.reduce<Record<string, number>>((acc, i) => {
-          acc[i.currency] = (acc[i.currency] ?? 0) + i.price * i.qty
-          return acc
-        }, {}),
+        items: [...items],
+        totalsByCurrency: { ...totalsByCurrency },
         contact,
         payment,
       }
@@ -199,11 +163,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItems([])
       return order
     },
-    [items, saveOrder]
+    [items, totalsByCurrency, getOrders]
   )
 
   return (
-    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, removeItem, updateQty, clear, placeOrder, saveOrder, getOrders, getOrder }}>
+    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, removeItem, updateQty, restoreItems, clear, placeOrder, saveOrder, getOrders, getOrder }}>
       {children}
     </CartContext.Provider>
   )

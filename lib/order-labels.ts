@@ -8,6 +8,10 @@ export const ORDER_STATUS_LABEL: Record<OrderRecord["status"], string> = {
   pending: "Awaiting payment",
   refunded: "Refunded",
   expired: "Not completed",
+  cancelled: "Cancelled",
+  awaiting_verification: "Confirming payment",
+  refund_processing: "Refund processing",
+  unknown: "Status unavailable",
 }
 
 export const ORDER_STATUS_TONE: Record<OrderRecord["status"], string> = {
@@ -16,6 +20,10 @@ export const ORDER_STATUS_TONE: Record<OrderRecord["status"], string> = {
   pending: "bg-amber-50 text-amber-700",
   refunded: "bg-rose-50 text-rose-700",
   expired: "bg-paper-2 text-ink-3",
+  cancelled: "bg-paper-2 text-ink-3",
+  awaiting_verification: "bg-amber-50 text-amber-700",
+  refund_processing: "bg-rose-50 text-rose-700",
+  unknown: "bg-paper-2 text-ink-3",
 }
 
 export function paymentMethodLabel(method: string | null | undefined): string {

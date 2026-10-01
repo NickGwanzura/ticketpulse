@@ -1,22 +1,60 @@
 "use client"
-// A server-minted order capability, never a caller-supplied email, grants guest access.
-const KEY = "tp_order_access_signatures"
-const memory = new Map<string, string>()
+
+/**
+ * Client-side proof-of-ownership for order endpoints.
+ *
+ * The order QR codes and buyer details are authority-bearing, so
+ * `/api/orders/[id]/*` requires the caller to prove they own the order
+ * (see lib/order-access.ts). Guests have no session, so the proof is the
+ * order's access signature: the checkout API returns it when the order is
+ * created, and every emailed order link carries it as `?sig=`.
+ *
+ * The signature is remembered per order on this device, so later fetches carry
+ * it automatically. An authenticated owner needs no header at all — the
+ * session satisfies the server-side check.
+ */
+
+const KEY = "tp_order_access"
+const SIG_RE = /^[a-f0-9]{64}$/i
+
 function readMap(): Record<string, string> {
-  try { return typeof window === "undefined" ? {} : JSON.parse(window.localStorage.getItem(KEY) ?? "{}") } catch { return {} }
+  if (typeof window === "undefined") return {}
+  try {
+    return JSON.parse(window.localStorage.getItem(KEY) ?? "{}") as Record<string, string>
+  } catch {
+    return {}
+  }
 }
-export function rememberOrderAccess(orderId: string, signature?: string | null) {
-  if (!orderId || !signature || !/^[a-f0-9]{64}$/i.test(signature)) return
-  memory.set(orderId, signature)
-  try { window.localStorage.setItem(KEY, JSON.stringify({ ...readMap(), [orderId]: signature })) } catch { /* memory fallback */ }
+
+/** Remember an order's access signature so later fetches can prove ownership. */
+export function rememberOrderAccess(orderId: string, signature: string | null | undefined) {
+  if (typeof window === "undefined" || !orderId || !signature || !SIG_RE.test(signature)) return
+  try {
+    const map = readMap()
+    map[orderId] = signature
+    window.localStorage.setItem(KEY, JSON.stringify(map))
+  } catch {
+    /* storage unavailable — fetches will fall back to the session */
+  }
 }
-// Compatibility for existing contact-cache callers; emails grant no authority.
-export function rememberOrderOwner(_orderId: string, _email?: string | null) { void _orderId; void _email; /* compatibility only */ }
+
+/** The best known signature for `orderId`: an explicit one (from the URL) wins. */
+export function orderAccessSignatureFor(orderId: string, signature?: string | null): string | null {
+  if (signature && SIG_RE.test(signature)) return signature
+  return readMap()[orderId] ?? null
+}
+
+/** Headers proving ownership of `orderId`, or empty when unknown. */
 export function orderAuthHeaders(orderId: string, signature?: string | null): Record<string, string> {
-  const proof = signature || memory.get(orderId) || readMap()[orderId]
-  return proof ? { "x-ticket-signature": proof } : {}
+  const sig = orderAccessSignatureFor(orderId, signature)
+  return sig ? { "x-ticket-signature": sig } : {}
 }
+
+/**
+ * Same proof as a query string, for plain `<a href>` links (e.g. the Apple
+ * Wallet pass download) that cannot set request headers.
+ */
 export function orderOwnerQuery(orderId: string, signature?: string | null): string {
-  const proof = orderAuthHeaders(orderId, signature)["x-ticket-signature"]
-  return proof ? "?sig=" + encodeURIComponent(proof) : ""
+  const sig = orderAccessSignatureFor(orderId, signature)
+  return sig ? `?sig=${encodeURIComponent(sig)}` : ""
 }

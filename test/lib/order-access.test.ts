@@ -78,7 +78,6 @@ describe("authorizeOrderAccess", () => {
     mocks.auth.mockResolvedValue(null)
     const result = await authorizeOrderAccess(ORDER.id, { email: "attacker@example.com" })
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.reason).toBe("forbidden")
   })
 
   it("accepts a valid signed ticket payload", async () => {

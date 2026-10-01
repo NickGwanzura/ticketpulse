@@ -1,19 +1,19 @@
 "use client"
 import { Suspense, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import { Clock, ArrowRight, Mail } from "lucide-react"
-import { orderAuthHeaders, orderOwnerQuery, rememberOrderAccess } from "@/lib/order-auth-client"
+import { useRouter, useSearchParams } from "next/navigation"
+import { CheckCircle2, Clock, MessageCircle, ArrowRight, XCircle } from "lucide-react"
+import { orderAuthHeaders } from "@/lib/order-auth-client"
+import { SUPPORT_WHATSAPP } from "@/lib/order-labels"
+import Button from "@/components/ui/Button"
 
 function ExpiredInner() {
   const router = useRouter()
   const params = useSearchParams()
   const orderId = params.get("ref")
-  const signature = params.get("sig")
   const ref = orderId ? orderId.slice(0, 8).toUpperCase() : null
   const [status, setStatus] = useState<string | null>(null)
   useEffect(() => {
     if (!orderId) return
-    rememberOrderAccess(orderId, signature)
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | null = null
     const startedAt = Date.now()
@@ -23,7 +23,7 @@ function ExpiredInner() {
         const response = await fetch(`/api/checkout/velocity/status/${encodeURIComponent(orderId)}`, {
           cache: "no-store",
           signal: controller.signal,
-          headers: orderAuthHeaders(orderId, signature),
+          headers: orderAuthHeaders(orderId),
         })
         if (response.ok) {
           const next = await response.json()
@@ -50,7 +50,7 @@ function ExpiredInner() {
       controller.abort()
       if (timer) clearTimeout(timer)
     }
-  }, [orderId, signature])
+  }, [orderId, router])
   const paid = status === "paid" || status === "completed"
   const closed = status === "expired" || status === "cancelled"
   const whatsappText = encodeURIComponent(`Hi TicketPulse, I need help with payment reference ${ref ?? "(no reference)"}.`)
@@ -99,18 +99,16 @@ function ExpiredInner() {
         )}
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href={orderId ? `/orders/${orderId}${orderOwnerQuery(orderId, signature)}` : "/orders/lookup"}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
-          >
-            View order <ArrowRight size={14} />
-          </Link>
-          <Link
-            href="https://wa.me/263788689923"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-5 py-3 text-[14px] font-semibold text-ink hover:border-line-2 transition"
-          >
-            <Mail size={14} /> WhatsApp support
-          </Link>
+          {orderId && (
+            <Button href={`/orders/${orderId}${closed ? "" : "?welcome=1"}`} size="lg">
+              {closed ? "View order & try again" : "View order"} <ArrowRight size={14} />
+            </Button>
+          )}
+          {!paid && (
+            <Button href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${whatsappText}`} variant="secondary" size="lg" target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={14} /> WhatsApp support
+            </Button>
+          )}
         </div>
       </div>
     </div>

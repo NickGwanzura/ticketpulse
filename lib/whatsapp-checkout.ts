@@ -8,7 +8,6 @@ import { events, orders, ticketTiers, whatsappCheckoutSessions } from "@/db/sche
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { sendText } from "@/lib/whatsapp"
 import { log } from "@/lib/logger"
-import { orderAccessSignature } from "@/lib/tickets"
 
 const RESTART_PATTERN = /^(cancel|restart|stop)$/i
 

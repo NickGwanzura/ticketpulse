@@ -56,7 +56,6 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
     // Show local checkout data immediately, then enrich it from the database
     // with canonical event time and venue details when available.
-    rememberOrderAccess(id, accessSignature)
     const local = getOrder(id)
     if (local) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the printable view from persisted checkout state before the canonical refresh.
@@ -67,8 +66,10 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
-        if (data) rememberOrderAccess(id, accessSignature)
-        setOrder(data)
+        if (data) {
+          rememberOrderAccess(id, accessSignature)
+          setOrder(data)
+        }
         setFetching(false)
       })
       .catch(() => setFetching(false))
