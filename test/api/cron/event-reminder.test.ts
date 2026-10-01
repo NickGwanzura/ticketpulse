@@ -206,7 +206,7 @@ describe("event-reminder cron", () => {
 
   it("should handle WhatsApp send failures gracefully", async () => {
     const { sendText } = await import("@/lib/whatsapp")
-    ;(sendText as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("OpenWA connection failed"))
+    ;(sendText as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Gupshup connection failed"))
 
     dbSequence.push([
       { id: "evt-008", title: "Fail Event", slug: "fail", startsAt: makeTomorrow(), venue: null, organizerId: "org-001" },

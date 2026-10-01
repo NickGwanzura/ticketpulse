@@ -93,8 +93,7 @@ export function buildKey({ prefix, ext }: { prefix: string; ext: string }): stri
 
 /**
  * Upload a server-generated object and return its public URL.
- * Used for providers (such as WACRM) that accept media URLs rather than
- * inline base64 payloads.
+ * Used for providers that accept media URLs rather than inline base64 payloads.
  */
 export async function uploadPublicObject({
   key,

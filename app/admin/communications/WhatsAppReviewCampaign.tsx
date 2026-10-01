@@ -14,6 +14,7 @@ type CampaignEvent = {
 
 type CampaignResponse = {
   provider: string
+  whatsappReviewAvailable: boolean
   session: { status: string; phone: string | null; lastActive: string | null }
   events: CampaignEvent[]
 }
@@ -27,11 +28,11 @@ export default function WhatsAppReviewCampaign() {
   const [data, setData] = useState<CampaignResponse | null>(null)
   const [eventId, setEventId] = useState("")
   const [limit, setLimit] = useState("100")
-  const [channels, setChannels] = useState<Array<"whatsapp" | "email">>(["whatsapp", "email"])
+  const [channels, setChannels] = useState<Array<"whatsapp" | "email">>(["email"])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<{ batchId: string | null; totalMessages: number; emailSent?: number; emailFailed?: number; ordersMarked: number; skippedDuplicatePhones: number; estimatedCompletionTime: string | null } | null>(null)
+  const [result, setResult] = useState<{ totalMessages: number; emailSent?: number; emailFailed?: number; ordersMarked: number; whatsappSkipped?: string | null } | null>(null)
 
   async function load() {
     setLoading(true)
@@ -98,7 +99,7 @@ export default function WhatsAppReviewCampaign() {
         </div>
         <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${sessionReady ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
           {sessionReady ? <Wifi size={12} /> : <WifiOff size={12} />}
-          OpenWA {data?.session.status ?? (loading ? "checking" : "unreachable")}
+          Gupshup {data?.session.status ?? (loading ? "checking" : "unreachable")}
         </div>
       </div>
 
@@ -106,9 +107,9 @@ export default function WhatsAppReviewCampaign() {
         {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">{error}</div>}
         {result && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-800">
-            <div className="flex items-center gap-2 font-semibold"><CheckCircle size={15} /> Batch accepted by OpenWA</div>
-            <p className="mt-1">{result.totalMessages > 0 ? `${result.totalMessages} WhatsApp messages queued. ` : ""}{result.emailSent ? `${result.emailSent} emails sent. ` : ""}{result.emailFailed ? `${result.emailFailed} emails failed. ` : ""}{result.ordersMarked} orders marked{result.batchId ? ` against batch ${result.batchId}` : ""}.</p>
-            {result.skippedDuplicatePhones > 0 && <p className="mt-1 text-[12px]">{result.skippedDuplicatePhones} duplicate orders were grouped into the same phone recipient.</p>}
+            <div className="flex items-center gap-2 font-semibold"><CheckCircle size={15} /> Email follow-up complete</div>
+            <p className="mt-1">{result.emailSent ? `${result.emailSent} emails sent. ` : ""}{result.emailFailed ? `${result.emailFailed} emails failed. ` : ""}{result.ordersMarked} orders marked.</p>
+            {result.whatsappSkipped && <p className="mt-1 text-[12px]">{result.whatsappSkipped}</p>}
           </div>
         )}
 
@@ -140,11 +141,13 @@ export default function WhatsAppReviewCampaign() {
                   <button
                     key={channel}
                     type="button"
+                    disabled={channel === "whatsapp" && !data?.whatsappReviewAvailable}
+                    title={channel === "whatsapp" && !data?.whatsappReviewAvailable ? "Requires an approved Gupshup template and buyer opt-in tracking" : undefined}
                     onClick={() => setChannels((current) => selected ? current.filter((item) => item !== channel) : [...current, channel])}
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-semibold transition-colors ${selected ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-line bg-paper text-ink-2 hover:bg-paper-2"}`}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-semibold transition-colors ${selected ? "border-emerald-400 bg-emerald-50 text-emerald-700" : "border-line bg-paper text-ink-2 hover:bg-paper-2"} disabled:cursor-not-allowed disabled:opacity-50`}
                   >
                     {channel === "whatsapp" ? <MessageCircle size={13} /> : <Send size={13} />}
-                    {channel === "whatsapp" ? "WhatsApp" : "Email"}
+                    {channel === "whatsapp" ? "WhatsApp (paused)" : "Email"}
                   </button>
                 )
               })}
@@ -178,13 +181,13 @@ export default function WhatsAppReviewCampaign() {
 
         <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[12px] text-blue-800">
           <Clock3 size={14} className="mt-0.5 shrink-0" />
-          <p>Only paid/completed orders from ended events are included. OpenWA queues WhatsApp messages with a delay between sends, email is sent individually, and already-contacted buyers are skipped on later batches.</p>
+          <p>Only paid/completed orders from ended events are included. Email is sent individually, and already-contacted buyers are skipped on later batches. WhatsApp review follow-ups are paused until an approved Gupshup template and buyer opt-in tracking are configured.</p>
         </div>
 
         <div className="rounded-xl border border-line bg-paper-2 px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Message draft</p>
-          <p className="mt-2 text-[13px] font-semibold text-ink">WhatsApp: “Thanks for using TicketPulse. How was checkout, EcoCash or card payment, ticket delivery, and support?”</p>
-          <p className="mt-1 text-[12px] text-ink-2">Email subject: Tell us about your TicketPulse experience · both messages include a private review link tied to the buyer&apos;s order.</p>
+          <p className="mt-2 text-[13px] font-semibold text-ink">WhatsApp review requests are paused; Gupshup requires an approved template outside the customer-service window.</p>
+          <p className="mt-1 text-[12px] text-ink-2">Email subject: Tell us about your TicketPulse experience · email includes a private review link tied to the buyer&apos;s order.</p>
         </div>
       </div>
     </section>

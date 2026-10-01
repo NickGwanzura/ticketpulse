@@ -3,167 +3,128 @@ import { randomUUID } from "node:crypto"
 import { log } from "@/lib/logger"
 import { uploadPublicObject } from "@/lib/r2"
 
-type OpenWAConfig = {
-  baseUrl: string
+type GupshupConfig = {
   apiKey: string
-  defaultSessionId: string
+  appId: string
+  appName: string
+  source: string
 }
 
-type WhatsAppProvider = "openwa" | "wacrm"
-
-type WacrmConfig = {
-  baseUrl: string
-  apiKey: string
+type GupshupMessageResponse = {
+  status?: string
+  messageId?: string
+  message?: string
+  timestamp?: string | number
 }
 
-type WacrmMessageResponse = {
-  message_id?: string
-  whatsapp_message_id?: string
-  created_at?: string
-}
+function gupshupConfig(): GupshupConfig {
+  const apiKey = process.env.GUPSHUP_API_KEY?.trim()
+  const appId = process.env.GUPSHUP_APP_ID?.trim()
+  const appName = process.env.GUPSHUP_APP_NAME?.trim()
+  const rawSource = process.env.GUPSHUP_SOURCE?.trim()
 
-function provider(): WhatsAppProvider {
-  const value = (process.env.WHATSAPP_PROVIDER ?? "openwa").trim().toLowerCase()
-  if (value === "openwa" || value === "wacrm") return value
-  throw new Error(`Unsupported WhatsApp provider "${value}". Use "openwa" or "wacrm".`)
-}
-
-function config(): OpenWAConfig {
-  const baseUrl = process.env.OPENWA_URL
-  const apiKey = process.env.OPENWA_API_KEY
-  const defaultSessionId = process.env.OPENWA_SESSION_ID
-
-  if (!baseUrl || !apiKey || !defaultSessionId) {
-    throw new Error(
-      "Missing OpenWA configuration. Set OPENWA_URL, OPENWA_API_KEY, and OPENWA_SESSION_ID in .env.local",
-    )
+  if (!apiKey || !appId || !appName || !rawSource) {
+    throw new Error("Missing Gupshup configuration. Set GUPSHUP_API_KEY, GUPSHUP_APP_ID, GUPSHUP_APP_NAME, and GUPSHUP_SOURCE.")
   }
 
-  return { baseUrl, apiKey, defaultSessionId }
+  return { apiKey, appId, appName, source: toGupshupNumber(rawSource) }
 }
 
-function wacrmConfig(): WacrmConfig {
-  const baseUrl = process.env.WACRM_URL
-  const apiKey = process.env.WACRM_API_KEY
-  if (!baseUrl || !apiKey) {
-    throw new Error("Missing WACRM configuration. Set WACRM_URL and WACRM_API_KEY in the environment.")
-  }
-  return { baseUrl, apiKey }
+function countryCode(): string {
+  return (process.env.WHATSAPP_COUNTRY_CODE ?? "263").replace(/\D/g, "")
 }
 
-function wacrmApiBase(): string {
-  const { baseUrl } = wacrmConfig()
-  const root = baseUrl.replace(/\/+$/, "")
-  return root.endsWith("/api/v1") ? root : `${root}/api/v1`
-}
-
-async function wacrmFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const { apiKey } = wacrmConfig()
-  const res = await fetch(`${wacrmApiBase()}${path}`, {
-    ...options,
-    signal: options.signal ?? AbortSignal.timeout(20_000),
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      ...options.headers,
-    },
-  })
-
-  const payload = await res.json().catch(() => null) as {
-    data?: T
-    error?: { code?: string; message?: string }
-  } | null
-
-  if (!res.ok || payload?.error) {
-    const code = payload?.error?.code ? ` ${payload.error.code}` : ""
-    const message = payload?.error?.message ?? `HTTP ${res.status}`
-    throw new Error(`WACRM API error${code}: ${message}`)
-  }
-
-  return (payload?.data ?? payload) as T
-}
-
-function toE164(chatId: string): string {
-  let digits = chatId.replace(/@[^@]+$/, "").replace(/\D/g, "")
-  const countryCode = (process.env.WHATSAPP_COUNTRY_CODE ?? "263").replace(/\D/g, "")
+function toGupshupNumber(value: string): string {
+  let digits = value.trim().replace(/^whatsapp:/i, "").replace(/@[^@]+$/, "").replace(/\D/g, "")
   if (digits.startsWith("00")) digits = digits.slice(2)
-  if (digits.startsWith("0")) digits = `${countryCode}${digits.slice(1)}`
-  else if (digits.length === 9 && digits.startsWith("7")) digits = `${countryCode}${digits}`
-  if (!digits) throw new Error("WhatsApp recipient phone number is empty")
-  return `+${digits}`
-}
+  if (digits.startsWith("0")) digits = `${countryCode()}${digits.slice(1)}`
+  else if (digits.length === 9 && digits.startsWith("7")) digits = `${countryCode()}${digits}`
 
-function messageResult(data: WacrmMessageResponse): SendTextResponse {
-  return {
-    messageId: data.message_id ?? data.whatsapp_message_id ?? `wacrm-${randomUUID()}`,
-    timestamp: data.created_at ? Date.parse(data.created_at) || Date.now() : Date.now(),
+  if (digits.length < 8 || digits.length > 15) {
+    throw new Error("WhatsApp phone number must be a valid international number.")
   }
-}
-
-async function wacrmMediaUrl(options: SendMediaOptions, extension: string): Promise<string> {
-  if (options.url) return options.url
-  if (!options.base64) throw new Error("WACRM media requires a public URL or base64 payload")
-  const contentType = options.mimetype ?? "application/octet-stream"
-  const key = `whatsapp/wacrm/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`
-  return uploadPublicObject({
-    key,
-    body: Buffer.from(options.base64, "base64"),
-    contentType,
-  })
-}
-
-async function openwaFetch<T = unknown>(
-  path: string,
-  options: RequestInit & { sessionId?: string } = {},
-): Promise<T> {
-  const { baseUrl, apiKey } = config()
-  const url = `${baseUrl.replace(/\/+$/, "")}/api${path}`
-
-  const res = await fetch(url, {
-    ...options,
-    signal: options.signal ?? AbortSignal.timeout(20_000),
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": apiKey,
-      ...options.headers,
-    },
-  })
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "Unknown error")
-    throw new Error(`OpenWA API error (${res.status}): ${body}`)
-  }
-
-  return res.json() as Promise<T>
+  return digits
 }
 
 /**
- * Format a phone number into a WhatsApp chat ID.
- * Strips non-digits, removes leading 0 if present, and appends @c.us.
+ * Keep the app's stable WhatsApp chat key format while translating phone
+ * numbers to Gupshup's digits-only E.164 form at the provider boundary.
  *
  * @example formatChatId("+263 77 123 4567") // "263771234567@c.us"
- * @example formatChatId("0771234567")        // "771234567@c.us"
+ * @example formatChatId("0771234567")        // "263771234567@c.us"
  */
 export function formatChatId(phone: string): string {
-  let digits = phone.replace(/\D/g, "")
-  if (digits.startsWith("0")) {
-    digits = `263${digits.slice(1)}`
-  } else if (digits.length === 9 && digits.startsWith("7")) {
-    digits = `263${digits}`
-  }
-  return `${digits}@c.us`
+  return `${toGupshupNumber(phone)}@c.us`
 }
 
-// ─── Session ────────────────────────────────────────────────────────────────
+async function gupshupFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const { apiKey } = gupshupConfig()
+  const headers = new Headers(options.headers)
+  headers.set("apikey", apiKey)
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/x-www-form-urlencoded")
+  }
 
-export type SessionStatus =
-  | "created"
-  | "initializing"
-  | "qr_ready"
-  | "authenticating"
-  | "ready"
-  | "disconnected"
-  | "failed"
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    signal: options.signal ?? AbortSignal.timeout(20_000),
+  })
+  const payload = await response.json().catch(() => null) as (T & GupshupMessageResponse) | null
+  if (!response.ok || payload?.status === "error") {
+    throw new Error(`Gupshup API error: ${payload?.message ?? `HTTP ${response.status}`}`)
+  }
+  if (!payload) throw new Error("Gupshup API returned an empty response")
+  return payload
+}
+
+function messageResult(data: GupshupMessageResponse): SendTextResponse {
+  const timestamp = typeof data.timestamp === "number"
+    ? data.timestamp
+    : typeof data.timestamp === "string"
+      ? Date.parse(data.timestamp)
+      : Number.NaN
+
+  return {
+    messageId: data.messageId ?? `gupshup-${randomUUID()}`,
+    timestamp: Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now(),
+  }
+}
+
+function messageForm(destination: string, message: Record<string, unknown>): URLSearchParams {
+  const config = gupshupConfig()
+  return new URLSearchParams({
+    channel: "whatsapp",
+    source: config.source,
+    destination: toGupshupNumber(destination),
+    message: JSON.stringify(message),
+    "src.name": config.appName,
+  })
+}
+
+async function sendMessage(destination: string, message: Record<string, unknown>): Promise<SendTextResponse> {
+  const data = await gupshupFetch<GupshupMessageResponse>("https://api.gupshup.io/wa/api/v1/msg", {
+    method: "POST",
+    body: messageForm(destination, message),
+  })
+  return messageResult(data)
+}
+
+async function publicMediaUrl(options: SendMediaOptions, extension: string): Promise<string> {
+  if (options.url) return options.url
+  if (!options.base64) throw new Error("Gupshup media requires a public URL or base64 payload")
+
+  const key = `whatsapp/gupshup/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.${extension}`
+  return uploadPublicObject({
+    key,
+    body: Buffer.from(options.base64, "base64"),
+    contentType: options.mimetype ?? "application/octet-stream",
+  })
+}
+
+// ─── Connection status ──────────────────────────────────────────────────────
+
+export type SessionStatus = "created" | "initializing" | "qr_ready" | "authenticating" | "ready" | "disconnected" | "failed"
 
 export type SessionInfo = {
   id: string
@@ -175,65 +136,48 @@ export type SessionInfo = {
   lastActive: string | null
 }
 
-/**
- * Get the current status and details of a WhatsApp session.
- */
-export async function getSession(sessionId?: string): Promise<SessionInfo> {
-  if (provider() === "wacrm") {
-    const account = await wacrmFetch<{ id?: string; name?: string }>("/me")
-    return {
-      id: account.id ?? "wacrm",
-      name: account.name ?? "WACRM",
-      status: "ready",
-      phone: null,
-      pushName: null,
-      connectedAt: null,
-      lastActive: new Date().toISOString(),
-    }
+/** Verify the configured Gupshup app credentials and return its sender info. */
+export async function getSession(): Promise<SessionInfo> {
+  const config = gupshupConfig()
+  const response = await gupshupFetch<{
+    status?: string
+    business?: { name?: string; contactNumber?: string; id?: string }
+  }>(`https://api.gupshup.io/wa/app/${encodeURIComponent(config.appId)}/business`)
+
+  if (response.status !== "success" || !response.business) {
+    throw new Error("Gupshup did not return an active WhatsApp app profile")
   }
-  const sid = sessionId ?? config().defaultSessionId
-  return openwaFetch(`/sessions/${sid}`)
+
+  return {
+    id: response.business.id ?? config.appId,
+    name: response.business.name ?? config.appName,
+    status: "ready",
+    phone: `+${config.source}`,
+    pushName: null,
+    connectedAt: null,
+    lastActive: new Date().toISOString(),
+  }
 }
 
-// ─── Send Text ──────────────────────────────────────────────────────────────
+// ─── Send Text ───────────────────────────────────────────────────────────────
 
 export type SendTextResponse = {
   messageId: string
   timestamp: number
 }
 
-/**
- * Send a plain text WhatsApp message to a chat.
- *
- * @param chatId - The recipient's chat ID (e.g. "263771234567@c.us")
- * @param text   - The message body (max 4096 characters)
- */
-export async function sendText(
-  chatId: string,
-  text: string,
-  sessionId?: string,
-): Promise<SendTextResponse> {
-  if (provider() === "wacrm") {
-    const data = await wacrmFetch<WacrmMessageResponse>("/messages", {
-      method: "POST",
-      body: JSON.stringify({ to: toE164(chatId), type: "text", text }),
-    })
-    return messageResult(data)
-  }
-  const sid = sessionId ?? config().defaultSessionId
-  return openwaFetch(`/sessions/${sid}/messages/send-text`, {
-    method: "POST",
-    body: JSON.stringify({ chatId, text }),
-  })
+/** Send a text message through the single configured Gupshup WhatsApp app. */
+export async function sendText(chatId: string, text: string): Promise<SendTextResponse> {
+  return sendMessage(chatId, { type: "text", text })
 }
 
-// ─── Send Image ─────────────────────────────────────────────────────────────
+// ─── Send Media ──────────────────────────────────────────────────────────────
 
 export type SendMediaOptions = {
   chatId: string
-  /** Public URL of the image */
+  /** Public URL of the media */
   url?: string
-  /** Base64-encoded image data (use when a public URL isn't available) */
+  /** Base64-encoded media data (uploaded to R2 before sending) */
   base64?: string
   /** MIME type (required when using base64) */
   mimetype?: string
@@ -243,192 +187,74 @@ export type SendMediaOptions = {
   filename?: string
 }
 
-/**
- * Send an image message via WhatsApp.
- * Provide either a public `url` or `base64` data (with `mimetype`).
- */
-export async function sendImage(
-  options: SendMediaOptions,
-  sessionId?: string,
-): Promise<SendTextResponse> {
-  if (provider() === "wacrm") {
-    const mediaUrl = await wacrmMediaUrl(options, "jpg")
-    const data = await wacrmFetch<WacrmMessageResponse>("/messages", {
-      method: "POST",
-      body: JSON.stringify({
-        to: toE164(options.chatId),
-        type: "image",
-        media_url: mediaUrl,
-        text: options.caption,
-        filename: options.filename,
-      }),
-    })
-    return messageResult(data)
-  }
-  const sid = sessionId ?? config().defaultSessionId
-  return openwaFetch(`/sessions/${sid}/messages/send-image`, {
-    method: "POST",
-    body: JSON.stringify(options),
+/** Send an image through Gupshup. Gupshup fetches the media from its public URL. */
+export async function sendImage(options: SendMediaOptions): Promise<SendTextResponse> {
+  const extension = options.filename?.split(".").pop() || (options.mimetype === "image/png" ? "png" : "jpg")
+  const url = await publicMediaUrl(options, extension)
+  return sendMessage(options.chatId, {
+    type: "image",
+    originalUrl: url,
+    previewUrl: url,
+    ...(options.caption ? { caption: options.caption } : {}),
   })
 }
 
-// ─── Send Document ──────────────────────────────────────────────────────────
-
-/**
- * Send a document/file via WhatsApp.
- */
-export async function sendDocument(
-  options: SendMediaOptions,
-  sessionId?: string,
-): Promise<SendTextResponse> {
-  if (provider() === "wacrm") {
-    const mediaUrl = await wacrmMediaUrl(options, "pdf")
-    const data = await wacrmFetch<WacrmMessageResponse>("/messages", {
-      method: "POST",
-      body: JSON.stringify({
-        to: toE164(options.chatId),
-        type: "document",
-        media_url: mediaUrl,
-        text: options.caption,
-        filename: options.filename,
-      }),
-    })
-    return messageResult(data)
-  }
-  const sid = sessionId ?? config().defaultSessionId
-  return openwaFetch(`/sessions/${sid}/messages/send-document`, {
-    method: "POST",
-    body: JSON.stringify(options),
+/** Send a document (including ticket PDFs) through Gupshup. */
+export async function sendDocument(options: SendMediaOptions): Promise<SendTextResponse> {
+  const extension = options.filename?.split(".").pop() || "pdf"
+  const url = await publicMediaUrl(options, extension)
+  return sendMessage(options.chatId, {
+    type: "file",
+    url,
+    filename: options.filename ?? `ticket.${extension}`,
+    ...(options.caption ? { caption: options.caption } : {}),
   })
 }
 
-// ─── Bulk Messaging ─────────────────────────────────────────────────────────
-
-export type BulkMessageItem = {
-  chatId: string
-  type: "text" | "image" | "video" | "audio" | "document"
-  content: {
-    text?: string
-    image?: { url?: string; base64?: string; mimetype?: string }
-    video?: { url?: string; base64?: string; mimetype?: string }
-    audio?: { url?: string; base64?: string; mimetype?: string }
-    document?: { url?: string; base64?: string; mimetype?: string; filename?: string }
-    caption?: string
-  }
-  variables?: Record<string, string>
-}
-
-export type BulkMessageOptions = {
-  /** Delay between messages in ms (min: 1000, default: 3000) */
-  delayBetweenMessages?: number
-  /** Add random 0-2s to delay (default: true) */
-  randomizeDelay?: boolean
-  /** Stop batch on first error (default: false) */
-  stopOnError?: boolean
-}
-
-export type BulkMessageResponse = {
-  batchId: string
-  status: string
-  totalMessages: number
-  estimatedCompletionTime?: string
-  statusUrl: string
-}
-
-/**
- * Send messages to multiple recipients (async batch processing).
- * Max 100 recipients per request. Default 3s delay between messages.
- */
-export async function sendBulk(
-  messages: BulkMessageItem[],
-  options?: BulkMessageOptions,
-  sessionId?: string,
-): Promise<BulkMessageResponse> {
-  if (provider() !== "openwa") {
-    throw new Error("WhatsApp bulk messaging is available only when WHATSAPP_PROVIDER is set to openwa")
-  }
-  const sid = sessionId ?? config().defaultSessionId
-  return openwaFetch(`/sessions/${sid}/messages/send-bulk`, {
-    method: "POST",
-    body: JSON.stringify({ messages, options }),
-  })
-}
-
-// ─── Convenience Helpers ────────────────────────────────────────────────────
-
-/**
- * Check if the default WhatsApp session is connected and ready to send messages.
- */
+/** Check that the configured Gupshup app credentials still reach its business profile. */
 export async function isSessionReady(): Promise<boolean> {
   try {
-    const session = await getSession()
-    return session.status === "ready"
+    return (await getSession()).status === "ready"
   } catch {
     return false
   }
 }
 
-// ─── Admin Alerts ───────────────────────────────────────────────────────────
+// ─── Admin Alerts ────────────────────────────────────────────────────────────
 
-/**
- * Get the admin's WhatsApp phone number from environment config.
- * Falls back to the admin email's local part (for development).
- */
+/** Get the primary admin WhatsApp number from environment config. */
 export function getAdminPhone(): string | null {
   return getAdminPhones()[0] ?? null
 }
 
-/**
- * Get all admin WhatsApp phone numbers from environment config.
- * ADMIN_PHONE may be a single number or a comma-separated list — every
- * number in the list receives every admin alert (new sales, payment
- * anomalies, event/admin events, contact form, etc).
- */
+/** Get all admin WhatsApp numbers; a comma-separated list is supported. */
 export function getAdminPhones(): string[] {
   const raw = process.env.ADMIN_PHONE
   if (!raw) return []
-  return raw
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean)
+  return raw.split(",").map((phone) => phone.trim()).filter(Boolean)
 }
 
-/**
- * Send a WhatsApp alert to every configured platform admin number.
- *
- * Safe to call from anywhere — silently skips if no admin phones are
- * configured or the session isn't ready. One admin's failed send doesn't
- * block delivery to the others.
- */
+/** Send a WhatsApp alert to every configured platform admin number. */
 export async function sendAdminAlert(text: string): Promise<void> {
   const phones = getAdminPhones()
   if (phones.length === 0) {
-    console.warn("[whatsapp] ADMIN_PHONE not set — skipping admin alert")
     log.warn("whatsapp — ADMIN_PHONE not set, skipping admin alert")
     return
   }
 
-  try {
-    const ready = await isSessionReady()
-    if (!ready) {
-      console.warn("[whatsapp] session not ready — skipping admin alert")
-      log.warn("whatsapp — session not ready, skipping admin alert")
-      return
-    }
-  } catch (err) {
-    console.error("[whatsapp] failed to check session status:", err)
-    log.error("whatsapp — failed to check session status", { error: err instanceof Error ? err.message : String(err) })
+  if (!await isSessionReady()) {
+    log.warn("whatsapp — Gupshup app is not ready, skipping admin alert")
     return
   }
 
-  await Promise.all(
-    phones.map(async (phone) => {
-      try {
-        await sendText(formatChatId(phone), text)
-      } catch (err) {
-        console.error(`[whatsapp] failed to send admin alert to ${phone}:`, err)
-        log.error("whatsapp — failed to send admin alert", { phone, error: err instanceof Error ? err.message : String(err) })
-      }
-    }),
-  )
+  await Promise.all(phones.map(async (phone) => {
+    try {
+      await sendText(formatChatId(phone), text)
+    } catch (error) {
+      log.error("whatsapp — failed to send admin alert", {
+        phone,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }))
 }

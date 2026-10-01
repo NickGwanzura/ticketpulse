@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     // ── Check WhatsApp session is ready ────────────────────────────────────
     const ready = await isSessionReady()
     if (!ready) {
-      log.warn("send-ticket — WhatsApp session not ready", { orderId })
+      log.warn("send-ticket — Gupshup connection not ready", { orderId })
       return NextResponse.json(
         { error: "WhatsApp session is not connected" },
         { status: 503 },

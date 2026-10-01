@@ -5,8 +5,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { events, orders } from "@/db/schema"
-import { formatChatId, getSession, sendBulk } from "@/lib/whatsapp"
-import { reviewRequestMessage } from "@/lib/whatsapp-templates"
+import { getSession } from "@/lib/whatsapp"
 import { sendEmail } from "@/lib/email"
 import { reviewRequestEmail } from "@/lib/email-templates/transactional"
 import { rateLimit } from "@/lib/rate-limit"
@@ -15,7 +14,7 @@ const reviewBatchLimiter = rateLimit({ windowMs: 10 * 60_000, max: 2 })
 const Body = z.object({
   eventId: z.string().uuid(),
   limit: z.number().int().min(1).max(100).default(100),
-  channels: z.array(z.enum(["whatsapp", "email"])).min(1).max(2).default(["whatsapp"]),
+  channels: z.array(z.enum(["whatsapp", "email"])).min(1).max(2).default(["email"]),
 })
 
 type Candidate = {
@@ -50,7 +49,7 @@ function reviewUrl(eventSlug: string, candidate: Candidate) {
   return `${appUrl()}/reviews/new?${params.toString()}`
 }
 
-/** Returns OpenWA health and past events with unsent buyer counts. */
+/** Returns WhatsApp provider health and past events with unsent buyer counts. */
 export async function GET() {
   const session = await auth()
   if (!isAdmin(session)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -85,7 +84,8 @@ export async function GET() {
 
   const countByEvent = new Map(counts.map((row) => [row.eventId, row]))
   return NextResponse.json({
-    provider: process.env.WHATSAPP_PROVIDER ?? "openwa",
+    provider: "gupshup",
+    whatsappReviewAvailable: false,
     session: sessionInfo
       ? { status: sessionInfo.status, phone: sessionInfo.phone, lastActive: sessionInfo.lastActive }
       : { status: "unreachable", phone: null, lastActive: null },
@@ -112,11 +112,13 @@ export async function POST(req: NextRequest) {
 
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: "eventId, channels, and a limit between 1 and 100 are required" }, { status: 400 })
-  const wantsWhatsApp = parsed.data.channels.includes("whatsapp")
+  const requestedWhatsApp = parsed.data.channels.includes("whatsapp")
   const wantsEmail = parsed.data.channels.includes("email")
 
-  if (wantsWhatsApp && (process.env.WHATSAPP_PROVIDER ?? "openwa").trim().toLowerCase() !== "openwa") {
-    return NextResponse.json({ error: "WhatsApp review batches require the OpenWA provider." }, { status: 503 })
+  if (requestedWhatsApp && !wantsEmail) {
+    return NextResponse.json({
+      error: "WhatsApp review follow-ups are paused until an approved Gupshup template and buyer opt-in tracking are configured. Email is available now.",
+    }, { status: 503 })
   }
 
   const [event] = await db
@@ -128,11 +130,6 @@ export async function POST(req: NextRequest) {
   const eventEndedAt = event.endsAt ?? event.startsAt
   if (eventEndedAt.getTime() >= Date.now()) {
     return NextResponse.json({ error: "Thank-you messages can only be sent after an event has ended." }, { status: 400 })
-  }
-
-  const sessionInfo = wantsWhatsApp ? await getSession().catch(() => null) : null
-  if (wantsWhatsApp && (!sessionInfo || sessionInfo.status !== "ready")) {
-    return NextResponse.json({ error: `OpenWA is not ready (${sessionInfo?.status ?? "unreachable"}). Reconnect WhatsApp before sending.` }, { status: 503 })
   }
 
   const candidates = await db
@@ -149,18 +146,6 @@ export async function POST(req: NextRequest) {
     .orderBy(desc(orders.createdAt))
     .limit(500) as Candidate[]
 
-  const phoneGroups = new Map<string, Candidate[]>()
-  if (wantsWhatsApp) {
-    for (const candidate of candidates) {
-      if (!candidate.guestPhone || communicationsMetadata(candidate).reviewInviteSentAt) continue
-      const key = formatChatId(candidate.guestPhone)
-      const group = phoneGroups.get(key) ?? []
-      group.push(candidate)
-      phoneGroups.set(key, group)
-    }
-  }
-  const selectedPhoneGroups = Array.from(phoneGroups.entries()).slice(0, parsed.data.limit)
-
   const emailRecipients = new Map<string, Candidate>()
   if (wantsEmail) {
     for (const candidate of candidates) {
@@ -170,28 +155,8 @@ export async function POST(req: NextRequest) {
   }
   const selectedEmailRecipients = Array.from(emailRecipients.values()).slice(0, parsed.data.limit)
 
-  if (wantsWhatsApp && selectedPhoneGroups.length === 0 && wantsEmail && selectedEmailRecipients.length === 0) {
-    return NextResponse.json({ error: "No eligible buyers remain for this event." }, { status: 400 })
-  }
-  if (wantsWhatsApp && selectedPhoneGroups.length === 0 && !wantsEmail) {
-    return NextResponse.json({ error: "No eligible buyers with WhatsApp numbers remain for this event." }, { status: 400 })
-  }
-  if (wantsEmail && selectedEmailRecipients.length === 0 && !wantsWhatsApp) {
+  if (selectedEmailRecipients.length === 0) {
     return NextResponse.json({ error: "No eligible buyers with email addresses remain for this event." }, { status: 400 })
-  }
-
-  let batch: Awaited<ReturnType<typeof sendBulk>> | null = null
-  if (wantsWhatsApp) {
-    const messages = selectedPhoneGroups.map(([chatId, group]) => ({
-      chatId,
-      type: "text" as const,
-      content: { text: reviewRequestMessage(event.title, group[0].guestName ?? "there", reviewUrl(event.slug, group[0])) },
-    }))
-    try {
-      batch = await sendBulk(messages, { delayBetweenMessages: 3_000, randomizeDelay: true, stopOnError: false })
-    } catch (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "OpenWA batch send failed" }, { status: 502 })
-    }
   }
 
   let emailSent = 0
@@ -221,21 +186,15 @@ export async function POST(req: NextRequest) {
   }
 
   const sentAt = new Date().toISOString()
-  const toMark = new Map<string, { candidate: Candidate; whatsapp: boolean; email: boolean }>()
-  if (wantsWhatsApp) {
-    for (const [, group] of selectedPhoneGroups) for (const candidate of group) {
-      toMark.set(candidate.id, { candidate, whatsapp: true, email: false })
-    }
-  }
+  const toMark = new Map<string, { candidate: Candidate; email: boolean }>()
   if (wantsEmail) {
     for (const candidate of selectedEmailRecipients) {
       if (!successfulEmailIds.has(candidate.id)) continue
-      const current = toMark.get(candidate.id)
-      toMark.set(candidate.id, { candidate, whatsapp: current?.whatsapp ?? false, email: true })
+      toMark.set(candidate.id, { candidate, email: true })
     }
   }
   await db.transaction(async (tx) => {
-    for (const { candidate, whatsapp, email } of toMark.values()) {
+    for (const { candidate, email } of toMark.values()) {
       const metadata = (candidate.metadata ?? {}) as Record<string, unknown>
       const communications = (metadata.communications ?? {}) as Record<string, unknown>
       await tx.update(orders).set({
@@ -243,7 +202,6 @@ export async function POST(req: NextRequest) {
           ...metadata,
           communications: {
             ...communications,
-            ...(whatsapp ? { reviewInviteSentAt: sentAt, reviewInviteBatchId: batch?.batchId ?? null } : {}),
             ...(email ? { reviewInviteEmailSentAt: sentAt } : {}),
           },
         },
@@ -254,13 +212,12 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    batchId: batch?.batchId ?? null,
-    totalMessages: selectedPhoneGroups.length,
+    totalMessages: 0,
     emailSent,
     emailFailed,
     ordersMarked: toMark.size,
-    skippedDuplicatePhones: selectedPhoneGroups.reduce((total, [, group]) => total + Math.max(0, group.length - 1), 0),
-    estimatedCompletionTime: batch?.estimatedCompletionTime ?? null,
-    statusUrl: batch?.statusUrl ?? null,
+    whatsappSkipped: requestedWhatsApp
+      ? "WhatsApp follow-ups are paused until an approved Gupshup template and buyer opt-in tracking are configured."
+      : null,
   })
 }
