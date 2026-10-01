@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
-import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
+import { orderAuthHeaders, rememberOrderAccess } from "@/lib/order-auth-client"
 import { formatDate } from "@/lib/utils"
 import {
   ArrowLeft, Download, Calendar, MapPin, ShieldCheck,
@@ -56,6 +56,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
 
     // Show local checkout data immediately, then enrich it from the database
     // with canonical event time and venue details when available.
+    rememberOrderAccess(id, accessSignature)
     const local = getOrder(id)
     if (local) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the printable view from persisted checkout state before the canonical refresh.
@@ -66,7 +67,7 @@ export default function PrintTicketsPage({ params }: { params: Promise<{ id: str
     fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
-        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
+        if (data) rememberOrderAccess(id, accessSignature)
         setOrder(data)
         setFetching(false)
       })

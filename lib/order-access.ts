@@ -17,9 +17,7 @@ import { signTicketPayload } from "@/lib/tickets"
  *   1. Authenticated owner / admin  → session whose id or email matches the order
  *   2. Organizer of the order's event → scoped staff access
  *   3. Guest buyer with no account  → must prove possession of the signed
- *      ticket payload (`signTicketPayload`) OR match the order's own
- *      guestEmail (lowercased) — the same email the confirmation was sent to
- *      and the address `/orders/lookup` already treats as proof of ownership.
+ *      ticket payload (`signTicketPayload`). Knowing an email is not ownership.
  *
  * Callers pass whatever credentials they have; this helper decides.
  */
@@ -94,16 +92,7 @@ export async function authorizeOrderAccess(
     }
   }
 
-  // Guest proof-of-ownership: the caller knows the email the order was placed
-  // with. This is the same bar `/orders/lookup` applies before listing orders.
-  const claimed = creds.email?.trim().toLowerCase()
-  if (claimed) {
-    const ownerEmails = [order.guestEmail, order.buyerEmail]
-      .filter(Boolean)
-      .map((e) => e!.toLowerCase())
-    if (ownerEmails.includes(claimed)) return { ok: true, order }
-  }
-
+  // Guest callers must possess a signed link. Never accept an email claim.
   return { ok: false, reason: "forbidden" }
 }
 

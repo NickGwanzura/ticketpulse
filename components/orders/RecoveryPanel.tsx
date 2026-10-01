@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import {
-  AlertTriangle, CheckCircle2, Clock, Mail, CreditCard,
-  Ticket, RotateCcw, Send, Ban, ArrowRight, Loader2,
+  AlertTriangle, CheckCircle2, Mail, CreditCard,
+  Ticket, Send, Ban, ArrowRight, Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -43,14 +43,13 @@ interface Diagnosis {
   }
 }
 
-function diagnoseOrder(order: OrderStatus, actions: RecoveryActions): Diagnosis {
+function diagnoseOrder(order: OrderStatus, actions: RecoveryActions, nowMs: number): Diagnosis {
   const meta = (order.metadata ?? {}) as Record<string, unknown>
   const velocity = meta.velocity as Record<string, unknown> | undefined
   const delivery = meta.delivery as Record<string, unknown> | undefined
   const pollStatus = velocity?.pollStatus as string | undefined
-  const now = Date.now()
   const createdMs = order.createdAt ? new Date(order.createdAt).getTime() : null
-  const hoursSinceCreated = createdMs ? (now - createdMs) / (1000 * 60 * 60) : 0
+  const hoursSinceCreated = createdMs ? (nowMs - createdMs) / (1000 * 60 * 60) : 0
 
   // Critical: Payment failed
   if (order.status === "refunded" || order.status === "cancelled") {
@@ -96,7 +95,7 @@ function diagnoseOrder(order: OrderStatus, actions: RecoveryActions): Diagnosis 
   // Warning: Awaiting verification for too long
   if (order.status === "awaiting_verification") {
     const sentMs = order.verificationSentAt ? new Date(order.verificationSentAt).getTime() : null
-    const hoursSinceSent = sentMs ? (now - sentMs) / (1000 * 60 * 60) : 0
+    const hoursSinceSent = sentMs ? (nowMs - sentMs) / (1000 * 60 * 60) : 0
 
     if (hoursSinceSent > 1) {
       return {
@@ -168,8 +167,17 @@ export default function RecoveryPanel({
   order: OrderStatus
   actions?: RecoveryActions
 }) {
+  // Use a deterministic initial value; read the browser clock only after hydration.
+  const [nowMs, setNowMs] = useState(0)
   const [loading, setLoading] = useState<string | null>(null)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  useEffect(() => {
+    const updateNow = () => setNowMs(Date.now())
+    updateNow()
+    const interval = window.setInterval(updateNow, 60_000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   const wrapAction = useCallback(
     (actionName: string, fn: () => Promise<{ fixed?: boolean; success?: boolean; message?: string } | void>) => async () => {
@@ -198,10 +206,7 @@ export default function RecoveryPanel({
   if (actions.sendTickets) wrappedActions.sendTickets = wrapAction("send", actions.sendTickets)
   if (actions.completeAndSend) wrappedActions.completeAndSend = wrapAction("complete-send", actions.completeAndSend)
 
-  const diagnosis = useMemo(
-    () => diagnoseOrder(order, wrappedActions),
-    [order, wrappedActions],
-  )
+  const diagnosis = diagnoseOrder(order, wrappedActions, nowMs)
 
   const severityStyles = {
     ok: "border-emerald-200 bg-emerald-50/60",

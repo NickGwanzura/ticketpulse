@@ -4,6 +4,8 @@ import { merchItems, orders, orderItems, ticketTiers, tickets, promoCodes } from
 import { log } from "@/lib/logger"
 import { lockOrderMutation, type DbTx } from "@/lib/velocity/idempotency"
 
+export class InventoryRecoveryError extends Error { constructor() { super('Released inventory is no longer available'); this.name = 'InventoryRecoveryError' } }
+
 type ExpirableOrderMetadata = Record<string, unknown> & {
   inventoryReserved?: boolean
   velocity?: object
@@ -33,20 +35,22 @@ export async function restoreExpiredOrderInventory(
   if (metadata.inventoryReserved === true) {
     for (const item of items) {
       if (item.type === "ticket" && item.tierId) {
-        await tx
+        const restored = await tx
           .update(ticketTiers)
           .set({ soldQuantity: sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${item.quantity}` })
-          .where(eq(ticketTiers.id, item.tierId))
+          .where(and(eq(ticketTiers.id, item.tierId), sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${item.quantity} <= ${ticketTiers.totalQuantity}`)).returning({ id: ticketTiers.id })
+        if (!restored.length) throw new InventoryRecoveryError()
       }
       if (
         item.type === "merch" &&
         item.merchItemId &&
         metadata.archive?.releasedMerchInventory === true
       ) {
-        await tx
+        const restored = await tx
           .update(merchItems)
           .set({ soldQuantity: sql`COALESCE(${merchItems.soldQuantity}, 0) + ${item.quantity}` })
-          .where(eq(merchItems.id, item.merchItemId))
+          .where(and(eq(merchItems.id, item.merchItemId), sql`COALESCE(${merchItems.soldQuantity}, 0) + ${item.quantity} <= ${merchItems.stockQuantity}`)).returning({ id: merchItems.id })
+        if (!restored.length) throw new InventoryRecoveryError()
       }
     }
   } else {
@@ -59,10 +63,11 @@ export async function restoreExpiredOrderInventory(
       if (ticket.tierId) perTier.set(ticket.tierId, (perTier.get(ticket.tierId) ?? 0) + 1)
     }
     for (const [tierId, quantity] of perTier) {
-      await tx
+      const restored = await tx
         .update(ticketTiers)
         .set({ soldQuantity: sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${quantity}` })
-        .where(eq(ticketTiers.id, tierId))
+        .where(and(eq(ticketTiers.id, tierId), sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${quantity} <= ${ticketTiers.totalQuantity}`)).returning({ id: ticketTiers.id })
+      if (!restored.length) throw new InventoryRecoveryError()
     }
   }
 

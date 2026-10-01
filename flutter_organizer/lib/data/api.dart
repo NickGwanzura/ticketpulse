@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'models.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, [this.status = 0]);
+  const ApiException(this.message, [this.status = 0, this.details]);
+  final Json? details;
   final String message;
   final int status;
   @override
@@ -16,6 +18,8 @@ class ApiException implements Exception {
 abstract class SessionStore {
   Future<String?> read();
   Future<void> write(String value);
+  Future<String?> readPreference(String key);
+  Future<void> writePreference(String key, String value);
   Future<void> clear();
 }
 
@@ -24,16 +28,26 @@ class SecureSessionStore implements SessionStore {
   final String origin;
   final _storage = const FlutterSecureStorage();
   String get _key => 'ticketpulse.organizer.session.$origin';
+  String _preferenceKey(String key) => 'ticketpulse.preference.$origin.$key';
   @override
   Future<String?> read() => _storage.read(key: _key);
   @override
   Future<void> write(String value) => _storage.write(key: _key, value: value);
   @override
-  Future<void> clear() => _storage.delete(key: _key);
+  Future<String?> readPreference(String key) =>
+      _storage.read(key: _preferenceKey(key));
+  @override
+  Future<void> writePreference(String key, String value) =>
+      _storage.write(key: _preferenceKey(key), value: value);
+  @override
+  Future<void> clear() async {
+    await _storage.delete(key: _key);
+    await _storage.delete(key: _preferenceKey('biometric_lock'));
+  }
 }
 
-class OrganizerApi extends ChangeNotifier {
-  OrganizerApi({
+class TicketPulseApi extends ChangeNotifier {
+  TicketPulseApi({
     required this.baseUrl,
     required this.store,
     http.Client? client,
@@ -45,18 +59,28 @@ class OrganizerApi extends ChangeNotifier {
   Json? user;
   String? startupError;
   bool restoring = true;
+  bool biometricLockEnabled = false;
+  bool biometricUnlocked = false;
   String? _access, _refresh;
   Future<void>? _refreshing;
   int _generation = 0;
 
   String get _scanQueueKey => 'ticketpulse.organizer.scan-queue.$baseUrl';
+  String get _buyerOrdersPrefix =>
+      'ticketpulse.buyer.${user?['id']?.toString() ?? 'signed-out'}.';
 
-  Future<Json> _send(String path, {Json? body, String? token}) async {
+  Future<Json> _send(
+    String path, {
+    Json? body,
+    String? token,
+    Map<String, String> extraHeaders = const {},
+  }) async {
     try {
       final headers = <String, String>{
         'Accept': 'application/json',
         if (body != null) 'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
+        ...extraHeaders,
       };
       final uri = baseUrl.resolve(path);
       final response =
@@ -81,6 +105,7 @@ class OrganizerApi extends ChangeNotifier {
         throw ApiException(
           data['error'] is String ? data['error'] : 'Request failed.',
           response.statusCode,
+          data,
         );
       }
       return data;
@@ -115,8 +140,11 @@ class OrganizerApi extends ChangeNotifier {
   Future<void> restore() async {
     restoring = true;
     startupError = null;
+    biometricUnlocked = false;
     notifyListeners();
     try {
+      biometricLockEnabled =
+          await store.readPreference('biometric_lock') == 'true';
       final saved = await store.read();
       if (saved != null) {
         final pair = jsonDecode(saved) as Json;
@@ -139,6 +167,27 @@ class OrganizerApi extends ChangeNotifier {
     }
   }
 
+  Future<void> setBiometricLockEnabled(bool enabled) async {
+    if (user == null) {
+      throw const ApiException('Sign in to change app lock settings.', 401);
+    }
+    await store.writePreference('biometric_lock', enabled ? 'true' : 'false');
+    biometricLockEnabled = enabled;
+    biometricUnlocked = true;
+    notifyListeners();
+  }
+
+  void completeBiometricUnlock() {
+    biometricUnlocked = true;
+    notifyListeners();
+  }
+
+  void requireBiometricUnlock() {
+    if (!biometricLockEnabled || user == null) return;
+    biometricUnlocked = false;
+    notifyListeners();
+  }
+
   Future<void> signIn(String email, String password) async {
     final generation = ++_generation;
     final data = await _send(
@@ -146,12 +195,23 @@ class OrganizerApi extends ChangeNotifier {
       body: {'email': email.trim(), 'password': password},
     );
     final profile = data['user'] as Json;
-    if (!['organizer', 'admin'].contains(profile['role'])) {
-      throw const ApiException(
-        'Sign in with an organizer account. Set up your organizer profile on the website.',
-        403,
-      );
-    }
+    await _savePair(data, generation);
+    user = profile;
+    startupError = null;
+    notifyListeners();
+  }
+
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final generation = ++_generation;
+    final data = await _send(
+      '/api/mobile/auth/register',
+      body: {'name': name.trim(), 'email': email.trim(), 'password': password},
+    );
+    final profile = data['user'] as Json;
     await _savePair(data, generation);
     user = profile;
     startupError = null;
@@ -160,8 +220,11 @@ class OrganizerApi extends ChangeNotifier {
 
   Future<void> _loadUser() async {
     final profile = (await request('/api/mobile/me'))['user'] as Json;
-    if (!['organizer', 'admin'].contains(profile['role'])) {
-      throw const ApiException('Organizer access required.', 403);
+    if (profile['id'] == null || profile['role'] == null) {
+      throw const ApiException(
+        'Your account profile could not be loaded.',
+        403,
+      );
     }
     user = profile;
   }
@@ -220,6 +283,167 @@ class OrganizerApi extends ChangeNotifier {
       );
     }
     return raw.whereType<Json>().map(OrganizerEvent.fromJson).toList();
+  }
+
+  Future<List<BuyerEvent>> publicEvents({String? query, int limit = 30}) async {
+    final params = <String, String>{'limit': '$limit'};
+    if (query != null && query.trim().isNotEmpty) params['q'] = query.trim();
+    final data = await _send(
+      '/api/mobile/events?${Uri(queryParameters: params).query}',
+    );
+    final raw = data['events'];
+    if (raw is! List) {
+      throw const ApiException(
+        'Events are unavailable. Refresh and try again.',
+      );
+    }
+    return raw.whereType<Json>().map(BuyerEvent.fromJson).toList();
+  }
+
+  Future<BuyerEvent> publicEvent(String id) async {
+    final data = await _send('/api/mobile/events/${Uri.encodeComponent(id)}');
+    final event = data['event'];
+    if (event is! Json) {
+      throw const ApiException('Event details are unavailable.');
+    }
+    return BuyerEvent.fromJson(event);
+  }
+
+  Future<Json?> activeCheckout() async {
+    final raw = await store.readPreference('active_checkout');
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return jsonDecode(raw) as Json;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String> checkoutRequestId(String eventSlug) async {
+    final existing = await activeCheckout();
+    if (existing?['eventSlug'] == eventSlug &&
+        existing?['checkoutRequestId'] is String) {
+      return existing!['checkoutRequestId'] as String;
+    }
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    final id =
+        '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+    await store.writePreference(
+      'active_checkout',
+      jsonEncode({'eventSlug': eventSlug, 'checkoutRequestId': id}),
+    );
+    return id;
+  }
+
+  Future<Json> quoteCheckout(Json payload) =>
+      _send('/api/checkout/velocity', body: {...payload, 'quoteOnly': true});
+  Future<CheckoutResult> startCheckout({
+    required String eventSlug,
+    required String name,
+    required String email,
+    required String phone,
+    required String paymentMethod,
+    required List<Json> items,
+    required double expectedAmount,
+    required String expectedCurrency,
+    String? promoCode,
+    Json questionResponses = const {},
+  }) async {
+    final payload = <String, dynamic>{
+      'checkoutRequestId': await checkoutRequestId(eventSlug),
+      'eventSlug': eventSlug,
+      'name': name.trim(),
+      'email': email.trim(),
+      'phone': phone.trim(),
+      'paymentMethod': paymentMethod,
+      'items': items,
+      'expectedAmount': expectedAmount,
+      'expectedCurrency': expectedCurrency,
+      'questionResponses': questionResponses,
+      if (promoCode != null && promoCode.isNotEmpty) 'promoCode': promoCode,
+    };
+    await store.writePreference('active_checkout', jsonEncode(payload));
+    Json data;
+    try {
+      data = await _send('/api/checkout/velocity', body: payload);
+    } on ApiException catch (error) {
+      if (error.details?['orderId'] == null) rethrow;
+      data = {
+        ...error.details!,
+        'amount': expectedAmount,
+        'currency': expectedCurrency,
+        'pollRequired': true,
+      };
+    }
+    if (data['orderId'] == null) {
+      throw const ApiException(
+        'Checkout could not be confirmed. Retry this recorded order; do not start another payment.',
+      );
+    }
+    await store.writePreference(
+      'active_checkout',
+      jsonEncode({...payload, 'result': data}),
+    );
+    return CheckoutResult.fromJson(data);
+  }
+
+  Future<Json> checkoutStatus(String orderId, String signature) => _send(
+    '/api/checkout/velocity/status/${Uri.encodeComponent(orderId)}',
+    extraHeaders: {'x-ticket-signature': signature},
+  );
+
+  Future<List<Json>> buyerOrders() async {
+    final ownerId = user?['id']?.toString();
+    final cacheKey = '${_buyerOrdersPrefix}orders';
+    try {
+      final raw = (await request('/api/mobile/orders?limit=50'))['orders'];
+      if (raw is! List) return const [];
+      final orders = raw.whereType<Json>().toList();
+      await _scanStorage.write(key: cacheKey, value: jsonEncode(orders));
+      return orders;
+    } on ApiException catch (error) {
+      final saved = ownerId == null
+          ? null
+          : await _scanStorage.read(key: cacheKey);
+      if (ownerId != null &&
+          user?['id']?.toString() == ownerId &&
+          (error.status == 0 || error.status >= 500) &&
+          saved != null) {
+        final rows = (jsonDecode(saved) as List?)?.whereType<Json>().toList();
+        if (rows != null) {
+          return rows.map((row) => {...row, '_offlineCache': true}).toList();
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<Json> buyerOrderDetail(String id) async {
+    final ownerId = user?['id']?.toString();
+    final cacheKey = '${_buyerOrdersPrefix}order.$id';
+    try {
+      final detail = await request(
+        '/api/mobile/orders/${Uri.encodeComponent(id)}',
+      );
+      await _scanStorage.write(key: cacheKey, value: jsonEncode(detail));
+      return detail;
+    } on ApiException catch (error) {
+      final saved = ownerId == null
+          ? null
+          : await _scanStorage.read(key: cacheKey);
+      if (ownerId != null &&
+          user?['id']?.toString() == ownerId &&
+          (error.status == 0 || error.status >= 500) &&
+          saved != null) {
+        final detail = jsonDecode(saved);
+        if (detail is Json) return {...detail, '_offlineCache': true};
+      }
+      rethrow;
+    }
   }
 
   Future<OrderPage> orders({
@@ -313,9 +537,24 @@ class OrganizerApi extends ChangeNotifier {
 
   Future<void> signOut() async {
     ++_generation;
+    final ownerId = user?['id']?.toString();
     await store.clear();
+    if (ownerId != null) {
+      try {
+        final keys = await _scanStorage.readAll();
+        for (final key in keys.keys.where(
+          (key) => key.startsWith('ticketpulse.buyer.$ownerId.'),
+        )) {
+          await _scanStorage.delete(key: key);
+        }
+      } catch (_) {
+        // A stale encrypted cache cannot grant server access after the token is cleared.
+      }
+    }
     _access = _refresh = null;
     user = null;
+    biometricLockEnabled = false;
+    biometricUnlocked = false;
     startupError = null;
     notifyListeners();
   }
@@ -326,3 +565,6 @@ class OrganizerApi extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// Kept as an alias for the existing organizer workspace and its tests.
+typedef OrganizerApi = TicketPulseApi;

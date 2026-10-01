@@ -15,7 +15,7 @@ export default function CheckoutPaymentNotice() {
       <div className="min-w-0 text-[12px] leading-5 md:text-[13px]">
         <p className="font-semibold">EcoCash payment notice</p>
         <p>
-          Confirmations may be delayed. Approve the USSD prompt and wait for
+          Approve the prompt on your EcoCash phone and wait for
           confirmation. Please don&apos;t pay again if your wallet was debited.
           For help, WhatsApp{" "}
           <a

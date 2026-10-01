@@ -18,15 +18,18 @@ export type TicketRecord = {
 
 /**
  * Fetches real ticket QR codes for an order from `/api/orders/{id}/tickets`,
- * polling every 2s (up to 30s) while the result is empty — tickets are created
+ * polling every 5s (up to two minutes) while tickets are incomplete — tickets are created
  * asynchronously after payment, so they may not exist on the first request.
  *
  * Returns the raw records plus a `qrByTier` map (tierId → QR codes in insertion
  * order) for rendering, and a `loading` flag that stays true while still polling
  * for an empty result.
  */
-export function useOrderTickets(orderId: string, enabled: boolean, signature?: string | null) {
+export function useOrderTickets(orderId: string, enabled: boolean, signature?: string | null, expectedCount = 1) {
   const [records, setRecords] = useState<TicketRecord[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const refresh = () => setAttempt(value => value + 1)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -35,24 +38,30 @@ export function useOrderTickets(orderId: string, enabled: boolean, signature?: s
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const start = Date.now()
-    const MAX_MS = 30_000
-    const INTERVAL_MS = 2_000
+    const MAX_MS = 120_000
+    const INTERVAL_MS = 5_000
 
     void Promise.resolve().then(() => {
-      if (!cancelled) setLoading(true)
+      if (!cancelled) { setLoading(true); setError(null) }
     })
 
     const poll = async () => {
       try {
         const res = await fetch(`/api/orders/${orderId}/tickets`, {
           headers: orderAuthHeaders(orderId, signature),
+          cache: "no-store", signal: AbortSignal.timeout(20_000),
         })
-        const data: TicketRecord[] = res.ok ? await res.json() : []
+        if (!res.ok) {
+          if (!cancelled) setError(res.status === 403 ? 'Open your secure order link to view tickets.' : 'Tickets could not load. Your payment remains recorded; retry below.')
+          if (res.status === 403 || res.status === 404) { setLoading(false); return }
+          throw new Error('Ticket fetch failed')
+        }
+        const data: TicketRecord[] = await res.json()
         if (cancelled) return
         if (Array.isArray(data) && data.length > 0) {
           setRecords(data)
-          setLoading(false)
-          return
+          setError(null)
+          if (data.length >= expectedCount) { setLoading(false); return }
         }
       } catch {
         if (cancelled) return
@@ -70,7 +79,7 @@ export function useOrderTickets(orderId: string, enabled: boolean, signature?: s
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [orderId, enabled, signature])
+  }, [orderId, enabled, signature, expectedCount, attempt])
 
   const qrByTier = new Map<string, string[]>()
   const recordsByTier = new Map<string, TicketRecord[]>()
@@ -84,5 +93,5 @@ export function useOrderTickets(orderId: string, enabled: boolean, signature?: s
     recordsByTier.get(t.tierId)!.push(t)
   }
 
-  return { records, qrByTier, recordsByTier, loading }
+  return { records, qrByTier, recordsByTier, loading, error, refresh }
 }

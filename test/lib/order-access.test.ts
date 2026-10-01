@@ -59,18 +59,18 @@ describe("authorizeOrderAccess", () => {
     if (!result.ok) expect(result.reason).toBe("not_found")
   })
 
-  it("accepts a guest who proves the order email", async () => {
+  it("rejects a guest who only knows the order email", async () => {
     orderRows([ORDER])
     mocks.auth.mockResolvedValue(null)
     const result = await authorizeOrderAccess(ORDER.id, { email: "buyer@example.com" })
-    expect(result.ok).toBe(true)
+    expect(result.ok).toBe(false)
   })
 
-  it("matches the claimed email case-insensitively and trims it", async () => {
+  it("rejects a raw normalized email claim", async () => {
     orderRows([ORDER])
     mocks.auth.mockResolvedValue(null)
     const result = await authorizeOrderAccess(ORDER.id, { email: "  BUYER@Example.COM  " })
-    expect(result.ok).toBe(true)
+    expect(result.ok).toBe(false)
   })
 
   it("rejects a guest claiming someone else's email", async () => {

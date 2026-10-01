@@ -588,3 +588,26 @@ export function normalizeVelocityPollResponse(
 }
 
 export { getConfig }
+
+/** Recover an existing hosted session; never starts another transaction. */
+export async function getTransactionRedirectUrl(sessionId: string): Promise<string | null> {
+  const config = getConfig()
+  const response = await velocityFetch(config.baseUrl + '/transactions/public/redirect-url/' + encodeURIComponent(sessionId), { method: 'GET', cache: 'no-store' })
+  if (!response.ok) throw new VelocityApiError('Hosted session lookup failed', response.status, '/transactions/public/redirect-url')
+  const raw = await response.text()
+  let data: unknown
+  try { data = JSON.parse(raw) } catch { data = raw.trim() }
+  function extract(value: unknown, depth = 0): string | null {
+    if (depth > 5) return null
+    if (typeof value === 'string') {
+      try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : null } catch { return null }
+    }
+    if (value && typeof value === 'object') {
+      for (const [key, child] of Object.entries(value)) {
+        if (['redirectUrl', 'redirect_url', 'paymentUrl', 'checkoutUrl', 'url', 'body', 'data'].includes(key)) { const found = extract(child, depth + 1); if (found) return found }
+      }
+    }
+    return null
+  }
+  return extract(data)
+}

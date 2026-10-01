@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
-import { orderAuthHeaders, orderOwnerQuery, rememberOrderOwner } from "@/lib/order-auth-client"
+import { orderAuthHeaders, orderOwnerQuery, rememberOrderAccess } from "@/lib/order-auth-client"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import RefundRequestPanel from "./RefundRequestPanel"
 import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet } from "lucide-react"
@@ -28,7 +28,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const searchParams = useSearchParams()
   const welcomeFlag = searchParams.get("welcome") === "1"
   const accessSignature = searchParams.get("sig")
-  const { ready, getOrder, placeOrder } = useCart()
+  const { ready, saveOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(false)
   const [resendingTickets, setResendingTickets] = useState(false)
@@ -39,7 +39,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const orderStatus = order?.status
   const ticketsEnabled = order?.status === "paid" || order?.status === "completed"
-  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, ticketsEnabled, accessSignature)
+  const { qrByTier, recordsByTier, loading: ticketsLoading, error: ticketError, refresh: refreshTickets } = useOrderTickets(id, ticketsEnabled, accessSignature, order?.items.filter(i => i.kind === "ticket").reduce((n, i) => n + i.qty, 0) ?? 1)
   const [transferStates, setTransferStates] = useState<Record<string, {
     open: boolean; name: string; email: string; submitting: boolean; note: string | null; done: boolean
   }>>({})
@@ -58,7 +58,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/transfer`, {
         method: "POST",
-        headers: { "content-type": "application/json", ...orderAuthHeaders(id) },
+        headers: { "content-type": "application/json", ...orderAuthHeaders(id, accessSignature) },
         body: JSON.stringify({ recipientName: t.name, recipientEmail: t.email, orderId: id }),
       })
       const data = await res.json()
@@ -73,7 +73,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     try {
       await fetch(`/api/tickets/${ticketId}/transfer`, {
         method: "DELETE",
-        headers: orderAuthHeaders(id),
+        headers: orderAuthHeaders(id, accessSignature),
       })
       setTransfer(ticketId, { open: false, done: false, note: null, name: "", email: "" })
     } catch { /* ignore */ }
@@ -82,32 +82,31 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   useEffect(() => {
     if (!ready) return
 
-    // Try localStorage first
-    const local = getOrder(id)
-    if (local && local.status !== "pending") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the order detail view from persisted checkout state.
-      setOrder(local)
-      return
-    }
+    rememberOrderAccess(id, accessSignature)
 
     // Fall back to server-side API
-    setFetching(true)
+    queueMicrotask(() => setFetching(true))
     fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
-        if (data) rememberOrderOwner(id, (data as { guestEmail?: string | null }).guestEmail)
+        if (data) {
+          saveOrder(data)
+          if (['paid', 'completed', 'cancelled', 'expired'].includes(data.status)) {
+            try { if (sessionStorage.getItem('tp_checkout_request_order') === id) { sessionStorage.removeItem('tp_checkout_request'); sessionStorage.removeItem('tp_checkout_request_order') } } catch { /* optional storage */ }
+          }
+        }
         setOrder(data)
         setFetching(false)
       })
       .catch(() => setFetching(false))
-  }, [ready, id, getOrder, accessSignature])
+  }, [ready, id, saveOrder, accessSignature])
 
   // Card payment recovery polling:
   // After a Velocity card redirect, the checkout page is gone and its polling
   // loop died. We restart a short poll here so the order flips to paid without
   // the user having to wait for the cron job.
   useEffect(() => {
-    if (!welcomeFlag || !orderStatus) return
+    if (!orderStatus || !["pending", "awaiting_verification", "expired"].includes(orderStatus)) return
     if (orderStatus === "paid" || orderStatus === "completed") return
 
     const startedAt = Date.now()
@@ -123,7 +122,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       }
       try {
         const res = await fetch(`/api/checkout/velocity/status/${id}`, {
-          cache: "no-store",
+          cache: "no-store", signal: AbortSignal.timeout(20_000),
           headers: orderAuthHeaders(id, accessSignature),
         })
         if (res.ok) {
@@ -135,17 +134,12 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
             if (fresh.ok) {
               const updated: OrderRecord = await fresh.json()
               setOrder(updated)
-              placeOrder(
-                { name: updated.contact.name, email: updated.contact.email, phone: updated.contact.phone },
-                { method: updated.payment.method },
-                id,
-                "paid",
-              )
+              saveOrder(updated)
             }
             return
           } else if (["expired", "cancelled"].includes(data.status)) {
             setPollingForCard(false)
-            setOrder((current) => current ? { ...current, status: "expired" } : current)
+            setOrder((current) => current ? { ...current, status: data.status } : current)
             return
           }
         }
@@ -161,7 +155,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       cancelled = true
       if (pollRef.current) clearTimeout(pollRef.current)
     }
-  }, [welcomeFlag, orderStatus, id, placeOrder, accessSignature])
+  }, [welcomeFlag, orderStatus, id, saveOrder, accessSignature])
 
   async function resendTickets() {
     if (resendingTickets) return
@@ -238,13 +232,13 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
         <div className="sticky top-0 z-40 border-b border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-3">
           <RefreshCw size={14} className="text-amber-600 animate-spin shrink-0" />
           <p className="text-[13px] font-medium text-amber-800">
-            Confirming your card payment — this usually takes a few seconds.
+            Checking your payment. Please do not pay again while confirmation is pending.
           </p>
         </div>
       )}
       {order.status === "expired" && (
         <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-center text-[13px] font-medium text-amber-800">
-          This pending payment was archived because the payment window or event had ended. No ticket was issued.
+          This order is closed. If money was deducted, contact support before paying again.
         </div>
       )}
       <div className="border-b border-line bg-paper-2">
@@ -417,13 +411,14 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                       <div className={isTransferred ? "opacity-30 pointer-events-none" : ""}>
                         {hasRealQr ? <QrCode value={qrValue!} size={120} className="rounded-lg ring-1 ring-line" /> : (
                           <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-[11px] font-medium text-amber-800">
-                            {ticketsLoading ? "Generating ticket…" : "Ticket QR unavailable — check your email"}
+                            {ticketError ?? (ticketsLoading ? "Preparing ticket…" : "Payment confirmed — tickets are still being prepared.")}
                           </div>
                         )}
                       </div>
                       {isTransferred && (
                         <p className="text-[11px] text-ink-3 text-center font-medium">Transferred</p>
                       )}
+                      {!hasRealQr && ticketsEnabled && !ticketsLoading && <button type="button" onClick={refreshTickets} className="text-sm underline">Reload tickets</button>}
                       {!hasRealQr && ticketsEnabled && ticketsLoading && (
                         <p className="text-[10px] text-ink-3 inline-flex items-center gap-1">
                           <Loader2 size={10} className="animate-spin" /> Generating ticket…
@@ -479,7 +474,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               <p className="inline-flex items-center gap-2 text-ink-2"><Smartphone size={12} className="text-ink-3" /> {order.payment.method.toUpperCase()}</p>
             </div>
 
-            {order.status === "paid" && (
+            {["paid", "completed"].includes(order.status) && (
               <div className="mt-4 pt-4 border-t border-line space-y-2">
                 <button
                   type="button"

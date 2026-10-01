@@ -1,4 +1,5 @@
 "use client"
+import type { BuyerOrderStatus } from "@/lib/buyer-order-status"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
 interface CartLineBase {
@@ -30,7 +31,7 @@ export type CartLineInput =
 export interface OrderRecord {
   id: string
   createdAt: string
-  status: "paid" | "pending" | "completed" | "refunded" | "expired"
+  status: BuyerOrderStatus
   items: CartLine[]
   totalsByCurrency: Record<string, number>
   contact: { name: string; email: string; phone: string }
@@ -47,6 +48,7 @@ interface CartContextValue {
   updateQty: (key: string, qty: number) => void
   clear: () => void
   placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]) => OrderRecord
+  saveOrder: (order: OrderRecord) => void
   getOrders: () => OrderRecord[]
   getOrder: (id: string) => OrderRecord | null
 }
@@ -130,6 +132,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return getOrders().find((o) => o.id === id) ?? null
   }, [getOrders])
 
+  const saveOrder = useCallback((order: OrderRecord) => {
+    try { localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...getOrders().filter(o => o.id !== order.id)])) }
+    catch (error) { console.warn("[cart] save order", error) }
+  }, [getOrders])
+
   const placeOrder = useCallback(
     (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]): OrderRecord => {
       const order: OrderRecord = {
@@ -143,7 +150,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       try {
         const existing = getOrders()
-        localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing]))
+        localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing.filter(o => o.id !== order.id)]))
       } catch (err) {
         // The server order is authoritative. Private browsing, quota limits, or
         // storage policy must not turn a completed payment into a false failure.
@@ -156,7 +163,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, removeItem, updateQty, clear, placeOrder, getOrders, getOrder }}>
+    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, removeItem, updateQty, clear, placeOrder, saveOrder, getOrders, getOrder }}>
       {children}
     </CartContext.Provider>
   )

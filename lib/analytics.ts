@@ -66,7 +66,7 @@ export async function getFunnelStats({
   const rows = await db
     .select({
       event: analyticsEvents.event,
-      count: sql<number>`COUNT(*)::int`,
+      count: sql<number>`COUNT(DISTINCT COALESCE(${analyticsEvents.orderId}::text, ${analyticsEvents.sessionId}, ${analyticsEvents.id}::text))::int`,
     })
     .from(analyticsEvents)
     .where(
@@ -102,15 +102,15 @@ export async function getFunnelStats({
       { stage: "Payment method selected", count: methodSelected, dropoff: pct(methodSelected, detailsSubmitted) },
       { stage: "Payment initiated", count: initiated, dropoff: pct(initiated, methodSelected) },
       { stage: "Payment confirmed", count: confirmed, dropoff: pct(confirmed, initiated) },
-      { stage: "Ticket issued", count: issued, dropoff: pct(issued, confirmed) },
-      { stage: "Checked in", count: checkedIn, dropoff: pct(checkedIn, issued) },
+      { stage: "Orders with tickets", count: issued, dropoff: pct(issued, confirmed) },
+      { stage: "Orders checked in", count: checkedIn, dropoff: pct(checkedIn, issued) },
     ],
     conversions: {
       "Views to checkout": pct(checkoutStarts, views),
       "Checkout to payment": pct(initiated, checkoutStarts),
-      "Payment success rate": pct(confirmed, initiated + failed),
-      "Payment to ticket": pct(issued, confirmed),
-      "Ticket to check-in": pct(checkedIn, issued),
+      "Payment success rate": pct(confirmed, initiated),
+      "Payments with tickets": pct(issued, confirmed),
+      "Orders with check-in": pct(checkedIn, issued),
     },
     paymentBreakdown: { successful: confirmed, failed, abandoned },
   }

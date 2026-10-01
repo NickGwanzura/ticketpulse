@@ -1,19 +1,20 @@
+import { verifyOrderRecoveryToken } from "@/lib/order-recovery-token"
 import Link from "next/link"
 import { eq, and, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, events } from "@/db/schema"
-import { ArrowRight, Ticket, Search, Mail, Send } from "lucide-react"
+import { ArrowRight, Ticket, Mail, Send } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
-import { resendLookupTicketsAction } from "./actions"
+import { requestOrderRecoveryAction, resendLookupTicketsAction } from "./actions"
 import { signTicketPayload } from "@/lib/tickets"
 
 export const metadata = { title: "Find my tickets · TicketPulse" }
 
-type Props = { searchParams: Promise<{ email?: string; sent?: string; error?: string }> }
+type Props = { searchParams: Promise<{ email?: string; token?: string; requested?: string; sent?: string; error?: string }> }
 
 export default async function OrderLookupPage({ searchParams }: Props) {
-  const { email, sent, error } = await searchParams
-  const trimmedEmail = email?.trim().toLowerCase()
+  const { token, requested, sent, error } = await searchParams
+  const trimmedEmail = verifyOrderRecoveryToken(token)
 
   let results: {
     id: string
@@ -78,13 +79,12 @@ export default async function OrderLookupPage({ searchParams }: Props) {
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Order lookup</p>
         <h1 className="text-[28px] font-bold tracking-tight text-ink mb-2">Find my tickets</h1>
         <p className="text-[14px] text-ink-2">
-          Enter the email address you used at checkout to see your orders.
+          We’ll email you a secure link to your orders. The link is valid for 15 minutes.
         </p>
       </div>
 
       <form
-        action="/orders/lookup"
-        method="GET"
+        action={requestOrderRecoveryAction}
         className="flex gap-2 mb-8"
       >
         <div className="relative flex-1">
@@ -94,6 +94,8 @@ export default async function OrderLookupPage({ searchParams }: Props) {
             name="email"
             required
             defaultValue={trimmedEmail ?? ""}
+            autoComplete="email"
+            aria-label="Email used at checkout"
             placeholder="you@example.com"
             className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-4 focus:ring-blue/10 transition"
           />
@@ -102,10 +104,15 @@ export default async function OrderLookupPage({ searchParams }: Props) {
           type="submit"
           className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-semibold text-white shadow-sm hover:bg-brand-700 transition"
         >
-          <Search size={14} /> Search
+          <Mail size={14} /> Email my link
         </button>
       </form>
 
+      {(requested || (token && !trimmedEmail)) && (
+        <p role="status" className="mb-4 rounded-xl border border-line bg-paper-2 p-4 text-sm">
+          {requested ? "If this address has orders, we’ll send a secure link. Check your inbox and spam folder." : "This recovery link is invalid or has expired. Request a new link below."}
+        </p>
+      )}
       {sent && (
         <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-medium text-emerald-800">
           Ticket email sent for order {sent}. Check your inbox and spam folder.
@@ -173,7 +180,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
                   </div>
                 </div>
                 {(order.status === "paid" || order.status === "completed") && trimmedEmail && (
-                  <form action={resendLookupTicketsAction.bind(null, order.id, trimmedEmail)} className="mt-4 pt-4 border-t border-line">
+                  <form action={resendLookupTicketsAction.bind(null, order.id, token!)} className="mt-4 pt-4 border-t border-line">
                     <button
                       type="submit"
                       className="inline-flex items-center gap-2 rounded-lg bg-ink px-3.5 py-2 text-[12px] font-semibold text-paper hover:bg-ink/85 transition-colors"

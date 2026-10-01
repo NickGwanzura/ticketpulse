@@ -7,6 +7,7 @@ import { checkoutLimiter } from "@/lib/rate-limit"
 
 const Query = z.object({
   eventSlug: z.string().min(1).max(160),
+  amount: z.coerce.number().finite().nonnegative(),
   code: z.string().min(1).max(40).transform((v) => v.toUpperCase()),
 })
 
@@ -23,6 +24,7 @@ export async function GET(req: Request) {
   const raw = {
     eventSlug: url.searchParams.get("eventSlug"),
     code: url.searchParams.get("code"),
+    amount: url.searchParams.get("amount"),
   }
 
   const parsed = Query.safeParse(raw)
@@ -67,6 +69,8 @@ export async function GET(req: Request) {
   if ((promo.maxUses ?? 0) > 0 && (promo.usedCount ?? 0) >= (promo.maxUses ?? 0)) {
     return NextResponse.json({ valid: false, error: "This promo code has reached its usage limit" })
   }
+
+  if (Number(promo.minPurchaseAmount ?? 0) > parsed.data.amount) return NextResponse.json({ valid: false, error: "This code requires a minimum order of " + promo.minPurchaseAmount + "." })
 
   return NextResponse.json({
     valid: true,

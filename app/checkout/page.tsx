@@ -1,10 +1,10 @@
 "use client"
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import CheckoutPaymentNotice from "@/app/checkout/CheckoutPaymentNotice"
 import { useCart } from "@/lib/cart-context"
-import { orderAuthHeaders, rememberOrderOwner } from "@/lib/order-auth-client"
+import { orderAuthHeaders, rememberOrderAccess, orderOwnerQuery } from "@/lib/order-auth-client"
 import { formatCurrency } from "@/lib/utils"
 import {
   ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
@@ -21,6 +21,7 @@ type CheckoutResponse = {
   redirectUrl?: string | null
   amount: number
   currency: string
+  accessSignature: string
   resumed?: boolean
 }
 
@@ -32,12 +33,12 @@ const PAYMENT_METHODS: {
   body: string
   icon: React.ComponentType<{ size?: number; className?: string }>
 }[] = [
-  { value: "velocity-ecocash", label: "EcoCash", body: "Mobile money · instant confirmation", icon: Smartphone },
+  { value: "velocity-ecocash", label: "EcoCash", body: "Approve a secure prompt on your phone", icon: Smartphone },
   { value: "velocity-card",    label: "VISA / Mastercard", body: "Pay by card on a secure checkout page", icon: CreditCard },
 ]
 
-const POLL_INTERVAL_MS = 2000
-// Must match POLL_TIMEOUT_MS in app/api/checkout/velocity/status/[id]/route.ts.
+const POLL_INTERVAL_MS = 5000
+// Foreground checking window; server reconciliation can continue for 24 hours.
 // Client uses slightly longer window to account for network latency on the final poll.
 const POLL_TIMEOUT_MS = 5.5 * 60 * 1000
 
@@ -64,15 +65,36 @@ function savePollingSession(orderId: string, contact: { name: string; email: str
   } catch { /* sessionStorage may be unavailable */ }
 }
 
-export default function CheckoutPage() {
+export default function CheckoutPage() { return <Suspense fallback={<p className="p-8">Loading checkout…</p>}><CheckoutInner /></Suspense> }
+function CheckoutInner() {
   const router = useRouter()
-  const { items, ready, totalsByCurrency, placeOrder } = useCart()
+  const params = useSearchParams()
+  const selectedEvent = params.get('event'), selectedCurrency = params.get('currency')
+  const { items: cartItems, ready, saveOrder, removeItem } = useCart()
+  const items = useMemo(() => cartItems.filter(item => (!selectedEvent || item.eventSlug === selectedEvent) && (!selectedCurrency || item.currency === selectedCurrency)), [cartItems, selectedEvent, selectedCurrency])
+  const totalsByCurrency = useMemo(() => items.reduce<Record<string, number>>((totals, item) => { totals[item.currency] = (totals[item.currency] ?? 0) + item.qty * item.price; return totals }, {}), [items])
+  const checkoutEventSlug = items.find(i => i.kind === 'ticket')?.eventSlug
+  useEffect(() => {
+    if (!ready || !checkoutEventSlug) return
+    void fetch('/api/analytics/track', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({event:'CHECKOUT_STARTED',eventSlug:checkoutEventSlug,sessionId:getAnalyticsSessionId()}) }).catch(() => {})
+  }, [ready, checkoutEventSlug])
+  const [serverQuote, setServerQuote] = useState<{ amount: number; currency: string; normalizedPhone: string; discount?: number; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
+  const requestId = useRef<string | null>(null)
+  const submittedCart = useRef<string | null>(null)
+  const itemsRef = useRef(items)
+  useEffect(() => { itemsRef.current = items }, [items])
+  const [pollMessage, setPollMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [errorOrderId, setErrorOrderId] = useState<string | null>(null)
   const [pollingOrderId, setPollingOrderId] = useState<string | null>(null)
-  const pollingContact = useRef<{ name: string; email: string; phone: string; method: string } | null>(null)
 
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    payment: "velocity-ecocash" as PaymentMethodValue,
+  })
   // ── Restore polling session after page refresh ───────────────────────────
   useEffect(() => {
     try {
@@ -82,9 +104,9 @@ export default function CheckoutPage() {
         const email = sessionStorage.getItem(`${POLL_SESSION_KEY}:email`)
         const phone = sessionStorage.getItem(`${POLL_SESSION_KEY}:phone`)
         const method = sessionStorage.getItem(`${POLL_SESSION_KEY}:method`)
-        if (name && email && phone && method) {
-          pollingContact.current = { name, email, phone, method }
+        if (name && email && phone !== null && method) {
           queueMicrotask(() => {
+            setForm({ name, email, phone, payment: method as PaymentMethodValue })
             setPollingOrderId(savedOrderId)
             setSubmitting(true)
           })
@@ -93,18 +115,29 @@ export default function CheckoutPage() {
     } catch { /* sessionStorage may be unavailable */ }
   }, [])
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    payment: "velocity-ecocash" as PaymentMethodValue,
-  })
   const [eventQuestions, setEventQuestions] = useState<{ id: string; question: string; required: boolean }[]>([])
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({})
   const [promoInput, setPromoInput] = useState("")
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: "percent" | "fixed"; value: number; discount: number } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoLoading, setPromoLoading] = useState(false)
+
+  async function saveCanonicalOrder(orderId: string) {
+    const response = await fetch("/api/orders/" + orderId + "/data", { cache: "no-store", headers: orderAuthHeaders(orderId) })
+    if (response.ok) saveOrder(await response.json())
+    if (submittedCart.current === JSON.stringify(itemsRef.current)) itemsRef.current.forEach(item => removeItem(item.key))
+  }
+  function getRequestId() {
+    if (requestId.current) return requestId.current
+    try { requestId.current = sessionStorage.getItem("tp_checkout_request") } catch { /* storage optional */ }
+    requestId.current ??= crypto.randomUUID()
+    try { sessionStorage.setItem("tp_checkout_request", requestId.current) } catch { /* storage optional */ }
+    return requestId.current
+  }
+  function finishRequest() {
+    requestId.current = null
+    try { sessionStorage.removeItem("tp_checkout_request"); sessionStorage.removeItem("tp_checkout_request_order") } catch { /* storage optional */ }
+  }
 
   // Drives the "Check your phone" overlay for seamless mobile-money payments.
   // Polls the Velocity transaction status with a 2s pause between completed
@@ -114,9 +147,10 @@ export default function CheckoutPage() {
     if (!pollingOrderId) return
 
     const startedAtKey = `poll_started:${pollingOrderId}`
-    const stored = sessionStorage.getItem(startedAtKey)
+    let stored: string | null = null
+    try { stored = sessionStorage.getItem(startedAtKey) } catch { /* storage optional */ }
     const startedAt = stored ? Number(stored) : Date.now()
-    if (!stored) sessionStorage.setItem(startedAtKey, String(startedAt))
+    if (!stored) { try { sessionStorage.setItem(startedAtKey, String(startedAt)) } catch { /* storage optional */ } }
 
     let active = true
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -128,11 +162,11 @@ export default function CheckoutPage() {
 
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         if (timer) clearTimeout(timer)
-        sessionStorage.removeItem(startedAtKey)
+        safeSessionRemove(startedAtKey)
         clearPollingSession()
         setPollingOrderId(null)
         setSubmitting(false)
-        router.replace(`/checkout/expired?ref=${pollingOrderId}&pending=1`)
+        router.replace("/checkout/expired?ref=" + pollingOrderId + "&" + orderOwnerQuery(pollingOrderId).slice(1))
         return
       }
 
@@ -140,58 +174,63 @@ export default function CheckoutPage() {
         controller = new AbortController()
         const res = await fetch(statusEndpoint, {
           cache: "no-store",
-          signal: controller.signal,
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
           headers: orderAuthHeaders(pollingOrderId, null),
         })
+        if (!res.ok) {
+          setPollMessage(res.status === 403 ? "Open your secure order link to continue checking this payment." : "Connection is delayed. Your payment may still complete; please do not pay again.")
+          if (res.status === 429) {
+            if (active) timer = setTimeout(() => void poll(), Math.max(5000, Number(res.headers.get("Retry-After") ?? 5) * 1000))
+            return
+          }
+          throw new Error("Status temporarily unavailable")
+        }
         const data = await res.json()
         if (!active) return
 
-        if (data.paid && pollingContact.current) {
+        if (data.paid) {
           if (timer) clearTimeout(timer)
-          sessionStorage.removeItem(startedAtKey)
+          safeSessionRemove(startedAtKey)
           clearPollingSession()
-          const contact = pollingContact.current
-          placeOrder(
-            { name: contact.name, email: contact.email, phone: contact.phone },
-            { method: contact.method },
-            pollingOrderId,
-            data.status ?? "paid",
-          )
-          router.push(`/orders/${pollingOrderId}?welcome=1`)
+          await saveCanonicalOrder(pollingOrderId)
+          finishRequest()
+          router.push("/orders/" + pollingOrderId + orderOwnerQuery(pollingOrderId))
           return
         }
 
-        const terminalPollStatuses = ["FAILED", "CANCELLED", "EXPIRED", "EVENT_ENDED"]
+        const terminalPollStatuses = ["CANCELLED", "EXPIRED"]
         const terminalOrderStatuses = ["cancelled", "expired"]
 
         if (
           terminalOrderStatuses.includes(data.status) ||
           terminalPollStatuses.includes(data.pollStatus) ||
-          data.pollStatus === "TIMEOUT"
+          data.status === "refunded"
         ) {
           if (timer) clearTimeout(timer)
-          sessionStorage.removeItem(startedAtKey)
+          safeSessionRemove(startedAtKey)
           clearPollingSession()
           const isExpired = data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
           setPollingOrderId(null)
           setSubmitting(false)
           if (isExpired || data.pollStatus === "EVENT_ENDED") {
-            router.replace(`/checkout/expired?ref=${pollingOrderId}`)
+            router.replace("/checkout/expired?ref=" + pollingOrderId + "&" + orderOwnerQuery(pollingOrderId).slice(1))
           } else {
             clearPollingSession()
-            setSubmitError("Payment was cancelled or declined. Please try again.")
+            setSubmitError("This order is closed. If money was deducted, contact support before paying again.")
+            setErrorOrderId(pollingOrderId)
           }
           return
         }
 
         if (data.pollStatus === "UNKNOWN") {
-          setSubmitError("We couldn't confirm your payment status. If money was deducted, your tickets will be sent once confirmed. Contact support.")
+          setPollMessage("We couldn't confirm your payment status. If money was deducted, your tickets will be sent once confirmed. Contact support.")
         }
 
         if (data.pollStatus === "ERROR") {
-          setSubmitError(`An error occurred: ${data.message ?? "Unknown error"}. Your payment may still complete — we'll keep checking.`)
+          setPollMessage(`An error occurred: ${data.message ?? "Unknown error"}. Your payment may still complete — we'll keep checking.`)
         }
       } catch {
+        setPollMessage("Connection is delayed. We are still checking; please do not pay again.")
         // Network blip — fall through to next tick.
       } finally {
         controller = null
@@ -209,7 +248,9 @@ export default function CheckoutPage() {
       if (timer) clearTimeout(timer)
       controller?.abort()
     }
-  }, [pollingOrderId, placeOrder, router])
+  // The poll lifetime follows the order, while cart contents are read through itemsRef.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingOrderId, saveOrder, removeItem, router])
 
   // Fetch event questions once cart is ready
   useEffect(() => {
@@ -245,13 +286,18 @@ export default function CheckoutPage() {
     )
   }
 
+  const checkoutGroups = [...new Map(items.filter(i => i.kind === 'ticket').map(i => [i.eventSlug + ':' + i.currency, i])).values()]
+  if (checkoutGroups.length > 1) return <div className="mx-auto max-w-xl space-y-4 p-8"><h1 className="text-xl font-bold">Choose an order to check out</h1><p>Each event and currency has its own payment.</p>{checkoutGroups.map(item => <Link key={item.key} className="block rounded-lg border border-line p-4" href={'/checkout?event=' + encodeURIComponent(item.eventSlug) + '&currency=' + encodeURIComponent(item.currency)}>{item.eventTitle} · {item.currency} <ArrowRight size={14} /></Link>)}</div>
   const lineCount = items.reduce((s, i) => s + i.qty, 0)
   const firstEventTitle = items[0]?.eventTitle ?? ""
 
   // Compute the final total for the CTA label
   const firstCurrency = Object.keys(totalsByCurrency)[0] ?? "USD"
   const rawTotal = totalsByCurrency[firstCurrency] ?? 0
-  const finalTotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const estimatedTotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const inputKey = JSON.stringify({ form, items, promo: appliedPromo?.code, questionAnswers })
+  const currentQuote = serverQuote?.inputKey === inputKey ? serverQuote : null
+  const finalTotal = currentQuote?.amount ?? estimatedTotal
   const isFree = finalTotal === 0
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -287,6 +333,7 @@ export default function CheckoutPage() {
       }
 
       const body: Record<string, unknown> = {
+        checkoutRequestId: getRequestId(),
         email: form.email,
         name: form.name,
         phone: form.phone,
@@ -301,7 +348,21 @@ export default function CheckoutPage() {
       if (appliedPromo) body.promoCode = appliedPromo.code
       if (eventQuestions.length > 0) body.questionResponses = questionAnswers
 
+      if (!currentQuote) {
+        for (const event of ['BUYER_DETAILS_SUBMITTED','PAYMENT_METHOD_SELECTED']) void fetch('/api/analytics/track',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event,eventSlug:ticketLines[0].eventSlug,sessionId:getAnalyticsSessionId()})}).catch(() => {})
+        const quoted = await fetch("/api/checkout/velocity", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, quoteOnly: true }), signal: AbortSignal.timeout(30_000) })
+        const result = await quoted.json()
+        if (!quoted.ok) throw new Error(result.error ?? "Could not confirm the current price")
+        setServerQuote({ ...result.quote, inputKey })
+        if (result.quote.questions) setEventQuestions(result.quote.questions)
+        setSubmitting(false)
+        return
+      }
+      body.expectedAmount = currentQuote.amount
+      body.expectedCurrency = currentQuote.currency
+      submittedCart.current = JSON.stringify(items)
       const res = await fetch("/api/checkout/velocity", {
+        signal: AbortSignal.timeout(60_000),
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -314,28 +375,30 @@ export default function CheckoutPage() {
         try {
           const errBody = await res.json()
           errorMsg = errBody.error ?? errorMsg
+          if (errBody.orderId && errBody.accessSignature) {
+            rememberOrderAccess(errBody.orderId, errBody.accessSignature)
+            setErrorOrderId(errBody.orderId)
+            try { sessionStorage.setItem("tp_checkout_request_order", errBody.orderId) } catch { /* optional storage */ }
+          }
+          if (errBody.quote) setServerQuote({ ...errBody.quote, inputKey })
         } catch { /* use default */ }
         if (res.status === 502) throw new Error(errorMsg || "Payment service is temporarily unavailable. Please try again.")
         throw new Error(errorMsg)
       }
       const data = (await res.json()) as CheckoutResponse
-      rememberOrderOwner(data.orderId, form.email)
+      rememberOrderAccess(data.orderId, data.accessSignature)
+      try { sessionStorage.setItem("tp_checkout_request_order", data.orderId) } catch { /* optional storage */ }
 
       const contactData = { name: form.name, email: form.email, phone: form.phone, method: form.payment }
 
       if (data.flow === "free") {
-        placeOrder(
-          { name: form.name, email: form.email, phone: form.phone },
-          { method: "velocity-ecocash" },
-          data.orderId,
-          "paid",
-        )
-        window.location.href = `/orders/${data.orderId}?welcome=1`
+        await saveCanonicalOrder(data.orderId)
+        finishRequest()
+        router.push("/orders/" + data.orderId + orderOwnerQuery(data.orderId))
         return
       }
 
       if (data.flow === "velocity-seamless") {
-        pollingContact.current = contactData
         savePollingSession(data.orderId, contactData)
         setPollingOrderId(data.orderId)
         return
@@ -343,16 +406,10 @@ export default function CheckoutPage() {
 
       if (data.flow === "velocity-redirect") {
         if (data.redirectUrl) {
-          placeOrder(
-            { name: form.name, email: form.email, phone: form.phone },
-            { method: form.payment },
-            data.orderId,
-            "pending",
-          )
+          await saveCanonicalOrder(data.orderId)
           window.location.href = data.redirectUrl
           return
         }
-        pollingContact.current = contactData
         savePollingSession(data.orderId, contactData)
         setPollingOrderId(data.orderId)
         return
@@ -371,12 +428,13 @@ export default function CheckoutPage() {
         <PaymentWaitingOverlay
           method={form.payment}
           phone={form.phone}
+          message={pollMessage}
           orderId={pollingOrderId}
           onCancel={() => {
             clearPollingSession()
             setPollingOrderId(null)
             setSubmitting(false)
-            setSubmitError("Payment cancelled. You can try again.")
+            router.push("/orders/" + pollingOrderId + orderOwnerQuery(pollingOrderId))
           }}
         />
       )}
@@ -547,12 +605,19 @@ export default function CheckoutPage() {
           </div>}
 
           {/* Error state */}
+          {currentQuote && (
+            <div role="status" className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-sm">
+              <p className="font-semibold">Review your payment: {formatCurrency(currentQuote.amount, currentQuote.currency)}</p>
+              {!isFree && form.payment === "velocity-ecocash" && <p className="mt-1">Approval prompt goes to {currentQuote.normalizedPhone}. Check this number before paying.</p>}
+              {!isFree && <p className="mt-1 text-xs text-ink-2">Your wallet or card provider may charge additional fees. Check the amount on its approval screen.</p>}
+            </div>
+          )}
           {submitError && (
             <div role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3 space-y-1">
               <p>{submitError}</p>
               {errorOrderId && (
                 <Link
-                  href={`/orders/${errorOrderId}`}
+                  href={"/orders/" + errorOrderId + orderOwnerQuery(errorOrderId)}
                   className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:text-red-700 transition-colors"
                 >
                   Check order status <ArrowRight size={12} />
@@ -569,7 +634,9 @@ export default function CheckoutPage() {
           >
             {submitting ? (
               <><Loader2 size={14} className="animate-spin" /> Processing…</>
-            ) : isFree ? (
+            ) : !currentQuote ? (
+                <>Review order <ArrowRight size={14} /></>
+              ) : isFree ? (
               <><Check size={14} /> Claim free tickets</>
             ) : form.payment === "velocity-card" ? (
               <><CreditCard size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} by card</>
@@ -603,7 +670,7 @@ export default function CheckoutPage() {
                     <p className="text-ink-3 text-[12px] line-clamp-1">{line.eventTitle} · ×{line.qty}</p>
                   </div>
                   <span className="font-semibold tracking-tight text-ink whitespace-nowrap">
-                    {formatCurrency(line.price * line.qty, line.currency)}
+                    {formatCurrency((line.kind === "ticket" ? currentQuote?.lines?.find(item => item.tierId === line.tierId)?.unitPrice ?? line.price : line.price) * line.qty, line.currency)}
                   </span>
                 </li>
               ))}
@@ -627,7 +694,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex items-baseline justify-between text-[13px]">
                     <span className="text-ink-3">Discount</span>
-                    <span className="font-semibold text-green-700">-{formatCurrency(appliedPromo.discount, firstCurrency)}</span>
+                    <span className="font-semibold text-green-700">-{formatCurrency(currentQuote?.discount ?? appliedPromo.discount, firstCurrency)}</span>
                   </div>
                 </div>
               ) : (
@@ -651,7 +718,7 @@ export default function CheckoutPage() {
                         try {
                           const ticketItem = items.find(i => i.kind === "ticket")
                           if (!ticketItem) return
-                          const res = await fetch(`/api/checkout/validate-promo?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}&code=${encodeURIComponent(code)}`)
+                          const res = await fetch(`/api/checkout/validate-promo?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}&code=${encodeURIComponent(code)}&amount=${rawTotal}`)
                           const data = await res.json()
                           if (data.valid) {
                             let discount = 0
@@ -686,7 +753,7 @@ export default function CheckoutPage() {
             {/* Total */}
             <div className="pt-3.5 border-t border-line space-y-1">
               {Object.entries(totalsByCurrency).map(([cur, total]) => {
-                const lineTotal = appliedPromo ? Math.max(0, total - appliedPromo.discount) : total
+                const lineTotal = currentQuote?.currency === cur ? currentQuote.amount : appliedPromo ? Math.max(0, total - appliedPromo.discount) : total
                 return (
                   <div key={cur} className="flex items-baseline justify-between">
                     <span className="text-[13px] text-ink-2">Total · {cur}</span>
@@ -711,6 +778,8 @@ export default function CheckoutPage() {
             >
               {submitting ? (
                 <><Loader2 size={14} className="animate-spin" /> Processing…</>
+              ) : !currentQuote ? (
+                <>Review order <ArrowRight size={14} /></>
               ) : isFree ? (
                 <><Check size={14} /> Claim free tickets</>
               ) : form.payment === "velocity-card" ? (
@@ -732,16 +801,25 @@ export default function CheckoutPage() {
 
 function getAnalyticsSessionId() {
   const key = "tp_analytics_session"
-  const existing = sessionStorage.getItem(key)
+  let existing: string | null = null
+  try { existing = sessionStorage.getItem(key) } catch { /* storage optional */ }
   if (existing) return existing
   const created = crypto.randomUUID()
-  sessionStorage.setItem(key, created)
+  try { sessionStorage.setItem(key, created) } catch { /* storage optional */ }
   return created
 }
 
 function PaymentWaitingOverlay({
-  method, phone, orderId, onCancel,
-}: { method: string; phone: string; orderId: string; onCancel: () => void }) {
+  method, phone, orderId, message, onCancel,
+}: { method: string; phone: string; orderId: string; message?: string | null; onCancel: () => void }) {
+  const dialog = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    dialog.current?.focus()
+    return () => { document.body.style.overflow = overflow; previous?.focus() }
+  }, [])
   const isCard = method === "velocity-card"
   const [timeLeftMs, setTimeLeftMs] = useState<number>(POLL_TIMEOUT_MS)
 
@@ -753,7 +831,8 @@ function PaymentWaitingOverlay({
 
   useEffect(() => {
     const key = `poll_started:${orderId}`
-    const stored = sessionStorage.getItem(key)
+    let stored: string | null = null
+    try { stored = sessionStorage.getItem(key) } catch { /* storage optional */ }
     const startedAt = stored ? Number(stored) : Date.now()
 
     const tick = () => setTimeLeftMs(Math.max(0, POLL_TIMEOUT_MS - (Date.now() - startedAt)))
@@ -768,8 +847,15 @@ function PaymentWaitingOverlay({
   const isLow = timeLeftMs < 120_000
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-chrome/95 backdrop-blur-sm px-4">
-      <div className="relative w-full max-w-sm text-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-chrome/95 backdrop-blur-sm px-4">
+      <div role="dialog" aria-modal="true" aria-label="Payment confirmation" tabIndex={-1} ref={dialog} onKeyDown={(event) => {
+        if (event.key !== 'Tab') return
+        const nodes = dialog.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
+        if (!nodes?.length) { event.preventDefault(); return }
+        const first = nodes[0], last = nodes[nodes.length - 1]
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+      }} className="relative max-h-[90dvh] w-full max-w-sm overflow-y-auto py-4 text-center">
         {/* Pulse rings */}
         <div className="relative mx-auto mb-7 w-20 h-20">
           <span className="absolute inset-0 rounded-full bg-white/10 animate-ping" style={{ animationDuration: "1.5s" }} />
@@ -783,11 +869,11 @@ function PaymentWaitingOverlay({
           {isCard ? "Card payment" : "EcoCash"}
         </p>
         <h2 className="text-[24px] font-bold text-white tracking-tight">
-          {isCard ? "Redirecting…" : "Check your phone"}
+          {isCard ? "Checking card payment" : "Check your phone"}
         </h2>
         <p className="mt-3 text-[15px] text-white/60 leading-relaxed max-w-xs mx-auto">
           {isCard
-            ? "We're taking you to the secure card checkout. Come back here once you've completed payment."
+            ? "Your order is recorded. Open your order or contact support if the hosted payment page did not open."
             : <>Approve the EcoCash prompt sent to{" "}<span className="font-semibold text-white">{phone}</span></>
           }
         </p>
@@ -797,10 +883,12 @@ function PaymentWaitingOverlay({
           Waiting for confirmation…
         </div>
 
+        <p role="status" className="mt-4 text-sm text-white/70">{message ?? "Your payment can continue if you leave this page. Please do not pay again."}</p>
+        <a href={"https://wa.me/263788689923?text=" + encodeURIComponent("Please help with payment " + orderId)} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm text-white underline">WhatsApp support</a>
         {isLow && !isCard && (
           <div className="mt-4 rounded-xl bg-amber-500/15 border border-amber-400/20 px-4 py-3">
             <p className="text-[13px] font-semibold text-amber-300">
-              Approve now — {countdownLabel} left
+              We’ll keep this screen open for {countdownLabel}
             </p>
           </div>
         )}
@@ -810,9 +898,11 @@ function PaymentWaitingOverlay({
           onClick={onCancel}
           className="mt-8 text-[12px] text-white/30 hover:text-white/60 transition-colors underline underline-offset-4"
         >
-          Cancel payment
+          View order · keep checking
         </button>
       </div>
     </div>
   )
 }
+
+function safeSessionRemove(key: string) { try { sessionStorage.removeItem(key) } catch { /* storage optional */ } }

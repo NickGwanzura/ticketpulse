@@ -55,7 +55,8 @@ export function formatPhone(phone: string): string {
   if (cleaned.startsWith("0") && cleaned.length >= 9) {
     cleaned = "+263" + cleaned.slice(1)
   }
-  // Already has + but missing country code prefix — let through as-is
+  if (/^263\d{9}$/.test(cleaned)) cleaned = "+" + cleaned
+  // International format is validated before initiation.
   return cleaned
 }
 

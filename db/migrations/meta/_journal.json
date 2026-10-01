@@ -71,6 +71,13 @@
       "when": 1790668800000,
       "tag": "0009_usd_event_payout_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790812800000,
+      "tag": "0010_checkout_request_identity",
+      "breakpoints": true
     }
   ]
 }

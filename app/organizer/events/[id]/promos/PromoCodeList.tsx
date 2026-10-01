@@ -41,7 +41,10 @@ function PromoCodeRow({ code, eventId }: { code: PromoCode; eventId: string }) {
 
   const [isExpired, setIsExpired] = useState(false)
   useEffect(() => {
-    setIsExpired(Boolean(code.expiresAt && new Date(code.expiresAt) < new Date()))
+    const timer = window.setTimeout(() => {
+      setIsExpired(Boolean(code.expiresAt && new Date(code.expiresAt) < new Date()))
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [code.expiresAt])
   const isMaxed = code.maxUses > 0 && code.usedCount >= code.maxUses
   const isInactive = !code.active || isExpired || isMaxed

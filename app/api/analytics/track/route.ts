@@ -1,3 +1,7 @@
+import { z } from "zod"
+import { eq } from "drizzle-orm"
+import { db } from "@/db"
+import { events } from "@/db/schema"
 import { NextRequest, NextResponse } from "next/server"
 import { trackEvent } from "@/lib/analytics"
 import { rateLimit } from "@/lib/rate-limit"
@@ -14,11 +18,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json()
-    const { event, eventId, sessionId, referrer, userAgent } = body
-
-    if (!event || !eventId) {
-      return NextResponse.json({ error: "Missing event or eventId" }, { status: 400 })
+    const parsed = z.object({event: z.enum(['EVENT_VIEWED','CHECKOUT_STARTED','BUYER_DETAILS_SUBMITTED','PAYMENT_METHOD_SELECTED']), eventId: z.string().uuid().optional(), eventSlug: z.string().min(1).max(160).optional(), sessionId: z.string().max(160).optional(), referrer: z.string().max(2000).optional(), userAgent: z.string().max(1000).optional()}).safeParse(await req.json())
+    if (!parsed.success || (!parsed.data.eventId && !parsed.data.eventSlug)) return NextResponse.json({error:'Invalid analytics event'}, {status:400})
+    const {event, sessionId, referrer, userAgent}=parsed.data
+    let eventId=parsed.data.eventId
+    if (!eventId) {
+      const [found]=await db.select({id:events.id}).from(events).where(eq(events.slug,parsed.data.eventSlug!)).limit(1)
+      if (!found) return NextResponse.json({error:'Event not found'},{status:404})
+      eventId=found.id
     }
 
     await trackEvent({

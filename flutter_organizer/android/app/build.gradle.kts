@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "tech.ticketpulse.ticketpulse_organizer"
+    namespace = "tech.ticketpulse.mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "tech.ticketpulse.ticketpulse_organizer"
+        applicationId = "tech.ticketpulse.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

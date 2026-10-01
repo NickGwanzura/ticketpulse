@@ -13,7 +13,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
@@ -400,6 +400,7 @@ export const orders = pgTable("orders", {
   index("orders_guest_email_idx").on(table.guestEmail),
   index("orders_status_event_idx").on(table.eventId, table.status),
   index("orders_status_created_at_idx").on(table.status, table.createdAt),
+  uniqueIndex("orders_checkout_request_identity_idx").on(sql`(${table.metadata}->>'checkoutRequestId')`).where(sql`${table.metadata}->>'checkoutRequestId' IS NOT NULL`),
   index("orders_metadata_gin_idx").using("gin", table.metadata),
   index("orders_created_at_idx").on(table.createdAt),
   index("orders_paid_at_idx").on(table.paidAt),
@@ -1058,9 +1059,9 @@ export const payoutClawbacksRelations = relations(payoutClawbacks, ({ one }) => 
 }))
 
 // ─── WhatsApp Checkout Sessions ──────────────────────────────────────────────
-// Conversation state for the "text EARLYBIRD to buy" WhatsApp checkout flow.
-// One row per chat; the bot walks the buyer through event/quantity/name/email
-// then hands off to the existing Velocity EcoCash checkout.
+// Conversation state for WhatsApp ticket checkout.
+// One row per chat; the bot walks the buyer through event/tier/quantity and
+// buyer details, then hands off to the existing Velocity EcoCash checkout.
 
 export const whatsappCheckoutStepEnum = pgEnum("whatsapp_checkout_step", [
   "choose_event",
@@ -1085,10 +1086,10 @@ export const whatsappCheckoutSessions = pgTable("whatsapp_checkout_sessions", {
   guestEmail: text("guest_email"),
   guestPhone: text("guest_phone"),
   orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
-  // Event ids offered when multiple events have an active early-bird tier at
-  // once, in display order, so a numeric reply ("2") can be resolved back to
-  // the event/tier it referred to.
+  // Candidate event IDs while eventId is null; candidate tier IDs after an
+  // event is selected. IDs remain in display order for numeric replies.
   candidateEventIds: jsonb("candidate_event_ids"),
+  checkoutMetadata: jsonb("checkout_metadata").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })

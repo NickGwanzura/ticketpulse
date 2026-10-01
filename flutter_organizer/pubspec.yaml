@@ -1,7 +1,7 @@
-name: ticketpulse_organizer
-description: TicketPulse organizer operations for Android and iOS.
+name: ticketpulse
+description: TicketPulse events, ticket purchases, and organizer operations.
 publish_to: none
-version: 0.1.0+1
+version: 1.0.0+2
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
@@ -10,7 +10,10 @@ dependencies:
   http: ^1.6.0
   flutter_svg: ^2.3.0
   flutter_secure_storage: ^10.0.0
+  app_links: ^7.2.1
+  local_auth: ^3.0.2
   mobile_scanner: ^7.4.0
+  qr_flutter: ^4.1.0
   intl: ^0.20.2
   url_launcher: ^6.3.2
 dev_dependencies:

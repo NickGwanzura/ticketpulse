@@ -43,3 +43,6 @@ middleware.ts
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Flutter Android Gradle diagnostics
+/flutter_organizer/android/build/

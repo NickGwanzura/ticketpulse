@@ -235,7 +235,7 @@ export default function CartPage() {
             <div className="space-y-3 mb-5">
               {Object.entries(totalsByCurrency).map(([cur, total]) => (
                 <div key={cur} className="flex items-baseline justify-between">
-                  <span className="text-[13px] text-ink-2">Subtotal · {cur}</span>
+                  <span className="text-[13px] text-ink-2">Estimated subtotal · {cur}</span>
                   <span className="text-[18px] font-bold tracking-tight text-ink">
                     {formatCurrency(total, cur)}
                   </span>
@@ -244,8 +244,8 @@ export default function CartPage() {
             </div>
 
             <div className="flex items-center justify-between text-[13px] text-ink-3 pb-4 border-b border-line">
-              <span>Booking fees</span>
-              <span className="text-green-700 font-medium">Free</span>
+              <span>Provider fees</span>
+              <span className="font-medium">Shown by payment provider</span>
             </div>
 
             <Link

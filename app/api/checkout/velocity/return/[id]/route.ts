@@ -1,3 +1,4 @@
+import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
 import { NextResponse } from "next/server"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
@@ -20,17 +21,19 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     return NextResponse.redirect(`${origin}/checkout?error=not_found`)
   }
 
+  const access = await authorizeOrderAccess(id, orderAccessCredsFrom(req))
+  if (!access.ok) return NextResponse.redirect(origin + "/orders/lookup")
   const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1)
   if (!order) {
     return NextResponse.redirect(`${origin}/checkout?error=not_found`)
   }
 
   // Already paid — send straight to order page.
-  if (order.status === "paid") {
+  if (["paid", "completed"].includes(order.status ?? "")) {
     return NextResponse.redirect(`${getOrderUrl(id)}&welcome=1`)
   }
 
-  if (order.status !== "pending") {
+  if (!["pending", "awaiting_verification"].includes(order.status ?? "")) {
     return NextResponse.redirect(`${getOrderUrl(id)}&error=cancelled`)
   }
 
