@@ -5,13 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useCart, type OrderRecord, type CartLine } from "@/lib/cart-context"
 import { useOrderTickets } from "@/lib/use-order-tickets"
-import { orderAccessSignatureFor, orderAuthHeaders, orderOwnerQuery, rememberOrderAccess } from "@/lib/order-auth-client"
-import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE, SUPPORT_WHATSAPP, isOrderPaid, paymentMethodLabel } from "@/lib/order-labels"
-import { formatCurrency } from "@/lib/utils"
-import {
-  ArrowLeft, ArrowUpRight, Calendar, CalendarPlus, Clock, Mail, MapPin, Smartphone, Download, Printer, Loader2, Search, Send,
-  RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet, Share2, RotateCcw, Maximize2, MessageCircle,
-} from "lucide-react"
+import { orderAuthHeaders, orderOwnerQuery, rememberOrderAccess } from "@/lib/order-auth-client"
+import { formatCurrency, formatDate } from "@/lib/utils"
+import RefundRequestPanel from "./RefundRequestPanel"
+import { ArrowLeft, ArrowUpRight, Calendar, Mail, Smartphone, Download, Printer, Loader2, Search, Send, RefreshCw, ArrowRightLeft, X, CheckCircle, Wallet } from "lucide-react"
 import QrCode from "@/components/QrCode"
 import AnimatedCheck from "@/components/AnimatedCheck"
 import Confetti from "@/components/Confetti"
@@ -62,9 +59,8 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const welcomeFlag = searchParams.get("welcome") === "1"
-  const cardCancelled = searchParams.get("error") === "cancelled"
-  const urlSignature = searchParams.get("sig")
-  const { ready, getOrder, saveOrder, restoreItems } = useCart()
+  const accessSignature = searchParams.get("sig")
+  const { ready, saveOrder } = useCart()
   const [order, setOrder] = useState<OrderRecord | null>(null)
   const [fetching, setFetching] = useState(true)
   const [resendingTickets, setResendingTickets] = useState(false)
@@ -77,9 +73,8 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
   const [enlargedQr, setEnlargedQr] = useState<{ value: string; label: string } | null>(null)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const orderStatus = order?.status
-  const ticketsEnabled = isOrderPaid(order?.status)
-  const accessSignature = ready ? orderAccessSignatureFor(id, urlSignature) : urlSignature
-  const { qrByTier, recordsByTier, loading: ticketsLoading } = useOrderTickets(id, ticketsEnabled, accessSignature)
+  const ticketsEnabled = order?.status === "paid" || order?.status === "completed"
+  const { qrByTier, recordsByTier, loading: ticketsLoading, error: ticketError, refresh: refreshTickets } = useOrderTickets(id, ticketsEnabled, accessSignature, order?.items.filter(i => i.kind === "ticket").reduce((n, i) => n + i.qty, 0) ?? 1)
   const [transferStates, setTransferStates] = useState<Record<string, {
     open: boolean; name: string; email: string; submitting: boolean; note: string | null; done: boolean
   }>>({})
@@ -131,37 +126,32 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
     if (!ready) return
     if (urlSignature) rememberOrderAccess(id, urlSignature)
 
-    const local = getOrder(id)
-    const hasLocal = !!local && local.items.length > 0
-    if (hasLocal) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrates the order detail view from persisted checkout state.
-      setOrder(local)
-      setFetching(false)
-    }
+    rememberOrderAccess(id, accessSignature)
 
-    const controller = new AbortController()
-    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, urlSignature), signal: controller.signal })
+    // Fall back to server-side API
+    queueMicrotask(() => setFetching(true))
+    fetch(`/api/orders/${id}/data`, { headers: orderAuthHeaders(id, accessSignature) })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OrderRecord | null) => {
-        if (data && (data.items.length > 0 || !hasLocal)) {
-          setOrder(data)
+        if (data) {
           saveOrder(data)
+          if (['paid', 'completed', 'cancelled', 'expired'].includes(data.status)) {
+            try { if (sessionStorage.getItem('tp_checkout_request_order') === id) { sessionStorage.removeItem('tp_checkout_request'); sessionStorage.removeItem('tp_checkout_request_order') } } catch { /* optional storage */ }
+          }
         }
+        setOrder(data)
         setFetching(false)
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setFetching(false)
-      })
-    return () => controller.abort()
-  }, [ready, id, getOrder, saveOrder, urlSignature])
+      .catch(() => setFetching(false))
+  }, [ready, id, saveOrder, accessSignature])
 
   // Card payment recovery polling:
   // After a Velocity card redirect, the checkout page is gone and its polling
   // loop died. We restart a short poll here so the order flips to paid without
   // the user having to wait for the cron job.
   useEffect(() => {
-    if (!welcomeFlag || cardCancelled || !orderStatus) return
-    if (orderStatus !== "pending") return
+    if (!orderStatus || !["pending", "awaiting_verification", "expired"].includes(orderStatus)) return
+    if (orderStatus === "paid" || orderStatus === "completed") return
 
     const startedAt = Date.now()
     let cancelled = false
@@ -176,7 +166,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       }
       try {
         const res = await fetch(`/api/checkout/velocity/status/${id}`, {
-          cache: "no-store",
+          cache: "no-store", signal: AbortSignal.timeout(20_000),
           headers: orderAuthHeaders(id, accessSignature),
         })
         if (res.ok) {
@@ -193,7 +183,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
             return
           } else if (["expired", "cancelled"].includes(data.status)) {
             setPollingForCard(false)
-            setOrder((current) => current ? { ...current, status: "expired" } : current)
+            setOrder((current) => current ? { ...current, status: data.status } : current)
             return
           }
         }
@@ -209,7 +199,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
       cancelled = true
       if (pollRef.current) clearTimeout(pollRef.current)
     }
-  }, [welcomeFlag, cardCancelled, orderStatus, id, saveOrder, accessSignature])
+  }, [welcomeFlag, orderStatus, id, saveOrder, accessSignature])
 
   async function resendTickets() {
     if (resendingTickets) return
@@ -326,27 +316,13 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
         <div role="status" className="sticky top-0 z-40 border-b border-amber-200 bg-amber-50 px-5 py-3 flex items-center justify-center gap-3">
           <RefreshCw size={14} className="text-amber-600 animate-spin shrink-0" />
           <p className="text-[13px] font-medium text-amber-800">
-            Confirming your card payment. This usually takes a few seconds.
+            Checking your payment. Please do not pay again while confirmation is pending.
           </p>
         </div>
       )}
-
-      {isUnpaid && !pollingForCard && (
-        <div className="border-b border-amber-200 bg-amber-50">
-          <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-8">
-            <p className="text-[13px] font-medium text-amber-900">
-              {cardCancelled
-                ? "Your card payment was cancelled. No money was taken and no tickets were issued."
-                : order.status === "expired"
-                ? "This payment wasn't completed, so no tickets were issued. If money was deducted, WhatsApp us with this order number before paying again."
-                : "We're still waiting for this payment. Please don't pay again. Tickets are sent automatically once it's confirmed."}
-            </p>
-            {(cardCancelled || order.status === "expired") && (
-              <Button type="button" onClick={tryAgain} size="sm" className="shrink-0">
-                <RotateCcw size={13} /> Try again
-              </Button>
-            )}
-          </div>
+      {order.status === "expired" && (
+        <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-center text-[13px] font-medium text-amber-800">
+          This order is closed. If money was deducted, contact support before paying again.
         </div>
       )}
 
@@ -473,121 +449,34 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
                           )}
                         </div>
 
-                        {/* Transfer section */}
-                        {ticketId && !isTransferred && !eventStarted && (
-                          <div className="mt-4 pt-4 border-t border-line">
-                            {isPending && !ts?.done ? (
-                              <div className="space-y-1.5">
-                                <p className="text-[12px] text-amber-700 font-medium">
-                                  Transfer pending: waiting for {ticketRecord.transferToName} to accept
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => cancelTransfer(ticketId)}
-                                  className="min-h-9 text-[12px] text-ink-3 underline hover:text-red-500 transition"
-                                >
-                                  Cancel transfer
-                                </button>
-                                {ts?.note && <p role="alert" className="text-[12px] text-red-600">{ts.note}</p>}
-                              </div>
-                            ) : ts?.done ? (
-                              <p className="text-[12px] text-green-700 font-medium inline-flex items-center gap-1.5">
-                                <CheckCircle size={13} /> {ts.note}
-                              </p>
-                            ) : ts?.open ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-[12px] font-semibold text-ink">Send this ticket to someone else</p>
-                                  <button
-                                    type="button"
-                                    onClick={() => setTransfer(ticketId, { open: false })}
-                                    aria-label="Close transfer form"
-                                    className="-mr-2 inline-flex h-9 w-9 items-center justify-center text-ink-3 hover:text-ink transition"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                </div>
-                                <label className="sr-only" htmlFor={`transfer-name-${ticketId}`}>Recipient name</label>
-                                <input
-                                  id={`transfer-name-${ticketId}`}
-                                  type="text"
-                                  placeholder="Recipient name"
-                                  autoComplete="off"
-                                  value={ts.name}
-                                  onChange={(e) => setTransfer(ticketId, { name: e.target.value })}
-                                  className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/20 transition"
-                                />
-                                <label className="sr-only" htmlFor={`transfer-email-${ticketId}`}>Recipient email</label>
-                                <input
-                                  id={`transfer-email-${ticketId}`}
-                                  type="email"
-                                  placeholder="Recipient email"
-                                  autoComplete="off"
-                                  value={ts.email}
-                                  onChange={(e) => setTransfer(ticketId, { email: e.target.value })}
-                                  className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/20 transition"
-                                />
-                                <p className="text-[11px] text-ink-3">Your QR code stops working once they accept.</p>
-                                <button
-                                  type="button"
-                                  onClick={() => submitTransfer(ticketId)}
-                                  disabled={ts.submitting || !ts.name.trim() || !ts.email.trim()}
-                                  className="w-full min-h-11 inline-flex items-center justify-center gap-1.5 rounded-sm bg-navy px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-white hover:bg-navy/90 disabled:opacity-50 transition"
-                                >
-                                  {ts.submitting ? <Loader2 size={13} className="animate-spin" /> : <ArrowRightLeft size={13} />}
-                                  {ts.submitting ? "Sending…" : "Send transfer"}
-                                </button>
-                                {ts.note && (
-                                  <p role="alert" className="text-[12px] text-red-600">{ts.note}</p>
-                                )}
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setTransfer(ticketId, { open: true })}
-                                className="inline-flex min-h-9 items-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-ink transition"
-                              >
-                                <ArrowRightLeft size={13} /> Transfer ticket
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {isTransferred && (
-                          <div className="mt-4 pt-4 border-t border-line">
-                            <p className="text-[12px] text-ink-3 font-medium">
-                              Transferred to {ticketRecord.holderName ?? "new holder"}
-                            </p>
+                      {isTransferred && (
+                        <div className="mt-4 pt-4 border-t border-line">
+                          <p className="text-[12px] text-ink-3 font-medium">
+                            Transferred to {ticketRecord.holderName ?? "new holder"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative flex items-center">
+                      <span className="absolute -top-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
+                      <span className="w-px h-full border-l-2 border-dashed border-line" aria-hidden />
+                      <span className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
+                    </div>
+                    <div className="p-4 md:p-5 bg-paper-2 flex flex-col items-center justify-center gap-2">
+                      <div className={isTransferred ? "opacity-30 pointer-events-none" : ""}>
+                        {hasRealQr ? <QrCode value={qrValue!} size={120} className="rounded-lg ring-1 ring-line" /> : (
+                          <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-[11px] font-medium text-amber-800">
+                            {ticketError ?? (ticketsLoading ? "Preparing ticket…" : "Payment confirmed — tickets are still being prepared.")}
                           </div>
                         )}
                       </div>
-                      <div className="relative hidden sm:flex items-center">
-                        <span className="absolute -top-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
-                        <span className="w-px h-full border-l-2 border-dashed border-line" aria-hidden />
-                        <span className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 rounded-full bg-paper-2 ring-1 ring-line" aria-hidden />
-                      </div>
-                      <div className="border-t-2 border-dashed border-line sm:border-t-0 p-4 md:p-5 bg-paper-2 flex flex-col items-center justify-center gap-2">
-                        {isTransferred ? (
-                          <p className="flex h-[160px] w-[160px] items-center justify-center text-center text-[12px] text-ink-3 font-medium">Transferred</p>
-                        ) : qrValue ? (
-                          <button
-                            type="button"
-                            onClick={() => setEnlargedQr({ value: qrValue, label: ticketLabel })}
-                            aria-label={`Show QR code full screen for ${ticketLabel}`}
-                            className="group relative rounded-lg"
-                          >
-                            <QrCode value={qrValue} size={160} className="rounded-lg ring-1 ring-line" />
-                            <span className="absolute bottom-1.5 right-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-paper/90 text-ink-2 shadow-sm ring-1 ring-line">
-                              <Maximize2 size={13} aria-hidden />
-                            </span>
-                          </button>
-                        ) : (
-                          <div className="flex h-[160px] w-[160px] flex-col items-center justify-center gap-1.5 rounded-lg border border-line bg-paper p-3 text-center text-[11px] font-medium text-ink-3">
-                            {ticketsLoading ? <><Loader2 size={14} className="animate-spin" /> Loading ticket…</> : "QR not available here. Use the ticket in your email."}
-                          </div>
-                        )}
-                        <p className="text-[10px] font-mono text-ink-3 tabular-nums">
-                          {order.id.slice(-6)}-{(i + 1).toString().padStart(2, "0")}
+                      {isTransferred && (
+                        <p className="text-[11px] text-ink-3 text-center font-medium">Transferred</p>
+                      )}
+                      {!hasRealQr && ticketsEnabled && !ticketsLoading && <button type="button" onClick={refreshTickets} className="text-sm underline">Reload tickets</button>}
+                      {!hasRealQr && ticketsEnabled && ticketsLoading && (
+                        <p className="text-[10px] text-ink-3 inline-flex items-center gap-1">
+                          <Loader2 size={10} className="animate-spin" /> Generating ticket…
                         </p>
                       </div>
                     </div>
@@ -642,7 +531,7 @@ function OrderDetailInner({ params }: { params: Promise<{ id: string }> }) {
               <div className="flex items-center gap-2 text-ink-2"><Calendar size={12} className="text-ink-3" aria-hidden /><dt className="sr-only">Ordered</dt><dd>Ordered {formatEventDate(order.createdAt)}</dd></div>
             </dl>
 
-            {ticketsEnabled && (
+            {["paid", "completed"].includes(order.status) && (
               <div className="mt-4 pt-4 border-t border-line space-y-2">
                 <button
                   type="button"

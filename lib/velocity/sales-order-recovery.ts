@@ -2,7 +2,7 @@ import "server-only"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
-import { restoreExpiredOrderInventory } from "@/lib/order-expiry"
+import { InventoryRecoveryError, restoreExpiredOrderInventory } from "@/lib/order-expiry"
 import { lockOrderMutation } from "@/lib/velocity/idempotency"
 import { getSalesOrderById } from "@/services/velocity"
 import type { VelocitySalesOrderLookup } from "@/types/velocity"
@@ -88,5 +88,9 @@ export async function recoverPaidSalesOrder(orderId: string, source: string, opt
       rawPayload: { verification: "sales_order_lookup", salesOrder: remote },
     })
     return { paid: true, newlySettled: true, status: "paid", safeToExpire: false }
+  }).catch(async (error) => {
+    if (!(error instanceof InventoryRecoveryError)) throw error
+    await db.update(orders).set({ metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{recoveryReview}', ${JSON.stringify({ reason: 'inventory_unavailable_after_payment', checkedAt: new Date().toISOString(), salesOrderId: remote.id, providerPaid: true })}::jsonb)` }).where(eq(orders.id, orderId))
+    return { paid: false, newlySettled: false, status: 'expired', safeToExpire: false }
   })
 }

@@ -1,5 +1,4 @@
-"use client"
-
+import type { ElementType } from "react"
 import {
   ShoppingCart, CreditCard, Mail, Ticket, Send,
   RotateCcw, CheckCircle2, AlertTriangle, Clock, UserCheck,
@@ -7,12 +6,18 @@ import {
 
 interface AuditEvent {
   timestamp: Date | null
-  icon: React.ElementType
+  icon: ElementType
   iconColor: string
   iconBg: string
   title: string
   detail?: string
 }
+
+const auditDateFormatter = new Intl.DateTimeFormat("en-ZW", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Africa/Harare",
+})
 
 interface Props {
   order: {
@@ -150,32 +155,34 @@ export default function AuditTrail({ order }: Props) {
         <h3 className="text-[15px] font-semibold tracking-tight text-ink">Audit trail</h3>
       </div>
       <div className="p-5 md:p-6">
-        <ol className="relative space-y-4">
+        <div className="relative">
           <span className="absolute left-[15px] top-2 bottom-2 w-px bg-line" aria-hidden />
-          {sorted.map((event, i) => {
-            const Icon = event.icon
-            return (
-              <li key={i} className="relative pl-8">
-                <span
-                  className={`absolute left-0 top-0.5 w-7 h-7 rounded-full ${event.iconBg} flex items-center justify-center ring-4 ring-paper`}
-                >
-                  <Icon size={14} className={event.iconColor} />
-                </span>
-                <div>
-                  <p className="text-[14px] font-medium text-ink">{event.title}</p>
-                  {event.detail && (
-                    <p className="text-[13px] text-ink-3 mt-0.5">{event.detail}</p>
-                  )}
-                  {event.timestamp && (
-                    <p className="text-[12px] text-ink-3 mt-0.5">
-                      {new Date(event.timestamp).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
+          <ol className="relative space-y-4">
+            {sorted.map((event, i) => {
+              const Icon = event.icon
+              return (
+                <li key={i} className="relative pl-8">
+                  <span
+                    className={`absolute left-0 top-0.5 w-7 h-7 rounded-full ${event.iconBg} flex items-center justify-center ring-4 ring-paper`}
+                  >
+                    <Icon size={14} className={event.iconColor} />
+                  </span>
+                  <div>
+                    <p className="text-[14px] font-medium text-ink">{event.title}</p>
+                    {event.detail && (
+                      <p className="text-[13px] text-ink-3 mt-0.5">{event.detail}</p>
+                    )}
+                    {event.timestamp && (
+                      <p className="text-[12px] text-ink-3 mt-0.5">
+                        {auditDateFormatter.format(event.timestamp)}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
       </div>
     </div>
   )

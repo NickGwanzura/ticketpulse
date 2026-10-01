@@ -17,10 +17,7 @@ import { signTicketPayload } from "@/lib/tickets"
  *   1. Authenticated owner / admin  → session whose id or email matches the order
  *   2. Organizer of the order's event → scoped staff access
  *   3. Guest buyer with no account  → must prove possession of the signed
- *      ticket payload (`signTicketPayload`). The browser receives it at
- *      checkout and every emailed order link carries it. Knowing the buyer's
- *      email is NOT proof: emails are guessable and widely shared, and the QR
- *      is an admission credential.
+ *      ticket payload (`signTicketPayload`). Knowing an email is not ownership.
  *
  * Callers pass whatever credentials they have; this helper decides.
  */
@@ -94,6 +91,7 @@ export async function authorizeOrderAccess(
     }
   }
 
+  // Guest callers must possess a signed link. Never accept an email claim.
   return { ok: false, reason: "forbidden" }
 }
 

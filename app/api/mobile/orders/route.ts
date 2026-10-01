@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { orders, events } from "@/db/schema"
-import { eq, desc, sql } from "drizzle-orm"
+import { eq, desc, or, sql } from "drizzle-orm"
 import { authenticateRequest } from "@/lib/mobile-auth"
 
 export async function GET(request: Request) {
@@ -25,21 +25,29 @@ export async function GET(request: Request) {
     })
     .from(orders)
     .leftJoin(events, eq(events.id, orders.eventId))
-    .where(eq(orders.userId, auth.userId))
+    .where(
+      or(
+        eq(orders.userId, auth.userId),
+        sql`LOWER(${orders.guestEmail}) = ${auth.email.toLowerCase()}`,
+      ),
+    )
     .orderBy(desc(orders.createdAt))
     .limit(limit)
     .offset(offset)
 
-  return NextResponse.json({
-    ok: true,
-    orders: rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      totalAmount: Number(r.totalAmount),
-      currency: r.currency ?? "USD",
-      createdAt: r.createdAt?.toISOString() ?? null,
-      eventTitle: r.eventTitle ?? "Unknown event",
-      eventId: r.eventId,
-    })),
-  })
+  return NextResponse.json(
+    {
+      ok: true,
+      orders: rows.map((r) => ({
+        id: r.id,
+        status: r.status,
+        totalAmount: Number(r.totalAmount),
+        currency: r.currency ?? "USD",
+        createdAt: r.createdAt?.toISOString() ?? null,
+        eventTitle: r.eventTitle ?? "Unknown event",
+        eventId: r.eventId,
+      })),
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  )
 }

@@ -73,6 +73,18 @@ class OrganizerEvent {
   String get displayStatus => isFinished ? 'completed' : status;
 }
 
+class ScanHistoryEntry {
+  const ScanHistoryEntry({
+    required this.title,
+    required this.status,
+    required this.checkedAt,
+  });
+
+  final String title;
+  final String status;
+  final DateTime checkedAt;
+}
+
 class OrderPage {
   OrderPage.fromJson(Json json)
     : orders = (json['orders'] is List)
@@ -83,14 +95,93 @@ class OrderPage {
   final bool hasMore;
 }
 
-class TierSales {
-  TierSales.fromJson(Json json)
-    : name = json['name']?.toString() ?? 'Ticket',
+class BuyerEvent {
+  BuyerEvent.fromJson(Json json)
+    : id = json['id']?.toString() ?? '',
+      title = json['title']?.toString() ?? 'Untitled event',
+      slug = json['slug']?.toString() ?? '',
+      category = json['category']?.toString() ?? 'Event',
+      venue = json['venue']?.toString() ?? 'Venue to be confirmed',
+      city = json['city']?.toString() ?? '',
+      startsAt = DateTime.tryParse('${json['startsAt']}'),
+      coverImage = json['coverImage']?.toString(),
+      featured = json['featured'] == true,
+      organizerName = json['organizerName']?.toString(),
+      lowestPrice = json['lowestPrice'] == null
+          ? null
+          : number(json['lowestPrice']).toDouble(),
+      currency = json['currency']?.toString() ?? 'USD',
+      description = json['description']?.toString(),
+      address = json['address']?.toString(),
+      tiers = ((json['tiers'] as List?) ?? const [])
+          .whereType<Json>()
+          .map(TicketTier.fromJson)
+          .toList(growable: false);
+
+  final String id, title, slug, category, venue, city, currency;
+  final DateTime? startsAt;
+  final String? coverImage, organizerName, description, address;
+  final bool featured;
+  final double? lowestPrice;
+  final List<TicketTier> tiers;
+}
+
+class TicketTier {
+  TicketTier.fromJson(Json json)
+    : id = json['id']?.toString() ?? '',
+      name = json['name']?.toString() ?? 'General admission',
+      description = json['description']?.toString(),
       price = number(json['price']).toDouble(),
       currency = json['currency']?.toString() ?? 'USD',
-      capacity = number(json['capacity']).toInt(),
-      sold = number(json['sold']).toInt();
-  final String name, currency;
+      remaining = number(json['remaining']).toInt(),
+      maxPerOrder = number(
+        json['maxPerOrder'] ?? 10,
+      ).toInt().clamp(1, 50).toInt(),
+      earlyBirdPrice = json['earlyBirdPrice'] == null
+          ? null
+          : number(json['earlyBirdPrice']).toDouble(),
+      earlyBirdUntil = DateTime.tryParse('${json['earlyBirdUntil']}'),
+      groupPrice = json['groupPrice'] == null
+          ? null
+          : number(json['groupPrice']).toDouble(),
+      groupMinQty = json['groupMinQty'] == null
+          ? null
+          : number(json['groupMinQty']).toInt();
+
+  final String id, name, currency;
+  final String? description;
   final double price;
-  final int capacity, sold;
+  final int remaining, maxPerOrder;
+  final double? earlyBirdPrice, groupPrice;
+  final DateTime? earlyBirdUntil;
+  final int? groupMinQty;
+
+  double unitPriceFor(int quantity, DateTime now) {
+    if (earlyBirdPrice != null &&
+        (earlyBirdUntil == null || earlyBirdUntil!.isAfter(now))) {
+      return earlyBirdPrice!;
+    }
+    if (groupPrice != null && groupMinQty != null && quantity >= groupMinQty!) {
+      return groupPrice!;
+    }
+    return price;
+  }
+}
+
+class CheckoutResult {
+  CheckoutResult.fromJson(Json json)
+    : accessSignature = json['accessSignature']?.toString() ?? '',
+      flow = json['flow']?.toString() ?? '',
+      orderId = json['orderId']?.toString() ?? '',
+      redirectUrl = json['redirectUrl']?.toString(),
+      amount = json['amount'] == null
+          ? null
+          : number(json['amount']).toDouble(),
+      currency = json['currency']?.toString() ?? 'USD',
+      pollRequired = json['flow'] != 'free';
+
+  final String orderId, currency, accessSignature, flow;
+  final String? redirectUrl;
+  final double? amount;
+  final bool pollRequired;
 }

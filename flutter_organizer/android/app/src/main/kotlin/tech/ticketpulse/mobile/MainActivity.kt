@@ -1,4 +1,4 @@
-package tech.ticketpulse.ticketpulse_organizer
+package tech.ticketpulse.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

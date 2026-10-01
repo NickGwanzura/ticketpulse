@@ -91,12 +91,12 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
 
   // Refresh clock for early bird expiry and sales-window checks
   useEffect(() => {
-    const first = setTimeout(() => setNow(new Date()), 0)
-    const hasTimedChange = tiers.some((t) => (t.earlyBirdPrice && t.earlyBirdUntil) || t.salesStart || t.salesEnd)
-    if (!hasTimedChange) return () => clearTimeout(first)
+    const initialTimer = window.setTimeout(() => setNow(new Date()), 0)
+    const hasEarlyBird = tiers.some((t) => t.earlyBirdPrice && t.earlyBirdUntil)
+    if (!hasEarlyBird) return () => window.clearTimeout(initialTimer)
     const id = setInterval(() => setNow(new Date()), 10_000)
     return () => {
-      clearTimeout(first)
+      window.clearTimeout(initialTimer)
       clearInterval(id)
     }
   }, [tiers])

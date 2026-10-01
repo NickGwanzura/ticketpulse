@@ -1,25 +1,25 @@
+import { CheckoutBody, checkoutFingerprint as makeCheckoutFingerprint, quoteMatches } from "@/lib/checkout-contract"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
 import { checkoutLimiter } from "@/lib/rate-limit"
-import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction, extractHostedSessionId } from "@/services/velocity"
+import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction, getTransactionRedirectUrl, extractHostedSessionId } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
-import { lockOrderMutation, withLock } from "@/lib/velocity/idempotency"
+import { lockOrderMutation, withLock, type DbTx } from "@/lib/velocity/idempotency"
 import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { cancelUnpaidOrderAndReleaseInventory } from "@/lib/order-expiry"
 import { isDefinitiveRejection, VelocityApiError } from "@/lib/velocity/api-error"
 import { log } from "@/lib/logger"
 import { trackEvent } from "@/lib/analytics"
 import { getBaseUrl } from "@/lib/url-config"
-import { generateOrderAccessUrl, orderAccessSignature } from "@/lib/tickets"
+import { generateOrderAccessUrl, signTicketPayload } from "@/lib/tickets"
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { freeOrderAlert } from "@/lib/whatsapp-templates"
 import type {
-  InitiateTransactionPayload,
   VelocityOrderMetadata,
   VelocityPollStatus,
   VelocityTransactionAttempt,
@@ -91,7 +91,6 @@ async function recoverCardRedirectUrl(
   currency: "USD" | "ZWG",
   transactionId?: string | null,
   transactionSessionId?: string | null,
-  forceNewTransaction = false,
 ): Promise<CardRedirectRecovery> {
   try {
     // First try: poll the existing transaction — Velocity may embed the redirect
@@ -108,43 +107,10 @@ async function recoverCardRedirectUrl(
       }
     }
 
-    // Second try: re-initiate a new transaction against the same sales order.
-    // Only possible if we have the Velocity sales order UUID. Velocity will
-    // generate a fresh hosted checkout session with a new redirect URL.
-    if (salesOrderId && (!recoveryAttempted || forceNewTransaction)) {
-      const config = getConfig()
-      const txPayload: InitiateTransactionPayload = {
-        amount,
-        paymentProcessorLabel: "VMC",
-        debitPhone: config.merchantPhone || "+263000000000",
-        debitRegion: "ZW",
-        debitCurrency: currency,
-        debitRef: orderId,
-        creditPhone: config.merchantPhone,
-        creditRegion: "ZW",
-        creditAccount: config.merchantPhone,
-        type: "REQUEST",
-        authType: "WEB",
-        salesOrderId,
-        returnUrl: `${getBaseUrl()}/api/checkout/velocity/return/${orderId}`,
-      }
-      const newTx = await initiateTransaction(txPayload)
-      const newRedirect = extractRedirectUrl(newTx as unknown as Record<string, unknown>)
-      const newTrace = getVelocityTransactionTrace(newTx)
-      if (newRedirect) {
-        log.info("velocity checkout - recovered redirect URL from re-initiated transaction", {
-          orderId,
-          transactionTrace,
-          newRedirectPreview: `${newRedirect.slice(0, 80)}...`,
-        })
-        return {
-          redirectUrl: newRedirect,
-          transactionTrace: newTrace,
-          transactionId: newTx.body?.id ?? null,
-          attempted: true,
-        }
-      }
-      return { redirectUrl: null, transactionTrace: newTrace, transactionId: newTx.body?.id ?? null, attempted: true }
+    // Velocity documents a read-only session lookup for hosted redirect recovery.
+    if (transactionSessionId) {
+      const redirectUrl = await getTransactionRedirectUrl(transactionSessionId)
+      if (redirectUrl) return { redirectUrl, transactionTrace: null, transactionId: transactionId ?? null, attempted: true }
     }
 
     log.warn("velocity checkout - could not recover redirect URL for card order", {
@@ -288,7 +254,6 @@ async function recoverAndPersistCardRedirect(
     (claim.current.currency ?? fallbackCurrency) as "USD" | "ZWG",
     claim.velocity.transactionId,
     claim.velocity.transactionSessionId,
-    claim.failedSession,
   )
   const recoverySessionId = extractHostedSessionId(recovery.redirectUrl)
   const newAttempt = recovery.transactionTrace || recovery.transactionId || recoverySessionId
@@ -358,45 +323,14 @@ async function recoverAndPersistCardRedirect(
 
 // Maximum retry attempts for Velocity card transactions that fail to return
 // a hosted checkout redirect URL. Each retry re-initiates a new transaction.
-const VMC_REDIRECT_RETRIES = 2
+const VMC_REDIRECT_RETRIES = 0
 
-const TicketItem = z.object({
-  kind: z.literal("ticket"),
-  tierId: z.string().uuid(),
-  quantity: z.number().int().positive().max(50),
-})
-
-const VendorAddonItem = z.object({
-  kind: z.literal("vendor_addon"),
-  listingId: z.string().uuid(),
-  quantity: z.number().int().positive().max(10),
-})
-
-const MerchItem = z.object({
-  kind: z.literal("merch"),
-  itemId: z.string().uuid(),
-  quantity: z.number().int().positive().max(10),
-  size: z.string().max(40).optional(),
-})
-
-const Body = z.object({
-  email: z.string().email().toLowerCase().trim(),
-  name: z.string().min(1).max(120).trim(),
-  phone: z.string().max(40).trim().optional().default(""),
-  paymentMethod: z.enum(["velocity-ecocash", "velocity-card"]),
-  eventSlug: z.string().min(1).max(160),
-  items: z
-    .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem, MerchItem]))
-    .min(1)
-    .max(30),
-  promoCode: z.string().max(40).optional(),
-  questionResponses: z.record(z.string().uuid(), z.string().min(0).max(2000)).optional(),
-})
+const Body = CheckoutBody
 
 export async function POST(req: Request) {
   const rl = await checkoutLimiter.checkRequest(req)
   if (!rl.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, {
+    return checkoutJson({ error: "Too many requests" }, {
       status: 429,
       headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) },
     })
@@ -419,29 +353,40 @@ export async function POST(req: Request) {
         error = `Please check your ${fields.map((f) => labels[f] ?? f).join(", ")}.`
       }
     }
-    return NextResponse.json({ error }, { status: 400 })
+    return checkoutJson(
+      { error: "Invalid request — " + (detail ?? "check your details and try again") },
+      { status: 400 },
+    )
+  }
+
+  // A recorded attempt remains recoverable after stock sells out or sales end.
+  if (!parsed.quoteOnly) {
+    const [recorded] = await db.select().from(orders).where(sql`${orders.metadata}->>'checkoutRequestId' = ${parsed.checkoutRequestId}`).limit(1)
+    if (recorded) return resumeOrder(recorded, parsed, { id: recorded.eventId }, makeCheckoutFingerprint(parsed, recorded.eventId, Number(recorded.totalAmount), recorded.currency ?? 'USD'), recorded.currency ?? 'USD')
   }
 
   const [event] = await db.select().from(events).where(eq(events.slug, parsed.eventSlug)).limit(1)
-  if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 })
+  if (!event) return checkoutJson({ error: "Event not found" }, { status: 404 })
 
   const now = new Date()
   const eventEndedAt = event.endsAt ?? event.startsAt
   if (eventEndedAt && new Date(eventEndedAt) < now) {
-    return NextResponse.json({ error: "Ticket sales for this event have ended" }, { status: 400 })
+    return checkoutJson({ error: "Ticket sales for this event have ended" }, { status: 400 })
   }
 
   if (event.status !== "published") {
-    return NextResponse.json({ error: "This event is not currently available for purchase" }, { status: 400 })
+    return checkoutJson({ error: "This event is not currently available for purchase" }, { status: 400 })
   }
 
+  const lineKeys = parsed.items.map(i => i.kind === "ticket" ? "ticket:" + i.tierId : i.kind === "merch" ? "merch:" + i.itemId + ":" + (i.size ?? "") : "addon:" + i.listingId)
+  if (new Set(lineKeys).size !== lineKeys.length) return checkoutJson({ error: "Combine duplicate cart lines before checkout." }, { status: 400 })
   const ticketItems = parsed.items.filter((i): i is typeof i & { kind: "ticket" } => i.kind === "ticket")
   const vendorAddonItems = parsed.items.filter((i): i is typeof i & { kind: "vendor_addon" } => i.kind === "vendor_addon")
   const merchOrderItems = parsed.items.filter((i): i is typeof i & { kind: "merch" } => i.kind === "merch")
 
   // Velocity sales orders need at least one ticket item to compute a valid unit price.
   if (ticketItems.length === 0) {
-    return NextResponse.json({ error: "At least one ticket is required" }, { status: 400 })
+    return checkoutJson({ error: "At least one ticket is required" }, { status: 400 })
   }
 
   // Fetch tiers and vendor addon prices in parallel — independent queries
@@ -486,22 +431,22 @@ export async function POST(req: Request) {
   for (const item of ticketItems) {
     const tier = tierById.get(item.tierId)
     if (!tier) {
-      return NextResponse.json({ error: "One of the ticket types in your cart is no longer available. Remove it and try again." }, { status: 400 })
+      return checkoutJson({ error: `Tier ${item.tierId} not in event` }, { status: 400 })
     }
     if (tier.salesStart && new Date(tier.salesStart) > now) {
-      return NextResponse.json({ error: `"${tier.name}" is not yet available for purchase` }, { status: 400 })
+      return checkoutJson({ error: `"${tier.name}" is not yet available for purchase` }, { status: 400 })
     }
     if (tier.salesEnd && new Date(tier.salesEnd) < now) {
-      return NextResponse.json({ error: `Sales for "${tier.name}" have ended` }, { status: 400 })
+      return checkoutJson({ error: `Sales for "${tier.name}" have ended` }, { status: 400 })
     }
     if (Number(tier.soldQuantity ?? 0) >= Number(tier.totalQuantity ?? 0)) {
-      return NextResponse.json({ error: `"${tier.name}" is sold out` }, { status: 400 })
+      return checkoutJson({ error: `"${tier.name}" is sold out` }, { status: 400 })
     }
     if (Number(tier.totalQuantity ?? 0) - Number(tier.soldQuantity ?? 0) < item.quantity) {
-      return NextResponse.json({ error: `Only ${Number(tier.totalQuantity ?? 0) - Number(tier.soldQuantity ?? 0)} ticket(s) left for "${tier.name}"` }, { status: 400 })
+      return checkoutJson({ error: `Only ${Number(tier.totalQuantity ?? 0) - Number(tier.soldQuantity ?? 0)} ticket(s) left for "${tier.name}"` }, { status: 400 })
     }
     if (tier.maxPerOrder && item.quantity > tier.maxPerOrder) {
-      return NextResponse.json({ error: `Maximum ${tier.maxPerOrder} ticket(s) per order for "${tier.name}"` }, { status: 400 })
+      return checkoutJson({ error: `Maximum ${tier.maxPerOrder} ticket(s) per order for "${tier.name}"` }, { status: 400 })
     }
   }
 
@@ -516,20 +461,20 @@ export async function POST(req: Request) {
   }
   for (const item of vendorAddonItems) {
     if (!vendorAddonPrices.has(item.listingId)) {
-      return NextResponse.json({ error: `Vendor addon ${item.listingId} not found` }, { status: 400 })
+      return checkoutJson({ error: `Vendor addon ${item.listingId} not found` }, { status: 400 })
     }
   }
 
   const merchById = new Map(merchRows.map((item) => [item.id, item]))
   for (const item of merchOrderItems) {
     const merch = merchById.get(item.itemId)
-    if (!merch) return NextResponse.json({ error: "Merch item is no longer available" }, { status: 400 })
+    if (!merch) return checkoutJson({ error: "Merch item is no longer available" }, { status: 400 })
     if (item.size && !(merch.sizes ?? []).includes(item.size)) {
-      return NextResponse.json({ error: `Size ${item.size} is not available for ${merch.name}` }, { status: 400 })
+      return checkoutJson({ error: `Size ${item.size} is not available for ${merch.name}` }, { status: 400 })
     }
     const available = Number(merch.stockQuantity ?? 0) - Number(merch.soldQuantity ?? 0)
     if (available < item.quantity) {
-      return NextResponse.json({ error: `Only ${Math.max(0, available)} ${merch.name} item(s) left` }, { status: 400 })
+      return checkoutJson({ error: `Only ${Math.max(0, available)} ${merch.name} item(s) left` }, { status: 400 })
     }
   }
 
@@ -548,7 +493,7 @@ export async function POST(req: Request) {
   }
 
   if (allCurrencies.size > 1) {
-    return NextResponse.json({ error: "Mixed-currency cart not supported yet" }, { status: 400 })
+    return checkoutJson({ error: "Mixed-currency cart not supported yet" }, { status: 400 })
   }
   const currency = [...allCurrencies][0] ?? "USD"
 
@@ -608,23 +553,33 @@ export async function POST(req: Request) {
     }
   }
 
+  if (parsed.promoCode && !appliedPromo) return checkoutJson({ error: "This promo is no longer available or its minimum spend is not met. Review your total before paying.", code: "promo_changed" }, { status: 409 })
+  total = Math.round(total * 100) / 100
+  if (total > 0 && !parsed.quoteOnly) {
+    const validationError = validateTransactionPayload({ amount: total, processor: parsed.paymentMethod === "velocity-ecocash" ? "ECOCASH" : "VMC", phone: formatPhone(parsed.phone), currency })
+    if (validationError) return checkoutJson({ error: validationError }, { status: 400 })
+  }
   let questionResponseMeta: Record<string, string> | undefined
   const eventQuestionsList = await db
-    .select({ id: ticketQuestions.id, required: ticketQuestions.required })
+    .select({ id: ticketQuestions.id, question: ticketQuestions.question, required: ticketQuestions.required })
     .from(ticketQuestions)
     .where(eq(ticketQuestions.eventId, event.id))
+  const quote = { amount: total, currency, discount: appliedPromo?.discount ?? 0, normalizedPhone: formatPhone(parsed.phone), questions: eventQuestionsList,
+    lines: ticketItems.map(i => ({ tierId: i.tierId, quantity: i.quantity, unitPrice: effectivePrice(tierById.get(i.tierId)!, i.quantity) })) }
+  if (parsed.quoteOnly) return checkoutJson({ success: true, quote })
+  if (!quoteMatches(parsed, total, currency)) return checkoutJson({ error: "Your total has changed. Review the updated amount and confirm again.", code: "price_changed", quote }, { status: 409 })
   const questionResponses = parsed.questionResponses ?? {}
   const questionMap = new Map(eventQuestionsList.map((q) => [q.id, q]))
   for (const [qid, answer] of Object.entries(questionResponses)) {
     const q = questionMap.get(qid)
-    if (!q) return NextResponse.json({ error: `Invalid question ID: ${qid}` }, { status: 400 })
+    if (!q) return checkoutJson({ error: `Invalid question ID: ${qid}` }, { status: 400 })
     if (q.required && !answer.trim()) {
-      return NextResponse.json({ error: "Required question missing answer" }, { status: 400 })
+      return checkoutJson({ error: "Required question missing answer" }, { status: 400 })
     }
   }
   for (const q of eventQuestionsList) {
     if (q.required && !questionResponses[q.id]?.trim()) {
-      return NextResponse.json({ error: "Required question missing answer" }, { status: 400 })
+      return checkoutJson({ error: "Required question missing answer" }, { status: 400 })
     }
   }
   if (Object.keys(questionResponses).length > 0) questionResponseMeta = questionResponses
@@ -645,14 +600,7 @@ export async function POST(req: Request) {
   // only by event and email can resume an order created with a different
   // payment method, phone number, amount, or cart after a customer corrects a
   // typo and retries.
-  const checkoutFingerprint = JSON.stringify({
-    eventId: event.id,
-    paymentMethod: parsed.paymentMethod,
-    phone: parsed.phone.trim(),
-    currency,
-    total: total.toFixed(2),
-    items: parsed.items.map((item) => JSON.stringify(item)).sort(),
-  })
+  const checkoutFingerprint = makeCheckoutFingerprint(parsed, event.id, total, currency)
 
   // ── Idempotency: resume an existing in-progress order if one exists ──────────
   // Handles retries, double-clicks, and page-refresh re-submissions without
@@ -661,100 +609,46 @@ export async function POST(req: Request) {
   // amount and currency, and — for EcoCash — the same debit phone. Otherwise a
   // buyer who corrects a mistyped number would be handed the old transaction and
   // never receive a new USSD prompt on the right phone.
-  async function findResumableOrder() {
-    const candidates = await db
-      .select({
-        id: orders.id,
-        paymentMethod: orders.paymentMethod,
-        totalAmount: orders.totalAmount,
-        currency: orders.currency,
-        guestPhone: orders.guestPhone,
-        metadata: orders.metadata,
-      })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.eventId, event.id),
-          eq(orders.guestEmail, parsed.email),
-          eq(orders.paymentMethod, parsed.paymentMethod),
-          inArray(orders.status, ["pending", "awaiting_verification"]),
-          sql`${orders.metadata}->>'checkoutFingerprint' = ${checkoutFingerprint}`,
-          sql`${orders.createdAt} > now() - interval '30 minutes'`,
-        ),
-      )
-      .orderBy(desc(orders.createdAt))
-      .limit(10)
-
-    const requestedPhone = formatPhone(parsed.phone ?? "")
-    const match = candidates.find((o) => {
-      if (o.paymentMethod !== parsed.paymentMethod) return false
-      if (o.currency !== currency) return false
-      if (Math.abs(Number(o.totalAmount) - total) >= 0.005) return false
-      if (parsed.paymentMethod === "velocity-ecocash" && formatPhone(o.guestPhone ?? "") !== requestedPhone) {
-        return false
-      }
-      return true
-    })
-    return match ?? null
+  async function findResumableOrder(tx?: DbTx) {
+    const [existing] = await (tx ?? db).select({ id: orders.id, eventId: orders.eventId, guestEmail: orders.guestEmail,
+      status: orders.status, paymentMethod: orders.paymentMethod, totalAmount: orders.totalAmount, currency: orders.currency,
+      guestPhone: orders.guestPhone, metadata: orders.metadata }).from(orders)
+      .where(sql`(${orders.metadata}->>'checkoutRequestId' = ${parsed.checkoutRequestId} OR (${orders.metadata}->>'checkoutFingerprint' = ${checkoutFingerprint} AND ${orders.status} IN ('pending', 'awaiting_verification')))` ).orderBy(desc(orders.createdAt)).limit(1)
+    return existing ?? null
   }
 
   const resumable = await findResumableOrder()
-  if (resumable) {
-    const meta = (resumable.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-    const vm = meta.velocity
-    if (!vm) {
-      return NextResponse.json(
-        { error: "Your payment is still being initialized. Please wait a moment and try again." },
-        { status: 409 },
-      )
-    }
-    const isCard = resumable.paymentMethod === "velocity-card"
-    log.info("velocity checkout - resuming existing order", { orderId: resumable.id, email: parsed.email })
-
-    // For card payments, attempt to recover the redirect URL so the buyer
-    // actually gets sent to Velocity's hosted checkout instead of being
-    // stuck in a polling loop for a payment they can't complete.
-    let resumeRedirectUrl: string | null = vm.redirectUrl ?? null
-    let resolvedTransactionTrace = vm.transactionTrace
-    if (isCard) {
-      const recovery = await recoverAndPersistCardRedirect(resumable.id, currency as "USD" | "ZWG")
-      if (!recovery.recoverable) {
-        return NextResponse.json({ error: "This payment requires reconciliation." }, { status: 409 })
-      }
-      if (recovery.inProgress) {
-        return NextResponse.json(
-          { error: "Your card checkout is being recovered. Please wait a moment and try again." },
-          { status: 409 },
-        )
-      }
-      resumeRedirectUrl = recovery.redirectUrl
-      resolvedTransactionTrace = recovery.transactionTrace ?? vm.transactionTrace
-    }
-
-    return NextResponse.json({
-      success: true,
-      paymentMethod: isCard ? "CARD" : "ECOCASH",
-      orderId: resumable.id,
-      accessSignature: orderAccessSignature(resumable.id),
-      salesOrderTrace: vm.salesOrderTrace,
-      transactionTrace: resolvedTransactionTrace,
-      flow: isCard ? "velocity-redirect" : "velocity-seamless",
-      pollRequired: isCard ? undefined : true,
-      redirectUrl: resumeRedirectUrl,
-      amount: Number(resumable.totalAmount),
-      currency: resumable.currency ?? currency,
-      resumed: true,
-    })
-  }
+  if (resumable) return resumeOrder(resumable, parsed, event, checkoutFingerprint, currency)
 
   // ── Phase 1: Create order atomically under lock ────────────────────────────
   // withLock uses pg_try_advisory_xact_lock (transaction-scoped) — the lock
   // auto-releases on commit. DB writes are atomic; HTTP calls happen after.
   const lockKey = `velocity-checkout:event:${event.id}`
 
-  let creation: { orderId: string } | null
+  let creation: { orderId: string; existing?: boolean } | null
   try {
     creation = await withLock(lockKey, async (tx) => {
+      const existing = await findResumableOrder(tx)
+      if (existing) return { orderId: existing.id, existing: true }
+      // Lock stock and recheck the reviewed unit prices before creating the order.
+      const currentTiers = await tx.select().from(ticketTiers).where(inArray(ticketTiers.id, ticketItems.map(i => i.tierId))).orderBy(ticketTiers.id).for('update')
+      for (const current of currentTiers) {
+        const item = ticketItems.find(i => i.tierId === current.id)!
+        const previous = tierById.get(current.id)!
+        if (current.currency !== previous.currency || effectivePrice(current, item.quantity) !== effectivePrice(previous, item.quantity)) throw new Error('Ticket pricing changed. Review your order again before paying.')
+        tierById.set(current.id, { ...current, soldQuantity: current.soldQuantity ?? 0 })
+      }
+      if (merchOrderItems.length) {
+        const currentMerch = await tx.select().from(merchItems).where(inArray(merchItems.id, merchOrderItems.map(i => i.itemId))).orderBy(merchItems.id).for('update')
+        for (const current of currentMerch) {
+          const previous = merchById.get(current.id)!
+          if (current.price !== previous.price || current.currency !== previous.currency) throw new Error('Merchandise pricing changed. Review your order again before paying.')
+        }
+      }
+      if (appliedPromo) {
+        const [currentPromo] = await tx.select().from(promoCodes).where(eq(promoCodes.id, appliedPromo.id)).for('update')
+        if (!currentPromo || currentPromo.type !== appliedPromo.type || currentPromo.value !== appliedPromo.value || Number(currentPromo.minPurchaseAmount ?? 0) > total + appliedPromo.discount) throw new Error('Promo terms changed. Review your order again before paying.')
+      }
       const latestAvailability = await getTierAvailability(ticketItems.map((item) => item.tierId))
       for (const item of ticketItems) {
         const tier = tierById.get(item.tierId)!
@@ -781,7 +675,7 @@ export async function POST(req: Request) {
           guestEmail: parsed.email,
           guestName: parsed.name,
           guestPhone: parsed.phone,
-          metadata: { ...baseMeta, checkoutFingerprint, inventoryReserved: true },
+          metadata: { ...baseMeta, checkoutFingerprint, checkoutRequestId: parsed.checkoutRequestId, inventoryReserved: true },
         })
         .returning({ id: orders.id })
 
@@ -869,10 +763,12 @@ export async function POST(req: Request) {
       }
 
       if (appliedPromo) {
-        await tx
+        const claimedPromo = await tx
           .update(promoCodes)
-          .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
-          .where(eq(promoCodes.id, appliedPromo.id))
+          .set({ usedCount: sql`COALESCE(${promoCodes.usedCount}, 0) + 1` })
+          .where(and(eq(promoCodes.id, appliedPromo.id), eq(promoCodes.active, true), sql`(${promoCodes.maxUses} IS NULL OR ${promoCodes.maxUses} = 0 OR COALESCE(${promoCodes.usedCount}, 0) < ${promoCodes.maxUses})`, sql`(${promoCodes.expiresAt} IS NULL OR ${promoCodes.expiresAt} > now())`))
+          .returning({ id: promoCodes.id })
+        if (!claimedPromo.length) throw new Error("The promo code is no longer available. Review your total.")
       }
 
       return { orderId: order.id }
@@ -881,7 +777,7 @@ export async function POST(req: Request) {
     // Reservation failed (tier sold out) or DB error — surface as 409
     const msg = err instanceof Error ? err.message : "Checkout failed"
     log.warn("velocity checkout - order creation failed", { error: msg, email: parsed.email, eventId: event.id })
-    return NextResponse.json({ error: msg }, { status: 409 })
+    return checkoutJson({ error: msg }, { status: 409 })
   }
 
   if (!creation) {
@@ -889,57 +785,18 @@ export async function POST(req: Request) {
     // moment. Wait briefly for it to commit, then try to resume that order.
     await new Promise((r) => setTimeout(r, 400))
     const concurrent = await findResumableOrder()
-    if (concurrent) {
-      const meta = (concurrent.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
-      const vm = meta.velocity
-      if (!vm) {
-        return NextResponse.json(
-          { error: "Your checkout is being processed. Please wait a moment and try again." },
-          { status: 409 },
-        )
-      }
-      const isCard = concurrent.paymentMethod === "velocity-card"
-      log.info("velocity checkout - resuming concurrent order after lock wait", { orderId: concurrent.id })
-
-      // Recover redirect URL for card orders (same logic as primary resume path)
-      let resumeRedirectUrl = vm.redirectUrl ?? null
-      let resolvedTransactionTrace = vm.transactionTrace
-      if (isCard) {
-        const recovery = await recoverAndPersistCardRedirect(concurrent.id, currency as "USD" | "ZWG")
-        if (!recovery.recoverable) {
-          return NextResponse.json({ error: "This payment requires reconciliation." }, { status: 409 })
-        }
-        if (recovery.inProgress) {
-          return NextResponse.json(
-            { error: "Your card checkout is being recovered. Please wait a moment and try again." },
-            { status: 409 },
-          )
-        }
-        resumeRedirectUrl = recovery.redirectUrl
-        resolvedTransactionTrace = recovery.transactionTrace ?? vm.transactionTrace
-      }
-
-      return NextResponse.json({
-        success: true,
-        paymentMethod: isCard ? "CARD" : "ECOCASH",
-        orderId: concurrent.id,
-        accessSignature: orderAccessSignature(concurrent.id),
-        salesOrderTrace: vm.salesOrderTrace,
-        transactionTrace: resolvedTransactionTrace,
-        flow: isCard ? "velocity-redirect" : "velocity-seamless",
-        pollRequired: isCard ? undefined : true,
-        redirectUrl: resumeRedirectUrl,
-        amount: Number(concurrent.totalAmount),
-        currency: concurrent.currency ?? currency,
-        resumed: true,
-      })
-    }
-    return NextResponse.json(
+    if (concurrent) return resumeOrder(concurrent, parsed, event, checkoutFingerprint, currency)
+    return checkoutJson(
       { error: "Your checkout is being processed. Please wait a moment and try again." },
       { status: 429 },
     )
   }
 
+  if (creation.existing) {
+    const existing = await findResumableOrder()
+    if (existing) return resumeOrder(existing, parsed, event, checkoutFingerprint, currency)
+    return checkoutJson({ error: "Your checkout is being recovered. Please retry shortly." }, { status: 409 })
+  }
   const { orderId } = creation
 
   // Cancels the order AND releases the inventory reservation so seats aren't
@@ -950,12 +807,8 @@ export async function POST(req: Request) {
   let initiationStage = "sales_order"
 
   const sessionId = req.headers.get("x-session-id") ?? crypto.randomUUID()
-  const referrer = req.headers.get("referer")
-  const userAgent = req.headers.get("user-agent")
 
-  trackEvent({ event: "CHECKOUT_STARTED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, referrer, userAgent, amount: total })
-  trackEvent({ event: "BUYER_DETAILS_SUBMITTED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, referrer, userAgent })
-  trackEvent({ event: "PAYMENT_METHOD_SELECTED", eventId: event.id, orderId, sessionId, buyerEmail: parsed.email, paymentMethod: parsed.paymentMethod, referrer, userAgent })
+  // Pre-payment funnel stages are recorded when the buyer actually reaches them.
 
   // ── Zero-amount order (100% promo) — skip Velocity, mark paid directly ────
   if (total <= 0) {
@@ -982,7 +835,7 @@ export async function POST(req: Request) {
       }),
     )
 
-    return NextResponse.json({
+    return checkoutJson({
       success: true,
       paymentMethod: "FREE",
       orderId,
@@ -1045,12 +898,12 @@ export async function POST(req: Request) {
     })
     if (validationError) {
       await cancelWithInventoryRelease()
-      return NextResponse.json({ error: validationError }, { status: 400 })
+      return checkoutJson({ error: validationError }, { status: 400 })
     }
 
     if (!config.merchantPhone) {
       await cancelWithInventoryRelease()
-      return NextResponse.json({ error: "Merchant phone not configured" }, { status: 500 })
+      return checkoutJson({ error: "Merchant phone not configured" }, { status: 500 })
     }
 
     // ── Persist the sales-order trace before the risky call ──────────────────
@@ -1095,8 +948,8 @@ export async function POST(req: Request) {
     const returnUrlFields: Record<string, string | undefined> = {}
     if (isCard) {
       const base = `${getBaseUrl()}/api/checkout/velocity`
-      returnUrlFields.returnUrl = `${base}/return/${orderId}`
-      returnUrlFields.successUrl = `${base}/return/${orderId}`
+      returnUrlFields.returnUrl = `${base}/return/${orderId}?sig=${signTicketPayload(orderId, orderId)}`
+      returnUrlFields.successUrl = `${base}/return/${orderId}?sig=${signTicketPayload(orderId, orderId)}`
       returnUrlFields.cancelUrl = `${generateOrderAccessUrl(orderId, getBaseUrl())}&error=cancelled`
     }
 
@@ -1128,59 +981,21 @@ export async function POST(req: Request) {
     // Velocity's card gateway is known to intermittently omit the redirect,
     // so a fresh transaction against the same sales order usually succeeds.
     initiationStage = "initiate_transaction"
-    let transaction = await initiateTransaction(transactionPayload)
+    const transaction = await initiateTransaction(transactionPayload)
     initiationStage = "persist_transaction_response"
     let redirectUrl = extractRedirectUrl(transaction as unknown as Record<string, unknown>)
-    let transactionBody = transaction.body ?? null
-    let transactionTrace = getVelocityTransactionTrace(transaction)
+    const transactionBody = transaction.body ?? null
+    const transactionTrace = getVelocityTransactionTrace(transaction)
     const transactionTraces = transactionTrace ? [transactionTrace] : []
-    let transactionAttempts = mergeVelocityAttempts([
+    const transactionAttempts = mergeVelocityAttempts([
       velocityAttempt(transaction, redirectUrl, "checkout_initial"),
     ])
 
-    if (isCard && !redirectUrl && transactionTrace) {
-      for (let attempt = 1; attempt <= VMC_REDIRECT_RETRIES; attempt++) {
-        log.warn("velocity checkout - card payment missing redirect URL, retrying", {
-          orderId,
-          attempt,
-          maxRetries: VMC_REDIRECT_RETRIES,
-          transactionTrace,
-        })
-        // Brief delay before retry to avoid hitting Velocity rate limits
-        await new Promise((r) => setTimeout(r, 1000 * attempt))
-        try {
-          const retryTx = await initiateTransaction(transactionPayload)
-          const retryUrl = extractRedirectUrl(retryTx as unknown as Record<string, unknown>)
-          transactionAttempts = mergeVelocityAttempts(
-            transactionAttempts,
-            [velocityAttempt(retryTx, retryUrl, `checkout_retry_${attempt}`)],
-          )
-          if (retryUrl) {
-            log.info("velocity checkout - redirect URL recovered on retry", {
-              orderId,
-              attempt,
-              retryRedirectPreview: `${retryUrl.slice(0, 80)}...`,
-            })
-            transaction = retryTx
-            redirectUrl = retryUrl
-            transactionBody = retryTx.body ?? null
-            transactionTrace = getVelocityTransactionTrace(retryTx)
-            if (transactionTrace && !transactionTraces.includes(transactionTrace)) transactionTraces.push(transactionTrace)
-            break
-          }
-          // Update trace if first attempt had none but retry did
-          if (!transactionTrace) {
-            transactionTrace = getVelocityTransactionTrace(retryTx)
-          }
-          const retryTrace = getVelocityTransactionTrace(retryTx)
-          if (retryTrace && !transactionTraces.includes(retryTrace)) transactionTraces.push(retryTrace)
-        } catch (retryErr) {
-          log.warn("velocity checkout - redirect URL retry attempt failed", {
-            orderId,
-            attempt,
-            error: retryErr instanceof Error ? retryErr.message : String(retryErr),
-          })
-        }
+    if (isCard && !redirectUrl) {
+      const sessionId = (transactionBody as Record<string, unknown> | null)?.sessionId
+      if (typeof sessionId === 'string') {
+        try { redirectUrl = (await getTransactionRedirectUrl(sessionId)) ?? undefined }
+        catch (error) { log.warn('Hosted payment link lookup delayed', { orderId, error: String(error) }) }
       }
     }
 
@@ -1190,7 +1005,8 @@ export async function POST(req: Request) {
         : attempt.transactionTrace === null,
     )
     const activeTransactionId = activeAttempt?.transactionId ?? transactionBody?.id ?? null
-    const activeTransactionSessionId = activeAttempt?.transactionSessionId ?? extractHostedSessionId(redirectUrl ?? null)
+    const suppliedSession = (transactionBody as Record<string, unknown> | null)?.sessionId
+    const activeTransactionSessionId = activeAttempt?.transactionSessionId ?? extractHostedSessionId(redirectUrl ?? null) ?? (typeof suppliedSession === "string" ? suppliedSession : null)
     const pollStatus = (transactionBody?.pollStatus ?? "PENDING") as VelocityPollStatus
 
     log.info("velocity checkout - transaction response", {
@@ -1259,10 +1075,10 @@ export async function POST(req: Request) {
       )
 
       const userMsg = isCard
-        ? "The card payment service did not return a transaction reference. No charge has been made. Please try again or choose a different payment method."
-        : "The payment service did not return a transaction reference. Please try again."
-      return NextResponse.json({
-        error: userMsg,
+        ? "The card payment service did not return a transaction reference. Confirmation is unresolved. Please do not pay again; view your order or contact support."
+        : "Confirmation is unresolved. Please do not pay again; view your order or contact support."
+      return checkoutJson({
+        error: userMsg, orderId, recoverable: true,
       }, { status: 502 })
     }
 
@@ -1332,7 +1148,7 @@ export async function POST(req: Request) {
         },
       )
 
-      return NextResponse.json({
+      return checkoutJson({
         error: "The card payment provider did not return a checkout page. Your order is being held for reconciliation; try again shortly or choose EcoCash.",
         orderId,
         accessSignature: orderAccessSignature(orderId),
@@ -1340,7 +1156,7 @@ export async function POST(req: Request) {
       }, { status: 502 })
     }
 
-    return NextResponse.json({
+    return checkoutJson({
       success: true,
       paymentMethod: isCard ? "CARD" : "ECOCASH",
       orderId,
@@ -1348,7 +1164,7 @@ export async function POST(req: Request) {
       salesOrderTrace,
       transactionTrace,
       flow: isCard ? "velocity-redirect" : "velocity-seamless",
-      pollRequired: isCard ? undefined : true,
+      pollRequired: true,
       redirectUrl: redirectUrl ?? null,
       amount: total,
       currency,
@@ -1391,9 +1207,70 @@ export async function POST(req: Request) {
       await cancelWithInventoryRelease()
     }
     if (isAmbiguous && parsed.paymentMethod === "velocity-ecocash") {
-      return NextResponse.json({ success: true, orderId, accessSignature: orderAccessSignature(orderId), paymentMethod: "ECOCASH", flow: "velocity-seamless", pollRequired: true, awaitingConfirmation: true, amount: total, currency,
+      return checkoutJson({ success: true, orderId, paymentMethod: "ECOCASH", flow: "velocity-seamless", pollRequired: true, awaitingConfirmation: true, amount: total, currency,
         message: "Payment confirmation is delayed. Please do not pay again; we are checking your order." })
     }
-    return NextResponse.json({ error: message }, { status: 502 })
+    return checkoutJson({ error: "Payment could not be confirmed. View your order before paying again.", orderId, recoverable: isAmbiguous }, { status: 502 })
   }
 }
+
+function checkoutJson(payload: unknown, init?: ResponseInit) {
+  const body = payload as Record<string, unknown>
+  if (typeof body.orderId === "string") return NextResponse.json({ ...body, accessSignature: signTicketPayload(body.orderId, body.orderId) }, init)
+  return NextResponse.json(payload, init)
+}
+
+  async function resumeOrder(resumable: Pick<typeof orders.$inferSelect, 'id' | 'eventId' | 'guestEmail' | 'status' | 'paymentMethod' | 'totalAmount' | 'currency' | 'metadata'>, parsed: z.infer<typeof Body>, event: { id: string }, checkoutFingerprint: string, currency: string) {
+    const storedFingerprint = (resumable.metadata as Record<string, unknown> | null)?.checkoutFingerprint
+    if (resumable.eventId !== event.id || resumable.guestEmail !== parsed.email) return checkoutJson({ error: "Checkout identity does not match." }, { status: 403 })
+    if (storedFingerprint !== checkoutFingerprint) {
+      return checkoutJson({ error: "An earlier checkout is still recorded. Check its status before starting another payment.", orderId: resumable.id, recoverable: true }, { status: 409 })
+    }
+    if (["paid", "completed"].includes(resumable.status ?? "")) return checkoutJson({ success: true, orderId: resumable.id,
+      flow: "free", paymentMethod: "FREE", amount: Number(resumable.totalAmount), currency: resumable.currency, resumed: true })
+    if (!["pending", "awaiting_verification"].includes(resumable.status ?? "")) return checkoutJson({ error: "This checkout is closed. View your order before starting a new purchase.", orderId: resumable.id }, { status: 410 })
+    const meta = (resumable.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
+    const vm = meta.velocity
+    if (!vm) {
+      return checkoutJson(
+        { error: "Your payment is still being initialized. View your order; please do not pay again.", orderId: resumable.id, recoverable: true },
+        { status: 409 },
+      )
+    }
+    const isCard = resumable.paymentMethod === "velocity-card"
+    log.info("velocity checkout - resuming existing order", { orderId: resumable.id, email: parsed.email })
+
+    // For card payments, attempt to recover the redirect URL so the buyer
+    // actually gets sent to Velocity's hosted checkout instead of being
+    // stuck in a polling loop for a payment they can't complete.
+    let resumeRedirectUrl: string | null = vm.redirectUrl ?? null
+    let resolvedTransactionTrace = vm.transactionTrace
+    if (isCard) {
+      const recovery = await recoverAndPersistCardRedirect(resumable.id, currency as "USD" | "ZWG")
+      if (!recovery.recoverable) {
+        return checkoutJson({ error: "This payment requires reconciliation." }, { status: 409 })
+      }
+      if (recovery.inProgress) {
+        return checkoutJson(
+          { error: "Your card checkout is being recovered. Please wait a moment and try again." },
+          { status: 409 },
+        )
+      }
+      resumeRedirectUrl = recovery.redirectUrl
+      resolvedTransactionTrace = recovery.transactionTrace ?? vm.transactionTrace
+    }
+
+    return checkoutJson({
+      success: true,
+      paymentMethod: isCard ? "CARD" : "ECOCASH",
+      orderId: resumable.id,
+      salesOrderTrace: vm.salesOrderTrace,
+      transactionTrace: resolvedTransactionTrace,
+      flow: isCard ? "velocity-redirect" : "velocity-seamless",
+      pollRequired: true,
+      redirectUrl: resumeRedirectUrl,
+      amount: Number(resumable.totalAmount),
+      currency: resumable.currency ?? currency,
+      resumed: true,
+    })
+  }

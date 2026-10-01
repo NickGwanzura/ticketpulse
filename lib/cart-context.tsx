@@ -1,4 +1,5 @@
 "use client"
+import type { BuyerOrderStatus } from "@/lib/buyer-order-status"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 
 interface CartLineBase {
@@ -32,7 +33,7 @@ export type CartLineInput =
 export interface OrderRecord {
   id: string
   createdAt: string
-  status: "paid" | "pending" | "completed" | "refunded" | "expired"
+  status: BuyerOrderStatus
   items: CartLine[]
   totalsByCurrency: Record<string, number>
   contact: { name: string; email: string; phone: string }
@@ -50,14 +51,7 @@ interface CartContextValue {
   removeItem: (key: string) => void
   updateQty: (key: string, qty: number) => void
   clear: () => void
-  /** Put previously ordered lines back into the cart (e.g. after a cancelled card payment). */
-  restoreItems: (lines: CartLine[]) => void
-  /**
-   * Record an order on this device and remove its lines from the cart. With
-   * `eventSlug`, only that event's lines are ordered; other events stay in the cart.
-   */
-  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"], eventSlug?: string) => OrderRecord
-  /** Save a server-provided order record on this device without touching the cart. */
+  placeOrder: (contact: OrderRecord["contact"], payment: OrderRecord["payment"], orderId?: string, status?: OrderRecord["status"]) => OrderRecord
   saveOrder: (order: OrderRecord) => void
   getOrders: () => OrderRecord[]
   getOrder: (id: string) => OrderRecord | null
@@ -175,14 +169,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [getOrders])
 
   const saveOrder = useCallback((order: OrderRecord) => {
-    try {
-      const existing = getOrders().filter((o) => o.id !== order.id)
-      localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing]))
-    } catch (err) {
-      // The server order is authoritative. Private browsing, quota limits, or
-      // storage policy must not turn a completed payment into a false failure.
-      console.warn("[cart] saveOrder persist", err)
-    }
+    try { localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...getOrders().filter(o => o.id !== order.id)])) }
+    catch (error) { console.warn("[cart] save order", error) }
   }, [getOrders])
 
   const placeOrder = useCallback(
@@ -200,16 +188,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         contact,
         payment,
       }
-      saveOrder(order)
-      const orderedKeys = new Set(ordered.map((i) => i.key))
-      setItems((prev) => prev.filter((p) => !orderedKeys.has(p.key)))
+      try {
+        const existing = getOrders()
+        localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...existing.filter(o => o.id !== order.id)]))
+      } catch (err) {
+        // The server order is authoritative. Private browsing, quota limits, or
+        // storage policy must not turn a completed payment into a false failure.
+        console.warn("[cart] placeOrder persist", err)
+      }
+      setItems([])
       return order
     },
     [items, saveOrder]
   )
 
   return (
-    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, setItem, removeItem, updateQty, clear, restoreItems, placeOrder, saveOrder, getOrders, getOrder }}>
+    <CartContext.Provider value={{ items, ready, totalCount, totalsByCurrency, addItem, removeItem, updateQty, clear, placeOrder, saveOrder, getOrders, getOrder }}>
       {children}
     </CartContext.Provider>
   )

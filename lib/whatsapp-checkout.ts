@@ -1,18 +1,18 @@
+import { randomUUID } from "node:crypto"
+import { generateOrderAccessUrl, signTicketPayload } from "@/lib/tickets"
+import { getBaseUrl } from "@/lib/url-config"
 import "server-only"
-import { and, eq, gte, isNull, or, sql } from "drizzle-orm"
+import { and, eq, gte, isNull, lte, or } from "drizzle-orm"
 import { db } from "@/db"
-import { events, ticketTiers, whatsappCheckoutSessions } from "@/db/schema"
+import { events, orders, ticketTiers, whatsappCheckoutSessions } from "@/db/schema"
+import { getTierAvailability } from "@/lib/ticket-availability"
 import { sendText } from "@/lib/whatsapp"
 import { log } from "@/lib/logger"
 import { orderAccessSignature } from "@/lib/tickets"
 
-const TRIGGER_PATTERN = /early\s*bird/i
 const RESTART_PATTERN = /^(cancel|restart|stop)$/i
 
-type EarlyBirdCandidate = {
-  eventId: string
-  eventTitle: string
-  eventSlug: string
+type SellableTier = {
   tierId: string
   tierName: string
   price: number
@@ -21,25 +21,40 @@ type EarlyBirdCandidate = {
   maxPerOrder: number
 }
 
+type SellableEvent = {
+  eventId: string
+  eventTitle: string
+  eventSlug: string
+  startsAt: Date
+  venue: string
+  city: string
+  tiers: SellableTier[]
+}
+
 /**
- * Events with a currently-active early-bird tier (date and quantity window
- * both still open), ordered by start date. One entry per event — if an event
- * has multiple early-bird tiers, the cheapest is offered.
+ * Currently purchasable published events and their available ticket tiers.
+ * Prices mirror checkout: active early-bird pricing is shown when applicable.
  */
-async function findActiveEarlyBirdEvents(): Promise<EarlyBirdCandidate[]> {
+async function findSellableEvents(): Promise<SellableEvent[]> {
   const now = new Date()
   const rows = await db
     .select({
       eventId: events.id,
       eventTitle: events.title,
       eventSlug: events.slug,
+      startsAt: events.startsAt,
+      venue: events.venue,
+      city: events.city,
       tierId: ticketTiers.id,
       tierName: ticketTiers.name,
-      price: ticketTiers.earlyBirdPrice,
+      price: ticketTiers.price,
       currency: ticketTiers.currency,
       totalQuantity: ticketTiers.totalQuantity,
       soldQuantity: ticketTiers.soldQuantity,
       maxPerOrder: ticketTiers.maxPerOrder,
+      salesStart: ticketTiers.salesStart,
+      salesEnd: ticketTiers.salesEnd,
+      earlyBirdPrice: ticketTiers.earlyBirdPrice,
       earlyBirdUntil: ticketTiers.earlyBirdUntil,
       earlyBirdQuantity: ticketTiers.earlyBirdQuantity,
     })
@@ -47,36 +62,50 @@ async function findActiveEarlyBirdEvents(): Promise<EarlyBirdCandidate[]> {
     .innerJoin(events, eq(events.id, ticketTiers.eventId))
     .where(and(
       eq(events.status, "published"),
-      gte(events.startsAt, now),
-      sql`${ticketTiers.earlyBirdPrice} IS NOT NULL`,
-      or(isNull(ticketTiers.earlyBirdUntil), gte(ticketTiers.earlyBirdUntil, now)),
+      or(gte(events.startsAt, now), gte(events.endsAt, now)),
+      or(isNull(ticketTiers.salesStart), lte(ticketTiers.salesStart, now)),
+      or(isNull(ticketTiers.salesEnd), gte(ticketTiers.salesEnd, now)),
     ))
-    .orderBy(events.startsAt)
+    .orderBy(events.startsAt, ticketTiers.price)
+    .limit(500)
 
-  const byEvent = new Map<string, EarlyBirdCandidate>()
-  for (const r of rows) {
-    const sold = r.soldQuantity ?? 0
-    const remaining = (r.totalQuantity ?? 0) - sold
+  const availability = await getTierAvailability(rows.map((row) => row.tierId))
+  const byEvent = new Map<string, SellableEvent>()
+  for (const row of rows) {
+    const remaining = availability.get(row.tierId)?.availableQuantity ?? 0
     if (remaining < 1) continue
-    if (r.earlyBirdQuantity !== null && sold >= r.earlyBirdQuantity) continue
 
-    const price = Number(r.price)
-    const existing = byEvent.get(r.eventId)
-    if (!existing || price < existing.price) {
-      byEvent.set(r.eventId, {
-        eventId: r.eventId,
-        eventTitle: r.eventTitle,
-        eventSlug: r.eventSlug,
-        tierId: r.tierId,
-        tierName: r.tierName,
+    const sold = row.soldQuantity ?? 0
+    const earlyBirdActive = row.earlyBirdPrice !== null
+      && (!row.earlyBirdUntil || row.earlyBirdUntil > now)
+      && (row.earlyBirdQuantity === null || sold < row.earlyBirdQuantity)
+    const price = Number(earlyBirdActive ? row.earlyBirdPrice : row.price)
+    let event = byEvent.get(row.eventId)
+    if (!event) {
+      event = {
+        eventId: row.eventId,
+        eventTitle: row.eventTitle,
+        eventSlug: row.eventSlug,
+        startsAt: row.startsAt,
+        venue: row.venue,
+        city: row.city,
+        tiers: [],
+      }
+      byEvent.set(row.eventId, event)
+    }
+    if (event.tiers.length < 8) {
+      event.tiers.push({
+        tierId: row.tierId,
+        tierName: row.tierName,
         price,
-        currency: r.currency ?? "USD",
+        currency: row.currency ?? "USD",
         remaining,
-        maxPerOrder: r.maxPerOrder ?? 10,
+        maxPerOrder: row.maxPerOrder ?? 10,
       })
     }
   }
-  return [...byEvent.values()]
+
+  return [...byEvent.values()].slice(0, 10)
 }
 
 async function getSession(chatId: string) {
@@ -85,15 +114,13 @@ async function getSession(chatId: string) {
 }
 
 async function upsertSession(chatId: string, values: Partial<typeof whatsappCheckoutSessions.$inferInsert>) {
-  const existing = await getSession(chatId)
-  if (!existing) {
-    const [row] = await db.insert(whatsappCheckoutSessions).values({ chatId, ...values }).returning()
-    return row
-  }
   const [row] = await db
-    .update(whatsappCheckoutSessions)
-    .set({ ...values, updatedAt: new Date() })
-    .where(eq(whatsappCheckoutSessions.chatId, chatId))
+    .insert(whatsappCheckoutSessions)
+    .values({ chatId, ...values })
+    .onConflictDoUpdate({
+      target: whatsappCheckoutSessions.chatId,
+      set: { ...values, updatedAt: new Date() },
+    })
     .returning()
   return row
 }
@@ -102,39 +129,122 @@ function money(n: number, currency: string) {
   return `${currency} ${n.toFixed(2)}`
 }
 
-async function offerEvent(chatId: string, candidate: EarlyBirdCandidate) {
+function eventDate(date: Date) {
+  return new Intl.DateTimeFormat("en-ZW", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Africa/Harare",
+  }).format(date)
+}
+
+async function offerTiers(chatId: string, event: SellableEvent, intro = "") {
+  const tiers = event.tiers
+  if (tiers.length === 0) {
+    await sendText(chatId, `${intro ? `${intro}\n\n` : ""}Sorry, tickets for that event have just sold out. Reply *EVENTS* to browse other events.`)
+    return
+  }
+
+  const oneTier = tiers.length === 1 ? tiers[0] : null
   await upsertSession(chatId, {
-    step: "quantity",
-    eventId: candidate.eventId,
-    tierId: candidate.tierId,
+    step: oneTier ? "quantity" : "choose_event",
+    eventId: event.eventId,
+    tierId: oneTier?.tierId ?? null,
     quantity: null,
     guestName: null,
     guestEmail: null,
+    guestPhone: null,
     orderId: null,
-    candidateEventIds: null,
+    checkoutMetadata: null,
+    candidateEventIds: oneTier ? null : tiers.map((tier) => tier.tierId),
   })
-  await sendText(
-    chatId,
-    `🎟️ *Early Bird — ${candidate.eventTitle}*\n${candidate.tierName} @ ${money(candidate.price, candidate.currency)}\n(${candidate.remaining} left)\n\nHow many tickets would you like? (reply with a number, max ${candidate.maxPerOrder})`,
-  )
+  const details = `${intro ? `${intro}\n\n` : ""}🎟️ *${event.eventTitle}*\n${eventDate(event.startsAt)} · ${event.venue}, ${event.city}`
+  if (oneTier) {
+    await sendText(chatId, `${details}\n\n${oneTier.tierName} — ${money(oneTier.price, oneTier.currency)} (${oneTier.remaining} left)\n\nHow many tickets? Reply with a number, up to ${oneTier.maxPerOrder}.`)
+    return
+  }
+
+  const list = tiers
+    .map((tier, index) => `${index + 1}. ${tier.tierName} — ${money(tier.price, tier.currency)} (${tier.remaining} left)`)
+    .join("\n")
+  await sendText(chatId, `${details}\n\n${list}\n\nReply with the number of the ticket type you want.`)
+}
+
+async function showEvents(chatId: string, greet = false) {
+  const intro = greet ? "Hi! 👋 I’m TicketPulse’s ticket assistant. Let’s find your tickets." : ""
+  const candidates = await findSellableEvents()
+  if (candidates.length === 0) {
+    const existing = await getSession(chatId)
+    if (existing && existing.step !== "done" && existing.step !== "cancelled") {
+      await upsertSession(chatId, { step: "cancelled", eventId: null, tierId: null, candidateEventIds: null })
+    }
+    await sendText(chatId, `${intro ? `${intro}\n\n` : ""}There are no tickets available to buy right now. Please check back soon.`)
+    return
+  }
+  if (candidates.length === 1) {
+    await offerTiers(chatId, candidates[0], intro)
+    return
+  }
+
+  await upsertSession(chatId, {
+    step: "choose_event",
+    eventId: null,
+    tierId: null,
+    quantity: null,
+    guestName: null,
+    guestEmail: null,
+    guestPhone: null,
+    orderId: null,
+    checkoutMetadata: null,
+    candidateEventIds: candidates.map((candidate) => candidate.eventId),
+  })
+  const list = candidates
+    .map((candidate, index) => {
+      const cheapest = candidate.tiers.reduce((a, b) => a.price <= b.price ? a : b)
+      return `${index + 1}. *${candidate.eventTitle}* — ${eventDate(candidate.startsAt)}\n   ${candidate.venue}, ${candidate.city} · from ${money(cheapest.price, cheapest.currency)}`
+    })
+    .join("\n")
+  await sendText(chatId, `${intro ? `${intro}\n\n` : ""}🎟️ *Events with tickets available*\n\n${list}\n\nReply with the event number. Type *CANCEL* to stop.`)
 }
 
 /**
- * Entry point for an inbound WhatsApp text message. Drives the "text
- * EARLYBIRD to buy" conversation for the given chat. Safe to call for any
- * inbound message — no-ops silently for messages that aren't part of an
- * active or newly-triggered checkout flow.
+ * Entry point for inbound WhatsApp text. It offers current published events,
+ * collects event/tier/quantity/buyer details, and hands checkout to Velocity.
  */
 export async function handleInboundWhatsAppMessage(chatId: string, rawBody: string): Promise<void> {
   const body = (rawBody ?? "").trim()
   if (!body) return
 
+  const active = await getSession(chatId)
+  if (active?.orderId) {
+    const [recorded] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, active.orderId)).limit(1)
+    if (recorded && ['pending', 'awaiting_verification', 'expired'].includes(recorded.status ?? '')) {
+      await sendText(chatId, 'Your earlier payment is recorded. Please do not pay again. Check this secure order link: ' + generateOrderAccessUrl(active.orderId))
+      return
+    }
+  }
+  const checkoutMeta = active?.checkoutMetadata
+  if (active && checkoutMeta?.quote && !active.orderId) {
+    if (/^pay$/i.test(body)) { await completeCheckout(chatId, active, true); return }
+    if (/^promo\s+/i.test(body)) {
+      const next = await upsertSession(chatId, { checkoutMetadata: { ...checkoutMeta, quote: null, promoCode: body.replace(/^promo\s+/i, '').trim().toUpperCase() } })
+      await completeCheckout(chatId, next); return
+    }
+    if (!RESTART_PATTERN.test(body)) { await sendText(chatId, 'Reply PAY to approve the reviewed total, PROMO followed by your code, or CANCEL before payment starts.'); return }
+  }
   if (RESTART_PATTERN.test(body)) {
     const existing = await getSession(chatId)
     if (existing && existing.step !== "done" && existing.step !== "cancelled") {
-      await upsertSession(chatId, { step: "cancelled" })
-      await sendText(chatId, "No problem, cancelled. Text *EARLYBIRD* any time to start again.")
+      await upsertSession(chatId, { step: "cancelled", checkoutMetadata: null })
+      await sendText(chatId, "No problem, cancelled. Reply *EVENTS* any time to start again.")
     }
+    return
+  }
+
+  if (/^(events|menu|start|help)$/i.test(body)) {
+    await showEvents(chatId)
     return
   }
 
@@ -142,32 +252,7 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
   const inFlight = session && session.step !== "done" && session.step !== "cancelled"
 
   if (!inFlight) {
-    if (!TRIGGER_PATTERN.test(body)) return // don't reply to unrelated messages
-
-    const candidates = await findActiveEarlyBirdEvents()
-    if (candidates.length === 0) {
-      await sendText(chatId, "Sorry, there are no early bird tickets available right now. Check back soon!")
-      return
-    }
-    if (candidates.length === 1) {
-      await offerEvent(chatId, candidates[0])
-      return
-    }
-
-    await upsertSession(chatId, {
-      step: "choose_event",
-      eventId: null,
-      tierId: null,
-      quantity: null,
-      guestName: null,
-      guestEmail: null,
-      orderId: null,
-      candidateEventIds: candidates.map((c) => c.eventId),
-    })
-    const list = candidates
-      .map((c, i) => `${i + 1}. ${c.eventTitle} — ${money(c.price, c.currency)}`)
-      .join("\n")
-    await sendText(chatId, `🎟️ *Early Bird tickets available:*\n${list}\n\nReply with the number of the event you want.`)
+    await showEvents(chatId, true)
     return
   }
 
@@ -179,14 +264,27 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
         await sendText(chatId, `Please reply with a number from 1 to ${candidateIds.length}.`)
         return
       }
-      const candidates = await findActiveEarlyBirdEvents()
-      const chosen = candidates.find((c) => c.eventId === candidateIds[idx])
-      if (!chosen) {
-        await upsertSession(chatId, { step: "cancelled" })
-        await sendText(chatId, "Sorry, that early bird offer just ran out. Text *EARLYBIRD* to see what's still available.")
+      const candidates = await findSellableEvents()
+      if (!session!.eventId) {
+        const chosen = candidates.find((candidate) => candidate.eventId === candidateIds[idx])
+        if (!chosen) {
+          await upsertSession(chatId, { step: "cancelled" })
+          await sendText(chatId, "Sorry, that event is no longer available. Reply *EVENTS* to see what's still on sale.")
+          return
+        }
+        await offerTiers(chatId, chosen)
         return
       }
-      await offerEvent(chatId, chosen)
+
+      const selectedEvent = candidates.find((candidate) => candidate.eventId === session!.eventId)
+      const selectedTier = selectedEvent?.tiers.find((tier) => tier.tierId === candidateIds[idx])
+      if (!selectedEvent || !selectedTier) {
+        await upsertSession(chatId, { step: "cancelled" })
+        await sendText(chatId, "Sorry, that ticket type is no longer available. Reply *EVENTS* to start again.")
+        return
+      }
+      await upsertSession(chatId, { step: "quantity", tierId: selectedTier.tierId, candidateEventIds: null })
+      await sendText(chatId, `You selected *${selectedTier.tierName}* for *${selectedEvent.eventTitle}* at ${money(selectedTier.price, selectedTier.currency)} each. ${selectedTier.remaining} left.\n\nHow many tickets? Reply with a number, up to ${selectedTier.maxPerOrder}.`)
       return
     }
 
@@ -199,7 +297,7 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
       const [tier] = await db.select().from(ticketTiers).where(eq(ticketTiers.id, session!.tierId!)).limit(1)
       if (!tier) {
         await upsertSession(chatId, { step: "cancelled" })
-        await sendText(chatId, "Sorry, that ticket tier is no longer available. Text *EARLYBIRD* to start again.")
+        await sendText(chatId, "Sorry, that ticket tier is no longer available. Reply *EVENTS* to start again.")
         return
       }
       const remaining = (tier.totalQuantity ?? 0) - (tier.soldQuantity ?? 0)
@@ -208,7 +306,7 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
         return
       }
       if (tier.maxPerOrder && qty > tier.maxPerOrder) {
-        await sendText(chatId, `Max ${tier.maxPerOrder} per order — reply with a smaller number.`)
+        await sendText(chatId, `The maximum is ${tier.maxPerOrder} tickets per order — reply with a smaller number.`)
         return
       }
       await upsertSession(chatId, { quantity: qty, step: "name" })
@@ -264,7 +362,7 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
   }
 }
 
-async function completeCheckout(chatId: string, session: typeof whatsappCheckoutSessions.$inferSelect) {
+async function completeCheckout(chatId: string, session: typeof whatsappCheckoutSessions.$inferSelect, confirmed = false) {
   const [event] = await db.select().from(events).where(eq(events.id, session.eventId!)).limit(1)
   if (!event) {
     await upsertSession(chatId, { step: "cancelled" })
@@ -278,11 +376,19 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
   // traffic (hairpin NAT) hangs on this deployment.
   const selfUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}`
 
+  const previous = session.checkoutMetadata ?? {}
+  const requestId = typeof previous.checkoutRequestId === 'string' ? previous.checkoutRequestId : randomUUID()
+  await upsertSession(chatId, { checkoutMetadata: { ...previous, checkoutRequestId: requestId } })
   try {
     const res = await fetch(`${selfUrl}/api/checkout/velocity`, {
+      signal: AbortSignal.timeout(60_000),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        checkoutRequestId: requestId, quoteOnly: !confirmed,
+        expectedAmount: (previous.quote as { amount?: number } | undefined)?.amount,
+        expectedCurrency: (previous.quote as { currency?: string } | undefined)?.currency,
+        promoCode: previous.promoCode,
         email: session.guestEmail,
         name: session.guestName,
         phone,
@@ -294,12 +400,27 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
     const data = await res.json()
 
     if (!res.ok || data.error) {
-      await upsertSession(chatId, { step: "cancelled" })
-      await sendText(chatId, `Sorry — ${data.error ?? "checkout failed"}. Text *EARLYBIRD* to try again.`)
+      if (data.orderId) {
+        await upsertSession(chatId, { orderId: data.orderId, step: 'done', checkoutMetadata: { ...previous, checkoutRequestId: requestId, accessSignature: data.accessSignature } })
+        await sendText(chatId, 'Your payment outcome is still being checked. Please do not pay again. View your order: ' + generateOrderAccessUrl(data.orderId))
+      } else {
+        await sendText(chatId, (data.error ?? 'Checkout could not be reviewed.') + ' Reply with your details again to review this same order.')
+        await upsertSession(chatId, { checkoutMetadata: { ...previous, checkoutRequestId: requestId, quote: null } })
+      }
       return
     }
-
+    if (!confirmed) {
+      if (data.quote.questions.length) {
+        await upsertSession(chatId, { step: 'cancelled', checkoutMetadata: null })
+        await sendText(chatId, 'This event has attendee questions. Complete them, apply any promo, and review your payment securely here: ' + getBaseUrl() + '/events/' + event.slug)
+        return
+      }
+      await upsertSession(chatId, { step: 'phone', checkoutMetadata: { ...previous, checkoutRequestId: requestId, quote: data.quote } })
+      await sendText(chatId, 'Review your order: ' + session.quantity + ' ticket(s) for ' + event.title + '. Total: ' + money(data.quote.amount, data.quote.currency) + '. EcoCash prompt goes to ' + data.quote.normalizedPhone + '. Your provider may charge additional fees. Reply PAY to request payment, PROMO followed by a code, or CANCEL.')
+      return
+    }
     await upsertSession(chatId, { orderId: data.orderId, step: "done" })
+    if (data.flow === 'free') { await sendText(chatId, 'Your free tickets are confirmed. View them here: ' + generateOrderAccessUrl(data.orderId)); return }
     await sendText(
       chatId,
       `✅ Almost there! Check your phone for an *EcoCash* payment prompt for ${money(Number(data.amount ?? 0), data.currency ?? "USD")} and enter your PIN to approve it.\n\nOnce it goes through, your ticket lands right here and by email.`,
@@ -308,15 +429,14 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
     // On the website the buyer's browser polls the status endpoint, which
     // confirms the payment with Velocity, finalizes the order, and triggers
     // ticket delivery. There's no browser here, so poll it ourselves.
-    await pollPaymentUntilSettled(chatId, data.orderId, selfUrl)
+    await pollPaymentUntilSettled(chatId, data.orderId, selfUrl, data.accessSignature)
   } catch (err) {
     log.error("whatsapp-checkout — completeCheckout failed", { chatId, error: err instanceof Error ? err.message : String(err) })
-    await upsertSession(chatId, { step: "cancelled" })
-    await sendText(chatId, "Sorry, something went wrong starting your payment. Text *EARLYBIRD* to try again.")
+    await sendText(chatId, "Connection is delayed. Please do not pay again. Reply PAY to recover the same recorded attempt, or contact support.")
   }
 }
 
-async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl: string): Promise<void> {
+async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl: string, signature?: string): Promise<void> {
   const POLL_INTERVAL_MS = 6_000
   const MAX_POLLS = 20 // ~2 minutes
 
@@ -325,7 +445,7 @@ async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl:
     try {
       const res = await fetch(`${selfUrl}/api/checkout/velocity/status/${orderId}`, {
         signal: AbortSignal.timeout(15_000),
-        headers: { "x-ticket-signature": orderAccessSignature(orderId) },
+        headers: { "x-ticket-signature": signature ?? signTicketPayload(orderId, orderId) },
       })
       if (!res.ok) continue
       const status = await res.json()
@@ -334,7 +454,7 @@ async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl:
         return
       }
       if (status.status === "expired" || status.status === "failed") {
-        await sendText(chatId, "❌ The payment didn't go through. Text *EARLYBIRD* to try again.")
+        await sendText(chatId, "This order is closed. If money was deducted, contact support before paying again.")
         return
       }
     } catch (err) {
@@ -344,6 +464,6 @@ async function pollPaymentUntilSettled(chatId: string, orderId: string, selfUrl:
 
   await sendText(
     chatId,
-    "⏳ Still waiting on your payment confirmation. If you approved the EcoCash prompt, your ticket will arrive automatically once it clears — no need to do anything.",
+    "Still checking payment. Please do not pay again. View your recorded order: " + generateOrderAccessUrl(orderId),
   )
 }

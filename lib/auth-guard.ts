@@ -1,5 +1,6 @@
 import "server-only"
 import { auth } from "@/auth"
+import { isAdminRole } from "@/lib/role-routes"
 
 /**
  * The `if (!session?.user || session.user.role !== "admin") throw ...` guard
@@ -10,7 +11,7 @@ import { auth } from "@/auth"
  */
 export async function requireAdmin() {
   const session = await auth()
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !isAdminRole(session.user.role)) {
     throw new Error("Unauthorized")
   }
   return session
@@ -19,7 +20,7 @@ export async function requireAdmin() {
 /** Same idea for organiser-or-admin-gated actions (event management, etc). */
 export async function requireOrganizerOrAdmin() {
   const session = await auth()
-  if (!session?.user || (session.user.role !== "organizer" && session.user.role !== "admin")) {
+  if (!session?.user || (session.user.role !== "organizer" && !isAdminRole(session.user.role))) {
     throw new Error("Unauthorized")
   }
   return session

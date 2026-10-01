@@ -144,13 +144,9 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
 
   if (result.state === "FAILED" && (eventEnded || timedOut)) {
     await expireOrderAndReleaseInventory(id, eventEnded ? "event_ended_payment_failed" : "payment_timeout")
-    return NextResponse.json({
-      orderId: id,
-      status: "expired",
-      paid: false,
-      pollStatus: "FAILED",
-      error: eventEnded ? "The event has ended and Velocity confirmed the payment failed." : "Payment window expired",
-    })
+    const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, id)).limit(1)
+    return NextResponse.json({ orderId: id, status: current?.status ?? "pending", paid: PAID_STATUSES.has(current?.status ?? ""),
+      pollStatus: current?.status === "expired" ? "EXPIRED" : "CONFIRMATION_DELAYED", message: "We are checking the final payment outcome. Please do not pay again." })
   }
 
   if (result.state === "UNKNOWN") {

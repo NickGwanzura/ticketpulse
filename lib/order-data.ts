@@ -1,3 +1,4 @@
+import { buyerOrderStatus } from "@/lib/buyer-order-status"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, events, merchItems, ticketTiers, vendorListings, vendors } from "@/db/schema"
@@ -33,15 +34,8 @@ export async function getOrderFromDb(orderId: string): Promise<OrderRecord | nul
 
     if (!order) return null
 
-    // Map DB status to the client-side union. "completed" orders are fully
-    // paid (tickets delivered); verification is still in flight like pending;
-    // a cancelled unpaid order reads the same as an expired one to the buyer.
-    const clientStatus: OrderRecord["status"] =
-      order.status === "paid" ? "paid"
-      : order.status === "completed" ? "completed"
-      : order.status === "pending" || order.status === "awaiting_verification" ? "pending"
-      : order.status === "refunded" ? "refunded"
-      : "expired"
+    // Map DB status to the client-side union.
+    const clientStatus = buyerOrderStatus(order.status)
 
     // Fetch event details
     const [event] = await db

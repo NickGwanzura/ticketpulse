@@ -6,7 +6,7 @@ import { db } from "@/db"
 import { orders, paymentLedger } from "@/db/schema"
 import { trackEvent } from "@/lib/analytics"
 import { log } from "@/lib/logger"
-import { expireOrderAndReleaseInventory, restoreExpiredOrderInventory } from "@/lib/order-expiry"
+import { InventoryRecoveryError, expireOrderAndReleaseInventory, restoreExpiredOrderInventory } from "@/lib/order-expiry"
 import { isAutomaticPoll, paymentWindowExpired, POLL_INTERVAL_MS } from "@/lib/velocity/poll-policy"
 import { protectedFromRecovery, recoverPaidSalesOrder } from "@/lib/velocity/sales-order-recovery"
 import { alertPaymentAnomaly } from "@/lib/payment-alerts"
@@ -783,6 +783,7 @@ export async function reconcileVelocityOrder(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    if (error instanceof InventoryRecoveryError) await db.update(orders).set({ metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{recoveryReview}', ${JSON.stringify({reason:'inventory_unavailable_after_payment', providerPaid:true, invoiceId, checkedAt:new Date().toISOString()})}::jsonb)` }).where(eq(orders.id, order.id))
     alertPaymentAnomaly({
       type: "VELOCITY_API_UNEXPECTED_FORMAT",
       severity: "critical",

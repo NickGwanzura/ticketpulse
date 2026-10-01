@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import CheckoutPaymentNotice from "@/app/checkout/CheckoutPaymentNotice"
 import { useCart } from "@/lib/cart-context"
-import { orderAuthHeaders, rememberOrderAccess } from "@/lib/order-auth-client"
+import { orderAuthHeaders, rememberOrderAccess, orderOwnerQuery } from "@/lib/order-auth-client"
 import { formatCurrency } from "@/lib/utils"
 import Button from "@/components/ui/Button"
 import {
@@ -23,6 +23,7 @@ type CheckoutResponse = {
   redirectUrl?: string | null
   amount: number
   currency: string
+  accessSignature: string
   resumed?: boolean
 }
 
@@ -34,18 +35,12 @@ const PAYMENT_METHODS: {
   body: string
   icon: React.ComponentType<{ size?: number; className?: string }>
 }[] = [
-  { value: "velocity-ecocash", label: "EcoCash", body: "Mobile money · approve the prompt on your phone", icon: Smartphone },
-  { value: "velocity-card",    label: "Visa / Mastercard", body: "Pay by card on a secure checkout page", icon: CreditCard },
+  { value: "velocity-ecocash", label: "EcoCash", body: "Approve a secure prompt on your phone", icon: Smartphone },
+  { value: "velocity-card",    label: "VISA / Mastercard", body: "Pay by card on a secure checkout page", icon: CreditCard },
 ]
 
-// Messages for the `?error=` codes other pages send buyers back here with.
-const RETURN_ERRORS: Record<string, string> = {
-  not_found: "We couldn't find that payment. Nothing was charged for it. Please try again.",
-  cancelled: "The card payment was cancelled. You can try again below.",
-}
-
-const POLL_INTERVAL_MS = 2000
-// Must match POLL_TIMEOUT_MS in app/api/checkout/velocity/status/[id]/route.ts.
+const POLL_INTERVAL_MS = 5000
+// Foreground checking window; server reconciliation can continue for 24 hours.
 // Client uses slightly longer window to account for network latency on the final poll.
 const POLL_TIMEOUT_MS = 5.5 * 60 * 1000
 
@@ -79,51 +74,36 @@ function savePollingSession(orderId: string, contact: PollingContact) {
   } catch { /* sessionStorage may be unavailable */ }
 }
 
-export default function CheckoutPage() {
-  return (
-    <Suspense fallback={<CheckoutSkeleton />}>
-      <CheckoutInner />
-    </Suspense>
-  )
-}
-
-function CheckoutSkeleton() {
-  return (
-    <div className="max-w-5xl mx-auto px-5 md:px-8 py-20">
-      <div className="h-8 w-40 bg-paper-2 rounded animate-pulse mb-6" />
-      <div className="h-64 bg-paper-2 rounded-2xl animate-pulse" />
-    </div>
-  )
-}
-
+export default function CheckoutPage() { return <Suspense fallback={<p className="p-8">Loading checkout…</p>}><CheckoutInner /></Suspense> }
 function CheckoutInner() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const { items: cartItems, ready, placeOrder } = useCart()
+  const params = useSearchParams()
+  const selectedEvent = params.get('event'), selectedCurrency = params.get('currency')
+  const { items: cartItems, ready, saveOrder, removeItem } = useCart()
+  const items = useMemo(() => cartItems.filter(item => (!selectedEvent || item.eventSlug === selectedEvent) && (!selectedCurrency || item.currency === selectedCurrency)), [cartItems, selectedEvent, selectedCurrency])
+  const totalsByCurrency = useMemo(() => items.reduce<Record<string, number>>((totals, item) => { totals[item.currency] = (totals[item.currency] ?? 0) + item.qty * item.price; return totals }, {}), [items])
+  const checkoutEventSlug = items.find(i => i.kind === 'ticket')?.eventSlug
+  useEffect(() => {
+    if (!ready || !checkoutEventSlug) return
+    void fetch('/api/analytics/track', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({event:'CHECKOUT_STARTED',eventSlug:checkoutEventSlug,sessionId:getAnalyticsSessionId()}) }).catch(() => {})
+  }, [ready, checkoutEventSlug])
+  const [serverQuote, setServerQuote] = useState<{ amount: number; currency: string; normalizedPhone: string; discount?: number; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
+  const requestId = useRef<string | null>(null)
+  const submittedCart = useRef<string | null>(null)
+  const itemsRef = useRef(items)
+  useEffect(() => { itemsRef.current = items }, [items])
+  const [pollMessage, setPollMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [errorOrderId, setErrorOrderId] = useState<string | null>(null)
   const [pollingOrderId, setPollingOrderId] = useState<string | null>(null)
-  const [pollNotice, setPollNotice] = useState<string | null>(null)
-  const pollingContact = useRef<PollingContact | null>(null)
-  // Render-safe copy of what the waiting overlay shows (refs can't be read during render).
-  const [waitingFor, setWaitingFor] = useState<{ method: string; phone: string } | null>(null)
 
-  // Checkout is scoped to one event: payments are per event, so a cart with
-  // several events is paid one event at a time.
-  const eventSlugs = useMemo(() => Array.from(new Set(cartItems.map((i) => i.eventSlug))), [cartItems])
-  const requestedEvent = searchParams.get("event")
-  const activeEvent = requestedEvent && eventSlugs.includes(requestedEvent)
-    ? requestedEvent
-    : eventSlugs.length === 1 ? eventSlugs[0] : null
-  const items = useMemo(() => cartItems.filter((i) => i.eventSlug === activeEvent), [cartItems, activeEvent])
-  const totalsByCurrency = useMemo(() => items.reduce<Record<string, number>>((acc, i) => {
-    acc[i.currency] = (acc[i.currency] ?? 0) + i.price * i.qty
-    return acc
-  }, {}), [items])
-
-  const returnError = searchParams.get("error")
-
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    payment: "velocity-ecocash" as PaymentMethodValue,
+  })
   // ── Restore polling session after page refresh ───────────────────────────
   useEffect(() => {
     try {
@@ -133,11 +113,9 @@ function CheckoutInner() {
         const email = sessionStorage.getItem(`${POLL_SESSION_KEY}:email`)
         const phone = sessionStorage.getItem(`${POLL_SESSION_KEY}:phone`) ?? ""
         const method = sessionStorage.getItem(`${POLL_SESSION_KEY}:method`)
-        const eventSlug = sessionStorage.getItem(`${POLL_SESSION_KEY}:event`) ?? ""
-        if (name && email && method) {
-          pollingContact.current = { name, email, phone, method, eventSlug }
+        if (name && email && phone !== null && method) {
           queueMicrotask(() => {
-            setWaitingFor({ method, phone })
+            setForm({ name, email, phone, payment: method as PaymentMethodValue })
             setPollingOrderId(savedOrderId)
             setSubmitting(true)
           })
@@ -146,18 +124,29 @@ function CheckoutInner() {
     } catch { /* sessionStorage may be unavailable */ }
   }, [])
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    payment: "velocity-ecocash" as PaymentMethodValue,
-  })
   const [eventQuestions, setEventQuestions] = useState<{ id: string; question: string; required: boolean }[]>([])
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({})
   const [promoInput, setPromoInput] = useState("")
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: "percent" | "fixed"; value: number; discount: number } | null>(null)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoLoading, setPromoLoading] = useState(false)
+
+  async function saveCanonicalOrder(orderId: string) {
+    const response = await fetch("/api/orders/" + orderId + "/data", { cache: "no-store", headers: orderAuthHeaders(orderId) })
+    if (response.ok) saveOrder(await response.json())
+    if (submittedCart.current === JSON.stringify(itemsRef.current)) itemsRef.current.forEach(item => removeItem(item.key))
+  }
+  function getRequestId() {
+    if (requestId.current) return requestId.current
+    try { requestId.current = sessionStorage.getItem("tp_checkout_request") } catch { /* storage optional */ }
+    requestId.current ??= crypto.randomUUID()
+    try { sessionStorage.setItem("tp_checkout_request", requestId.current) } catch { /* storage optional */ }
+    return requestId.current
+  }
+  function finishRequest() {
+    requestId.current = null
+    try { sessionStorage.removeItem("tp_checkout_request"); sessionStorage.removeItem("tp_checkout_request_order") } catch { /* storage optional */ }
+  }
 
   // Drives the "Check your phone" overlay for seamless mobile-money payments.
   // Polls the Velocity transaction status with a 2s pause between completed
@@ -167,9 +156,10 @@ function CheckoutInner() {
     if (!pollingOrderId) return
 
     const startedAtKey = `poll_started:${pollingOrderId}`
-    const stored = sessionStorage.getItem(startedAtKey)
+    let stored: string | null = null
+    try { stored = sessionStorage.getItem(startedAtKey) } catch { /* storage optional */ }
     const startedAt = stored ? Number(stored) : Date.now()
-    if (!stored) sessionStorage.setItem(startedAtKey, String(startedAt))
+    if (!stored) { try { sessionStorage.setItem(startedAtKey, String(startedAt)) } catch { /* storage optional */ } }
 
     let active = true
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -181,11 +171,11 @@ function CheckoutInner() {
 
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         if (timer) clearTimeout(timer)
-        sessionStorage.removeItem(startedAtKey)
+        safeSessionRemove(startedAtKey)
         clearPollingSession()
         setPollingOrderId(null)
         setSubmitting(false)
-        router.replace(`/checkout/expired?ref=${pollingOrderId}&pending=1`)
+        router.replace("/checkout/expired?ref=" + pollingOrderId + "&" + orderOwnerQuery(pollingOrderId).slice(1))
         return
       }
 
@@ -193,47 +183,51 @@ function CheckoutInner() {
         controller = new AbortController()
         const res = await fetch(statusEndpoint, {
           cache: "no-store",
-          signal: controller.signal,
-          headers: orderAuthHeaders(pollingOrderId),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
+          headers: orderAuthHeaders(pollingOrderId, null),
         })
+        if (!res.ok) {
+          setPollMessage(res.status === 403 ? "Open your secure order link to continue checking this payment." : "Connection is delayed. Your payment may still complete; please do not pay again.")
+          if (res.status === 429) {
+            if (active) timer = setTimeout(() => void poll(), Math.max(5000, Number(res.headers.get("Retry-After") ?? 5) * 1000))
+            return
+          }
+          throw new Error("Status temporarily unavailable")
+        }
         const data = await res.json()
         if (!active) return
 
-        if (data.paid && pollingContact.current) {
+        if (data.paid) {
           if (timer) clearTimeout(timer)
-          sessionStorage.removeItem(startedAtKey)
+          safeSessionRemove(startedAtKey)
           clearPollingSession()
-          const contact = pollingContact.current
-          placeOrder(
-            { name: contact.name, email: contact.email, phone: contact.phone },
-            { method: contact.method },
-            pollingOrderId,
-            data.status ?? "paid",
-            contact.eventSlug || undefined,
-          )
-          router.push(`/orders/${pollingOrderId}?welcome=1`)
+          await saveCanonicalOrder(pollingOrderId)
+          finishRequest()
+          router.push("/orders/" + pollingOrderId + orderOwnerQuery(pollingOrderId))
           return
         }
 
-        const terminalPollStatuses = ["FAILED", "CANCELLED", "EXPIRED", "EVENT_ENDED"]
+        const terminalPollStatuses = ["CANCELLED", "EXPIRED"]
         const terminalOrderStatuses = ["cancelled", "expired"]
 
         if (
           terminalOrderStatuses.includes(data.status) ||
           terminalPollStatuses.includes(data.pollStatus) ||
-          data.pollStatus === "TIMEOUT"
+          data.status === "refunded"
         ) {
           if (timer) clearTimeout(timer)
-          sessionStorage.removeItem(startedAtKey)
+          safeSessionRemove(startedAtKey)
           clearPollingSession()
           const isExpired = data.status === "expired" || data.pollStatus === "TIMEOUT" || data.pollStatus === "EXPIRED"
           setPollingOrderId(null)
           setPollNotice(null)
           setSubmitting(false)
           if (isExpired || data.pollStatus === "EVENT_ENDED") {
-            router.replace(`/checkout/expired?ref=${pollingOrderId}`)
+            router.replace("/checkout/expired?ref=" + pollingOrderId + "&" + orderOwnerQuery(pollingOrderId).slice(1))
           } else {
-            setSubmitError("Payment was cancelled or declined. Nothing was charged. Please try again.")
+            clearPollingSession()
+            setSubmitError("This order is closed. If money was deducted, contact support before paying again.")
+            setErrorOrderId(pollingOrderId)
           }
           return
         }
@@ -241,13 +235,14 @@ function CheckoutInner() {
         // Non-terminal problems are shown inside the waiting overlay, where
         // the buyer is looking, and polling continues.
         if (data.pollStatus === "UNKNOWN") {
-          setPollNotice("We can't confirm your payment status yet. If money was deducted, your tickets will be sent once it's confirmed. Please don't pay again.")
-        } else if (data.pollStatus === "ERROR") {
-          setPollNotice("The payment provider is slow to respond. Your payment may still complete, and we're still checking.")
-        } else {
-          setPollNotice(null)
+          setPollMessage("We couldn't confirm your payment status. If money was deducted, your tickets will be sent once confirmed. Contact support.")
+        }
+
+        if (data.pollStatus === "ERROR") {
+          setPollMessage(`An error occurred: ${data.message ?? "Unknown error"}. Your payment may still complete — we'll keep checking.`)
         }
       } catch {
+        setPollMessage("Connection is delayed. We are still checking; please do not pay again.")
         // Network blip — fall through to next tick.
       } finally {
         controller = null
@@ -265,7 +260,9 @@ function CheckoutInner() {
       if (timer) clearTimeout(timer)
       controller?.abort()
     }
-  }, [pollingOrderId, placeOrder, router])
+  // The poll lifetime follows the order, while cart contents are read through itemsRef.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollingOrderId, saveOrder, removeItem, router])
 
   // Fetch event questions once the event is known
   useEffect(() => {
@@ -323,6 +320,8 @@ function CheckoutInner() {
     )
   }
 
+  const checkoutGroups = [...new Map(items.filter(i => i.kind === 'ticket').map(i => [i.eventSlug + ':' + i.currency, i])).values()]
+  if (checkoutGroups.length > 1) return <div className="mx-auto max-w-xl space-y-4 p-8"><h1 className="text-xl font-bold">Choose an order to check out</h1><p>Each event and currency has its own payment.</p>{checkoutGroups.map(item => <Link key={item.key} className="block rounded-lg border border-line p-4" href={'/checkout?event=' + encodeURIComponent(item.eventSlug) + '&currency=' + encodeURIComponent(item.currency)}>{item.eventTitle} · {item.currency} <ArrowRight size={14} /></Link>)}</div>
   const lineCount = items.reduce((s, i) => s + i.qty, 0)
   const eventTitle = items[0]?.eventTitle ?? ""
   const otherEventCount = eventSlugs.length - 1
@@ -330,7 +329,10 @@ function CheckoutInner() {
   // Compute the final total for the CTA label
   const firstCurrency = Object.keys(totalsByCurrency)[0] ?? "USD"
   const rawTotal = totalsByCurrency[firstCurrency] ?? 0
-  const finalTotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const estimatedTotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const inputKey = JSON.stringify({ form, items, promo: appliedPromo?.code, questionAnswers })
+  const currentQuote = serverQuote?.inputKey === inputKey ? serverQuote : null
+  const finalTotal = currentQuote?.amount ?? estimatedTotal
   const isFree = finalTotal === 0
   const isEcoCash = !isFree && form.payment === "velocity-ecocash"
 
@@ -385,6 +387,7 @@ function CheckoutInner() {
       }
 
       const body: Record<string, unknown> = {
+        checkoutRequestId: getRequestId(),
         email: form.email,
         name: form.name,
         phone: form.phone,
@@ -399,7 +402,21 @@ function CheckoutInner() {
       if (appliedPromo) body.promoCode = appliedPromo.code
       if (eventQuestions.length > 0) body.questionResponses = questionAnswers
 
+      if (!currentQuote) {
+        for (const event of ['BUYER_DETAILS_SUBMITTED','PAYMENT_METHOD_SELECTED']) void fetch('/api/analytics/track',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event,eventSlug:ticketLines[0].eventSlug,sessionId:getAnalyticsSessionId()})}).catch(() => {})
+        const quoted = await fetch("/api/checkout/velocity", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, quoteOnly: true }), signal: AbortSignal.timeout(30_000) })
+        const result = await quoted.json()
+        if (!quoted.ok) throw new Error(result.error ?? "Could not confirm the current price")
+        setServerQuote({ ...result.quote, inputKey })
+        if (result.quote.questions) setEventQuestions(result.quote.questions)
+        setSubmitting(false)
+        return
+      }
+      body.expectedAmount = currentQuote.amount
+      body.expectedCurrency = currentQuote.currency
+      submittedCart.current = JSON.stringify(items)
       const res = await fetch("/api/checkout/velocity", {
+        signal: AbortSignal.timeout(60_000),
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -412,51 +429,44 @@ function CheckoutInner() {
         try {
           const errBody = await res.json()
           errorMsg = errBody.error ?? errorMsg
-          // A recoverable failure still created an order: link to it so the
-          // buyer can check its status instead of paying twice.
           if (errBody.orderId && errBody.accessSignature) {
             rememberOrderAccess(errBody.orderId, errBody.accessSignature)
             setErrorOrderId(errBody.orderId)
+            try { sessionStorage.setItem("tp_checkout_request_order", errBody.orderId) } catch { /* optional storage */ }
           }
+          if (errBody.quote) setServerQuote({ ...errBody.quote, inputKey })
         } catch { /* use default */ }
         throw new Error(errorMsg)
       }
       const data = (await res.json()) as CheckoutResponse
       rememberOrderAccess(data.orderId, data.accessSignature)
+      try { sessionStorage.setItem("tp_checkout_request_order", data.orderId) } catch { /* optional storage */ }
 
       const contactData: PollingContact = { name: form.name, email: form.email, phone: form.phone, method: form.payment, eventSlug: activeEvent }
 
       if (data.flow === "free") {
-        placeOrder(
-          { name: form.name, email: form.email, phone: form.phone },
-          { method: "free" },
-          data.orderId,
-          "paid",
-          activeEvent,
-        )
-        router.push(`/orders/${data.orderId}?welcome=1`)
+        await saveCanonicalOrder(data.orderId)
+        finishRequest()
+        router.push("/orders/" + data.orderId + orderOwnerQuery(data.orderId))
         return
       }
 
-      if (data.flow === "velocity-redirect" && data.redirectUrl) {
-        // The order is recorded as pending; its lines leave the cart and are
-        // restored from the order page if the card payment is cancelled.
-        placeOrder(
-          { name: form.name, email: form.email, phone: form.phone },
-          { method: form.payment },
-          data.orderId,
-          "pending",
-          activeEvent,
-        )
-        window.location.href = data.redirectUrl
+      if (data.flow === "velocity-seamless") {
+        savePollingSession(data.orderId, contactData)
+        setPollingOrderId(data.orderId)
         return
       }
 
-      pollingContact.current = contactData
-      savePollingSession(data.orderId, contactData)
-      setWaitingFor({ method: contactData.method, phone: contactData.phone })
-      setPollNotice(null)
-      setPollingOrderId(data.orderId)
+      if (data.flow === "velocity-redirect") {
+        if (data.redirectUrl) {
+          await saveCanonicalOrder(data.orderId)
+          window.location.href = data.redirectUrl
+          return
+        }
+        savePollingSession(data.orderId, contactData)
+        setPollingOrderId(data.orderId)
+        return
+      }
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : "We couldn't process your order. Please try again.",
@@ -477,8 +487,9 @@ function CheckoutInner() {
     <div className="min-h-screen bg-paper text-ink">
       {pollingOrderId && (
         <PaymentWaitingOverlay
-          method={waitingFor?.method ?? form.payment}
-          phone={waitingFor?.phone ?? form.phone}
+          method={form.payment}
+          phone={form.phone}
+          message={pollMessage}
           orderId={pollingOrderId}
           notice={pollNotice}
           onStopWaiting={() => {
@@ -487,10 +498,7 @@ function CheckoutInner() {
             setPollingOrderId(null)
             setPollNotice(null)
             setSubmitting(false)
-            // Stopping the page's check does not cancel the EcoCash prompt:
-            // approving it later still completes the order.
-            setErrorOrderId(orderId)
-            setSubmitError("We stopped waiting, but the EcoCash prompt on your phone may still be active. If you approve it, your payment will go through and your tickets will be sent. Check the order below before paying again.")
+            router.push("/orders/" + pollingOrderId + orderOwnerQuery(pollingOrderId))
           }}
         />
       )}
@@ -669,13 +677,20 @@ function CheckoutInner() {
           )}
 
           {/* Error state */}
+          {currentQuote && (
+            <div role="status" className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-sm">
+              <p className="font-semibold">Review your payment: {formatCurrency(currentQuote.amount, currentQuote.currency)}</p>
+              {!isFree && form.payment === "velocity-ecocash" && <p className="mt-1">Approval prompt goes to {currentQuote.normalizedPhone}. Check this number before paying.</p>}
+              {!isFree && <p className="mt-1 text-xs text-ink-2">Your wallet or card provider may charge additional fees. Check the amount on its approval screen.</p>}
+            </div>
+          )}
           {submitError && (
             <div role="alert" className="text-[13px] text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 space-y-1">
               <p>{submitError}</p>
               {errorOrderId && (
                 <Link
-                  href={`/orders/${errorOrderId}?welcome=1`}
-                  className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:text-red-800 transition-colors"
+                  href={"/orders/" + errorOrderId + orderOwnerQuery(errorOrderId)}
+                  className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:text-red-700 transition-colors"
                 >
                   Check order status <ArrowRight size={12} />
                 </Link>
@@ -684,12 +699,23 @@ function CheckoutInner() {
           )}
 
           {/* Mobile CTA */}
-          <div className="lg:hidden">
-            <button type="submit" disabled={submitting} className={payButtonClass}>
-              {submitting ? <><Loader2 size={14} className="animate-spin" /> Processing…</> : payLabel}
-            </button>
-            <TermsNote />
-          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-sm bg-cta px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-chrome shadow-sm transition hover:bg-cta-hover active:scale-[0.99] disabled:opacity-80 lg:hidden"
+          >
+            {submitting ? (
+              <><Loader2 size={14} className="animate-spin" /> Processing…</>
+            ) : !currentQuote ? (
+                <>Review order <ArrowRight size={14} /></>
+              ) : isFree ? (
+              <><Check size={14} /> Claim free tickets</>
+            ) : form.payment === "velocity-card" ? (
+              <><CreditCard size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} by card</>
+            ) : (
+              <><Smartphone size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} with EcoCash</>
+            )}
+          </button>
         </div>
 
         {/* Right: order summary */}
@@ -716,7 +742,7 @@ function CheckoutInner() {
                     <p className="text-ink-3 text-[12px]">×{line.qty}</p>
                   </div>
                   <span className="font-semibold tracking-tight text-ink whitespace-nowrap">
-                    {formatCurrency(line.price * line.qty, line.currency)}
+                    {formatCurrency((line.kind === "ticket" ? currentQuote?.lines?.find(item => item.tierId === line.tierId)?.unitPrice ?? line.price : line.price) * line.qty, line.currency)}
                   </span>
                 </li>
               ))}
@@ -740,7 +766,7 @@ function CheckoutInner() {
                   </div>
                   <div className="flex items-baseline justify-between text-[13px]">
                     <span className="text-ink-3">Discount</span>
-                    <span className="font-semibold text-green-700">-{formatCurrency(appliedPromo.discount, firstCurrency)}</span>
+                    <span className="font-semibold text-green-700">-{formatCurrency(currentQuote?.discount ?? appliedPromo.discount, firstCurrency)}</span>
                   </div>
                 </div>
               ) : (
@@ -766,8 +792,36 @@ function CheckoutInner() {
                     <button
                       type="button"
                       disabled={promoLoading || !promoInput.trim()}
-                      onClick={() => void applyPromo()}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-paper-2 border border-line px-3 py-2.5 text-[12px] font-semibold text-ink hover:bg-paper hover:border-line-2 active:scale-[0.99] transition disabled:opacity-50"
+                      onClick={async () => {
+                        const code = promoInput.trim().toUpperCase()
+                        if (!code) return
+                        setPromoLoading(true)
+                        setPromoError(null)
+                        try {
+                          const ticketItem = items.find(i => i.kind === "ticket")
+                          if (!ticketItem) return
+                          const res = await fetch(`/api/checkout/validate-promo?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}&code=${encodeURIComponent(code)}&amount=${rawTotal}`)
+                          const data = await res.json()
+                          if (data.valid) {
+                            let discount = 0
+                            const val = Number(data.value)
+                            if (data.type === "percent") {
+                              discount = Math.round(rawTotal * (val / 100) * 100) / 100
+                            } else {
+                              discount = Math.min(val, rawTotal)
+                            }
+                            setAppliedPromo({ code: data.code, type: data.type, value: val, discount })
+                            setPromoInput("")
+                          } else {
+                            setPromoError(data.error ?? "Invalid promo code")
+                          }
+                        } catch {
+                          setPromoError("Failed to validate promo code")
+                        } finally {
+                          setPromoLoading(false)
+                        }
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-paper-2 border border-line px-3 py-2 text-[12px] font-semibold text-ink hover:bg-paper hover:border-line-2 active:scale-[0.99] transition disabled:opacity-50"
                     >
                       {promoLoading ? <Loader2 size={12} className="animate-spin" /> : <Percent size={12} />}
                       Apply
@@ -781,7 +835,7 @@ function CheckoutInner() {
             {/* Total */}
             <div className="pt-3.5 border-t border-line space-y-1">
               {Object.entries(totalsByCurrency).map(([cur, total]) => {
-                const lineTotal = appliedPromo && cur === firstCurrency ? Math.max(0, total - appliedPromo.discount) : total
+                const lineTotal = currentQuote?.currency === cur ? currentQuote.amount : appliedPromo ? Math.max(0, total - appliedPromo.discount) : total
                 return (
                   <div key={cur} className="flex items-baseline justify-between">
                     <span className="text-[13px] text-ink-2">Total · {cur}</span>
@@ -799,12 +853,23 @@ function CheckoutInner() {
             </div>
 
             {/* Desktop CTA */}
-            <div className="mt-5 hidden lg:block">
-              <button type="submit" disabled={submitting} className={payButtonClass}>
-                {submitting ? <><Loader2 size={14} className="animate-spin" /> Processing…</> : payLabel}
-              </button>
-              <TermsNote />
-            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-5 hidden w-full items-center justify-center gap-2 rounded-sm bg-cta px-5 py-3.5 text-[12px] font-bold uppercase tracking-[0.12em] text-chrome shadow-sm transition hover:bg-cta-hover active:scale-[0.99] disabled:opacity-80 lg:inline-flex"
+            >
+              {submitting ? (
+                <><Loader2 size={14} className="animate-spin" /> Processing…</>
+              ) : !currentQuote ? (
+                <>Review order <ArrowRight size={14} /></>
+              ) : isFree ? (
+                <><Check size={14} /> Claim free tickets</>
+              ) : form.payment === "velocity-card" ? (
+                <><CreditCard size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} by card</>
+              ) : (
+                <><Smartphone size={14} /> Pay {formatCurrency(finalTotal, firstCurrency)} with EcoCash</>
+              )}
+            </button>
 
             <p className="mt-3 text-[11px] text-ink-3 text-center inline-flex items-center justify-center gap-1.5 w-full">
               <Lock size={10} /> Payments processed securely. Card details never touch TicketPulse.
@@ -827,23 +892,33 @@ function TermsNote() {
 
 function getAnalyticsSessionId() {
   const key = "tp_analytics_session"
-  const existing = sessionStorage.getItem(key)
+  let existing: string | null = null
+  try { existing = sessionStorage.getItem(key) } catch { /* storage optional */ }
   if (existing) return existing
   const created = crypto.randomUUID()
-  sessionStorage.setItem(key, created)
+  try { sessionStorage.setItem(key, created) } catch { /* storage optional */ }
   return created
 }
 
 function PaymentWaitingOverlay({
-  method, phone, orderId, notice, onStopWaiting,
-}: { method: string; phone: string; orderId: string; notice: string | null; onStopWaiting: () => void }) {
+  method, phone, orderId, message, onCancel,
+}: { method: string; phone: string; orderId: string; message?: string | null; onCancel: () => void }) {
+  const dialog = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    dialog.current?.focus()
+    return () => { document.body.style.overflow = overflow; previous?.focus() }
+  }, [])
   const isCard = method === "velocity-card"
   const [timeLeftMs, setTimeLeftMs] = useState<number>(POLL_TIMEOUT_MS)
   const [confirmingStop, setConfirmingStop] = useState(false)
 
   useEffect(() => {
     const key = `poll_started:${orderId}`
-    const stored = sessionStorage.getItem(key)
+    let stored: string | null = null
+    try { stored = sessionStorage.getItem(key) } catch { /* storage optional */ }
     const startedAt = stored ? Number(stored) : Date.now()
 
     const tick = () => setTimeLeftMs(Math.max(0, POLL_TIMEOUT_MS - (Date.now() - startedAt)))
@@ -858,8 +933,15 @@ function PaymentWaitingOverlay({
   const isLow = timeLeftMs < 120_000
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="payment-waiting-title" className="fixed inset-0 z-50 flex items-center justify-center bg-chrome/95 backdrop-blur-sm px-4">
-      <div className="relative w-full max-w-sm text-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-chrome/95 backdrop-blur-sm px-4">
+      <div role="dialog" aria-modal="true" aria-label="Payment confirmation" tabIndex={-1} ref={dialog} onKeyDown={(event) => {
+        if (event.key !== 'Tab') return
+        const nodes = dialog.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
+        if (!nodes?.length) { event.preventDefault(); return }
+        const first = nodes[0], last = nodes[nodes.length - 1]
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+      }} className="relative max-h-[90dvh] w-full max-w-sm overflow-y-auto py-4 text-center">
         {/* Pulse rings */}
         <div className="relative mx-auto mb-7 w-20 h-20">
           <span className="absolute inset-0 rounded-full bg-white/10 animate-ping motion-reduce:animate-none" style={{ animationDuration: "1.5s" }} />
@@ -872,13 +954,13 @@ function PaymentWaitingOverlay({
         <p className="text-[11px] font-semibold tracking-[0.2em] text-white/50 uppercase mb-2">
           {isCard ? "Card payment" : "EcoCash"}
         </p>
-        <h2 id="payment-waiting-title" className="text-[24px] font-bold text-white tracking-tight">
-          {isCard ? "Confirming your card payment" : "Check your phone"}
+        <h2 className="text-[24px] font-bold text-white tracking-tight">
+          {isCard ? "Checking card payment" : "Check your phone"}
         </h2>
         <p className="mt-3 text-[15px] text-white/70 leading-relaxed max-w-xs mx-auto">
           {isCard
-            ? "This usually takes a few seconds. Keep this page open."
-            : <>Approve the EcoCash prompt sent to{" "}<span className="font-semibold text-white">{phone}</span> and enter your PIN.</>
+            ? "Your order is recorded. Open your order or contact support if the hosted payment page did not open."
+            : <>Approve the EcoCash prompt sent to{" "}<span className="font-semibold text-white">{phone}</span></>
           }
         </p>
 
@@ -887,52 +969,26 @@ function PaymentWaitingOverlay({
           Waiting for confirmation…
         </div>
 
-        {notice && (
-          <div role="alert" className="mt-4 rounded-xl border border-amber-400/25 bg-amber-500/15 px-4 py-3 text-left">
-            <p className="text-[13px] leading-relaxed text-amber-200">{notice}</p>
-          </div>
-        )}
-
-        {isLow && !isCard && !notice && (
+        <p role="status" className="mt-4 text-sm text-white/70">{message ?? "Your payment can continue if you leave this page. Please do not pay again."}</p>
+        <a href={"https://wa.me/263788689923?text=" + encodeURIComponent("Please help with payment " + orderId)} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm text-white underline">WhatsApp support</a>
+        {isLow && !isCard && (
           <div className="mt-4 rounded-xl bg-amber-500/15 border border-amber-400/20 px-4 py-3">
             <p className="text-[13px] font-semibold text-amber-300">
-              Approve now — {countdownLabel} left
+              We’ll keep this screen open for {countdownLabel}
             </p>
           </div>
         )}
 
-        {confirmingStop ? (
-          <div className="mt-8 rounded-xl border border-white/15 bg-white/5 p-4 text-left">
-            <p className="text-[13px] leading-relaxed text-white/80">
-              Stopping only closes this screen. It can&apos;t cancel the prompt on your phone: if you approve it, you&apos;ll still be charged and get your tickets.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={onStopWaiting}
-                className="min-h-11 flex-1 rounded-lg bg-white/15 px-3 text-[13px] font-semibold text-white hover:bg-white/25 transition"
-              >
-                Stop waiting
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingStop(false)}
-                className="min-h-11 flex-1 rounded-lg bg-white px-3 text-[13px] font-semibold text-chrome hover:bg-white/90 transition"
-              >
-                Keep waiting
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmingStop(true)}
-            className="mt-8 min-h-11 px-3 text-[12px] text-white/50 hover:text-white/80 transition-colors underline underline-offset-4"
-          >
-            Didn&apos;t get a prompt? Stop waiting
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-8 text-[12px] text-white/30 hover:text-white/60 transition-colors underline underline-offset-4"
+        >
+          View order · keep checking
+        </button>
       </div>
     </div>
   )
 }
+
+function safeSessionRemove(key: string) { try { sessionStorage.removeItem(key) } catch { /* storage optional */ } }
