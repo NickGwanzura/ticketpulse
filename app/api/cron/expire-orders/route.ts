@@ -8,6 +8,7 @@ import { deliverTicketForPaidOrder } from "@/lib/delivery"
 import { sendEmail } from "@/lib/email"
 import { log } from "@/lib/logger"
 import { expireOrderAndReleaseInventory } from "@/lib/order-expiry"
+import { SEAT_HOLD_MS } from "@/lib/velocity/poll-policy"
 import { reconcileVelocityOrderBeforeExpiry } from "@/lib/velocity/reconciliation"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
@@ -41,6 +42,31 @@ export async function POST(request: Request) {
     guestEmail: orders.guestEmail,
     guestName: orders.guestName,
     createdAt: orders.createdAt,
+  }
+
+  // Seats are only held for SEAT_HOLD_MS. Release them for unpaid orders that
+  // are still inside the 24-hour payment window; expireOrderAndReleaseInventory
+  // re-checks the provider's sales order first, so a paid or unverifiable
+  // order keeps its seats. A payment that lands later is restored by
+  // recoverPaidSalesOrder (historical recovery in recheck-velocity).
+  const holdCutoff = new Date(Date.now() - SEAT_HOLD_MS)
+  const heldOrders = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(
+      eq(orders.status, "pending"),
+      lte(orders.createdAt, holdCutoff),
+      gt(orders.createdAt, paymentCutoff),
+      sql`${orders.metadata}->>'inventoryReserved' = 'true'`,
+    ))
+    .limit(50)
+  let holdReleased = 0
+  for (const held of heldOrders) {
+    try {
+      if (await expireOrderAndReleaseInventory(held.id, "hold_timeout")) holdReleased++
+    } catch (error) {
+      log.warn("cron/expire-orders - seat hold release deferred", { orderId: held.id, error: String(error) })
+    }
   }
 
   const [pendingStale, awaitingStale, eventEndedPending] = await Promise.all([
@@ -183,5 +209,5 @@ export async function POST(request: Request) {
     }))
   }
 
-  return NextResponse.json({ expired: expiredIds.length, skipped: skippedIds.length })
+  return NextResponse.json({ expired: expiredIds.length, skipped: skippedIds.length, holdReleased })
 }
