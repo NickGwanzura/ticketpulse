@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { asc } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 import { Search, ShieldCheck, Sparkles, ArrowRight, SearchX } from "lucide-react"
 import VendorCard from "@/components/vendors/VendorCard"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -74,7 +74,13 @@ export default async function VendorsPage({
   const activeCategory = (sp.category ?? "all") as "all" | VendorCategory
   const query = (sp.q ?? "").trim().toLowerCase()
   const verifiedOnly = sp.verified === "1"
-  const vendorRows = await db.select().from(vendors).orderBy(asc(vendors.createdAt))
+  // Only approved profiles belong in the public marketplace. Applicants can
+  // still edit their profile from the dashboard while the team reviews it.
+  const vendorRows = await db
+    .select()
+    .from(vendors)
+    .where(eq(vendors.verified, true))
+    .orderBy(asc(vendors.createdAt))
   const allVendors = vendorRows.map(vendorRowToProfile)
 
   const filtered = allVendors.filter((v) => {
@@ -259,6 +265,12 @@ export default async function VendorsPage({
                     className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 text-white font-semibold px-5 py-3.5 text-sm hover:bg-white/10 transition"
                   >
                     How payouts work
+                  </Link>
+                  <Link
+                    href="/marketing"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 text-white font-semibold px-5 py-3.5 text-sm hover:bg-white/10 transition"
+                  >
+                    Marketing support
                   </Link>
                 </div>
               </div>

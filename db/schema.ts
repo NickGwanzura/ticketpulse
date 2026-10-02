@@ -557,6 +557,40 @@ export const vendors = pgTable("vendors", {
   createdAt: timestamp("created_at").defaultNow(),
 })
 
+export const vendorPackages = pgTable("vendor_packages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendorId: uuid("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("USD").notNull(),
+  inclusions: json("inclusions").$type<string[]>().default([]),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("vendor_packages_vendor_id_idx").on(table.vendorId),
+  index("vendor_packages_active_idx").on(table.vendorId, table.active),
+])
+
+export const vendorEnquiries = pgTable("vendor_enquiries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendorId: uuid("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  eventDate: text("event_date"),
+  guestCount: text("guest_count"),
+  message: text("message").notNull(),
+  status: text("status").default("new").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("vendor_enquiries_vendor_id_idx").on(table.vendorId),
+  index("vendor_enquiries_vendor_status_idx").on(table.vendorId, table.status),
+  index("vendor_enquiries_created_at_idx").on(table.createdAt),
+])
+
 export const vendorListings = pgTable("vendor_listings", {
   id: uuid("id").primaryKey().defaultRandom(),
   eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
@@ -631,6 +665,21 @@ export const usersRelations = relations(users, ({ many }) => ({
   organizedEvents: many(events),
   transportBookings: many(transportBookings),
   invitedOrganisers: many(eventOrganisers),
+}))
+
+export const vendorsRelations = relations(vendors, ({ one, many }) => ({
+  user: one(users, { fields: [vendors.userId], references: [users.id] }),
+  packages: many(vendorPackages),
+  enquiries: many(vendorEnquiries),
+  listings: many(vendorListings),
+}))
+
+export const vendorPackagesRelations = relations(vendorPackages, ({ one }) => ({
+  vendor: one(vendors, { fields: [vendorPackages.vendorId], references: [vendors.id] }),
+}))
+
+export const vendorEnquiriesRelations = relations(vendorEnquiries, ({ one }) => ({
+  vendor: one(vendors, { fields: [vendorEnquiries.vendorId], references: [vendors.id] }),
 }))
 
 export const eventOrganisersRelations = relations(eventOrganisers, ({ one }) => ({

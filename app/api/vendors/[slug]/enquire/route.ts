@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
-import { vendors } from "@/db/schema"
+import { vendors, vendorEnquiries } from "@/db/schema"
 import { sendEmail, adminEmail } from "@/lib/email"
 import { vendorEnquiryEmail } from "@/lib/email-templates"
 
@@ -54,6 +54,16 @@ export async function POST(req: NextRequest) {
       if (vendor) {
         vendorEmail = vendor.email
         vendorName = vendor.businessName
+
+        await db.insert(vendorEnquiries).values({
+          vendorId,
+          name,
+          email,
+          phone: phone ?? null,
+          eventDate: eventDate ?? null,
+          guestCount: guestCount == null ? null : String(guestCount),
+          message,
+        })
       }
     } catch (err) {
       console.warn("[vendor enquire] db lookup", err)

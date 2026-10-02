@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import {
   Star, MapPin, ShieldCheck, Calendar, Clock, Globe, Phone, Mail,
   Check, ArrowUpRight, MessageSquare, Sparkles,
 } from "lucide-react"
 import { db } from "@/db"
-import { vendors } from "@/db/schema"
+import { vendors, vendorPackages } from "@/db/schema"
 import { formatCurrency } from "@/lib/utils"
 import { VENDOR_VISUAL, type VendorProfile } from "@/lib/vendors"
 import MobileBuyBar from "@/components/MobileBuyBar"
@@ -14,10 +14,11 @@ import EnquiryForm from "@/components/vendors/EnquiryForm"
 
 export const dynamic = "force-dynamic"
 
-function vendorRowToProfile(row: typeof vendors.$inferSelect): VendorProfile {
+function vendorRowToProfile(row: typeof vendors.$inferSelect, packageRows: Array<typeof vendorPackages.$inferSelect> = []): VendorProfile {
   const portfolio = Array.isArray(row.portfolio) ? row.portfolio : []
   const priceText = row.priceRange?.match(/\d+(\.\d+)?/)?.[0]
-  const priceFrom = priceText ? Number(priceText) : 0
+  const fallbackPrice = priceText ? Number(priceText) : 0
+  const priceFrom = packageRows.length > 0 ? Math.min(...packageRows.map((pkg) => Number(pkg.price))) : fallbackPrice
 
   return {
     id: row.id,
@@ -40,7 +41,14 @@ function vendorRowToProfile(row: typeof vendors.$inferSelect): VendorProfile {
       year: new Date().getFullYear(),
       venue: url,
     })),
-    packages: [
+    packages: packageRows.length > 0 ? packageRows.map((pkg) => ({
+      id: pkg.id,
+      name: pkg.name,
+      description: pkg.description ?? "Request availability and pricing for this service.",
+      price: Number(pkg.price),
+      currency: pkg.currency,
+      bullets: pkg.inclusions ?? [],
+    })) : [
       {
         id: `${row.id}-quote`,
         name: "Custom event quote",
@@ -55,8 +63,9 @@ function vendorRowToProfile(row: typeof vendors.$inferSelect): VendorProfile {
 
 export default async function VendorProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const [row] = await db.select().from(vendors).where(eq(vendors.id, slug)).limit(1)
-  const vendor = row ? vendorRowToProfile(row) : null
+  const [row] = await db.select().from(vendors).where(and(eq(vendors.id, slug), eq(vendors.verified, true))).limit(1)
+  const packageRows = row ? await db.select().from(vendorPackages).where(and(eq(vendorPackages.vendorId, row.id), eq(vendorPackages.active, true))) : []
+  const vendor = row ? vendorRowToProfile(row, packageRows) : null
   if (!vendor) notFound()
 
   const visual = VENDOR_VISUAL[vendor.category]

@@ -6,6 +6,8 @@ import CheckoutPaymentNotice from "@/app/checkout/CheckoutPaymentNotice"
 import { useCart } from "@/lib/cart-context"
 import { orderAuthHeaders, rememberOrderAccess, orderOwnerQuery } from "@/lib/order-auth-client"
 import { formatCurrency } from "@/lib/utils"
+import { hasAnalyticsConsent } from "@/lib/cookie-preferences"
+import { useCookiePreferences } from "@/lib/use-cookie-preferences"
 import {
   ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
 } from "lucide-react"
@@ -67,6 +69,7 @@ function savePollingSession(orderId: string, contact: { name: string; email: str
 
 export default function CheckoutPage() { return <Suspense fallback={<p className="p-8">Loading checkout…</p>}><CheckoutInner /></Suspense> }
 function CheckoutInner() {
+  const analytics = useCookiePreferences()
   const router = useRouter()
   const params = useSearchParams()
   const selectedEvent = params.get('event'), selectedCurrency = params.get('currency')
@@ -75,9 +78,9 @@ function CheckoutInner() {
   const totalsByCurrency = useMemo(() => items.reduce<Record<string, number>>((totals, item) => { totals[item.currency] = (totals[item.currency] ?? 0) + item.qty * item.price; return totals }, {}), [items])
   const checkoutEventSlug = items.find(i => i.kind === 'ticket')?.eventSlug
   useEffect(() => {
-    if (!ready || !checkoutEventSlug) return
+    if (!ready || !checkoutEventSlug || analytics !== true || !hasAnalyticsConsent()) return
     void fetch('/api/analytics/track', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({event:'CHECKOUT_STARTED',eventSlug:checkoutEventSlug,sessionId:getAnalyticsSessionId()}) }).catch(() => {})
-  }, [ready, checkoutEventSlug])
+  }, [ready, checkoutEventSlug, analytics])
   const [serverQuote, setServerQuote] = useState<{ amount: number; currency: string; normalizedPhone: string; discount?: number; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
   const requestId = useRef<string | null>(null)
   const submittedCart = useRef<string | null>(null)
@@ -349,7 +352,9 @@ function CheckoutInner() {
       if (eventQuestions.length > 0) body.questionResponses = questionAnswers
 
       if (!currentQuote) {
-        for (const event of ['BUYER_DETAILS_SUBMITTED','PAYMENT_METHOD_SELECTED']) void fetch('/api/analytics/track',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event,eventSlug:ticketLines[0].eventSlug,sessionId:getAnalyticsSessionId()})}).catch(() => {})
+        if (hasAnalyticsConsent()) {
+          for (const event of ['BUYER_DETAILS_SUBMITTED','PAYMENT_METHOD_SELECTED']) void fetch('/api/analytics/track',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event,eventSlug:ticketLines[0].eventSlug,sessionId:getAnalyticsSessionId()})}).catch(() => {})
+        }
         const quoted = await fetch("/api/checkout/velocity", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, quoteOnly: true }), signal: AbortSignal.timeout(30_000) })
         const result = await quoted.json()
         if (!quoted.ok) throw new Error(result.error ?? "Could not confirm the current price")
@@ -771,6 +776,10 @@ function CheckoutInner() {
             </div>
 
             {/* Desktop CTA */}
+            <p className="mt-4 text-[12px] leading-relaxed text-ink-3">
+              By placing your order, you agree to our <Link href="/legal/terms" className="font-semibold text-ink underline underline-offset-4">Terms of Service</Link>.
+              {" "}Read our <Link href="/legal/privacy" className="font-semibold text-ink underline underline-offset-4">Privacy Policy</Link> for how we use your information.
+            </p>
             <button
               type="submit"
               disabled={submitting}

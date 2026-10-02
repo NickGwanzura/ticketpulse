@@ -1,4 +1,5 @@
 import Link from "next/link"
+import CookieSettingsButton from "@/components/CookieSettingsButton"
 import {
   ArrowRight, Globe, Mail, MapPin, MessageCircle,
   ScanLine, ShieldCheck, Smartphone, Ticket, Wallet,
@@ -33,6 +34,7 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
       ["Pricing", "/pricing"],
       ["Payouts", "/payouts"],
       ["Organizer help", "/help/organizers"],
+      ["Marketing on demand", "/marketing"],
     ],
   },
   {
@@ -40,6 +42,7 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
     links: [
       ["Vendors", "/vendors"],
       ["Apply as vendor", "/vendors/apply"],
+      ["Marketing support", "/marketing"],
       ["Media galleries", "/media"],
     ],
   },
@@ -200,6 +203,7 @@ export default function Footer() {
             <Link href="/legal/terms" className="transition hover:text-white">Terms</Link>
             <Link href="/legal/privacy" className="transition hover:text-white">Privacy</Link>
             <Link href="/legal/cookies" className="transition hover:text-white">Cookies</Link>
+            <CookieSettingsButton className="transition hover:text-white" />
             <a
               href="https://velocity.qantra.co.zw/"
               target="_blank"

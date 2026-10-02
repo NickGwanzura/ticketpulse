@@ -1,95 +1,94 @@
 import LegalLayout from "@/components/layout/LegalLayout"
 
+export const metadata = { title: "Privacy Policy", alternates: { canonical: "/legal/privacy" } }
+
 export default function PrivacyPage() {
   return (
     <LegalLayout
       kicker="Legal"
       title="Privacy Policy"
-      lastUpdated="May 2026"
-      intro="We collect what we need to deliver the service, and nothing more. Here's exactly what we hold, why, who sees it, and how to ask for it back."
+      lastUpdated="2 October 2026"
+      intro="This policy explains what TicketPulse collects when you browse, buy tickets or use organizer services, how that information is used, and how to contact us about your privacy."
       sections={[
         {
-          id: "what",  title: "What we collect",
-          body: <>
-            <p>We hold three categories of data:</p>
-            <ul>
-              <li><strong>Account data</strong>, name, email, phone, city, role (attendee, organizer, vendor).</li>
-              <li><strong>Transaction data</strong>, tickets bought/sold, payment method (last four digits only), refunds.</li>
-              <li><strong>Usage data</strong>, pages viewed, IP address, device type, referrer (for fraud detection).</li>
-            </ul>
-            <p>We do not collect: sensitive identifiers (national ID), location beyond city, or biometric data.</p>
-          </>,
-        },
-        {
-          id: "why",   title: "Why we collect it",
+          id: "what", title: "Information we collect",
           body: <>
             <ul>
-              <li>To deliver the service: process payments, scan tickets, deliver photo packs.</li>
-              <li>To keep the platform safe: detect fraud, abuse, and unauthorized access.</li>
-              <li>To improve: aggregated, anonymous analytics inform product changes.</li>
-              <li>To communicate: order receipts and (with consent) marketing.</li>
+              <li><strong>Account and contact details:</strong> your name, email address, phone number, account role and profile information you provide.</li>
+              <li><strong>Orders and tickets:</strong> event selections, ticket holders, order references, payment status, ticket delivery, transfers, check-ins, refunds and purchase history.</li>
+              <li><strong>Payment and settlement details:</strong> the payment method, EcoCash number, transaction references and, for organizer bank payouts, the account holder, account number and bank name you submit. Card payments use a hosted payment provider; do not send full card details or PINs to TicketPulse support.</li>
+              <li><strong>Content and messages:</strong> event or vendor information, uploaded images, reviews, support enquiries and answers to event booking questions.</li>
+              <li><strong>Technical information:</strong> browser information, request logs and security information such as IP addresses. If you allow optional analytics, we also record event visits and checkout interactions linked to a random browser-session identifier.</li>
             </ul>
+            <p>You provide information through forms and account activity. Payment providers also send transaction status and reference information needed to reconcile an order.</p>
           </>,
         },
         {
-          id: "shared", title: "Who we share with",
-          body: <>
-            <p>Limited and purposeful:</p>
-            <ul>
-              <li><strong>Organizers</strong> see attendee names and emails for the events you buy tickets to.</li>
-              <li><strong>Vendors</strong> see contact details only after a booking is confirmed.</li>
-              <li><strong>Payment processors</strong> (EcoCash and secure card processing) handle the financial leg.</li>
-              <li><strong>Authorities</strong>, where required by Zimbabwean law (e.g, fraud, terrorism investigations).</li>
-            </ul>
-            <p>We never sell your data to third parties.</p>
-          </>,
-        },
-        {
-          id: "retention", title: "How long we keep it",
+          id: "why", title: "How we use information",
           body: <>
             <ul>
-              <li>Account data, until you delete your account, plus 30 days for backups.</li>
-              <li>Transaction records. 7 years, as required by Zimbabwean tax law.</li>
-              <li>Marketing preferences, until you opt out.</li>
+              <li>To create accounts, process orders, deliver tickets and verify ticket entry.</li>
+              <li>To contact you about an order, payment, event change, refund or support request, including by email or WhatsApp where those delivery features are used.</li>
+              <li>To reconcile payments, calculate organizer revenue, review payouts and keep transaction and audit records.</li>
+              <li>To prevent abuse, secure account and order access, and investigate failed payments or other service problems.</li>
+              <li>To provide profiles, reviews, event listings and other features you choose to use.</li>
+              <li>To understand browsing and checkout use when you allow optional analytics.</li>
             </ul>
+            <p>Service messages are needed to fulfil an order or respond to a request. Optional analytics can be declined without preventing a purchase.</p>
           </>,
         },
         {
-          id: "rights", title: "Your rights",
+          id: "shared", title: "Who receives information",
           body: <>
-            <p>You can ask us to:</p>
             <ul>
-              <li>Show you a copy of the data we hold about you.</li>
-              <li>Correct anything inaccurate.</li>
-              <li>Delete your account and personal data (we will retain transaction records as required).</li>
-              <li>Stop sending marketing.</li>
+              <li><strong>Organizers and authorized event staff:</strong> information needed to manage their events, attendee orders, booking answers and ticket entry.</li>
+              <li><strong>Vendors:</strong> details needed to respond to an enquiry or provide a service you request.</li>
+              <li><strong>Service providers:</strong> payment processing, hosting, database and file storage, email and messaging delivery, and other tools used to provide the features you request. Velocity handles supported EcoCash and card payment flows.</li>
+              <li><strong>Public visitors:</strong> information you choose to publish in event listings, organizer or vendor profiles and reviews.</li>
+              <li><strong>Authorities or other necessary recipients:</strong> where disclosure is legally required or needed to address fraud, a dispute or a security incident.</li>
             </ul>
-            <p>Email <a href="mailto:privacy@ticketpulse.co.zw">privacy@ticketpulse.co.zw</a> and we will respond within 30 days.</p>
+            <p>Hosted payment providers and external services have their own privacy policies. We do not sell personal information.</p>
           </>,
         },
         {
-          id: "security", title: "Security",
+          id: "storage", title: "Storage and retention",
           body: <>
-            <p>Data is encrypted in transit (TLS 1.3) and at rest. Payment data is tokenized, we never store card numbers. Access to production systems is limited and logged.</p>
-            <p>If we ever experience a breach affecting your data, we will notify you within 72 hours.</p>
+            <p>We keep information for the service purposes described above, including handling orders, support, accounting, disputes and legal obligations. Retention depends on the record and the applicable obligation; deleting an account does not necessarily remove transaction or audit records that must still be kept.</p>
+            <p>Some service providers may process information outside Zimbabwe. Privacy questions about those providers or your information can be sent to the contact below.</p>
+            <p>Your browser also holds cart, order-access, checkout-recovery and preference information. You can clear browser storage yourself. Clearing it does not erase information already recorded in TicketPulse&apos;s systems.</p>
           </>,
         },
         {
-          id: "cookies", title: "Cookies",
+          id: "choices", title: "Your privacy choices",
           body: <>
-            <p>We use cookies for sign-in, fraud detection, and (with consent) analytics. See our <a href="/legal/cookies">Cookie Policy</a> for the full list.</p>
+            <p>You can ask to access information about you, correct inaccurate details, request deletion where appropriate, or object to or withdraw consent for processing that relies on consent.</p>
+            <p>Use <a href="/legal/cookies#manage">Cookie settings</a> to change optional analytics choices. To request help with other personal information, email <a href="mailto:nick@ticketpulse.tech">nick@ticketpulse.tech</a> or use our <a href="/contact">contact page</a>. We may need to verify your identity before disclosing or changing account or order information.</p>
+            <p>You may also raise a data-protection concern with Zimbabwe&apos;s Postal and Telecommunications Regulatory Authority (POTRAZ), the authority designated in the <a href="https://www.potraz.gov.zw/wp-content/uploads/2022/02/Data-Protection-Act-5-of-2021.pdf" target="_blank" rel="noopener noreferrer">Data Protection Act</a>.</p>
           </>,
         },
         {
-          id: "children", title: "Children",
+          id: "security", title: "Keeping information secure",
           body: <>
-            <p>TicketPulse is not aimed at children under 13. We do not knowingly collect data from them. If we discover such data, we will delete it.</p>
+            <p>TicketPulse uses safeguards such as authenticated access, restricted order-access links and protected payment flows. Keep account credentials, guest order links and ticket QR codes private; someone with a valid ticket code may be able to present it at an event.</p>
+            <p>No online service can guarantee complete security. Contact us promptly if you suspect someone has accessed your account or order without permission.</p>
           </>,
         },
         {
-          id: "contact", title: "Contact",
+          id: "cookies", title: "Cookies and analytics",
           body: <>
-            <p>For any privacy question, email <a href="mailto:privacy@ticketpulse.co.zw">privacy@ticketpulse.co.zw</a>.</p>
+            <p>Essential cookies and browser storage support sign-in, checkout and order access. Optional browser analytics are off until you choose Allow analytics and can be switched off using Cookie settings.</p>
+            <p>Order, payment and check-in records are still kept to operate the service even if optional analytics are declined. Read the <a href="/legal/cookies">Cookie Policy</a> for details.</p>
+          </>,
+        },
+        {
+          id: "children", title: "Children and event restrictions",
+          body: <p>Under-18 users should use TicketPulse with a parent or guardian&apos;s involvement. Event organizers set their own age and entry restrictions. A parent or guardian can contact us about information provided by a child.</p>,
+        },
+        {
+          id: "contact", title: "Contact and updates",
+          body: <>
+            <p>Send privacy questions to <a href="mailto:nick@ticketpulse.tech">nick@ticketpulse.tech</a> or our <a href="/contact">contact page</a>. Include enough detail to identify the account, order or request, without sending passwords, payment PINs or full card details.</p>
+            <p>We will update this page when our information practices change. The date above identifies the latest update.</p>
           </>,
         },
       ]}

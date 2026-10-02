@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { BadgeCheck, ExternalLink, Pencil, Star } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { vendors } from "@/db/schema"
+import { vendors, vendorEnquiries, vendorListings, vendorPackages } from "@/db/schema"
 import { vendorCategoryLabel } from "@/lib/utils"
 import { VENDOR_VISUAL } from "@/lib/vendors"
 import VendorDashboardForm from "./VendorDashboardForm"
+import VendorPackagesPanel from "./VendorPackagesPanel"
+import VendorEnquiriesPanel from "./VendorEnquiriesPanel"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +20,12 @@ export default async function VendorDashboardPage() {
 
   const [vendor] = await db.select().from(vendors).where(eq(vendors.userId, session.user.id)).limit(1)
   if (!vendor) redirect("/vendors/apply")
+
+  const [packages, enquiries, listings] = await Promise.all([
+    db.select().from(vendorPackages).where(eq(vendorPackages.vendorId, vendor.id)).orderBy(desc(vendorPackages.createdAt)),
+    db.select().from(vendorEnquiries).where(eq(vendorEnquiries.vendorId, vendor.id)).orderBy(desc(vendorEnquiries.createdAt)).limit(20),
+    db.select({ id: vendorListings.id }).from(vendorListings).where(and(eq(vendorListings.vendorId, vendor.id), eq(vendorListings.booked, true))),
+  ])
 
   const visual = VENDOR_VISUAL[vendor.category] ?? VENDOR_VISUAL.other
   const Icon = visual.icon
@@ -37,6 +45,8 @@ export default async function VendorDashboardPage() {
   const complete = fields.filter(Boolean).length
   const total = fields.length
   const pct = Math.round((complete / total) * 100)
+  const newEnquiries = enquiries.filter((item) => item.status === "new").length
+  const applicationState = vendor.verified ? "verified" : vendor.rejectedAt ? "rejected" : "pending"
 
   const missingFields = [
     !vendor.description || vendor.description.length <= 30 ? "Add a description (30+ chars)" : null,
@@ -91,6 +101,21 @@ export default async function VendorDashboardPage() {
 
       <div className="max-w-5xl mx-auto px-5 md:px-8 py-8 space-y-8">
 
+        <div className={`rounded-2xl border px-5 py-4 ${applicationState === "verified" ? "border-emerald-200 bg-emerald-50" : applicationState === "rejected" ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`}>
+          <p className={`text-[13px] font-semibold ${applicationState === "verified" ? "text-emerald-800" : applicationState === "rejected" ? "text-rose-800" : "text-amber-800"}`}>
+            {applicationState === "verified" ? "Your profile is live in the marketplace." : applicationState === "rejected" ? "Your application needs an update before it can go live." : "Your application is under review."}
+          </p>
+          <p className="text-[12px] text-ink-2 mt-1">
+            {applicationState === "verified" ? "Keep your packages and availability current so organizers can book with confidence." : applicationState === "rejected" ? "Update your profile below, then contact the team for the next review step." : "You can complete your profile and add packages now. We will notify you when the review is complete."}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[["Profile", `${pct}%`], ["Packages", String(packages.length)], ["New enquiries", String(newEnquiries)], ["Booked services", String(listings.length)]].map(([label, value]) => (
+            <div key={label} className="rounded-2xl border border-line bg-paper p-4"><p className="text-[11px] uppercase tracking-[0.14em] text-ink-3">{label}</p><p className="text-[24px] font-bold tracking-tight text-ink mt-2">{value}</p></div>
+          ))}
+        </div>
+
         {/* Profile completeness */}
         {pct < 100 && (
           <div className="rounded-2xl border border-line bg-paper p-5 tp-fade-up-1">
@@ -144,6 +169,10 @@ export default async function VendorDashboardPage() {
             }}
           />
         </div>
+
+        <VendorPackagesPanel initial={packages.map((item) => ({ ...item, inclusions: item.inclusions ?? [] }))} />
+
+        <VendorEnquiriesPanel initial={enquiries} />
 
         {/* Footer */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-4 border-t border-line text-[13px] tp-fade-up-3">

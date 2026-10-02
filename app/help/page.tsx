@@ -3,7 +3,7 @@ import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
 import {
   Search, Sparkles, Ticket, CreditCard, ShieldCheck, CalendarCog, Store,
-  ArrowRight, Mail, MessageSquare, X, RefreshCw, QrCode, Wallet, AlertTriangle,
+  ArrowRight, Mail, MessageSquare, X, RefreshCw, QrCode, Wallet, AlertTriangle, Megaphone,
 } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
@@ -14,6 +14,7 @@ const TOPICS = [
   { icon: ShieldCheck, title: "Account & safety", body: "Sign in, transfers, fraud checks.",      href: "#account" },
   { icon: CalendarCog, title: "For organizers",   body: "Publishing, payouts, scanning.",         href: "/help/organizers" },
   { icon: Store,       title: "For vendors",      body: "Listing, bookings, payouts.",            href: "/help/vendors" },
+  { icon: Megaphone,   title: "Marketing on demand", body: "Graphics, copy, campaign support.",    href: "/marketing" },
 ]
 
 const POPULAR = [

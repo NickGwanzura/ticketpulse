@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import CookieSettingsButton from "@/components/CookieSettingsButton"
 
 export interface LegalSection {
   id: string
@@ -27,6 +28,16 @@ export default function LegalLayout({ kicker, title, lastUpdated, intro, section
           <h1 className="text-[32px] md:text-[44px] font-bold tracking-[-0.02em] leading-[1.05] text-ink">{title}</h1>
           <p className="mt-3 text-[14px] text-ink-3">Last updated {lastUpdated}</p>
           <p className="mt-5 text-[15px] md:text-[16px] text-ink-2 max-w-2xl leading-relaxed">{intro}</p>
+          <nav aria-label="Legal policies" className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] font-semibold text-ink">
+            {[
+              ["Terms of Service", "/legal/terms"],
+              ["Privacy Policy", "/legal/privacy"],
+              ["Cookie Policy", "/legal/cookies"],
+            ].map(([label, href]) => (
+              <Link key={href} href={href} aria-current={title === label ? "page" : undefined} className="py-2 underline underline-offset-4">{label}</Link>
+            ))}
+            <CookieSettingsButton className="py-2 underline underline-offset-4" />
+          </nav>
         </div>
       </section>
 
