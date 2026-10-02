@@ -82,7 +82,7 @@ export default function TierCard({
             <div className="h-full bg-navy" style={{ width: `${pct}%` }} />
           </div>
           <p className="text-[12px] text-ink-3 whitespace-nowrap tabular-nums">
-            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> sold{" "}·{" "}
+            <span className="text-ink-2 font-medium">{sold.toLocaleString()}</span> allocated{" "}·{" "}
             <span className="text-ink-2 font-medium">{remaining.toLocaleString()}</span> left
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function TierCard({
             <p className="text-[16px] font-semibold text-ink mb-1">Delete tier?</p>
             {sold > 0 && (
               <p className="text-[13px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mb-4">
-                This tier has {sold} sold ticket{sold !== 1 ? "s" : ""}. Deleting it will also cancel those tickets.
+                This tier has {sold} allocated ticket{sold !== 1 ? "s" : ""}, including reservations. Deleting it will also cancel its issued tickets.
               </p>
             )}
             <p className="text-[13px] text-ink-2 mb-6">This action cannot be undone.</p>

@@ -6,6 +6,8 @@ import { ArrowLeft, Ticket } from "lucide-react"
 import { db } from "@/db"
 import { events, ticketTiers } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
+import { getTicketTierSales } from "@/lib/ticket-tier-sales"
+import TicketTierSalesBreakdown from "@/components/dashboard/TicketTierSalesBreakdown"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import TierCard from "./TierCard"
@@ -53,6 +55,7 @@ export default async function TiersPage({
     .orderBy(asc(ticketTiers.createdAt))
 
   const justCreated = sp.created === "1"
+  const tierSales = (await getTicketTierSales([id])).get(id) ?? []
   const isDraft = event.status === "draft"
   const publishAction = publishOrganizerEventAction.bind(null, id)
 
@@ -84,6 +87,13 @@ export default async function TiersPage({
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-medium text-amber-800">
             Add at least one ticket tier before publishing this event.
           </div>
+        )}
+
+        {tiers.length > 0 && (
+          <section className="rounded-2xl border border-line bg-paper p-5 md:p-6" aria-label="Sales by ticket tier">
+            <h2 className="mb-4 text-[16px] font-semibold text-ink">Sales by ticket tier</h2>
+            <TicketTierSalesBreakdown tiers={tierSales} />
+          </section>
         )}
 
         <NewTierPanel eventId={id} defaultOpen={tiers.length === 0} />

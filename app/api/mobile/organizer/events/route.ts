@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { db } from "@/db"
-import { events, ticketTiers, tickets } from "@/db/schema"
+import { events, tickets } from "@/db/schema"
 import { eq, and, sql, isNotNull, desc } from "drizzle-orm"
 import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
+import { getTicketTierSales } from "@/lib/ticket-tier-sales"
 
 export async function GET(request: Request) {
   const auth = await authenticateOrganizer(request)
@@ -34,28 +35,12 @@ export async function GET(request: Request) {
     )
     .orderBy(desc(events.startsAt))
 
+  const tierSalesByEvent = await getTicketTierSales(rows.map(event => event.id))
+
   // For each event, fetch ticket & check-in counts
   const enriched = await Promise.all(
     rows.map(async (event) => {
-      const [capacityAgg] = await db
-        .select({
-          totalCapacity: sql<number>`COALESCE(SUM(${ticketTiers.totalQuantity}), 0)`,
-        })
-        .from(ticketTiers)
-        .where(eq(ticketTiers.eventId, event.id))
-
-      const [soldAgg] = await db
-        .select({
-          totalSold: sql<number>`COUNT(*)::int`,
-        })
-        .from(tickets)
-        .where(
-          and(
-            eq(tickets.eventId, event.id),
-            eq(tickets.isStaffTicket, false),
-            sql`${tickets.status} IN ('sold', 'used')`,
-          ),
-        )
+      const tiers = tierSalesByEvent.get(event.id) ?? []
 
       const [checkinAgg] = await db
         .select({
@@ -63,17 +48,6 @@ export async function GET(request: Request) {
         })
         .from(tickets)
         .where(and(eq(tickets.eventId, event.id), isNotNull(tickets.scannedAt)))
-
-      // Sales by ticket type for the event page.
-      const [tierRows, tierSold] = await Promise.all([
-        db.select({ id: ticketTiers.id, name: ticketTiers.name, price: ticketTiers.price, currency: ticketTiers.currency, totalQuantity: ticketTiers.totalQuantity })
-          .from(ticketTiers).where(eq(ticketTiers.eventId, event.id)),
-        db.select({ tierId: tickets.tierId, sold: sql<number>`COUNT(*)::int` })
-          .from(tickets)
-          .where(and(eq(tickets.eventId, event.id), eq(tickets.isStaffTicket, false), sql`${tickets.status} IN ('sold', 'used')`))
-          .groupBy(tickets.tierId),
-      ])
-      const soldByTier = new Map(tierSold.map((row) => [row.tierId, Number(row.sold)]))
 
       return {
         id: event.id,
@@ -86,17 +60,10 @@ export async function GET(request: Request) {
         city: event.city,
         coverImage: event.coverImage,
         category: event.category,
-        totalCapacity: Number(capacityAgg?.totalCapacity ?? 0),
-        totalSold: Number(soldAgg?.totalSold ?? 0),
+        totalCapacity: tiers.reduce((sum, tier) => sum + tier.capacity, 0),
+        totalSold: tiers.reduce((sum, tier) => sum + tier.sold + tier.complimentary, 0),
         checkedIn: Number(checkinAgg?.checkedIn ?? 0),
-        tiers: tierRows.map((tier) => ({
-          id: tier.id,
-          name: tier.name,
-          price: Number(tier.price),
-          currency: tier.currency ?? "USD",
-          capacity: tier.totalQuantity,
-          sold: soldByTier.get(tier.id) ?? 0,
-        })),
+        tiers,
       }
     }),
   )

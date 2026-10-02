@@ -15,6 +15,8 @@ import { paymentMethodLabel } from "@/lib/order-labels"
 import { db } from "@/db"
 import { events, eventOrganisers, orders, ticketTiers, tickets, users } from "@/db/schema"
 import { getEventRevenueSummaries, getOrganizerRevenueSummary } from "@/lib/revenue-summary"
+import { getTicketTierSales } from "@/lib/ticket-tier-sales"
+import TicketTierSalesBreakdown from "@/components/dashboard/TicketTierSalesBreakdown"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
 import SplitCTA from "@/components/ui/SplitCTA"
@@ -212,7 +214,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueCounts] = await Promise.all([
+  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueCounts, tierSalesByEvent] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency, salesEnd: ticketTiers.salesEnd }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     // Canonical per-event revenue — same maths as payout balances and admin pages.
     getEventRevenueSummaries(eventIds),
@@ -231,7 +233,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           duplicate_ledger: duplicate[0]?.count ?? 0,
         }))
       : Promise.resolve({ paid_no_tickets: 0, delivery_failed: 0, duplicate_ledger: 0 }),
-
+    getTicketTierSales(eventIds),
   ])
 
   // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
@@ -252,7 +254,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     const eventEndedAt = r.endsAt ?? r.startsAt
     const isPast = eventEndedAt.getTime() < now
     const salesEnded = hasTiers && tiers.every((t) => t.salesEnd ? new Date(t.salesEnd).getTime() < now : false)
-    return { ...r, capacity, sold, checkedIn, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded, isPast }
+    return { ...r, capacity, sold, checkedIn, revenue, netRevenue, currency, status: r.status ?? "draft", hasTiers, salesEnded, isPast, tierSales: tierSalesByEvent.get(r.id) ?? [] }
   })
 
   const filtered = EVENTS.filter(e =>
@@ -578,6 +580,26 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                     })}
                   </tbody>
                 </table>
+                <section className="border-t border-line px-5 py-5" aria-label="Sales by ticket tier">
+                  <h2 className="text-[16px] font-semibold text-ink">Sales by ticket tier</h2>
+                  <p className="mt-1 text-[12px] text-ink-3">See how VIP, General Admission, and each other ticket tier are selling.</p>
+                  <div className="mt-4 space-y-3">
+                    {filtered.map(e => (
+                      <details key={e.id} open={filtered.length === 1} className="rounded-xl border border-line p-4">
+                        <summary className="cursor-pointer text-[14px] font-semibold text-ink">
+                          {e.title}
+                          <span className="mt-2 block text-[12px] font-normal text-ink-2">
+                            {e.tierSales.length > 0 ? e.tierSales.map(t => `${t.name}: ${t.sold.toLocaleString()} sold`).join(" · ") : "No ticket tiers yet"}
+                          </span>
+                        </summary>
+                        <div className="mt-4">
+                          <TicketTierSalesBreakdown tiers={e.tierSales} />
+                          <Link href={`/organizer/events/${e.id}/tiers`} className="mt-3 inline-block text-[12px] font-medium text-navy hover:underline">Manage ticket tiers</Link>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </section>
               </>
             )}
           </div>

@@ -13,6 +13,8 @@ import { db } from "@/db"
 import { events, orders, payouts, ticketTiers, tickets } from "@/db/schema"
 import { requireEventAccess } from "@/lib/event-access"
 import { getEventRevenueSummaries } from "@/lib/revenue-summary"
+import { getTicketTierSales } from "@/lib/ticket-tier-sales"
+import TicketTierSalesBreakdown from "@/components/dashboard/TicketTierSalesBreakdown"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
@@ -84,21 +86,8 @@ export default async function EventOverviewPage({
 
   const totalCapacity = tiers.reduce((s, t) => s + (t.totalQuantity ?? 0), 0)
 
-  const tierSoldRows = await db
-    .select({
-      tierId: tickets.tierId,
-      sold: sql<number>`COUNT(*)::int`,
-    })
-    .from(tickets)
-    .where(and(
-      eq(tickets.eventId, id),
-      eq(tickets.isStaffTicket, false),
-      inArray(tickets.status, ["sold", "used"]),
-    ))
-    .groupBy(tickets.tierId)
-
-  const soldByTier = new Map(tierSoldRows.map((r) => [r.tierId, Number(r.sold ?? 0)]))
-  const totalSold = tierSoldRows.reduce((s, t) => s + Number(t.sold ?? 0), 0)
+  const tierSales = (await getTicketTierSales([id])).get(id) ?? []
+  const totalSold = tierSales.reduce((sum, tier) => sum + tier.sold + tier.complimentary, 0)
 
   // ── Revenue — canonical maths shared with payouts and admin pages ──────────
   const revenueSummaries = await getEventRevenueSummaries([id])
@@ -468,7 +457,7 @@ export default async function EventOverviewPage({
             {/* Ticket tiers progress */}
             <div className="rounded-2xl border border-line bg-paper overflow-hidden">
               <div className="flex items-center justify-between px-5 md:px-6 py-4 border-b border-line">
-                <h2 className="text-[16px] font-semibold tracking-tight text-ink">Ticket tiers</h2>
+                <h2 className="text-[16px] font-semibold tracking-tight text-ink">Sales by ticket tier</h2>
                 <Link
                   href={`/organizer/events/${id}/tiers`}
                   className="text-[13px] font-medium text-navy hover:underline"
@@ -485,28 +474,8 @@ export default async function EventOverviewPage({
                   ctaHref={`/organizer/events/${id}/tiers`}
                 />
               ) : (
-                <div className="divide-y divide-line">
-                  {tiers.map((t) => {
-                    const sold = soldByTier.get(t.id) ?? 0
-                    const cap = t.totalQuantity ?? 0
-                    const pct = cap > 0 ? Math.round((sold / cap) * 100) : 0
-                    const price = Number.parseFloat(t.price as unknown as string) || 0
-                    return (
-                      <div key={t.id} className="px-5 md:px-6 py-4">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-[14px] font-semibold text-ink">{t.name}</p>
-                          <span className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(price, t.currency ?? currency)}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-[12px] text-ink-3 mb-2">
-                          <span>{sold.toLocaleString()} sold</span>
-                          <span>{cap.toLocaleString()} capacity</span>
-                        </div>
-                        <div className="h-1.5 bg-paper-2 rounded-full overflow-hidden">
-                          <div className="h-full bg-navy tp-progress-fill" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div className="px-5 md:px-6 py-4">
+                  <TicketTierSalesBreakdown tiers={tierSales} />
                 </div>
               )}
             </div>
