@@ -12,7 +12,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { getOrganizerPayouts, getOrganizerBalance } from "./actions"
 import { db } from "@/db"
 import { users, payouts } from "@/db/schema"
-import TrustJourney from "./TrustJourney"
+import TrustJourney, { TRUSTED_PAYOUT_TARGET } from "./TrustJourney"
 
 type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
@@ -95,7 +95,7 @@ export default async function PayoutsDashboardPage() {
   const trustStatus =
     !userRow?.approvedAt
       ? "new"
-      : totalPaidPayouts >= 3
+      : totalPaidPayouts >= TRUSTED_PAYOUT_TARGET
       ? "trusted"
       : "verified"
 
@@ -240,7 +240,7 @@ export default async function PayoutsDashboardPage() {
         )}
 
         {/* Payout history */}
-        <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
+        <div id="payout-history" className="scroll-mt-24 rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           <div className="px-5 md:px-6 py-4 border-b border-line flex items-center justify-between">
             <h2 className="text-[18px] font-semibold tracking-tight text-ink">Payout history</h2>
           </div>
