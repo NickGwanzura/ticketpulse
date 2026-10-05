@@ -1,15 +1,16 @@
 "use client"
 import Link from "next/link"
 import { useEffect, useState, useRef } from "react"
-import { Zap, Mail, ShieldCheck, Sparkles, X } from "lucide-react"
+import { Zap, Mail, ShieldCheck, Sparkles, X, AlertTriangle } from "lucide-react"
 
 const MESSAGES = [
+  { icon: AlertTriangle, text: "EcoCash is not at 100%. Money deducted? Email proof to support@ticketpulse.tech, tickets released in 3 mins" },
   { icon: Zap,         text: "Buy tickets in 60 seconds. No signup required" },
   { icon: Mail,        text: "Pay with EcoCash or Visa — tickets arrive instantly by email and WhatsApp" },
   { icon: ShieldCheck, text: "Verified organizers · EcoCash + Visa · Refundable up to 24h before" },
 ] as const
 
-const STORAGE_KEY = "tp:topbar:dismissed:v2"
+const STORAGE_KEY = "tp:topbar:dismissed:v3"
 
 export default function TopBar() {
   const [hidden, setHidden] = useState(true)

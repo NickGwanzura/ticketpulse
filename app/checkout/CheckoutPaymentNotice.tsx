@@ -13,11 +13,18 @@ export default function CheckoutPaymentNotice() {
         aria-hidden="true"
       />
       <div className="min-w-0 text-[12px] leading-5 md:text-[13px]">
-        <p className="font-semibold">EcoCash payment notice</p>
+        <p className="font-semibold">EcoCash is not working at 100% right now</p>
         <p>
-          Approve the prompt on your EcoCash phone and wait for
-          confirmation. Please don&apos;t pay again if your wallet was debited.
-          For help, WhatsApp{" "}
+          If money was deducted from your wallet but you did not receive your
+          tickets, please send your proof of payment (EcoCash confirmation
+          message or screenshot) by email to{" "}
+          <a
+            href="mailto:support@ticketpulse.tech"
+            className="font-bold underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
+          >
+            support@ticketpulse.tech
+          </a>{" "}
+          or WhatsApp{" "}
           <a
             href="https://wa.me/263788689923"
             target="_blank"
@@ -27,7 +34,7 @@ export default function CheckoutPaymentNotice() {
             <MessageCircle size={13} aria-hidden="true" />
             +263 78 868 9923
           </a>
-          . Please don&apos;t pay twice.
+          . We will release your tickets within 3 minutes. Please don&apos;t pay twice.
         </p>
       </div>
     </div>
