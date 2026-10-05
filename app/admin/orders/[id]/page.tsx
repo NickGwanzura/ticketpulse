@@ -16,6 +16,7 @@ import { auditOrderPaymentLedger } from "@/lib/payment-ledger-audit"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import OrderSupportPanel, { type SupportNote } from "@/app/admin/_components/OrderSupportPanel"
 import {
   recheckPaymentAction,
 } from "@/app/admin/actions/velocity"
@@ -294,6 +295,19 @@ export default async function AdminOrderDetailPage({
             )}
           </div>
         </div>
+
+        <OrderSupportPanel
+          orderId={id}
+          contact={{
+            name: order.guestName ?? "",
+            email: order.guestEmail ?? "",
+            phone: order.guestPhone ?? "",
+          }}
+          notes={(Array.isArray((order.metadata as Record<string, unknown> | null)?.supportNotes)
+            ? ((order.metadata as Record<string, unknown>).supportNotes as SupportNote[])
+            : []
+          ).slice().reverse()}
+        />
 
         {/* Recovery Actions */}
         {order.status !== "paid" && order.status !== "completed" && order.status !== "cancelled" && order.status !== "refunded" && (

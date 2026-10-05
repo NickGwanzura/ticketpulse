@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, CreditCard,
-  PieChart, Store, Contact, History, UsersRound,
+  PieChart, Store, Contact, History, UsersRound, AlertTriangle,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
@@ -24,6 +24,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operations",
     items: [
+      { label: "Needs attention", href: "/admin/needs-attention", icon: AlertTriangle },
       { label: "Orders",         href: "/admin/orders",         icon: Receipt },
       { label: "Payments",       href: "/admin/payments",       icon: CreditCard },
       { label: "Velocity",       href: "/admin/velocity",       icon: Activity },
