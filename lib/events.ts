@@ -27,6 +27,42 @@ export interface FeaturedEvent {
  * Sponsored events are sorted to the top.
  */
 export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
+  return (await getFeaturedEventsShared()).slice(0, limit)
+}
+
+// Every page render calls this (the root layout needs it for the navbar), so
+// under heavy traffic it must not hit the database per request. One shared
+// copy is reused for FEATURED_TTL_MS, concurrent misses share one load, and a
+// failed refresh serves the previous copy instead of breaking every page.
+// Checkout validates real inventory separately, so slightly stale counts here
+// only affect browsing.
+const FEATURED_TTL_MS = 30_000
+const FEATURED_STALE_MS = 10 * 60_000
+const FEATURED_MAX = 100
+let featuredCache: { at: number; value: FeaturedEvent[] } | null = null
+let featuredInflight: Promise<FeaturedEvent[]> | null = null
+
+async function getFeaturedEventsShared(): Promise<FeaturedEvent[]> {
+  const now = Date.now()
+  if (featuredCache && now - featuredCache.at < FEATURED_TTL_MS) return featuredCache.value
+  if (!featuredInflight) {
+    featuredInflight = loadFeaturedEvents(FEATURED_MAX)
+      .then((value) => {
+        featuredCache = { at: Date.now(), value }
+        return value
+      })
+      .catch((error) => {
+        if (featuredCache && Date.now() - featuredCache.at < FEATURED_STALE_MS) return featuredCache.value
+        throw error
+      })
+      .finally(() => {
+        featuredInflight = null
+      })
+  }
+  return featuredInflight
+}
+
+async function loadFeaturedEvents(limit: number): Promise<FeaturedEvent[]> {
   const rows = await db
     .select({
       id: events.id,
