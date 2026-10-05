@@ -1,15 +1,10 @@
 import { AlertTriangle, MessageCircle } from "lucide-react"
 
 const WHATSAPP_MESSAGE = [
-  "Hi TicketPulse, EcoCash money was deducted from my wallet but I did not receive my tickets.",
-  "",
-  "Event: ",
+  "Hi, EcoCash deducted my money but I got no tickets. Proof attached.",
   "Name: ",
-  "EcoCash number used: ",
-  "Amount paid: ",
-  "Email for tickets: ",
-  "",
-  "My proof of payment (EcoCash confirmation message/screenshot) is attached. Please release my tickets.",
+  "EcoCash no: ",
+  "Event: ",
 ].join("\n")
 
 export const ECOCASH_HELP_URL = `https://wa.me/263788689923?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
