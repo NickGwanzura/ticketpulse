@@ -13,8 +13,11 @@ import 'support_search.dart';
 import '../design.dart';
 
 class OrganizerWorkspace extends StatefulWidget {
-  const OrganizerWorkspace({super.key, required this.api});
+  const OrganizerWorkspace({super.key, required this.api, this.onBrowseEvents});
   final OrganizerApi api;
+
+  /// Switches an organizer/admin into the buyer view to browse and buy tickets.
+  final VoidCallback? onBrowseEvents;
   @override
   State<OrganizerWorkspace> createState() => _OrganizerWorkspaceState();
 }
@@ -161,6 +164,17 @@ class _OrganizerWorkspaceState extends State<OrganizerWorkspace> {
                 ],
               ),
               const SizedBox(height: 24),
+              if (widget.onBrowseEvents != null) ...[
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    widget.onBrowseEvents!();
+                  },
+                  icon: const Icon(Icons.confirmation_number_outlined),
+                  label: const Text('Browse events'),
+                ),
+                const SizedBox(height: 10),
+              ],
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.pop(sheetContext);
