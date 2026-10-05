@@ -76,20 +76,30 @@ export default function CompleteAndSendButton({
       </button>
 
       {showFeedback && (
+        // Fixed so a dropdown's overflow can't clip it; errors stay until dismissed.
         <div
+          role="alert"
           className={cn(
-            "absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium shadow-lg whitespace-nowrap pointer-events-none max-w-[260px]",
+            "fixed bottom-4 right-4 z-[100] flex max-w-[360px] items-start gap-2 rounded-lg px-3 py-2 text-[12px] font-medium shadow-lg",
             state.ok
               ? "bg-green-50 text-green-700 ring-1 ring-green-200"
               : "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
           )}
         >
           {state.ok ? (
-            <CheckCircle size={11} className="shrink-0" />
+            <CheckCircle size={13} className="mt-0.5 shrink-0" />
           ) : (
-            <XCircle size={11} className="shrink-0" />
+            <XCircle size={13} className="mt-0.5 shrink-0" />
           )}
-          <span className="truncate">{state.message}</span>
+          <span className="break-words">{state.message}</span>
+          <button
+            type="button"
+            onClick={() => setDismissedState(state)}
+            className="ml-1 shrink-0 opacity-60 hover:opacity-100"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
         </div>
       )}
     </form>
