@@ -22,6 +22,7 @@ import SendTicketsButton from "@/app/admin/_components/SendTicketsButton"
 import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
 import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RecheckButton from "@/app/admin/_components/RecheckButton"
+import OrderEventFilter from "@/app/admin/_components/OrderEventFilter"
 import {
   organizerCompleteAndSendAction,
   organizerMarkOrderCompleteAction,
@@ -115,7 +116,7 @@ function isGatewayPayment(o: { paymentMethod: string | null; totalAmount: string
 export default async function OrganizerOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; issue?: string; page?: string }>
+  searchParams: Promise<{ q?: string; status?: string; issue?: string; event?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session) redirect("/auth/signin?callbackUrl=/organizer/orders")
@@ -167,17 +168,19 @@ export default async function OrganizerOrdersPage({
   const statusFilter = sp.status ?? "all"
   // Same definitions as the dashboard "needs attention" counters, so a count and the rows it opens always agree.
   const issueFilter = isOrderIssue(sp.issue) ? sp.issue : null
+  const eventFilter = sp.event && eventTitleMap.has(sp.event) ? sp.event : ""
   const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
   const offset = (currentPage - 1) * LIMIT
   const exportParams = new URLSearchParams()
   if (query) exportParams.set("q", query)
+  if (eventFilter) exportParams.set("event", eventFilter)
   if (statusFilter !== "all") exportParams.set("status", statusFilter)
   const exportHref = exportParams.toString()
     ? `/api/organizer/orders/export?${exportParams.toString()}`
     : "/api/organizer/orders/export"
 
   const conditions: ReturnType<typeof and>[] = [
-    inArray(orders.eventId, myEventIds),
+    eventFilter ? eq(orders.eventId, eventFilter) : inArray(orders.eventId, myEventIds),
     activeOrderListCondition,
   ]
 
@@ -274,12 +277,20 @@ export default async function OrganizerOrdersPage({
             {issueFilter && (
               <input type="hidden" name="issue" value={issueFilter} />
             )}
+            {eventFilter && (
+              <input type="hidden" name="event" value={eventFilter} />
+            )}
           </form>
+          <OrderEventFilter
+            events={[...myEvents].sort((a, b) => a.title.localeCompare(b.title)).map((e) => ({ id: e.id, title: e.title }))}
+            value={eventFilter}
+          />
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {FILTER_PILLS.map(({ label, value }) => {
               const isActive = statusFilter === value
               const params = new URLSearchParams()
               if (query) params.set("q", query)
+              if (eventFilter) params.set("event", eventFilter)
               if (value !== "all") params.set("status", value)
               const href = params.toString()
                 ? `/organizer/orders?${params.toString()}`
@@ -513,7 +524,7 @@ export default async function OrganizerOrdersPage({
             currentPage={currentPage}
             totalPages={totalPages}
             baseUrl="/organizer/orders"
-            queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined, issue: issueFilter ?? undefined }}
+            queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined, issue: issueFilter ?? undefined, event: eventFilter || undefined }}
           />
         )}
       </div>

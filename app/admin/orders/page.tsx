@@ -10,6 +10,7 @@ import Pagination from "@/components/ui/Pagination"
 import ResendButton from "@/app/admin/_components/ResendButton"
 import RefundButton from "@/app/admin/_components/RefundButton"
 import RecheckButton from "@/app/admin/_components/RecheckButton"
+import OrderEventFilter from "@/app/admin/_components/OrderEventFilter"
 import CompleteButton from "@/app/admin/_components/CompleteButton"
 import SendTicketsButton from "@/app/admin/_components/SendTicketsButton"
 import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
@@ -124,7 +125,7 @@ function needsProviderReference(o: { paymentMethod: string | null; totalAmount: 
 export default async function AdminOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; issue?: string; page?: string }>
+  searchParams: Promise<{ q?: string; status?: string; issue?: string; event?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session?.user || session.user.role !== "admin") {
@@ -135,10 +136,16 @@ export default async function AdminOrdersPage({
   const query = sp.q?.trim() ?? ""
   const statusFilter = sp.status ?? "all"
   const issueFilter = isOrderIssue(sp.issue) ? sp.issue : null
+  const eventOptions = await db
+    .select({ id: events.id, title: events.title })
+    .from(events)
+    .orderBy(events.title)
+  const eventFilter = eventOptions.some((e) => e.id === sp.event) ? sp.event! : ""
   const currentPage = Math.max(1, parseInt(sp.page ?? "1", 10))
   const offset = (currentPage - 1) * LIMIT
   const exportParams = new URLSearchParams()
   if (query) exportParams.set("q", query)
+  if (eventFilter) exportParams.set("event", eventFilter)
   if (statusFilter !== "all") exportParams.set("status", statusFilter)
   const exportHref = exportParams.toString()
     ? `/api/admin/orders/export?${exportParams.toString()}`
@@ -146,6 +153,8 @@ export default async function AdminOrdersPage({
 
   // ── Build WHERE clause ──────────────────────────────────────────────────
   const conditions: ReturnType<typeof and>[] = [activeOrderListCondition]
+
+  if (eventFilter) conditions.push(eq(orders.eventId, eventFilter))
 
   if (query) {
     // Escape LIKE wildcards so searching for "%" or "_" matches literally.
@@ -378,12 +387,17 @@ export default async function AdminOrdersPage({
             {issueFilter && (
               <input type="hidden" name="issue" value={issueFilter} />
             )}
+            {eventFilter && (
+              <input type="hidden" name="event" value={eventFilter} />
+            )}
           </form>
+          <OrderEventFilter events={eventOptions} value={eventFilter} />
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {FILTER_PILLS.map(({ label, value }) => {
               const isActive = statusFilter === value
               const params = new URLSearchParams()
               if (query) params.set("q", query)
+              if (eventFilter) params.set("event", eventFilter)
               if (value !== "all") params.set("status", value)
               const href = params.toString()
                 ? `/admin/orders?${params.toString()}`
@@ -721,7 +735,7 @@ export default async function AdminOrdersPage({
               currentPage={currentPage}
               totalPages={totalPages}
               baseUrl="/admin/orders"
-              queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined, issue: issueFilter ?? undefined }}
+              queryParams={{ q: query || undefined, status: statusFilter !== "all" ? statusFilter : undefined, issue: issueFilter ?? undefined, event: eventFilter || undefined }}
             />
           )}
         </div>

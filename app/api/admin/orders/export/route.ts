@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 
 import { auth } from "@/auth"
 import { generateOrdersReconPdfBuffer } from "@/lib/pdf/orders-report"
@@ -11,12 +12,14 @@ export async function GET(request: Request) {
   }
 
   const params = new URL(request.url).searchParams
+  const eventParam = z.string().uuid().safeParse(params.get("event")).data
   const report = await getOrdersReconReport({
     title: "Platform orders reconciliation",
     scope: "All platform orders",
     generatedBy: session.user.email ?? session.user.name ?? "admin",
     search: params.get("q") ?? undefined,
     status: params.get("status") ?? "all",
+    eventIds: eventParam ? [eventParam] : undefined,
   })
   const stamp = report.generatedAt.toISOString().slice(0, 10)
   const pdf = await generateOrdersReconPdfBuffer(report)

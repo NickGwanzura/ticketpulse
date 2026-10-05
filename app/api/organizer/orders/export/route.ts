@@ -44,13 +44,16 @@ export async function GET(request: Request) {
   }
 
   const params = new URL(request.url).searchParams
+  const eventParam = params.get("event")
+  const allowedIds = eventRows.map((row) => row.id)
+  const scopedIds = eventParam && allowedIds.includes(eventParam) ? [eventParam] : allowedIds
   const report = await getOrdersReconReport({
     title: "Organizer orders reconciliation",
     scope: isAdmin ? "All organizer orders" : "Organizer-accessible events",
     generatedBy: session.user.email ?? session.user.name ?? "organizer",
     search: params.get("q") ?? undefined,
     status: params.get("status") ?? "all",
-    eventIds: eventRows.map((row) => row.id),
+    eventIds: scopedIds,
   })
   const stamp = report.generatedAt.toISOString().slice(0, 10)
   const pdf = await generateOrdersReconPdfBuffer(report)
