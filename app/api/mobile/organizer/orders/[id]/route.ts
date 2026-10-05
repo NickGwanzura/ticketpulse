@@ -4,7 +4,9 @@ import { z } from "zod"
 import { db } from "@/db"
 import { events, orders, orderItems, tickets, ticketScanLogs, ticketTiers, users } from "@/db/schema"
 import { authenticateOrganizer, organizerEventScope, privateHeaders } from "@/lib/mobile-organizer"
-import { markOrderCompleteAction } from "@/lib/order-recovery"
+import { recordAdminAudit } from "@/lib/admin-audit"
+import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
+import { completeAndSendAction, markOrderCompleteAction } from "@/lib/order-recovery"
 import { resendOrderTickets } from "@/lib/resend-tickets"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -45,16 +47,27 @@ export async function GET(request: Request, context: Context) {
   ])
   return respond({ ok: true, order: { ...order, totalAmount: Number(order.totalAmount), currency: order.currency ?? "USD", buyerName: order.guestName ?? order.buyerName, buyerEmail: order.guestEmail ?? order.buyerEmail }, items, tickets: ticketRows, scanLogs: scanRows,
     actions: { resend: ["paid", "completed"].includes(order.status ?? "") && !!(order.guestEmail ?? order.buyerEmail),
-      complete: identity.role === "admin" && ["pending", "awaiting_verification", "paid"].includes(order.status ?? "") } })
+      complete: identity.role === "admin" && ["pending", "awaiting_verification", "paid"].includes(order.status ?? ""),
+      // Support (admin) extras: complete + issue/send the ticket, and download its PDF.
+      completeAndSend: identity.role === "admin" && ["pending", "awaiting_verification", "paid", "completed"].includes(order.status ?? ""),
+      download: identity.role === "admin" && ["paid", "completed"].includes(order.status ?? ""),
+      // Unconfirmed gateway orders can only be completed with a payment reference.
+      needsProviderReference: !["paid", "completed"].includes(order.status ?? "") && !isDirectSalePaymentMethod(order.paymentMethod)
+        && !["complimentary", "free"].includes(order.paymentMethod ?? "") && Number(order.totalAmount) > 0 } })
 }
 
 export async function POST(request: Request, context: Context) {
   const result = await access(request, context)
   if (result.response) return result.response
   const { identity, order, id } = result
-  const parsed = z.object({ action: z.enum(["resend", "complete"]), confirmPayment: z.boolean().optional() }).safeParse(await request.json().catch(() => null))
+  const parsed = z.object({
+    action: z.enum(["resend", "complete", "complete_and_send"]),
+    confirmPayment: z.boolean().optional(),
+    // Payment reference (e.g. EcoCash/Velocity receipt) the admin is vouching for.
+    providerReference: z.string().trim().min(4).max(120).optional(),
+  }).safeParse(await request.json().catch(() => null))
   if (!parsed.success) return respond({ ok: false, error: "Invalid order action" }, 400)
-  if (parsed.data.action === "complete" && identity.role !== "admin") return respond({ ok: false, error: "Admin access required" }, 403)
+  if (parsed.data.action !== "resend" && identity.role !== "admin") return respond({ ok: false, error: "Admin access required" }, 403)
   if (!limiter.check(`${identity.userId}:${id}`).allowed) return respond({ ok: false, error: "Too many attempts. Please wait a minute." }, 429)
   if (parsed.data.action === "resend") {
     // `access()` above already enforced authenticateOrganizer + organizerEventScope for this order.
@@ -62,9 +75,24 @@ export async function POST(request: Request, context: Context) {
     const data = await response.json()
     return respond({ ...data, ok: response.ok, message: response.ok ? `Tickets sent to ${data.sentTo}` : undefined }, response.status)
   }
-  if (!parsed.data.confirmPayment || !["pending", "awaiting_verification", "paid"].includes(order.status ?? "")) {
+  // "complete_and_send" is idempotent, so it may also be re-run on a completed order whose ticket email failed.
+  const eligible = parsed.data.action === "complete_and_send"
+    ? ["pending", "awaiting_verification", "paid", "completed"]
+    : ["pending", "awaiting_verification", "paid"]
+  if (!parsed.data.confirmPayment || !eligible.includes(order.status ?? "")) {
     return respond({ ok: false, error: "Confirm received payment for an eligible order before continuing." }, 409)
   }
-  const completed = await markOrderCompleteAction(id, identity.userId, identity.email, { actor: "admin" })
+  const providerReference = parsed.data.providerReference
+  const authority = { actor: "admin" as const, ...(providerReference ? { providerReference } : {}) }
+  const completed = parsed.data.action === "complete_and_send"
+    ? await completeAndSendAction(id, identity.userId, identity.email, { notifyOrganizers: false }, authority)
+    : await markOrderCompleteAction(id, identity.userId, identity.email, authority)
+  if (completed.success) {
+    await recordAdminAudit({
+      actorId: identity.userId, actorEmail: identity.email, action: "order.complete_manually", targetType: "order", targetId: id,
+      reason: providerReference ? `Provider reference: ${providerReference} (mobile support)` : "Completed from mobile support",
+      after: { result: completed.message },
+    })
+  }
   return respond({ ok: completed.success, message: completed.message, error: completed.success ? undefined : completed.message }, completed.success ? 200 : 409)
 }

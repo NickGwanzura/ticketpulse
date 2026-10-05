@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), scope: vi.fn(), select: vi.fn(), complete: vi.fn(), resend: vi.fn(), rate: vi.fn() }))
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), scope: vi.fn(), select: vi.fn(), complete: vi.fn(), resend: vi.fn(), rate: vi.fn(), completeSend: vi.fn(), audit: vi.fn() }))
 vi.mock("@/lib/mobile-organizer", () => ({ authenticateOrganizer: mocks.auth, organizerEventScope: mocks.scope, privateHeaders: { "Cache-Control": "private, no-store" } }))
 vi.mock("@/db", () => ({ db: { select: mocks.select } }))
-vi.mock("@/lib/order-recovery", () => ({ markOrderCompleteAction: mocks.complete }))
+vi.mock("@/lib/order-recovery", () => ({ markOrderCompleteAction: mocks.complete, completeAndSendAction: mocks.completeSend }))
+vi.mock("@/lib/admin-audit", () => ({ recordAdminAudit: mocks.audit }))
 vi.mock("@/lib/resend-tickets", () => ({ resendOrderTickets: mocks.resend }))
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: () => ({ check: mocks.rate }) }))
 import { GET, POST } from "@/app/api/mobile/organizer/orders/[id]/route"
@@ -19,6 +20,7 @@ beforeEach(() => {
   mocks.rate.mockReturnValue({ allowed: true })
   mocks.select.mockImplementation(() => ({ from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), leftJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn(async () => rows), then: (resolve: (v: unknown[]) => unknown) => Promise.resolve([]).then(resolve) }))
   mocks.complete.mockResolvedValue({ success: true, message: "Order completed" })
+  mocks.completeSend.mockResolvedValue({ success: true, message: "Order completed, tickets delivered and email sent" })
   mocks.resend.mockResolvedValue(Response.json({ ok: true, sentTo: "buyer@example.com" }))
 })
 describe("mobile order details and actions", () => {
@@ -65,5 +67,50 @@ describe("mobile order details and actions", () => {
     const response = await GET(request({}), context)
     expect(response.headers.get("Cache-Control")).toBe("private, no-store")
     expect(await response.json()).toMatchObject({ items: [], tickets: [], actions: { resend: true, complete: true } })
+  })
+})
+
+describe("mobile support: complete and send", () => {
+  const unpaid = { id, status: "pending", totalAmount: "30.00", paymentMethod: "velocity-ecocash", guestEmail: "buyer@example.com" }
+  it("passes the payment reference as admin authority and writes an audit entry", async () => {
+    rows = [unpaid]
+    const response = await POST(request({ action: "complete_and_send", confirmPayment: true, providerReference: "EC1234567" }), context)
+    expect(response.status).toBe(200)
+    expect(mocks.completeSend).toHaveBeenCalledWith(id, "admin-1", "admin@example.com", { notifyOrganizers: false }, { actor: "admin", providerReference: "EC1234567" })
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "order.complete_manually", targetType: "order", targetId: id, actorId: "admin-1" }))
+  })
+  it("never lets a non-admin complete or complete-and-send", async () => {
+    mocks.auth.mockResolvedValue({ ok: true, userId: "org-1", role: "organizer" })
+    expect((await POST(request({ action: "complete_and_send", confirmPayment: true, providerReference: "EC1234567" }), context)).status).toBe(403)
+    expect(mocks.completeSend).not.toHaveBeenCalled()
+    expect(mocks.audit).not.toHaveBeenCalled()
+  })
+  it("rejects a too-short payment reference before doing anything", async () => {
+    expect((await POST(request({ action: "complete_and_send", confirmPayment: true, providerReference: "abc" }), context)).status).toBe(400)
+    expect(mocks.completeSend).not.toHaveBeenCalled()
+  })
+  it("requires the admin to confirm payment", async () => {
+    rows = [unpaid]
+    expect((await POST(request({ action: "complete_and_send", providerReference: "EC1234567" }), context)).status).toBe(409)
+    expect(mocks.completeSend).not.toHaveBeenCalled()
+  })
+  it("can re-run on a completed order whose ticket email failed", async () => {
+    rows = [{ ...unpaid, status: "completed" }]
+    expect((await POST(request({ action: "complete_and_send", confirmPayment: true }), context)).status).toBe(200)
+    expect(mocks.completeSend).toHaveBeenCalled()
+  })
+  it("does not audit a failed completion and reports the reason", async () => {
+    rows = [unpaid]
+    mocks.completeSend.mockResolvedValue({ success: false, message: "Payment reference required" })
+    const response = await POST(request({ action: "complete_and_send", confirmPayment: true }), context)
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ ok: false, error: "Payment reference required" })
+    expect(mocks.audit).not.toHaveBeenCalled()
+  })
+  it("tells the app when a payment reference is needed and when a ticket can be downloaded", async () => {
+    rows = [unpaid]
+    expect((await (await GET(request({}), context)).json()).actions).toMatchObject({ completeAndSend: true, needsProviderReference: true, download: false })
+    rows = [{ ...unpaid, status: "completed" }]
+    expect((await (await GET(request({}), context)).json()).actions).toMatchObject({ completeAndSend: true, needsProviderReference: false, download: true })
   })
 })
