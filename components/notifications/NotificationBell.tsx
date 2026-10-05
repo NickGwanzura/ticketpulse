@@ -130,46 +130,6 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  // ── SSE connection with reconnection backoff ─────────────────────────
-  useEffect(() => {
-    let retries = 0
-    let es: EventSource | null = null
-    let reconnectTimer: number | null = null
-
-    function connect() {
-      es = new EventSource("/api/notifications/stream")
-
-      es.addEventListener("connected", () => {
-        retries = 0 // reset on successful connection
-      })
-
-      es.addEventListener("heartbeat", () => {
-        // keep-alive
-      })
-
-      es.onerror = () => {
-        es?.close()
-        es = null
-
-        if (retries >= MAX_RETRIES) {
-          console.warn("[notifications] SSE stopped reconnecting after max retries")
-          return
-        }
-        retries++
-        // Exponential backoff: 1s, 1.4s, 2s, 2.7s, 3.8s (capped at 30s)
-        const delay = Math.min(1000 * Math.pow(1.4, retries - 1), 30_000)
-        reconnectTimer = window.setTimeout(connect, delay)
-      }
-    }
-
-    connect()
-
-    return () => {
-      es?.close()
-      if (reconnectTimer !== null) clearTimeout(reconnectTimer)
-    }
-  }, [])
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
