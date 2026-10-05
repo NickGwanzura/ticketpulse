@@ -50,7 +50,8 @@ const STEPS = [
 ]
 
 export default async function Home() {
-  const featuredEvents = await getFeaturedEvents(6).catch((error) => {
+  // Show every upcoming event; the limit is only a safety bound on query size.
+  const featuredEvents = await getFeaturedEvents(60).catch((error) => {
     console.error("[home] failed to load featured events", error)
     return []
   })
