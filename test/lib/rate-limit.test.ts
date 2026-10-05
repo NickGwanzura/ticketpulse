@@ -91,4 +91,18 @@ describe("rateLimit", () => {
     // 31st should be blocked
     expect(limiter.check("default-test").allowed).toBe(false)
   })
+
+  it("scopes checkRequest per IP and scope so shared-IP users do not exhaust each other", async () => {
+    const { rateLimit } = await freshLimiter()
+    const limiter = rateLimit({ windowMs: 60_000, max: 2 })
+    const req = { headers: new Headers({ "x-forwarded-for": "203.0.113.7" }) }
+
+    expect((await limiter.checkRequest(req, "order-a")).allowed).toBe(true)
+    expect((await limiter.checkRequest(req, "order-a")).allowed).toBe(true)
+    expect((await limiter.checkRequest(req, "order-a")).allowed).toBe(false)
+    // Same IP, different order: own budget.
+    expect((await limiter.checkRequest(req, "order-b")).allowed).toBe(true)
+    // Unscoped key is still per IP only.
+    expect((await limiter.checkRequest(req)).allowed).toBe(true)
+  })
 })

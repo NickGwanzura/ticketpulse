@@ -4,7 +4,7 @@ import { z } from "zod"
 import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
-import { checkoutLimiter } from "@/lib/rate-limit"
+import { checkoutSubmitLimiter } from "@/lib/rate-limit"
 import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction, getTransactionRedirectUrl, extractHostedSessionId } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
 import { lockOrderMutation, withLock, type DbTx } from "@/lib/velocity/idempotency"
@@ -328,7 +328,7 @@ const VMC_REDIRECT_RETRIES = 0
 const Body = CheckoutBody
 
 export async function POST(req: Request) {
-  const rl = await checkoutLimiter.checkRequest(req)
+  const rl = await checkoutSubmitLimiter.checkRequest(req)
   if (!rl.allowed) {
     return checkoutJson({ error: "Too many requests" }, {
       status: 429,

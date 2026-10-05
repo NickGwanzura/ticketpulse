@@ -141,13 +141,17 @@ export function rateLimit(config: RateLimitConfig = {}) {
     }
   }
 
-  /** Convenience: extract IP from a Request/NextRequest and check. */
-  async function checkRequest(req: { headers: Headers }): Promise<RateLimitResult> {
+  /**
+   * Convenience: extract IP from a Request/NextRequest and check.
+   * Pass `scope` (e.g. an order id) to count per IP *and* scope, so many
+   * buyers behind one shared mobile-network IP do not exhaust each other's budget.
+   */
+  async function checkRequest(req: { headers: Headers }, scope?: string): Promise<RateLimitResult> {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       req.headers.get("x-real-ip") ??
       "unknown"
-    return checkDistributed(ip)
+    return checkDistributed(scope ? `${ip}:${scope}` : ip)
   }
 
   return { check, checkDistributed, checkRequest }
@@ -156,5 +160,9 @@ export function rateLimit(config: RateLimitConfig = {}) {
 /** Pre-built limiters for common use-cases. */
 export const authLimiter = rateLimit({ windowMs: 60_000, max: 5 })
 export const checkoutLimiter = rateLimit({ windowMs: 60_000, max: 10 })
+// Placing an order. Higher than checkoutLimiter because mobile carriers put many
+// real buyers behind one IP; inventory locking and request-id idempotency still
+// bound what any single client can do.
+export const checkoutSubmitLimiter = rateLimit({ windowMs: 60_000, max: 30 })
 export const uploadLimiter = rateLimit({ windowMs: 60_000, max: 60 })
 export const apiLimiter = rateLimit({ windowMs: 60_000, max: 30 })

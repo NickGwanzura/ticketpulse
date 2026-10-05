@@ -22,22 +22,43 @@ import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const POLL_TIMEOUT_MS = 5 * 60 * 1000
 const PAID_STATUSES = new Set(["paid", "completed"])
+// Per IP *and* order: buyers sharing one mobile-network IP each poll their own
+// order and must not exhaust each other's budget. The per-IP cap is a generous
+// backstop so changing the order id cannot bypass limiting.
 const statusLimiter = rateLimit({ windowMs: 60_000, max: 90 })
+const statusIpLimiter = rateLimit({ windowMs: 60_000, max: 600 })
+
+// Pending orders are re-checked by many clients every few seconds. Reuse the
+// last non-terminal answer briefly so one order costs at most one provider
+// reconciliation per window. Paid/expired/cancelled orders never reach this.
+const PENDING_REUSE_MS = 4_000
+const PENDING_REUSE_MAX = 5_000
+const recentPending = new Map<string, { at: number; body: Record<string, unknown> }>()
+
+function rememberPending(id: string, body: Record<string, unknown>) {
+  if (recentPending.size >= PENDING_REUSE_MAX) {
+    const cutoff = Date.now() - PENDING_REUSE_MS
+    for (const [key, entry] of recentPending) if (entry.at < cutoff) recentPending.delete(key)
+    if (recentPending.size >= PENDING_REUSE_MAX) recentPending.clear()
+  }
+  recentPending.set(id, { at: Date.now(), body })
+}
 
 type Params = { id: string }
 
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
-  const limited = await statusLimiter.checkRequest(req)
-  if (!limited.allowed) {
-    return NextResponse.json(
-      { error: "too_many_requests" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(limited.retryAfterMs / 1000)) } },
-    )
-  }
-
   const { id } = await ctx.params
   if (!isValidUUID(id)) {
     return NextResponse.json({ error: "invalid_order_id" }, { status: 400 })
+  }
+
+  const limited = await statusIpLimiter.checkRequest(req)
+  const limitedOrder = limited.allowed ? await statusLimiter.checkRequest(req, id) : limited
+  if (!limitedOrder.allowed) {
+    return NextResponse.json(
+      { error: "too_many_requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(limitedOrder.retryAfterMs / 1000)) } },
+    )
   }
 
   const access = await authorizeOrderAccess(id, orderAccessCredsFrom(req))
@@ -101,6 +122,11 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     log.error("velocity status - malformed provider reference", { orderId: id })
     return NextResponse.json({ error: "invalid_transaction" }, { status: 400 })
   }
+
+  // Access was authorized and the order is still unpaid/open: serve the
+  // recent pending answer instead of reconciling with the provider again.
+  const reuse = recentPending.get(id)
+  if (reuse && Date.now() - reuse.at < PENDING_REUSE_MS) return NextResponse.json(reuse.body)
 
   const [event] = await db
     .select({ title: events.title, startsAt: events.startsAt, endsAt: events.endsAt })
@@ -166,7 +192,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const needsReview = ["UNPOLLABLE", "UNKNOWN", "FINALIZE_ERROR", "FINALIZE_PENDING", "AMOUNT_MISMATCH", "CONFLICT"].includes(result.state)
   const currentStatus = result.orderStatus === "expired" ? "expired" : "pending"
 
-  return NextResponse.json({
+  const pendingBody = {
     orderId: id,
     status: currentStatus,
     paid: false,
@@ -177,5 +203,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       : needsReview
         ? "Payment requires reconciliation by an administrator."
         : result.message,
-  })
+  }
+  // Only open (still pending) answers are reusable; an expired order must be reported fresh.
+  if (currentStatus === "pending") rememberPending(id, pendingBody)
+  return NextResponse.json(pendingBody)
 }
