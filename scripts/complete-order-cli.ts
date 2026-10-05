@@ -9,7 +9,7 @@ import { completeAndSendAction } from "../lib/order-recovery"
 //
 // Run from the repository root with:
 // node --env-file=.env.local --conditions=react-server --import tsx scripts/complete-order-cli.ts \
-//   --id-prefix a1a8a8d5 --email joannhamo@gmail.com --confirm
+//   --id-prefix a1a8a8d5 --email joannhamo@gmail.com --ref <payment-reference> --confirm
 
 function arg(flag: string): string | null {
   const index = process.argv.indexOf(flag)
@@ -19,6 +19,9 @@ function arg(flag: string): string | null {
 const idPrefix = arg("--id-prefix")
 const email = arg("--email")
 const completedBy = arg("--by") ?? process.env.ADMIN_EMAIL ?? "admin@ticketpulse.tech"
+// Required for unconfirmed gateway orders (EcoCash/card): the payment reference
+// the admin is vouching for, e.g. an EcoCash receipt/transaction ID.
+const providerReference = arg("--ref")
 const confirmed = process.argv.includes("--confirm")
 
 async function main() {
@@ -60,6 +63,7 @@ async function main() {
     "dokploy-cli",
     completedBy,
     { notifyOrganizers: false },
+    { actor: "admin", providerReference },
   )
 
   console.log(JSON.stringify(result, null, 2))
