@@ -9,6 +9,7 @@ import 'overview_widgets.dart';
 import 'event_detail.dart';
 import 'event_widgets.dart';
 import 'payout_request.dart';
+import 'support_search.dart';
 import '../design.dart';
 
 class OrganizerWorkspace extends StatefulWidget {
@@ -1142,6 +1143,16 @@ class _AdminScreenState extends State<AdminScreen> {
               hasMore: _recentHasMore,
               loadingMore: _loadingMore,
               onLoadMore: _loadMoreRecent,
+            ),
+            const SizedBox(height: 10),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => SupportSearchScreen(api: widget.api),
+                ),
+              ),
+              icon: const Icon(Icons.manage_search),
+              label: const Text('Order support: find an order'),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(

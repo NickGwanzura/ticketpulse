@@ -458,10 +458,30 @@ class TicketPulseApi extends ChangeNotifier {
   Future<Json> payments() => request('/api/mobile/organizer/payments');
   Future<Json> orderDetail(String id) =>
       request('/api/mobile/organizer/orders/${Uri.encodeComponent(id)}');
-  Future<Json> orderAction(String id, String action) => request(
+  Future<Json> orderAction(
+    String id,
+    String action, {
+    String? providerReference,
+  }) => request(
     '/api/mobile/organizer/orders/${Uri.encodeComponent(id)}',
-    body: {'action': action, if (action == 'complete') 'confirmPayment': true},
+    body: {
+      'action': action,
+      if (action == 'complete' || action == 'complete_and_send')
+        'confirmPayment': true,
+      if (providerReference != null && providerReference.trim().isNotEmpty)
+        'providerReference': providerReference.trim(),
+    },
   );
+
+  /// Support: find any order by number, buyer name, email or phone (admin only).
+  Future<List<Json>> adminOrderSearch(String query, {String? status}) async {
+    final raw =
+        (await request(
+          '/api/mobile/admin/orders?q=${Uri.encodeQueryComponent(query.trim())}${status == null ? '' : '&status=${Uri.encodeQueryComponent(status)}'}',
+        ))['orders'];
+    if (raw is! List) return const [];
+    return raw.whereType<Json>().toList();
+  }
   Future<Json> adminOverview({
     int recentOffset = 0,
     int recentLimit = 25,

@@ -8,6 +8,7 @@ import { recordAdminAudit } from "@/lib/admin-audit"
 import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
 import { completeAndSendAction, markOrderCompleteAction } from "@/lib/order-recovery"
 import { resendOrderTickets } from "@/lib/resend-tickets"
+import { generateOrderAccessUrl } from "@/lib/tickets"
 import { rateLimit } from "@/lib/rate-limit"
 
 type Context = { params: Promise<{ id: string }> }
@@ -45,7 +46,11 @@ export async function GET(request: Request, context: Context) {
     db.select({ id: ticketScanLogs.id, outcome: ticketScanLogs.outcome, reason: ticketScanLogs.reason, source: ticketScanLogs.source, createdAt: ticketScanLogs.createdAt })
       .from(ticketScanLogs).where(eq(ticketScanLogs.orderId, id)).orderBy(desc(ticketScanLogs.createdAt)).limit(100),
   ])
-  return respond({ ok: true, order: { ...order, totalAmount: Number(order.totalAmount), currency: order.currency ?? "USD", buyerName: order.guestName ?? order.buyerName, buyerEmail: order.guestEmail ?? order.buyerEmail }, items, tickets: ticketRows, scanLogs: scanRows,
+  // Support only: the buyer's own signed ticket page (download PDF, wallet, share). Never sent to organizers.
+  const support = identity.role === "admin" && ["paid", "completed"].includes(order.status ?? "") && ticketRows.length > 0
+    ? { ticketLink: generateOrderAccessUrl(id) }
+    : null
+  return respond({ ok: true, support, order: { ...order, totalAmount: Number(order.totalAmount), currency: order.currency ?? "USD", buyerName: order.guestName ?? order.buyerName, buyerEmail: order.guestEmail ?? order.buyerEmail }, items, tickets: ticketRows, scanLogs: scanRows,
     actions: { resend: ["paid", "completed"].includes(order.status ?? "") && !!(order.guestEmail ?? order.buyerEmail),
       complete: identity.role === "admin" && ["pending", "awaiting_verification", "paid"].includes(order.status ?? ""),
       // Support (admin) extras: complete + issue/send the ticket, and download its PDF.

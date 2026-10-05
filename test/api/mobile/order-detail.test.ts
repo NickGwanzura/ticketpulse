@@ -4,6 +4,7 @@ vi.mock("@/lib/mobile-organizer", () => ({ authenticateOrganizer: mocks.auth, or
 vi.mock("@/db", () => ({ db: { select: mocks.select } }))
 vi.mock("@/lib/order-recovery", () => ({ markOrderCompleteAction: mocks.complete, completeAndSendAction: mocks.completeSend }))
 vi.mock("@/lib/admin-audit", () => ({ recordAdminAudit: mocks.audit }))
+vi.mock("@/lib/tickets", () => ({ generateOrderAccessUrl: (orderId: string) => `https://example.com/orders/${orderId}?sig=test` }))
 vi.mock("@/lib/resend-tickets", () => ({ resendOrderTickets: mocks.resend }))
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: () => ({ check: mocks.rate }) }))
 import { GET, POST } from "@/app/api/mobile/organizer/orders/[id]/route"
@@ -106,6 +107,29 @@ describe("mobile support: complete and send", () => {
     expect(response.status).toBe(409)
     expect(await response.json()).toMatchObject({ ok: false, error: "Payment reference required" })
     expect(mocks.audit).not.toHaveBeenCalled()
+  })
+  // Select order inside GET: 1 = order lookup, 2 = items, 3 = tickets, 4 = scan logs.
+  const withTickets = () => {
+    let call = 0
+    mocks.select.mockImplementation(() => {
+      const result = ++call === 1 ? rows : call === 3 ? [{ id: "t1", tierName: "Early Bird", status: "sold", scannedAt: null }] : []
+      return { from: vi.fn().mockReturnThis(), innerJoin: vi.fn().mockReturnThis(), leftJoin: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockReturnThis(), limit: vi.fn(async () => result), then: (resolve: (v: unknown[]) => unknown) => Promise.resolve(result).then(resolve) }
+    })
+  }
+  it("gives admins the buyer's signed ticket link for a delivered order", async () => {
+    rows = [{ ...unpaid, status: "completed" }]
+    withTickets()
+    expect((await (await GET(request({}), context)).json()).support).toEqual({ ticketLink: `https://example.com/orders/${id}?sig=test` })
+  })
+  it("never exposes the ticket link to organizers or for unpaid orders", async () => {
+    rows = [{ ...unpaid, status: "completed" }]
+    mocks.auth.mockResolvedValue({ ok: true, userId: "org-1", role: "organizer" })
+    withTickets()
+    expect((await (await GET(request({}), context)).json()).support).toBeNull()
+    mocks.auth.mockResolvedValue({ ok: true, userId: "admin-1", role: "admin", email: "admin@example.com" })
+    rows = [unpaid]
+    withTickets()
+    expect((await (await GET(request({}), context)).json()).support).toBeNull()
   })
   it("tells the app when a payment reference is needed and when a ticket can be downloaded", async () => {
     rows = [unpaid]

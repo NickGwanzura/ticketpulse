@@ -96,6 +96,102 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  /// Support (admin): record the payment, issue the ticket and email it.
+  /// Unconfirmed gateway orders need the payment reference the admin is vouching for.
+  Future<void> _completeAndSend(Json order, bool needsReference) async {
+    if (_busy) return;
+    final controller = TextEditingController();
+    final reference = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        String? error;
+        return StatefulBuilder(
+          builder: (context, setLocal) => AlertDialog(
+            title: const Text('Complete order and send ticket'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Confirm that ${money(order['totalAmount'], order['currency']?.toString() ?? 'USD')} has been received for this order. This records the payment, issues the ticket, sends it to the buyer, and logs your account in the audit trail.',
+                ),
+                if (needsReference) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: 'Payment reference',
+                      helperText: 'EcoCash receipt or transaction ID',
+                      errorText: error,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  if (needsReference && value.length < 4) {
+                    setLocal(() => error = 'Enter at least 4 characters');
+                    return;
+                  }
+                  Navigator.pop(dialogContext, value);
+                },
+                child: const Text('Complete and send'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (reference == null || !mounted) return;
+    setState(() {
+      _busy = true;
+      _feedback = null;
+    });
+    try {
+      final result = await widget.api.orderAction(
+        widget.id,
+        'complete_and_send',
+        providerReference: reference,
+      );
+      if (!mounted) return;
+      setState(() {
+        _failed = false;
+        _feedback = result['message']?.toString() ?? 'Order completed.';
+      });
+      await _refresh();
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _failed = true;
+          _feedback = '$error';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Support: send the buyer their own signed ticket page on WhatsApp.
+  Uri? _whatsAppTicketLink(Json order, String link) {
+    final digits = (order['guestPhone'] ?? '').toString().replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
+    if (digits.length < 8) return null;
+    final text =
+        'Hi ${order['buyerName'] ?? ''}, here is your TicketPulse ticket for ${order['eventTitle'] ?? 'your event'}: $link';
+    return Uri.parse('https://wa.me/$digits?text=${Uri.encodeComponent(text)}');
+  }
+
   Future<void> _copy(String value, String label) async {
     try {
       await Clipboard.setData(ClipboardData(text: value));
@@ -171,6 +267,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   .whereType<Json>()
                   .toList();
               final actions = data['actions'] as Json? ?? {};
+              final ticketLink =
+                  (data['support'] as Json?)?['ticketLink']?.toString();
               final currency = order['currency']?.toString() ?? 'USD';
               final colors = Theme.of(context).colorScheme;
               return RefreshIndicator(
@@ -425,8 +523,68 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             ),
                           ),
                         ),
+                      if (actions['completeAndSend'] == true)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: _busy
+                                  ? null
+                                  : () => _completeAndSend(
+                                      order,
+                                      actions['needsProviderReference'] == true,
+                                    ),
+                              icon: const Icon(Icons.task_alt_outlined),
+                              label: Text(
+                                order['status'] == 'completed'
+                                    ? 'Send ticket again'
+                                    : 'Complete order & send ticket',
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (ticketLink != null) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _contact(Uri.parse(ticketLink)),
+                            icon: const Icon(Icons.download_outlined),
+                            label: const Text('Open ticket page / download PDF'),
+                          ),
+                        ),
+                        if (_whatsAppTicketLink(order, ticketLink) != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _contact(
+                                  _whatsAppTicketLink(order, ticketLink)!,
+                                ),
+                                icon: const Icon(Icons.chat_outlined),
+                                label: const Text('Send ticket link on WhatsApp'),
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  _copy(ticketLink, 'Ticket link'),
+                              icon: const Icon(Icons.copy_outlined),
+                              label: const Text('Copy ticket link'),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (actions['resend'] != true &&
-                          actions['complete'] != true)
+                          actions['complete'] != true &&
+                          actions['completeAndSend'] != true &&
+                          ticketLink == null)
                         const Text(
                           'No order actions are available for this status and account.',
                         ),
