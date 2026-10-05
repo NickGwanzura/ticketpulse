@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { Zap, Mail, ShieldCheck, Sparkles, X, AlertTriangle } from "lucide-react"
 
 const MESSAGES = [
-  { icon: AlertTriangle, text: "EcoCash is not at 100%. Money deducted? Email proof to support@ticketpulse.tech, tickets released in 3 mins" },
+  { icon: AlertTriangle, text: "EcoCash is not at 100%. Money deducted? WhatsApp +263 78 868 9923 with proof, tickets released in 3 mins" },
   { icon: Zap,         text: "Buy tickets in 60 seconds. No signup required" },
   { icon: Mail,        text: "Pay with EcoCash or Visa — tickets arrive instantly by email and WhatsApp" },
   { icon: ShieldCheck, text: "Verified organizers · EcoCash + Visa · Refundable up to 24h before" },

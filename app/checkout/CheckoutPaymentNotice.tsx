@@ -1,5 +1,19 @@
 import { AlertTriangle, MessageCircle } from "lucide-react"
 
+const WHATSAPP_MESSAGE = [
+  "Hi TicketPulse, EcoCash money was deducted from my wallet but I did not receive my tickets.",
+  "",
+  "Event: ",
+  "Name: ",
+  "EcoCash number used: ",
+  "Amount paid: ",
+  "Email for tickets: ",
+  "",
+  "My proof of payment (EcoCash confirmation message/screenshot) is attached. Please release my tickets.",
+].join("\n")
+
+export const ECOCASH_HELP_URL = `https://wa.me/263788689923?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
+
 export default function CheckoutPaymentNotice() {
   return (
     <div
@@ -16,26 +30,19 @@ export default function CheckoutPaymentNotice() {
         <p className="font-semibold">EcoCash is not working at 100% right now</p>
         <p>
           If money was deducted from your wallet but you did not receive your
-          tickets, please send your proof of payment (EcoCash confirmation
-          message or screenshot) by email to{" "}
-          <a
-            href="mailto:support@ticketpulse.tech"
-            className="font-bold underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
-          >
-            support@ticketpulse.tech
-          </a>{" "}
-          or WhatsApp{" "}
-          <a
-            href="https://wa.me/263788689923"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-8 items-center gap-1 font-bold underline decoration-amber-400 underline-offset-2 transition-colors hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-amber-50"
-          >
-            <MessageCircle size={13} aria-hidden="true" />
-            +263 78 868 9923
-          </a>
-          . We will release your tickets within 3 minutes. Please don&apos;t pay twice.
+          tickets, send your proof of payment (EcoCash confirmation message or
+          screenshot) on WhatsApp. We will release your tickets within 3
+          minutes. Please don&apos;t pay twice.
         </p>
+        <a
+          href={ECOCASH_HELP_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 font-bold text-white transition-colors hover:bg-[#1fb857] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-amber-50"
+        >
+          <MessageCircle size={14} aria-hidden="true" />
+          Send proof on WhatsApp
+        </a>
       </div>
     </div>
   )
