@@ -16,6 +16,8 @@ import { auditOrderPaymentLedger } from "@/lib/payment-ledger-audit"
 import RecoveryPanel from "@/components/orders/RecoveryPanel"
 import AuditTrail from "@/components/orders/AuditTrail"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton"
+import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
 import OrderSupportPanel, { type SupportNote } from "@/app/admin/_components/OrderSupportPanel"
 import {
   recheckPaymentAction,
@@ -326,14 +328,16 @@ export default async function AdminOrderDetailPage({
                   <RefreshCw size={14} /> Recheck payment
                 </button>
               </form>
-              <form action={async () => { "use server"; await completeAndSendAction(id) }}>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-emerald-700 transition-colors"
-                >
-                  <CheckCircle2 size={14} /> Complete & send
-                </button>
-              </form>
+              <CompleteAndSendButton
+                orderId={id}
+                variant="mobile"
+                requireReference={
+                  !isDirectSalePaymentMethod(order.paymentMethod)
+                  && order.paymentMethod !== "complimentary"
+                  && order.paymentMethod !== "free"
+                  && Number(order.totalAmount ?? 0) > 0
+                }
+              />
               <form action={async () => { "use server"; await sendTicketsAction(id) }}>
                 <button
                   type="submit"

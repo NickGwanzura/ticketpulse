@@ -109,6 +109,7 @@ const FILTER_PILLS = [
   { label: "Awaiting verify",  value: "awaiting_verification" },
   { label: "Cancelled",        value: "cancelled" },
   { label: "Refunded",         value: "refunded" },
+  { label: "Expired",          value: "expired" },
 ]
 
 const LIMIT = 25
@@ -152,7 +153,10 @@ export default async function AdminOrdersPage({
     : "/api/admin/orders/export"
 
   // ── Build WHERE clause ──────────────────────────────────────────────────
-  const conditions: ReturnType<typeof and>[] = [activeOrderListCondition]
+  // Unpaid expired orders stay hidden from the default list, but must be findable
+  // by search or the Expired filter so staff can complete them against proof of payment.
+  const conditions: ReturnType<typeof and>[] =
+    query || statusFilter === "expired" ? [] : [activeOrderListCondition]
 
   if (eventFilter) conditions.push(eq(orders.eventId, eventFilter))
 
@@ -528,7 +532,7 @@ export default async function AdminOrdersPage({
                             {o.status === "pending" && (
                               <RecheckButton orderId={o.id} variant="menu" />
                             )}
-                            {(o.status === "pending" || o.status === "awaiting_verification") && (
+                            {(o.status === "pending" || o.status === "awaiting_verification" || o.status === "expired") && (
                               <CompleteAndSendButton orderId={o.id} variant="menu" requireReference={needsProviderReference(o)} />
                             )}
                             {o.status === "paid" && (
@@ -672,7 +676,7 @@ export default async function AdminOrdersPage({
                       {o.status === "pending" && (
                         <RecheckButton orderId={o.id} variant="mobile" />
                       )}
-                      {(o.status === "pending" || o.status === "awaiting_verification") && (
+                      {(o.status === "pending" || o.status === "awaiting_verification" || o.status === "expired") && (
                         <CompleteAndSendButton orderId={o.id} variant="mobile" requireReference={needsProviderReference(o)} />
                       )}
                       {o.status === "paid" && (
