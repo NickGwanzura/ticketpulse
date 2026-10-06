@@ -23,11 +23,11 @@ function footer(isAdmin: boolean): string {
 
 export function eventPublishedAlert(title: string, eventDate: string, eventUrl: string): string {
   return [
-    `*Event Published*`,
+    `*Event published*`,
     ``,
-    title,
-    eventDate,
-    eventUrl,
+    `Event: ${title}`,
+    `Date: ${eventDate}`,
+    `Open event: ${eventUrl}`,
     footer(true),
   ].join("\n")
 }
@@ -43,9 +43,9 @@ export function newPaymentAlert(
   invoiceId: string,
 ): string {
   return [
-    `*New Payment — ${currency} ${amount}*`,
+    `*New payment — ${currency} ${amount}*`,
     ``,
-    eventTitle,
+    `Event: ${eventTitle}`,
     `Buyer: ${buyerName}`,
     buyerPhone !== "—" ? `Phone: ${buyerPhone}` : null,
     `Method: ${paymentMethod.toUpperCase()}`,
@@ -64,13 +64,13 @@ export function freeOrderAlert(
   orderId: string,
 ): string {
   return [
-    `*Free Order Processed*`,
+    `*Free order processed*`,
     ``,
-    eventTitle,
+    `Event: ${eventTitle}`,
     `Buyer: ${buyerName}`,
     buyerPhone ? `Phone: ${buyerPhone}` : null,
     `Order: #${orderId.slice(0, 8)}`,
-    `Amount: $0.00 (promo / free)`,
+    `Amount: Free (promo)`,
     footer(true),
   ]
     .filter(Boolean)
@@ -98,9 +98,9 @@ export function newEventAlert(
   startsAt: string,
 ): string {
   return [
-    `*New Event Created*`,
+    `*New event created*`,
     ``,
-    title,
+    `Event: ${title}`,
     `Category: ${category}`,
     `City: ${city}`,
     `Date: ${startsAt}`,
@@ -130,7 +130,7 @@ export function paymentAnomalyAlert(
   detail: string,
 ): string {
   return [
-    `*Payment review required*`,
+    `*Payment review needed*`,
     ``,
     title,
     orderId ? `Order: ${orderId}` : null,
@@ -155,9 +155,9 @@ export function ticketConfirmationMessage(
   ticketUrl: string,
 ): string {
   return [
-    `*Your tickets are confirmed!*`,
+    `*TicketPulse — booking confirmed*`,
     ``,
-    `Hi ${buyerName}, you're going to *${eventTitle}*.`,
+    `Hi ${buyerName}, your tickets for *${eventTitle}* are ready.`,
     ``,
     `Date: ${eventDate}`,
     venue ? `Venue: ${venue}` : null,
@@ -165,7 +165,7 @@ export function ticketConfirmationMessage(
     ``,
     itemsSummary ? `${itemsSummary}` : null,
     ``,
-    `View tickets: ${ticketUrl}`,
+    `Open your tickets: ${ticketUrl}`,
     ``,
     `Show the QR code at the door. See you there!`,
     footer(false),
@@ -184,19 +184,17 @@ export function reviewRequestMessage(
   reviewUrl: string,
 ): string {
   return [
-    `*Thanks for using TicketPulse!*`,
+    `*How was your TicketPulse experience?*`,
     ``,
-    `Hi ${buyerName}, thanks for booking *${eventTitle}* through TicketPulse.`,
+    `Hi ${buyerName}, thanks for booking *${eventTitle}* with TicketPulse.`,
     ``,
-    `How was the TicketPulse service — checkout, EcoCash or card payment, ticket delivery, and support?`,
-    ``,
-    `Please take a minute to review your TicketPulse experience.`,
+    `Please tell us how checkout, payment, ticket delivery, and support went.`,
     ``,
     `Leave a review: ${reviewUrl}`,
     ``,
-    `Thank you for supporting live events!`,
+    `Thanks for helping us improve live events.`,
     footer(false),
-  ].join("\\n")
+  ].join("\n")
 }
 
 export function organizerSaleNotification(
@@ -209,7 +207,7 @@ export function organizerSaleNotification(
   organizerUrl: string,
 ): string {
   return [
-    `*New Sale — ${eventTitle}*`,
+    `*New sale — ${eventTitle}*`,
     ``,
     `Buyer: ${buyerName}`,
     `Order: #${orderId.slice(0, 8)}`,
