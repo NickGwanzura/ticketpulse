@@ -226,27 +226,27 @@ export default async function AdminOrdersPage({
   const totalPages = Math.ceil(totalCount / LIMIT)
 
   // ── Aggregate stats from all orders ─────────────────────────────────────
-  const allOrders = await db
+  // One aggregate row instead of loading every order into memory on each page view.
+  const [agg] = await db
     .select({
-      status: orders.status,
-      paymentMethod: orders.paymentMethod,
-      totalAmount: orders.totalAmount,
-      currency: orders.currency,
+      total: sql<number>`count(*)::int`,
+      paidCount: sql<number>`count(*) filter (where ${orders.status} in ('paid','completed') and ${orders.paymentMethod} is distinct from 'complimentary')::int`,
+      attemptCount: sql<number>`count(*) filter (where ${orders.paymentMethod} is distinct from 'complimentary')::int`,
+      pendingCount: sql<number>`count(*) filter (where ${orders.status} in ('pending','awaiting_verification'))::int`,
+      cancelledCount: sql<number>`count(*) filter (where ${orders.status} = 'cancelled')::int`,
+      revenue: sql<string>`coalesce(sum(${orders.totalAmount}) filter (where ${orders.status} in ('paid','completed') and ${orders.paymentMethod} is distinct from 'complimentary'), 0)`,
     })
     .from(orders)
 
-  const paidOrders = allOrders.filter((o) =>
-    (o.status === "paid" || o.status === "completed") && o.paymentMethod !== "complimentary",
-  )
-  const paymentAttemptCount = allOrders.filter((o) => o.paymentMethod !== "complimentary").length
+  const totalOrderCount = agg?.total ?? 0
+  const paidOrderCount = agg?.paidCount ?? 0
+  const paymentAttemptCount = agg?.attemptCount ?? 0
   const orderSuccessRate = paymentAttemptCount > 0
-    ? `${((paidOrders.length / paymentAttemptCount) * 100).toFixed(1)}%`
+    ? `${((paidOrderCount / paymentAttemptCount) * 100).toFixed(1)}%`
     : "—"
-  const pendingOrders = allOrders.filter(
-    (o) => o.status === "pending" || o.status === "awaiting_verification",
-  )
-  const cancelledOrders = allOrders.filter((o) => o.status === "cancelled")
-  const totalPaid = paidOrders.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
+  const pendingOrderCount = agg?.pendingCount ?? 0
+  const cancelledOrderCount = agg?.cancelledCount ?? 0
+  const totalPaid = Number(agg?.revenue ?? 0)
   const now = new Date()
 
   const statCards = [
@@ -259,14 +259,14 @@ export default async function AdminOrdersPage({
     },
     {
       label: "Total orders",
-      value: allOrders.length.toLocaleString(),
+      value: totalOrderCount.toLocaleString(),
       icon: Receipt,
       tone: "text-sky-700",
       bg: "bg-sky-50",
     },
     {
       label: "Paid / completed",
-      value: paidOrders.length.toLocaleString(),
+      value: paidOrderCount.toLocaleString(),
       icon: TrendingUp,
       tone: "text-brand-600",
       bg: "bg-green-50",
@@ -280,14 +280,14 @@ export default async function AdminOrdersPage({
     },
     {
       label: "Pending / awaiting",
-      value: pendingOrders.length.toLocaleString(),
+      value: pendingOrderCount.toLocaleString(),
       icon: ShoppingCart,
       tone: "text-amber-700",
       bg: "bg-amber-50",
     },
     {
       label: "Cancelled",
-      value: cancelledOrders.length.toLocaleString(),
+      value: cancelledOrderCount.toLocaleString(),
       icon: ShoppingCart,
       tone: "text-red-600",
       bg: "bg-rose-50",
