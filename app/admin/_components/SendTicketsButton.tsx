@@ -27,6 +27,8 @@ export default function SendTicketsButton({
         if (result.success) parts.push("✓ Ticket Generated")
         if (result.emailSent) parts.push("✓ Email Sent")
         if (result.success && result.emailSent) parts.push("✓ Delivery Successful")
+        if (result.whatsappSent === true) parts.push("✓ WhatsApp Sent")
+        if (result.whatsappSent === false) parts.push(`✗ WhatsApp failed${result.whatsappError ? `: ${result.whatsappError}` : ""}`)
         if (result.error) parts.push(`✗ ${result.error}`)
         return { ok: result.success || result.emailSent, message: parts.join(" · ") || "Delivery failed" }
       } catch (e) {

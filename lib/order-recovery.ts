@@ -28,6 +28,9 @@ export type SendTicketsResult = {
   success: boolean
   ticketCount: number
   emailSent: boolean
+  /** undefined when the order has no phone number. */
+  whatsappSent?: boolean
+  whatsappError?: string
   deliveryStatus: string
   error: string | null
   regenerated: {
@@ -42,6 +45,9 @@ export type CompleteAndSendResult = {
   completed: boolean
   ticketsDelivered: boolean
   emailSent: boolean
+  /** undefined when the order has no phone number. */
+  whatsappSent?: boolean
+  whatsappError?: string
   message: string
   details?: Record<string, unknown>
 }
@@ -539,6 +545,18 @@ export async function sendTicketsAction(
     })
     .where(eq(orders.id, orderId))
 
+  // WhatsApp copy, after the metadata write above so the endpoint's own
+  // whatsappSent flag isn't overwritten. A manual send always resends.
+  if (order.guestPhone && latestTickets.length > 0) {
+    const { sendWhatsAppTicketAndWait } = await import("@/lib/delivery")
+    const wa = await sendWhatsAppTicketAndWait(orderId, "manual_resend")
+    result.whatsappSent = wa.ok
+    if (!wa.ok) {
+      result.whatsappError = wa.error
+      log.warn("sendTickets - WhatsApp send failed", { orderId, error: wa.error })
+    }
+  }
+
   // Track delivery attempt
   try {
     await trackEvent({
@@ -656,7 +674,7 @@ export async function completeAndSendAction(
       .where(eq(tickets.orderId, orderId))
 
     if (existingTickets.length === 0 || delivery.emailSentAt === null) {
-      const result = await deliverTicketForPaidOrder(orderId, options)
+      const result = await deliverTicketForPaidOrder(orderId, { ...options, skipWhatsApp: true })
       ticketsDelivered = result.ticketCount > 0
       emailSent = result.emailSent
     } else {
@@ -669,19 +687,39 @@ export async function completeAndSendAction(
     emailSent = false
   }
 
+  // WhatsApp: sent here (not in the background) so the admin sees the outcome.
+  let whatsappSent: boolean | undefined
+  let whatsappError: string | undefined
+  if (ticketsDelivered && order.guestPhone) {
+    const { sendWhatsAppTicketAndWait } = await import("@/lib/delivery")
+    const wa = await sendWhatsAppTicketAndWait(orderId)
+    whatsappSent = wa.ok
+    if (!wa.ok) {
+      whatsappError = wa.error
+      log.warn("completeAndSend - WhatsApp send failed", { orderId, error: wa.error })
+    }
+  }
+
   // 9. Update organizer sales (handled by deliverTicketForPaidOrder → soldQuantity update)
   // 10. Revenue reporting (handled by paymentLedger entry + analytics event above)
   // 11. Audit log (paymentLedger + metadata above)
 
-  const message = completed
+  const whatsappNote = whatsappSent === undefined
+    ? ""
+    : whatsappSent
+      ? " · WhatsApp sent"
+      : ` · WhatsApp failed (${whatsappError ?? "unknown error"})`
+  const message = (completed
     ? `Order completed${ticketsDelivered ? `, ${emailSent ? "tickets delivered and email sent" : "tickets generated but email failed"}` : ", ticket generation failed"}`
-    : `Already completed${ticketsDelivered ? `, ${emailSent ? "tickets resent" : "ticket resend attempted"}` : ""}`
+    : `Already completed${ticketsDelivered ? `, ${emailSent ? "tickets resent" : "ticket resend attempted"}` : ""}`) + whatsappNote
 
   return {
     success: ticketsDelivered || completed,
     completed,
     ticketsDelivered,
     emailSent,
+    whatsappSent,
+    whatsappError,
     message,
     details: { completedAt: new Date().toISOString(), completedBy: userEmail },
   }

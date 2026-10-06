@@ -48,6 +48,40 @@ export type DeliveryMetadata = {
 export type DeliveryOptions = {
   /** Keep the buyer delivery flow, but suppress organizer email/WhatsApp notices when false. */
   notifyOrganizers?: boolean
+  /** The caller sends (and reports on) the WhatsApp ticket itself, so don't fire the background one. */
+  skipWhatsApp?: boolean
+}
+
+export type WhatsAppSendResult = { ok: boolean; skipped?: boolean; error?: string }
+
+/**
+ * Sends the WhatsApp ticket and waits for the outcome, so a manual action can
+ * tell the admin whether it worked. Idempotent: the endpoint skips orders
+ * already marked whatsappSent.
+ */
+export async function sendWhatsAppTicketAndWait(
+  orderId: string,
+  mode: "initial" | "manual_resend" = "initial",
+): Promise<WhatsAppSendResult> {
+  const internalKey = process.env.INTERNAL_API_KEY
+  // Loopback, not the public URL: hairpin NAT hangs on this deployment.
+  const selfUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}`
+  try {
+    const res = await fetch(`${selfUrl}/api/whatsapp/send-ticket`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(internalKey ? { "X-Internal-Key": internalKey } : {}),
+      },
+      body: JSON.stringify({ orderId, mode }),
+      signal: AbortSignal.timeout(45_000),
+    })
+    const data = (await res.json().catch(() => ({}))) as { skipped?: boolean; error?: string }
+    if (!res.ok) return { ok: false, error: data.error ?? `WhatsApp API returned ${res.status}` }
+    return { ok: true, skipped: data.skipped }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
 }
 
 const DEFAULT_DELIVERY: DeliveryMetadata = {
@@ -398,7 +432,7 @@ async function _deliver(orderId: string, options: DeliveryOptions = {}): Promise
     }
 
     // ── 6. Send WhatsApp ticket (non-blocking, idempotent) ─────────────────
-    if (order.guestPhone && !delivery.whatsappSent) {
+    if (order.guestPhone && !delivery.whatsappSent && !options.skipWhatsApp) {
       const internalKey = process.env.INTERNAL_API_KEY
       // Self-call via loopback, not the public URL: container-to-own-host-IP
       // traffic (hairpin NAT) hangs on this deployment.

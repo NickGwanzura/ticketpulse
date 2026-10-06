@@ -1,11 +1,14 @@
 "use client"
 
 import { useActionState, useEffect, useState } from "react"
-import { CheckSquare, CheckCircle, XCircle } from "lucide-react"
+import { CheckSquare, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { completeAndSendAction } from "@/app/admin/actions/orders"
 
 type ActionState = { ok: boolean; message: string } | null
+
+// Shown in turn while the server works, so the admin can see it is progressing.
+const STEPS = ["Confirming payment…", "Generating tickets…", "Sending email…", "Sending WhatsApp…"]
 
 export default function CompleteAndSendButton({
   orderId,
@@ -45,6 +48,16 @@ export default function CompleteAndSendButton({
 
   const showFeedback = state && state !== dismissedState
 
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    if (!pending) {
+      const reset = setTimeout(() => setStep(0), 0)
+      return () => clearTimeout(reset)
+    }
+    const t = setInterval(() => setStep((i) => Math.min(i + 1, STEPS.length - 1)), 2200)
+    return () => clearInterval(t)
+  }, [pending])
+
   return (
     <form action={formAction} className="relative inline-flex items-center gap-1">
       {requireReference && (
@@ -63,16 +76,34 @@ export default function CompleteAndSendButton({
         disabled={pending}
         className={cn(
           "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
+          "relative overflow-hidden disabled:cursor-wait",
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px] text-violet-700 hover:bg-violet-50 border border-violet-200"
             : "px-3 py-2 text-[12px] text-violet-700 hover:bg-violet-50 border border-violet-200",
           variant === "menu" && "w-full justify-start",
+          pending && "bg-violet-50",
+          state?.ok && !pending && showFeedback && "bg-green-50 text-green-700 border-green-200",
         )}
-        title="Complete order and send tickets"
+        title="Complete order and send tickets (email and WhatsApp)"
+        aria-busy={pending}
       >
-        <CheckSquare size={variant === "desktop" ? 11 : 12} />
-        {pending ? "Processing…" : "Complete & Send"}
+        {pending ? (
+          <Loader2 size={variant === "desktop" ? 11 : 12} className="animate-spin" />
+        ) : state?.ok && showFeedback ? (
+          <CheckCircle size={variant === "desktop" ? 11 : 12} className="animate-bounce" />
+        ) : (
+          <CheckSquare size={variant === "desktop" ? 11 : 12} />
+        )}
+        <span aria-live="polite">
+          {pending ? STEPS[step] : state?.ok && showFeedback ? "Done" : "Complete & Send"}
+        </span>
+        {pending && (
+          <span
+            aria-hidden
+            className="absolute bottom-0 left-0 h-0.5 bg-violet-500 transition-all duration-[2200ms] ease-linear"
+            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          />
+        )}
       </button>
 
       {showFeedback && (

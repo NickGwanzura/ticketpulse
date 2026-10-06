@@ -135,7 +135,8 @@ export default async function AdminOrdersPage({
 
   const sp = await searchParams
   const query = sp.q?.trim() ?? ""
-  const statusFilter = sp.status ?? "all"
+  // Only known statuses reach the query; anything else would throw on the enum column.
+  const statusFilter = FILTER_PILLS.some((p) => p.value === sp.status) ? sp.status! : "all"
   const issueFilter = isOrderIssue(sp.issue) ? sp.issue : null
   const eventOptions = await db
     .select({ id: events.id, title: events.title })
@@ -167,6 +168,7 @@ export default async function AdminOrdersPage({
       or(
         like(orders.guestEmail, `%${escaped}%`),
         like(orders.guestName, `%${escaped}%`),
+        like(orders.guestPhone, `%${escaped}%`),
         like(sql`${orders.id}::text`, `%${escaped}%`),
       ),
     )
@@ -382,7 +384,7 @@ export default async function AdminOrdersPage({
               type="text"
               name="q"
               defaultValue={query}
-              placeholder="Search by order #, email, or name…"
+              placeholder="Search by order #, email, name, or phone…"
               className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
             />
             {statusFilter !== "all" && (

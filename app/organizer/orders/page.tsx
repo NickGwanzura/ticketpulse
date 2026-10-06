@@ -64,6 +64,7 @@ const FILTER_PILLS = [
   { label: "Pending",   value: "pending" },
   { label: "Completed", value: "completed" },
   { label: "Cancelled", value: "cancelled" },
+  { label: "Expired",   value: "expired" },
 ]
 
 function getPaymentBadge(status: string | null) {
@@ -165,7 +166,8 @@ export default async function OrganizerOrdersPage({
 
   const sp = await searchParams
   const query = sp.q?.trim() ?? ""
-  const statusFilter = sp.status ?? "all"
+  // Only known statuses reach the query; anything else would throw on the enum column.
+  const statusFilter = FILTER_PILLS.some((p) => p.value === sp.status) ? sp.status! : "all"
   // Same definitions as the dashboard "needs attention" counters, so a count and the rows it opens always agree.
   const issueFilter = isOrderIssue(sp.issue) ? sp.issue : null
   const eventFilter = sp.event && eventTitleMap.has(sp.event) ? sp.event : ""
@@ -181,7 +183,8 @@ export default async function OrganizerOrdersPage({
 
   const conditions: ReturnType<typeof and>[] = [
     eventFilter ? eq(orders.eventId, eventFilter) : inArray(orders.eventId, myEventIds),
-    activeOrderListCondition,
+    // Unpaid expired orders stay hidden unless searched for or filtered to.
+    ...(query || statusFilter === "expired" ? [] : [activeOrderListCondition]),
   ]
 
   if (query) {
@@ -190,13 +193,16 @@ export default async function OrganizerOrdersPage({
       or(
         like(orders.guestEmail, `%${escaped}%`),
         like(orders.guestName, `%${escaped}%`),
+        like(orders.guestPhone, `%${escaped}%`),
         like(sql`${orders.id}::text`, `%${escaped}%`),
       ),
     )
   }
 
-  if (statusFilter !== "all") {
-    conditions.push(eq(orders.status, statusFilter as "paid" | "pending" | "completed" | "cancelled" | "refunded" | "expired"))
+  if (statusFilter === "pending") {
+    conditions.push(or(eq(orders.status, "pending"), eq(orders.status, "awaiting_verification")))
+  } else if (statusFilter !== "all") {
+    conditions.push(eq(orders.status, statusFilter as "paid" | "completed" | "cancelled" | "refunded" | "expired"))
   }
 
   if (issueFilter) conditions.push(orderIssueCondition(issueFilter))
@@ -268,7 +274,7 @@ export default async function OrganizerOrdersPage({
               type="text"
               name="q"
               defaultValue={query}
-              placeholder="Search by order #, email, or name…"
+              placeholder="Search by order #, email, name, or phone…"
               className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
             />
             {statusFilter !== "all" && (
