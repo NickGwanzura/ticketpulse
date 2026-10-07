@@ -402,10 +402,12 @@ export async function sendTicketsAction(
       result.regenerated.tickets = true
       result.regenerated.attendeeRecords = true
 
-      // Update tier sold quantities
+      // Update tier sold quantities. Orders that reserved stock at checkout
+      // already counted these tickets; counting again made tiers look sold out.
+      const alreadyReserved = (order.metadata as Record<string, unknown> | null)?.inventoryReserved === true
       const tierCounts = new Map<string, number>()
       for (const tv of ticketValues) {
-        if (tv.tierId) tierCounts.set(tv.tierId, (tierCounts.get(tv.tierId) ?? 0) + 1)
+        if (tv.tierId && !alreadyReserved) tierCounts.set(tv.tierId, (tierCounts.get(tv.tierId) ?? 0) + 1)
       }
       await Promise.all(
         Array.from(tierCounts).map(([tierId, count]) =>

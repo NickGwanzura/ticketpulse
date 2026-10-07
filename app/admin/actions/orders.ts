@@ -198,7 +198,7 @@ export async function cancelOrderTicketsAction(orderId: string) {
   const session = await requireAdmin()
 
   const [order] = await db
-    .select({ id: orders.id, status: orders.status })
+    .select({ id: orders.id, status: orders.status, metadata: orders.metadata })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1)
@@ -211,37 +211,55 @@ export async function cancelOrderTicketsAction(orderId: string) {
   // Wrap all mutations in a single transaction so a failure mid-way
   // rolls everything back.
   await db.transaction(async (tx) => {
-    // Update the order status
-    await tx
+    // Compare-and-set so a double click or a concurrent refund can't release stock twice.
+    const claimed = await tx
       .update(orders)
       .set({ status: "cancelled", updatedAt: new Date() })
-      .where(eq(orders.id, orderId))
+      .where(and(eq(orders.id, orderId), sql`${orders.status} NOT IN ('cancelled', 'refunded')`))
+      .returning({ id: orders.id })
+    if (claimed.length === 0) throw new Error("This order changed while you were cancelling it. Refresh and try again.")
 
-    // Find all ticket records tied to this order and mark them as cancelled
     const orderTickets = await tx
-      .select({ id: tickets.id, tierId: tickets.tierId })
+      .select({ id: tickets.id, tierId: tickets.tierId, status: tickets.status, isStaffTicket: tickets.isStaffTicket })
       .from(tickets)
       .where(eq(tickets.orderId, orderId))
 
     if (orderTickets.length > 0) {
-      const ticketIds = orderTickets.map((t) => t.id)
-      const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
-
       await tx
         .update(tickets)
         .set({ status: "cancelled" })
-        .where(inArray(tickets.id, ticketIds))
+        .where(inArray(tickets.id, orderTickets.map((t) => t.id)))
+    }
 
-      // Restore inventory for each affected tier
-      for (const tierId of tierIds) {
-        const cancelledCount = orderTickets.filter((t) => t.tierId === tierId).length
-        await tx
-          .update(ticketTiers)
-          .set({
-            soldQuantity: sql`${ticketTiers.soldQuantity} - ${cancelledCount}`,
-          })
-          .where(eq(ticketTiers.id, tierId))
+    // Release only stock that is still held. Expired orders already released
+    // theirs, tickets cancelled earlier already gave theirs back, and staff
+    // tickets never took any. Releasing more than that drives soldQuantity too
+    // low and reopens tiers that are really sold out.
+    const perTier = new Map<string, number>()
+    if (order.status !== "expired") {
+      if (orderTickets.length > 0) {
+        for (const t of orderTickets) {
+          if (!t.tierId || t.isStaffTicket || t.status === "cancelled" || t.status === "refunded") continue
+          perTier.set(t.tierId, (perTier.get(t.tierId) ?? 0) + 1)
+        }
+      } else if (
+        (order.metadata as Record<string, unknown> | null)?.inventoryReserved === true &&
+        (order.status === "pending" || order.status === "awaiting_verification")
+      ) {
+        const held = await tx
+          .select({ tierId: orderItems.tierId, quantity: orderItems.quantity })
+          .from(orderItems)
+          .where(and(eq(orderItems.orderId, orderId), eq(orderItems.type, "ticket")))
+        for (const item of held) {
+          if (item.tierId) perTier.set(item.tierId, (perTier.get(item.tierId) ?? 0) + item.quantity)
+        }
       }
+    }
+    for (const [tierId, count] of perTier) {
+      await tx
+        .update(ticketTiers)
+        .set({ soldQuantity: sql`GREATEST(0, COALESCE(${ticketTiers.soldQuantity}, 0) - ${count})` })
+        .where(eq(ticketTiers.id, tierId))
     }
   })
 
@@ -262,7 +280,7 @@ export async function cancelTicketsAction(ticketIds: string[]) {
 
   // Fetch the tickets to cancel
   const targetTickets = await db
-    .select({ id: tickets.id, tierId: tickets.tierId, status: tickets.status })
+    .select({ id: tickets.id, tierId: tickets.tierId, status: tickets.status, isStaffTicket: tickets.isStaffTicket })
     .from(tickets)
     .where(inArray(tickets.id, ticketIds))
 
@@ -292,14 +310,15 @@ export async function cancelTicketsAction(ticketIds: string[]) {
   // Restore inventory for each affected tier
   const tierCounts = new Map<string, number>()
   for (const t of toCancel) {
-    if (t.tierId) {
+    // Staff tickets never counted toward soldQuantity, so they give nothing back.
+    if (t.tierId && !t.isStaffTicket) {
       tierCounts.set(t.tierId, (tierCounts.get(t.tierId) ?? 0) + 1)
     }
   }
   for (const [tierId, count] of tierCounts) {
     await db
       .update(ticketTiers)
-      .set({ soldQuantity: sql`${ticketTiers.soldQuantity} - ${count}` })
+      .set({ soldQuantity: sql`GREATEST(0, COALESCE(${ticketTiers.soldQuantity}, 0) - ${count})` })
       .where(eq(ticketTiers.id, tierId))
   }
 
@@ -383,47 +402,67 @@ async function createManualTicketOrder(
   if (!input.guestEmail?.trim()) throw new Error("Guest email is required")
   if (!input.guestName?.trim()) throw new Error("Guest name is required")
 
-  const [tier] = await db
-    .select()
-    .from(ticketTiers)
-    .where(and(eq(ticketTiers.id, input.tierId), eq(ticketTiers.eventId, input.eventId)))
-    .limit(1)
+  // Reserve the stock atomically with creating the order. Checking remaining
+  // stock first and incrementing later (at delivery) let two simultaneous
+  // manual orders, or a manual order racing a web checkout, oversell the tier.
+  const { order, tier, total } = await db.transaction(async (tx) => {
+    const [lockedTier] = await tx
+      .select()
+      .from(ticketTiers)
+      .where(and(eq(ticketTiers.id, input.tierId), eq(ticketTiers.eventId, input.eventId)))
+      .for("update")
+      .limit(1)
 
-  if (!tier) throw new Error("Ticket tier not found for this event")
+    if (!lockedTier) throw new Error("Ticket tier not found for this event")
 
-  const remaining = tier.totalQuantity - (tier.soldQuantity ?? 0)
-  if (remaining < quantity) {
-    throw new Error(`Only ${remaining} left in "${tier.name}"`)
-  }
+    const remaining = lockedTier.totalQuantity - (lockedTier.soldQuantity ?? 0)
+    if (remaining < quantity) {
+      throw new Error(`Only ${Math.max(0, remaining)} left in "${lockedTier.name}"`)
+    }
 
-  const total = (Number(tier.price) * quantity).toFixed(2)
+    const [reserved] = await tx
+      .update(ticketTiers)
+      .set({ soldQuantity: sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${quantity}` })
+      .where(and(
+        eq(ticketTiers.id, lockedTier.id),
+        sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${quantity} <= ${ticketTiers.totalQuantity}`,
+      ))
+      .returning({ id: ticketTiers.id })
+    if (!reserved) throw new Error(`"${lockedTier.name}" just sold out`)
 
-  const [order] = await db
-    .insert(orders)
-    .values({
-      eventId: input.eventId,
-      status: "pending",
-      totalAmount: total,
-      currency: tier.currency ?? "USD",
-      paymentMethod: opts.paymentMethod,
-      paymentRef: opts.paymentRef || `manual-${Date.now()}`,
-      guestEmail: input.guestEmail.trim(),
-      guestName: input.guestName.trim(),
-      guestPhone: input.guestPhone?.trim() || null,
-      metadata: { source: opts.source, issuedBy: session.user.email ?? "admin" },
+    const lineTotal = (Number(lockedTier.price) * quantity).toFixed(2)
+
+    const [created] = await tx
+      .insert(orders)
+      .values({
+        eventId: input.eventId,
+        status: "pending",
+        totalAmount: lineTotal,
+        currency: lockedTier.currency ?? "USD",
+        paymentMethod: opts.paymentMethod,
+        paymentRef: opts.paymentRef || `manual-${Date.now()}`,
+        guestEmail: input.guestEmail.trim(),
+        guestName: input.guestName.trim(),
+        guestPhone: input.guestPhone?.trim() || null,
+        // inventoryReserved tells delivery not to count these tickets a second
+        // time, and tells expiry/cancel to give the stock back.
+        metadata: { source: opts.source, issuedBy: session.user.email ?? "admin", inventoryReserved: true },
+      })
+      .returning()
+
+    await tx.insert(orderItems).values({
+      orderId: created.id,
+      tierId: lockedTier.id,
+      type: "ticket",
+      quantity,
+      unitPrice: lockedTier.price,
+      total: lineTotal,
     })
-    .returning()
 
-  await db.insert(orderItems).values({
-    orderId: order.id,
-    tierId: tier.id,
-    type: "ticket",
-    quantity,
-    unitPrice: tier.price,
-    total,
+    return { order: created, tier: lockedTier, total: Number(lineTotal) }
   })
 
-  return { order, tier, total: Number(total), quantity }
+  return { order, tier, total, quantity }
 }
 
 /**
@@ -582,26 +621,28 @@ export async function refundOrderAction(
     if (updated.length === 0) throw new Error("This order changed while you were refunding it. Refresh and try again.")
 
     const orderTickets = await tx
-      .select({ id: tickets.id, tierId: tickets.tierId })
+      .select({ id: tickets.id, tierId: tickets.tierId, status: tickets.status, isStaffTicket: tickets.isStaffTicket })
       .from(tickets)
       .where(eq(tickets.orderId, orderId))
 
     if (orderTickets.length > 0) {
       const ticketIds = orderTickets.map((t) => t.id)
-      const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
 
       await tx
         .update(tickets)
         .set({ status: "refunded" })
         .where(inArray(tickets.id, ticketIds))
 
-      for (const tierId of tierIds) {
-        const refundedCount = orderTickets.filter((t) => t.tierId === tierId).length
+      // Only tickets still holding stock give it back (not ones cancelled earlier, not staff tickets).
+      const perTier = new Map<string, number>()
+      for (const t of orderTickets) {
+        if (!t.tierId || t.isStaffTicket || t.status === "cancelled" || t.status === "refunded") continue
+        perTier.set(t.tierId, (perTier.get(t.tierId) ?? 0) + 1)
+      }
+      for (const [tierId, refundedCount] of perTier) {
         await tx
           .update(ticketTiers)
-          .set({
-            soldQuantity: sql`${ticketTiers.soldQuantity} - ${refundedCount}`,
-          })
+          .set({ soldQuantity: sql`GREATEST(0, COALESCE(${ticketTiers.soldQuantity}, 0) - ${refundedCount})` })
           .where(eq(ticketTiers.id, tierId))
       }
     }
