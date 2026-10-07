@@ -11,7 +11,7 @@
  * DRIFT     soldQuantity counter != expected (counter too low reopens sold-out tiers)
  */
 import "dotenv/config"
-import { neon } from "@neondatabase/serverless"
+import { Pool } from "pg"
 
 const DATABASE_URL = process.env.DATABASE_URL
 if (!DATABASE_URL) {
@@ -21,7 +21,8 @@ if (!DATABASE_URL) {
 const showAll = process.argv.includes("--all")
 
 async function main() {
-  const sql = neon(DATABASE_URL!)
+  const pool = new Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 8000 })
+  const sql = async (strings: TemplateStringsArray) => (await pool.query(strings.join(""))).rows
 
   const rows = await sql`
     SELECT
@@ -69,7 +70,7 @@ async function main() {
   console.log(`\n${rows.length} tiers checked, ${problems} with problems.`)
 }
 
-main().catch((e) => {
+main().then(() => process.exit(0)).catch((e) => {
   console.error(e)
   process.exit(1)
 })
