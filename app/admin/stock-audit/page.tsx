@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { sql } from "drizzle-orm"
 import { CheckCircle2 } from "lucide-react"
 
@@ -6,10 +7,13 @@ import { auth } from "@/auth"
 import { db } from "@/db"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
+import SyncCounterButton from "./SyncCounterButton"
 
 export const dynamic = "force-dynamic"
 
 type Row = {
+  tier_id: string
+  event_id: string
   event: string
   tier: string
   capacity: number
@@ -27,7 +31,7 @@ type Row = {
  */
 async function loadTiers(): Promise<Row[]> {
   const result = await db.execute(sql`
-    SELECT e.title AS event, tt.name AS tier,
+    SELECT tt.id AS tier_id, e.id AS event_id, e.title AS event, tt.name AS tier,
       tt.total_quantity::int AS capacity, COALESCE(tt.sold_quantity, 0)::int AS counter,
       t.live_tickets, h.held_open, (t.live_tickets + h.held_open) AS expected,
       CASE WHEN t.live_tickets + h.held_open > tt.total_quantity THEN 'OVERSOLD'
@@ -84,7 +88,8 @@ export default async function StockAuditPage() {
                   <th className="text-right px-3 py-3">Real tickets</th>
                   <th className="text-right px-3 py-3">Held (unpaid)</th>
                   <th className="text-right px-3 py-3">Expected</th>
-                  <th className="text-right px-5 py-3">Verdict</th>
+                  <th className="text-right px-3 py-3">Verdict</th>
+                  <th className="text-right px-5 py-3">Fix</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -99,10 +104,22 @@ export default async function StockAuditPage() {
                     <td className="px-3 py-3 text-right tabular-nums text-[13px]">{r.live_tickets}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-[13px]">{r.held_open}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-[13px] font-semibold">{r.expected}</td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-3 py-3 text-right">
                       <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${r.verdict === "OVERSOLD" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}`}>
                         {r.verdict}
                       </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {r.verdict === "DRIFT" ? (
+                        <SyncCounterButton tierId={r.tier_id} expected={r.expected} />
+                      ) : (
+                        <Link
+                          href={`/organizer/events/${r.event_id}/tiers`}
+                          className="text-[12px] font-semibold text-brand-600 hover:underline"
+                        >
+                          Review tier
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -111,7 +128,7 @@ export default async function StockAuditPage() {
           </div>
         )}
         <p className="text-[12px] text-ink-3">
-          OVERSOLD: more real tickets exist than the tier allows. DRIFT: the sold counter differs from the real count; a counter lower than Expected lets sold-out tickets go back on sale.
+          OVERSOLD needs a decision, so it has no one-click fix: raise the tier's capacity to cover the tickets already sold, or cancel/refund the newest extra orders. DRIFT can be fixed with the button, which recomputes the real number on the server. DRIFT: the sold counter differs from the real count; a counter lower than Expected lets sold-out tickets go back on sale.
         </p>
       </div>
     </div>
