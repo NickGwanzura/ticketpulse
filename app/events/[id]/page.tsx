@@ -273,6 +273,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     maxPerOrder: t.maxPerOrder ?? 10,
     salesStart: t.salesStart ?? null,
     salesEnd: t.salesEnd ?? null,
+    saleStatus: (t.salesStart && new Date(t.salesStart) > new Date()
+      ? "upcoming"
+      : t.salesEnd && new Date(t.salesEnd) <= new Date()
+        ? "ended"
+        : "open") as "open" | "ended" | "upcoming",
     earlyBirdPrice: t.earlyBirdPrice ? Number(t.earlyBirdPrice) : null,
     earlyBirdUntil: t.earlyBirdUntil ?? null,
     earlyBirdQuantity: t.earlyBirdQuantity ?? null,
@@ -301,7 +306,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
   const emoji = CATEGORY_EMOJI[row.category.toLowerCase()] ?? "🎫"
   const saleableTiers = row.status === "published" && !isPastEvent
-    ? tiers.filter((tier) => tier.soldQuantity < tier.totalQuantity)
+    ? tiers.filter((tier) => tier.soldQuantity < tier.totalQuantity && tier.saleStatus === "open")
     : []
   const baseCurrency = tiers[0]?.currency ?? "USD"
   const lowestPrice = tiers.length ? Math.min(...tiers.map((t) => t.price)) : null

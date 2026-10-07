@@ -19,6 +19,17 @@ interface Tier {
   earlyBirdQuantity: number | null
   groupPrice: number | null
   groupMinQty: number | null
+  salesStart?: Date | string | null
+  salesEnd?: Date | string | null
+  /** Computed by the page at render time; the live clock takes over after hydration. */
+  saleStatus?: "open" | "ended" | "upcoming"
+}
+
+function saleWindowStatus(tier: Tier, now: Date | null): "open" | "ended" | "upcoming" {
+  if (!now) return tier.saleStatus ?? "open"
+  if (tier.salesStart && now < new Date(tier.salesStart)) return "upcoming"
+  if (tier.salesEnd && now >= new Date(tier.salesEnd)) return "ended"
+  return "open"
 }
 
 type EffectivePrice = {
@@ -160,16 +171,19 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
       <div className="space-y-2 mb-5">
         {tiers.map((tier) => {
           const remaining = tier.totalQuantity - tier.soldQuantity
+          const status = saleWindowStatus(tier, now)
           const soldOut = remaining <= 0
+          // Sold out, ended or not yet open: not purchasable (checkout enforces the same).
+          const closed = soldOut || status !== "open"
           const qty = qtys[tier.id] ?? 0
-          const max = Math.min(tier.maxPerOrder, remaining)
+          const max = closed ? 0 : Math.min(tier.maxPerOrder, remaining)
           const ep = priceMap[tier.id]!
 
           return (
             <div
               key={tier.id}
               className={`relative rounded-xl border p-4 transition-all ${
-                soldOut
+                closed
                   ? "border-line bg-paper-2 opacity-60"
                   : qty > 0
                   ? "border-navy bg-green-50/40 ring-1 ring-navy/15"
@@ -204,9 +218,9 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
                     </p>
                   )}
                   <p className={`text-[11px] mt-1.5 font-medium ${
-                    soldOut ? "text-rose-700" : remaining <= 20 ? "text-amber-700" : "text-green-700"
+                    closed ? "text-rose-700" : remaining <= 20 ? "text-amber-700" : "text-green-700"
                   }`}>
-                    {soldOut ? "Sold out" : remaining <= 20 ? `Only ${remaining} left` : "Available"}
+                    {soldOut ? "Sold out" : status === "ended" ? "Sales ended" : status === "upcoming" ? "Not on sale yet" : remaining <= 20 ? `Only ${remaining} left` : "Available"}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -220,7 +234,7 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
                 </div>
               </div>
 
-              {!soldOut && (
+              {!closed && (
                 <div className="mt-3 pt-3 border-t border-dashed border-line flex items-center justify-between">
                   <span className="text-[11px] text-ink-3">Max {tier.maxPerOrder} per order</span>
                   <div className="inline-flex items-center gap-1">
