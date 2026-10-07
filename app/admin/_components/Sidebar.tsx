@@ -25,6 +25,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { label: "Needs attention", href: "/admin/needs-attention", icon: AlertTriangle },
+      { label: "Stock audit",    href: "/admin/stock-audit",    icon: GitCompareArrows },
       { label: "Orders",         href: "/admin/orders",         icon: Receipt },
       { label: "Payments",       href: "/admin/payments",       icon: CreditCard },
       { label: "Velocity",       href: "/admin/velocity",       icon: Activity },
