@@ -692,10 +692,12 @@ export async function completeAndSendAction(
   // WhatsApp: sent here (not in the background) so the admin sees the outcome.
   let whatsappSent: boolean | undefined
   let whatsappError: string | undefined
+  let whatsappPending = false
   if (ticketsDelivered && order.guestPhone) {
     const { sendWhatsAppTicketAndWait } = await import("@/lib/delivery")
     const wa = await sendWhatsAppTicketAndWait(orderId)
     whatsappSent = wa.ok
+    whatsappPending = Boolean(wa.pending)
     if (!wa.ok) {
       whatsappError = wa.error
       log.warn("completeAndSend - WhatsApp send failed", { orderId, error: wa.error })
@@ -709,7 +711,7 @@ export async function completeAndSendAction(
   const whatsappNote = whatsappSent === undefined
     ? ""
     : whatsappSent
-      ? " · WhatsApp sent"
+      ? (whatsappPending ? " · WhatsApp is still sending in the background" : " · WhatsApp sent")
       : ` · WhatsApp failed (${whatsappError ?? "unknown error"})`
   const message = (completed
     ? `Order completed${ticketsDelivered ? `, ${emailSent ? "tickets delivered and email sent" : "tickets generated but email failed"}` : ", ticket generation failed"}`

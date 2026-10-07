@@ -322,6 +322,7 @@ export default async function OrganizerOrdersPage({
           </div>
           <Link
             href={exportHref}
+            prefetch={false}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2 hover:bg-paper-2 transition-colors"
           >
             <Download size={14} /> Export CSV
@@ -422,6 +423,7 @@ export default async function OrganizerOrdersPage({
                               )}
                               <Link
                                 href={`/orders/${o.id}`}
+                                prefetch={false}
                                 target="_blank"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:text-ink hover:bg-paper-2 transition-colors"
                                 title="View order"
@@ -485,6 +487,7 @@ export default async function OrganizerOrdersPage({
                         )}
                         <Link
                           href={`/orders/${o.id}`}
+                                prefetch={false}
                           target="_blank"
                           className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
                         >

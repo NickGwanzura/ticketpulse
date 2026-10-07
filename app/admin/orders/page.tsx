@@ -426,6 +426,7 @@ export default async function AdminOrdersPage({
           </div>
           <Link
             href={exportHref}
+            prefetch={false}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-semibold text-ink hover:border-line-2 hover:bg-paper-2 transition-colors"
           >
             <Download size={14} /> Export PDF
@@ -544,6 +545,7 @@ export default async function AdminOrdersPage({
                                 <RefundButton orderId={o.id} variant="menu" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
+                                prefetch={false}
                                   target="_blank"
                                   className="inline-flex w-full items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
@@ -559,6 +561,7 @@ export default async function AdminOrdersPage({
                                 <RefundButton orderId={o.id} variant="menu" />
                                 <Link
                                   href={`/orders/${o.id}/print`}
+                                prefetch={false}
                                   target="_blank"
                                   className="inline-flex w-full items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
@@ -569,6 +572,7 @@ export default async function AdminOrdersPage({
                             )}
                             <Link
                               href={`/admin/orders/${o.id}`}
+                                prefetch={false}
                               target="_blank"
                               className="inline-flex w-full items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2 transition-colors"
                             >
@@ -688,6 +692,7 @@ export default async function AdminOrdersPage({
                           <SendTicketsButton orderId={o.id} variant="mobile" />
                           <Link
                             href={`/orders/${o.id}/print`}
+                                prefetch={false}
                             target="_blank"
                             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                           >
@@ -702,6 +707,7 @@ export default async function AdminOrdersPage({
                           <RefundButton orderId={o.id} variant="mobile" />
                           <Link
                             href={`/orders/${o.id}/print`}
+                                prefetch={false}
                             target="_blank"
                             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                           >
@@ -712,6 +718,7 @@ export default async function AdminOrdersPage({
                       )}
                       <Link
                         href={`/admin/orders/${o.id}`}
+                                prefetch={false}
                         target="_blank"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
                       >

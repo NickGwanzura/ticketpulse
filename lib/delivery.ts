@@ -52,7 +52,7 @@ export type DeliveryOptions = {
   skipWhatsApp?: boolean
 }
 
-export type WhatsAppSendResult = { ok: boolean; skipped?: boolean; error?: string }
+export type WhatsAppSendResult = { ok: boolean; skipped?: boolean; pending?: boolean; error?: string }
 
 /**
  * Sends the WhatsApp ticket and waits for the outcome, so a manual action can
@@ -74,12 +74,17 @@ export async function sendWhatsAppTicketAndWait(
         ...(internalKey ? { "X-Internal-Key": internalKey } : {}),
       },
       body: JSON.stringify({ orderId, mode }),
-      signal: AbortSignal.timeout(45_000),
+      // Don't hold an admin request (and the proxy) open while WhatsApp renders and
+      // uploads the PDF; the endpoint keeps going after we stop waiting.
+      signal: AbortSignal.timeout(12_000),
     })
     const data = (await res.json().catch(() => ({}))) as { skipped?: boolean; error?: string }
     if (!res.ok) return { ok: false, error: data.error ?? `WhatsApp API returned ${res.status}` }
     return { ok: true, skipped: data.skipped }
   } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      return { ok: true, pending: true }
+    }
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }
