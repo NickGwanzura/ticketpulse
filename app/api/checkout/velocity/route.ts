@@ -19,6 +19,7 @@ import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { freeOrderAlert } from "@/lib/whatsapp-templates"
+import { calculateGatewayFee, GATEWAY_FEE_PERCENT } from "@/lib/gateway-fee"
 import type {
   VelocityOrderMetadata,
   VelocityPollStatus,
@@ -548,7 +549,9 @@ export async function POST(req: Request) {
   }
 
   if (parsed.promoCode && !appliedPromo) return checkoutJson({ error: "This promo is no longer available or its minimum spend is not met. Review your total before paying.", code: "promo_changed" }, { status: 409 })
-  total = Math.round(total * 100) / 100
+  const subtotal = Math.round(total * 100) / 100
+  const gatewayFee = calculateGatewayFee(subtotal)
+  total = Math.round((subtotal + gatewayFee) * 100) / 100
   if (total > 0 && !parsed.quoteOnly) {
     const validationError = validateTransactionPayload({ amount: total, processor: parsed.paymentMethod === "velocity-ecocash" ? "ECOCASH" : "VMC", phone: formatPhone(parsed.phone), currency })
     if (validationError) return checkoutJson({ error: validationError }, { status: 400 })
@@ -558,7 +561,7 @@ export async function POST(req: Request) {
     .select({ id: ticketQuestions.id, question: ticketQuestions.question, required: ticketQuestions.required })
     .from(ticketQuestions)
     .where(eq(ticketQuestions.eventId, event.id))
-  const quote = { amount: total, currency, discount: appliedPromo?.discount ?? 0, normalizedPhone: formatPhone(parsed.phone), questions: eventQuestionsList,
+  const quote = { amount: total, subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT, currency, discount: appliedPromo?.discount ?? 0, normalizedPhone: formatPhone(parsed.phone), questions: eventQuestionsList,
     lines: ticketItems.map(i => ({ tierId: i.tierId, quantity: i.quantity, unitPrice: effectivePrice(tierById.get(i.tierId)!, i.quantity) })) }
   if (parsed.quoteOnly) return checkoutJson({ success: true, quote })
   if (!quoteMatches(parsed, total, currency)) return checkoutJson({ error: "Your total has changed. Review the updated amount and confirm again.", code: "price_changed", quote }, { status: 409 })
@@ -579,6 +582,7 @@ export async function POST(req: Request) {
   if (Object.keys(questionResponses).length > 0) questionResponseMeta = questionResponses
 
   const baseMeta = {
+    buyerFees: { itemSubtotal: subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT },
     ...(appliedPromo ? { promo: appliedPromo } : {}),
     ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
     ...(merchOrderItems.length > 0
@@ -641,7 +645,7 @@ export async function POST(req: Request) {
       }
       if (appliedPromo) {
         const [currentPromo] = await tx.select().from(promoCodes).where(eq(promoCodes.id, appliedPromo.id)).for('update')
-        if (!currentPromo || currentPromo.type !== appliedPromo.type || currentPromo.value !== appliedPromo.value || Number(currentPromo.minPurchaseAmount ?? 0) > total + appliedPromo.discount) throw new Error('Promo terms changed. Review your order again before paying.')
+        if (!currentPromo || currentPromo.type !== appliedPromo.type || currentPromo.value !== appliedPromo.value || Number(currentPromo.minPurchaseAmount ?? 0) > subtotal + appliedPromo.discount) throw new Error('Promo terms changed. Review your order again before paying.')
       }
       const latestAvailability = await getTierAvailability(ticketItems.map((item) => item.tierId))
       for (const item of ticketItems) {

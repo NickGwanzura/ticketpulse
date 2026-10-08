@@ -8,6 +8,7 @@ import { orderAuthHeaders, rememberOrderAccess, orderOwnerQuery } from "@/lib/or
 import { formatCurrency } from "@/lib/utils"
 import { hasAnalyticsConsent } from "@/lib/cookie-preferences"
 import { useCookiePreferences } from "@/lib/use-cookie-preferences"
+import { calculateGatewayFee, GATEWAY_FEE_PERCENT } from "@/lib/gateway-fee"
 import {
   ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
 } from "lucide-react"
@@ -81,7 +82,7 @@ function CheckoutInner() {
     if (!ready || !checkoutEventSlug || analytics !== true || !hasAnalyticsConsent()) return
     void fetch('/api/analytics/track', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({event:'CHECKOUT_STARTED',eventSlug:checkoutEventSlug,sessionId:getAnalyticsSessionId()}) }).catch(() => {})
   }, [ready, checkoutEventSlug, analytics])
-  const [serverQuote, setServerQuote] = useState<{ amount: number; currency: string; normalizedPhone: string; discount?: number; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
+  const [serverQuote, setServerQuote] = useState<{ amount: number; subtotal: number; gatewayFee: number; gatewayFeePercent: number; currency: string; normalizedPhone: string; discount?: number; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
   const requestId = useRef<string | null>(null)
   const submittedCart = useRef<string | null>(null)
   const itemsRef = useRef(items)
@@ -297,10 +298,15 @@ function CheckoutInner() {
   // Compute the final total for the CTA label
   const firstCurrency = Object.keys(totalsByCurrency)[0] ?? "USD"
   const rawTotal = totalsByCurrency[firstCurrency] ?? 0
-  const estimatedTotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const estimatedSubtotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const estimatedGatewayFee = calculateGatewayFee(estimatedSubtotal)
   const inputKey = JSON.stringify({ form, items, promo: appliedPromo?.code, questionAnswers })
   const currentQuote = serverQuote?.inputKey === inputKey ? serverQuote : null
-  const finalTotal = currentQuote?.amount ?? estimatedTotal
+  const finalTotal = currentQuote?.amount ?? estimatedSubtotal + estimatedGatewayFee
+  const displayedSubtotal = currentQuote?.subtotal ?? estimatedSubtotal
+  const displayedDiscount = currentQuote?.discount ?? appliedPromo?.discount ?? 0
+  const displayedBaseSubtotal = displayedSubtotal + displayedDiscount
+  const displayedGatewayFee = currentQuote?.gatewayFee ?? estimatedGatewayFee
   const isFree = finalTotal === 0
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -613,8 +619,9 @@ function CheckoutInner() {
           {currentQuote && (
             <div role="status" className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-sm">
               <p className="font-semibold">Review your payment: {formatCurrency(currentQuote.amount, currentQuote.currency)}</p>
+              <p className="mt-1">Ticket price {formatCurrency(currentQuote.subtotal + (currentQuote.discount ?? 0), currentQuote.currency)}{(currentQuote.discount ?? 0) > 0 ? ` − discount ${formatCurrency(currentQuote.discount ?? 0, currentQuote.currency)}` : ""} + {currentQuote.gatewayFeePercent}% gateway fee {formatCurrency(currentQuote.gatewayFee, currentQuote.currency)}.</p>
               {!isFree && form.payment === "velocity-ecocash" && <p className="mt-1">Approval prompt goes to {currentQuote.normalizedPhone}. Check this number before paying.</p>}
-              {!isFree && <p className="mt-1 text-xs text-ink-2">Your wallet or card provider may charge additional fees. Check the amount on its approval screen.</p>}
+              {!isFree && <p className="mt-1 text-xs text-ink-2">The 3% gateway fee is included in the total shown above.</p>}
             </div>
           )}
           {submitError && (
@@ -697,10 +704,6 @@ function CheckoutInner() {
                       Remove
                     </button>
                   </div>
-                  <div className="flex items-baseline justify-between text-[13px]">
-                    <span className="text-ink-3">Discount</span>
-                    <span className="font-semibold text-green-700">-{formatCurrency(currentQuote?.discount ?? appliedPromo.discount, firstCurrency)}</span>
-                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -755,10 +758,24 @@ function CheckoutInner() {
               )}
             </div>
 
-            {/* Total */}
-            <div className="pt-3.5 border-t border-line space-y-1">
+            {/* Price and gateway fee are shown before the buyer submits payment. */}
+            <div className="pt-3.5 border-t border-line space-y-2">
+              <div className="flex items-baseline justify-between text-[13px]">
+                <span className="text-ink-2">{items.every(item => item.kind === "ticket") ? "Ticket price" : "Items subtotal"}</span>
+                <span>{formatCurrency(displayedBaseSubtotal, firstCurrency)}</span>
+              </div>
+              {displayedDiscount > 0 && (
+                <div className="flex items-baseline justify-between text-[13px]">
+                  <span className="text-ink-3">Discount</span>
+                  <span className="font-semibold text-green-700">-{formatCurrency(displayedDiscount, firstCurrency)}</span>
+                </div>
+              )}
+              {finalTotal > 0 && <div className="flex items-baseline justify-between text-[13px]">
+                <span className="text-ink-2">Gateway fee ({currentQuote?.gatewayFeePercent ?? GATEWAY_FEE_PERCENT}%)</span>
+                <span>{formatCurrency(displayedGatewayFee, firstCurrency)}</span>
+              </div>}
               {Object.entries(totalsByCurrency).map(([cur, total]) => {
-                const lineTotal = currentQuote?.currency === cur ? currentQuote.amount : appliedPromo ? Math.max(0, total - appliedPromo.discount) : total
+                const lineTotal = currentQuote?.currency === cur ? currentQuote.amount : cur === firstCurrency ? finalTotal : total + calculateGatewayFee(total)
                 return (
                   <div key={cur} className="flex items-baseline justify-between">
                     <span className="text-[13px] text-ink-2">Total · {cur}</span>
@@ -768,11 +785,6 @@ function CheckoutInner() {
                   </div>
                 )
               })}
-              {appliedPromo && (
-                <p className="text-[11px] text-ink-3 text-right">
-                  Was {formatCurrency(rawTotal, firstCurrency)}
-                </p>
-              )}
             </div>
 
             {/* Desktop CTA */}

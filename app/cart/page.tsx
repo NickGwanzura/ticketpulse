@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import EmptyTickets from "@/components/EmptyTickets"
 import Button from "@/components/ui/Button"
+import { calculateGatewayFee, GATEWAY_FEE_PERCENT } from "@/lib/gateway-fee"
 import { useState, useRef, useEffect } from "react"
 
 function groupByEvent(items: CartLine[]) {
@@ -139,6 +140,16 @@ export default function CartPage() {
 
   const groups = groupByEvent(items)
   const lineCount = items.reduce((s, i) => s + i.qty, 0)
+  const gatewayFeesByCurrency: Record<string, number> = {}
+  for (const group of groups) {
+    const subtotals: Record<string, number> = {}
+    for (const line of group.lines) {
+      subtotals[line.currency] = (subtotals[line.currency] ?? 0) + line.qty * line.price
+    }
+    for (const [currency, subtotal] of Object.entries(subtotals)) {
+      gatewayFeesByCurrency[currency] = (gatewayFeesByCurrency[currency] ?? 0) + calculateGatewayFee(subtotal)
+    }
+  }
   // Payments are per event, so a multi-event cart checks out one event at a time.
   const multiEvent = groups.length > 1
   const checkoutHref = (slug: string) => `/checkout?event=${encodeURIComponent(slug)}`
@@ -250,7 +261,7 @@ export default function CartPage() {
         <aside>
           <div className="sticky top-24 rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04]">
             <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-1">Order summary</h2>
-            <p className="text-xs text-ink-3 mb-5">Taxes included.</p>
+            <p className="text-xs text-ink-3 mb-5">Taxes included. Gateway fee shown before payment.</p>
 
             <div className="space-y-3 mb-5">
               {Object.entries(totalsByCurrency).map(([cur, total]) => (
@@ -263,9 +274,19 @@ export default function CartPage() {
               ))}
             </div>
 
-            <div className="flex items-center justify-between text-[13px] text-ink-3 pb-4 border-b border-line">
-              <span>Provider fees</span>
-              <span className="font-medium">Shown by payment provider</span>
+            <div className="space-y-2 border-t border-line pt-4">
+              {Object.entries(gatewayFeesByCurrency).filter(([, fee]) => fee > 0).map(([cur, fee]) => (
+                <div key={cur} className="flex items-baseline justify-between text-[13px] text-ink-2">
+                  <span>Gateway fee ({GATEWAY_FEE_PERCENT}%) · {cur}</span>
+                  <span>{formatCurrency(fee, cur)}</span>
+                </div>
+              ))}
+              {Object.entries(totalsByCurrency).map(([cur, subtotal]) => (
+                <div key={cur} className="flex items-baseline justify-between text-[13px] text-ink-2">
+                  <span>Estimated total · {cur}</span>
+                  <span className="font-semibold">{formatCurrency(subtotal + (gatewayFeesByCurrency[cur] ?? 0), cur)}</span>
+                </div>
+              ))}
             </div>
 
             {multiEvent ? (

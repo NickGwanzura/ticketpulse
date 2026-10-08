@@ -166,7 +166,7 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
   return (
     <div id="tickets" className="lg:sticky lg:top-24 rounded-2xl border border-line bg-paper p-7 md:p-9 shadow-sm shadow-ink/[0.04] scroll-mt-24">
       <h2 className="text-[18px] font-semibold tracking-tight text-ink mb-2">Select tickets</h2>
-      <p className="text-xs text-ink-3 mb-5">All prices include taxes.</p>
+      <p className="text-xs text-ink-3 mb-5">All prices include taxes. A 3% gateway fee is shown at checkout.</p>
 
       <div className="space-y-2 mb-5">
         {tiers.map((tier) => {
