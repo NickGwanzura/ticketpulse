@@ -415,7 +415,7 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
         return
       }
       await upsertSession(chatId, { step: 'phone', checkoutMetadata: { ...previous, checkoutRequestId: requestId, quote: data.quote } })
-      await sendText(chatId, 'Review your order: ' + session.quantity + ' ticket(s) for ' + event.title + '. Ticket price: ' + money(data.quote.subtotal + (data.quote.discount ?? 0), data.quote.currency) + (data.quote.discount ? '. Discount: -' + money(data.quote.discount, data.quote.currency) : '') + '. Gateway fee (3%): ' + money(data.quote.gatewayFee, data.quote.currency) + '. Total: ' + money(data.quote.amount, data.quote.currency) + '. EcoCash prompt goes to ' + data.quote.normalizedPhone + '. Reply PAY to request payment, PROMO followed by a code, or CANCEL.')
+      await sendText(chatId, 'Review your order: ' + session.quantity + ' ticket(s) for ' + event.title + '. Ticket price: ' + money(data.quote.subtotal + (data.quote.discount ?? 0), data.quote.currency) + (data.quote.discount ? '. Discount: -' + money(data.quote.discount, data.quote.currency) : '') + '. Gateway fees: ' + money(data.quote.gatewayFee, data.quote.currency) + '. Total: ' + money(data.quote.amount, data.quote.currency) + '. EcoCash prompt goes to ' + data.quote.normalizedPhone + '. Reply PAY to request payment, PROMO followed by a code, or CANCEL.')
       return
     }
     await upsertSession(chatId, { orderId: data.orderId, step: "done" })

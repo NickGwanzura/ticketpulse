@@ -8,7 +8,7 @@ import { orderAuthHeaders, rememberOrderAccess, orderOwnerQuery } from "@/lib/or
 import { formatCurrency } from "@/lib/utils"
 import { hasAnalyticsConsent } from "@/lib/cookie-preferences"
 import { useCookiePreferences } from "@/lib/use-cookie-preferences"
-import { calculateGatewayFee, GATEWAY_FEE_PERCENT } from "@/lib/gateway-fee"
+import { calculateGatewayFee } from "@/lib/gateway-fee"
 import {
   ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
 } from "lucide-react"
@@ -619,9 +619,9 @@ function CheckoutInner() {
           {currentQuote && (
             <div role="status" className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-sm">
               <p className="font-semibold">Review your payment: {formatCurrency(currentQuote.amount, currentQuote.currency)}</p>
-              <p className="mt-1">Ticket price {formatCurrency(currentQuote.subtotal + (currentQuote.discount ?? 0), currentQuote.currency)}{(currentQuote.discount ?? 0) > 0 ? ` − discount ${formatCurrency(currentQuote.discount ?? 0, currentQuote.currency)}` : ""} + {currentQuote.gatewayFeePercent}% gateway fee {formatCurrency(currentQuote.gatewayFee, currentQuote.currency)}.</p>
+              <p className="mt-1">Ticket price {formatCurrency(currentQuote.subtotal + (currentQuote.discount ?? 0), currentQuote.currency)}{(currentQuote.discount ?? 0) > 0 ? ` − discount ${formatCurrency(currentQuote.discount ?? 0, currentQuote.currency)}` : ""} + gateway fees {formatCurrency(currentQuote.gatewayFee, currentQuote.currency)}.</p>
               {!isFree && form.payment === "velocity-ecocash" && <p className="mt-1">Approval prompt goes to {currentQuote.normalizedPhone}. Check this number before paying.</p>}
-              {!isFree && <p className="mt-1 text-xs text-ink-2">The 3% gateway fee is included in the total shown above.</p>}
+              {!isFree && <p className="mt-1 text-xs text-ink-2">Gateway fees are included in the total shown above.</p>}
             </div>
           )}
           {submitError && (
@@ -771,7 +771,7 @@ function CheckoutInner() {
                 </div>
               )}
               {finalTotal > 0 && <div className="flex items-baseline justify-between text-[13px]">
-                <span className="text-ink-2">Gateway fee ({currentQuote?.gatewayFeePercent ?? GATEWAY_FEE_PERCENT}%)</span>
+                <span className="text-ink-2">Gateway fees</span>
                 <span>{formatCurrency(displayedGatewayFee, firstCurrency)}</span>
               </div>}
               {Object.entries(totalsByCurrency).map(([cur, total]) => {

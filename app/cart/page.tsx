@@ -7,7 +7,7 @@ import {
 } from "lucide-react"
 import EmptyTickets from "@/components/EmptyTickets"
 import Button from "@/components/ui/Button"
-import { calculateGatewayFee, GATEWAY_FEE_PERCENT } from "@/lib/gateway-fee"
+import { calculateGatewayFee } from "@/lib/gateway-fee"
 import { useState, useRef, useEffect } from "react"
 
 function groupByEvent(items: CartLine[]) {
@@ -277,7 +277,7 @@ export default function CartPage() {
             <div className="space-y-2 border-t border-line pt-4">
               {Object.entries(gatewayFeesByCurrency).filter(([, fee]) => fee > 0).map(([cur, fee]) => (
                 <div key={cur} className="flex items-baseline justify-between text-[13px] text-ink-2">
-                  <span>Gateway fee ({GATEWAY_FEE_PERCENT}%) · {cur}</span>
+                  <span>Gateway fees · {cur}</span>
                   <span>{formatCurrency(fee, cur)}</span>
                 </div>
               ))}
