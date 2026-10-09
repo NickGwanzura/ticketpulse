@@ -19,7 +19,7 @@ import { getTierAvailability } from "@/lib/ticket-availability"
 import { alertTransactionFailed, alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { freeOrderAlert } from "@/lib/whatsapp-templates"
-import { calculateGatewayFee, GATEWAY_FEE_PERCENT } from "@/lib/gateway-fee"
+import { calculateGatewayFee, calculateGatewayCharge, GATEWAY_FEE_PERCENT, GATEWAY_MARKUP_PERCENT } from "@/lib/gateway-fee"
 import type {
   VelocityOrderMetadata,
   VelocityPollStatus,
@@ -524,8 +524,11 @@ export async function POST(req: Request) {
   const subtotal = Math.round(total * 100) / 100
   const gatewayFee = calculateGatewayFee(subtotal)
   total = Math.round((subtotal + gatewayFee) * 100) / 100
-  if (total > 0 && !parsed.quoteOnly) {
-    const validationError = validateTransactionPayload({ amount: total, processor: parsed.paymentMethod === "velocity-ecocash" ? "ECOCASH" : "VMC", phone: formatPhone(parsed.phone), currency })
+  // Amount sent to Velocity: ticket price + our 0.5% markup. Velocity adds its
+  // own 2.5% fee on top, so the buyer still pays ~3% (the displayed total).
+  const gatewayCharge = calculateGatewayCharge(subtotal)
+  if (gatewayCharge > 0 && !parsed.quoteOnly) {
+    const validationError = validateTransactionPayload({ amount: gatewayCharge, processor: parsed.paymentMethod === "velocity-ecocash" ? "ECOCASH" : "VMC", phone: formatPhone(parsed.phone), currency })
     if (validationError) return checkoutJson({ error: validationError }, { status: 400 })
   }
   let questionResponseMeta: Record<string, string> | undefined
@@ -554,7 +557,7 @@ export async function POST(req: Request) {
   if (Object.keys(questionResponses).length > 0) questionResponseMeta = questionResponses
 
   const baseMeta = {
-    buyerFees: { itemSubtotal: subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT },
+    buyerFees: { itemSubtotal: subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT, gatewayAmount: gatewayCharge, markupPercent: GATEWAY_MARKUP_PERCENT },
     ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
     ...(merchOrderItems.length > 0
       ? { merchSelections: merchOrderItems.map((item) => ({ itemId: item.itemId, size: item.size ?? null })) }
@@ -821,8 +824,8 @@ export async function POST(req: Request) {
         {
           itemCode: config.itemCode,
           qty: ticketQty,
-          unitPrice: total / ticketQty,
-          amount: total,
+          unitPrice: gatewayCharge / ticketQty,
+          amount: gatewayCharge,
         },
       ],
     }
@@ -846,7 +849,7 @@ export async function POST(req: Request) {
     const authType = getAuthType(processor)
 
     const validationError = validateTransactionPayload({
-      amount: total,
+      amount: gatewayCharge,
       processor,
       phone: formattedPhone,
       currency,
@@ -883,7 +886,7 @@ export async function POST(req: Request) {
               salesOrderTrace,
               salesOrderId,
               transactionTrace: null,
-              outstandingAmount: total,
+              outstandingAmount: gatewayCharge,
               paymentProcessor: processor,
               pollStatus: "UNKNOWN" as VelocityPollStatus,
               paymentStatus: null,
@@ -914,7 +917,7 @@ export async function POST(req: Request) {
     const effectivePhone = formattedPhone || config.merchantPhone || "+263000000000"
 
     const transactionPayload = {
-      amount: total,
+      amount: gatewayCharge,
       paymentProcessorLabel: processor,
       debitPhone: effectivePhone,
       debitRegion: "ZW",
@@ -929,7 +932,7 @@ export async function POST(req: Request) {
       ...returnUrlFields,
     }
 
-    log.info("velocity checkout - initiating transaction", { orderId, salesOrderId, processor, amount: total, authType })
+    log.info("velocity checkout - initiating transaction", { orderId, salesOrderId, processor, amount: gatewayCharge, authType })
 
     // For VMC (card) payments, retry the transaction initiation up to
     // VMC_REDIRECT_RETRIES times if Velocity returns no hosted checkout URL.
@@ -998,7 +1001,7 @@ export async function POST(req: Request) {
               transactionId: activeTransactionId,
               transactionSessionId: activeTransactionSessionId,
               transactionAttempts,
-              outstandingAmount: total,
+              outstandingAmount: gatewayCharge,
               paymentProcessor: processor,
               pollStatus: "UNKNOWN" as VelocityPollStatus,
               paymentStatus: null,
@@ -1046,7 +1049,7 @@ export async function POST(req: Request) {
       transactionTraces,
       transactionAttempts,
       redirectRecoveryAttempted: false,
-      outstandingAmount: total,
+      outstandingAmount: gatewayCharge,
       paymentProcessor: processor,
       pollStatus,
       paymentStatus: transactionBody?.paymentStatus ?? null,

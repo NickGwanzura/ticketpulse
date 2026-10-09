@@ -12,6 +12,7 @@ import { protectedFromRecovery, recoverPaidSalesOrder } from "@/lib/velocity/sal
 import { alertPaymentAnomaly } from "@/lib/payment-alerts"
 import { acquireLock, lockOrderMutation, releaseLock } from "@/lib/velocity/idempotency"
 import { paymentAmountsMatch } from "@/lib/velocity/validation"
+import { readGatewayChargeAmount } from "@/lib/gateway-fee"
 import {
   finalizeWorkflow,
   findVelocityTransaction,
@@ -245,6 +246,7 @@ export async function reconcileVelocityOrder(
   }
 
   const metadata = asMetadata(order.metadata)
+  const gatewayAmount = readGatewayChargeAmount(order.metadata, Number(order.totalAmount ?? 0))
   let velocity = metadata.velocity
   let transactionTrace = options.transactionTrace ?? velocity?.transactionTrace ?? null
 
@@ -292,7 +294,7 @@ export async function reconcileVelocityOrder(
       try {
         const discovered = await findVelocityTransaction({
           salesOrderId: velocity.salesOrderId,
-          amount: order.totalAmount,
+          amount: gatewayAmount,
           paymentProcessor: velocity.paymentProcessor,
           debitPhone: order.guestPhone,
           debitRef: order.id,
@@ -315,7 +317,7 @@ export async function reconcileVelocityOrder(
               ? {
                   transactionTrace: discovered.trace!,
                   transactionId: discovered.id ?? null,
-                  amount: Number(discovered.orderAmount ?? discovered.amount ?? discovered.totalAmount ?? order.totalAmount),
+                  amount: Number(discovered.orderAmount ?? discovered.amount ?? discovered.totalAmount ?? gatewayAmount),
                   pollStatus: "SUCCESS",
                   paymentStatus: "SUCCESS",
                   state: "done",
@@ -531,7 +533,7 @@ export async function reconcileVelocityOrder(
   // The transaction itself is the authoritative charge record. Validate it
   // before touching the sales-order workflow so an unrelated/incorrect trace
   // can never settle this order.
-  if (!paymentAmountsMatch(order.totalAmount, pollResult.body.amount)) {
+  if (!paymentAmountsMatch(gatewayAmount, pollResult.body.amount)) {
     alertPaymentAnomaly({
       type: "PAYMENT_AMOUNT_MISMATCH",
       severity: "critical",
@@ -602,7 +604,7 @@ export async function reconcileVelocityOrder(
   const salesOrderGrandTotal = finalizeResult.body.salesOrder.grandTotal
   if (
     salesOrderGrandTotal !== undefined &&
-    !paymentAmountsMatch(order.totalAmount, salesOrderGrandTotal)
+    !paymentAmountsMatch(gatewayAmount, salesOrderGrandTotal)
   ) {
     alertPaymentAnomaly({
       type: "PAYMENT_AMOUNT_MISMATCH",
@@ -615,10 +617,10 @@ export async function reconcileVelocityOrder(
     }).catch(() => {})
     return { ...polledResult, state: "AMOUNT_MISMATCH", message: "Velocity sales-order total does not match the order total" }
   }
-  if (!Number.isFinite(paidAmount) || paidAmount < Number(order.totalAmount)) {
+  if (!Number.isFinite(paidAmount) || paidAmount < gatewayAmount) {
     return { ...polledResult, state: "FINALIZE_PENDING", message: "Velocity sales order has not received the full order amount" }
   }
-  if (paidAmount > Number(order.totalAmount)) {
+  if (paidAmount > gatewayAmount) {
     alertPaymentAnomaly({
       type: "PAYMENT_AMOUNT_MISMATCH",
       severity: "critical",
@@ -643,8 +645,9 @@ export async function reconcileVelocityOrder(
         if (current.status === "paid" || current.status === "completed") return { newlySettled: false, status: current.status }
         throw new Error("Order became protected during reconciliation")
       }
-      if (!paymentAmountsMatch(current.totalAmount, pollResult.body.amount)) {
-        throw new Error(`Order total changed during settlement (expected ${current.totalAmount}, transaction paid ${pollResult.body.amount})`)
+      const currentGatewayAmount = readGatewayChargeAmount(current.metadata, Number(current.totalAmount ?? 0))
+      if (!paymentAmountsMatch(currentGatewayAmount, pollResult.body.amount)) {
+        throw new Error(`Order total changed during settlement (expected ${currentGatewayAmount}, transaction paid ${pollResult.body.amount})`)
       }
 
       const currentMetadata = asMetadata(current.metadata)
@@ -740,7 +743,7 @@ export async function reconcileVelocityOrder(
         transactionTrace,
         salesOrderTrace,
         invoiceId,
-        amount: current.totalAmount,
+        amount: currentGatewayAmount.toFixed(2),
         currency: current.currency ?? "USD",
         processor: "velocity",
         velocityPollStatus: "SUCCESS",

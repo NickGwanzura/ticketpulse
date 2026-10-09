@@ -3,13 +3,14 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { events, orders, paymentLedger, payouts, tickets, users, velocitySettlements } from "@/db/schema"
 import { calculatePlatformFee, normalizePlatformFeePercent, PLATFORM_FEE_RATE } from "@/lib/platform-fee"
+import { readGatewayChargeAmount, GATEWAY_PROVIDER_FEE_PERCENT } from "@/lib/gateway-fee"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const PAID_ORDER_STATUSES = new Set(["paid", "completed"])
 const SETTLED_LEDGER_STATUSES = new Set(["paid", "completed", "success", "paid_success"])
 const PAID_PAYOUT_STATUSES = new Set(["paid"])
 const PENDING_PAYOUT_STATUSES = new Set(["pending", "approved", "processing"])
-export const VELOCITY_FEE_PERCENT = 2
+export const VELOCITY_FEE_PERCENT = GATEWAY_PROVIDER_FEE_PERCENT
 export const VELOCITY_FEE_RATE = VELOCITY_FEE_PERCENT / 100
 
 type OrderRow = {
@@ -186,11 +187,11 @@ function readVelocity(metadata: unknown): VelocityOrderMetadata | null {
   return velocity && typeof velocity === "object" ? (velocity as VelocityOrderMetadata) : null
 }
 
-function readBuyerGatewayFee(metadata: unknown): number {
+function readBuyerItemSubtotal(metadata: unknown): number {
   if (!metadata || typeof metadata !== "object") return 0
   const buyerFees = (metadata as Record<string, unknown>).buyerFees
   if (!buyerFees || typeof buyerFees !== "object") return 0
-  return money((buyerFees as Record<string, unknown>).gatewayFee)
+  return money((buyerFees as Record<string, unknown>).itemSubtotal)
 }
 
 function clean(value: string | null | undefined): string | null {
@@ -361,7 +362,8 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     const settledLedger = ledger.filter((row) => isSettledLedger(row.localStatus))
     const settledTotal = settledLedger.reduce((sum, row) => addMoney(sum, money(row.amount)), 0)
     const orderTotal = money(order.totalAmount)
-    const gatewayFee = readBuyerGatewayFee(order.metadata)
+    const orderGatewayAmount = readGatewayChargeAmount(order.metadata, orderTotal)
+    const itemSubtotal = readBuyerItemSubtotal(order.metadata) || orderGatewayAmount
     const paid = isPaidOrder(order.status)
     const ticketCount = ticketsByOrder.get(order.id) ?? 0
     const currency = order.currency ?? settledLedger[0]?.currency ?? "USD"
@@ -394,12 +396,12 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
       ))
     }
 
-    if (paid && settledLedger.length > 0 && settledTotal !== orderTotal) {
+    if (paid && settledLedger.length > 0 && settledTotal !== orderGatewayAmount) {
       issues.push(issue(
         "critical",
         "AMOUNT_MISMATCH",
-        "Velocity amount does not match order total",
-        `Velocity settled ${settledTotal.toFixed(2)} but the order total is ${orderTotal.toFixed(2)}.`,
+        "Velocity amount does not match gateway charge",
+        `Velocity settled ${settledTotal.toFixed(2)} but the gateway charge (ticket price + markup) is ${orderGatewayAmount.toFixed(2)}.`,
       ))
     }
 
@@ -458,7 +460,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     const latestLedgerEntry = [...allOrderLedger].sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))[0] ?? null
     const mainLedger = settledLedger[0] ?? ledger[0] ?? null
     const eventTitle = order.eventTitle ?? "Unknown event"
-    const paidOrderRevenue = paid ? orderTotal : 0
+    const paidOrderRevenue = paid ? orderGatewayAmount : 0
     const failureReason = paid
       ? null
       : latestLedgerEntry?.errorMessage
@@ -496,7 +498,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     }
 
     eventReport.velocityReceived = addMoney(eventReport.velocityReceived, settledTotal)
-    organizerGrossByEvent.set(order.eventId, addMoney(organizerGrossByEvent.get(order.eventId) ?? 0, Math.max(0, settledTotal - gatewayFee)))
+    organizerGrossByEvent.set(order.eventId, addMoney(organizerGrossByEvent.get(order.eventId) ?? 0, itemSubtotal))
     eventReport.localPaidRevenue = addMoney(eventReport.localPaidRevenue, paidOrderRevenue)
     eventReport.paidOrders += paid ? 1 : 0
     eventReport.settledVelocityRows += settledLedger.length
@@ -538,7 +540,7 @@ export async function getVelocityReconciliationReport(): Promise<VelocityReconci
     const organizerGross = organizerGrossByEvent.get(event.eventId) ?? event.velocityReceived
     const platformFee = calculatePlatformFee(organizerGross, event.platformFeePercent / 100)
     const velocityFee = money(event.velocityReceived * VELOCITY_FEE_RATE)
-    const ticketpulseProfit = money(platformFee - velocityFee)
+    const ticketpulseProfit = money(platformFee + Math.max(0, event.velocityReceived - organizerGross))
     const organizerNet = money(organizerGross - platformFee)
     const availableBalance = money(Math.max(0, organizerNet - payoutsForEvent.paid - payoutsForEvent.pending))
     const issues = [...orderReports]
