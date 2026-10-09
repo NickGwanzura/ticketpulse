@@ -168,11 +168,15 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
     })
   }
 
-  if (result.state === "FAILED" && (eventEnded || timedOut)) {
-    await expireOrderAndReleaseInventory(id, eventEnded ? "event_ended_payment_failed" : "payment_timeout")
+  if (result.state === "FAILED" && (eventEnded || timedOut || result.terminal)) {
+    if (!result.terminal) {
+      await expireOrderAndReleaseInventory(id, eventEnded ? "event_ended_payment_failed" : "payment_timeout")
+    }
     const [current] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, id)).limit(1)
-    return NextResponse.json({ orderId: id, status: current?.status ?? "pending", paid: PAID_STATUSES.has(current?.status ?? ""),
-      pollStatus: current?.status === "expired" ? "EXPIRED" : "CONFIRMATION_DELAYED", message: "We are checking the final payment outcome. Please do not pay again." })
+    const status = current?.status ?? (result.terminal ? "expired" : "pending")
+    return NextResponse.json({ orderId: id, status, paid: PAID_STATUSES.has(status ?? ""),
+      pollStatus: result.terminal ? "FAILED" : status === "expired" ? "EXPIRED" : "CONFIRMATION_DELAYED",
+      message: result.terminal ? "This payment failed and the order was closed." : "We are checking the final payment outcome. Please do not pay again." })
   }
 
   if (result.state === "UNKNOWN") {

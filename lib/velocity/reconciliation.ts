@@ -3,13 +3,14 @@ import "server-only"
 import { and, eq, inArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { orders, paymentLedger } from "@/db/schema"
+import { events, orders, paymentLedger } from "@/db/schema"
 import { trackEvent } from "@/lib/analytics"
+import { sendEmail } from "@/lib/email"
 import { log } from "@/lib/logger"
-import { InventoryRecoveryError, expireOrderAndReleaseInventory, restoreExpiredOrderInventory } from "@/lib/order-expiry"
+import { InventoryRecoveryError, expireOrderAndReleaseInventory, failUnpaidOrderAndReleaseInventory, restoreExpiredOrderInventory } from "@/lib/order-expiry"
 import { isAutomaticPoll, paymentWindowExpired, POLL_INTERVAL_MS } from "@/lib/velocity/poll-policy"
 import { protectedFromRecovery, recoverPaidSalesOrder } from "@/lib/velocity/sales-order-recovery"
-import { alertPaymentAnomaly } from "@/lib/payment-alerts"
+import { alertPaymentAnomaly, alertPaymentFailed } from "@/lib/payment-alerts"
 import { acquireLock, lockOrderMutation, releaseLock } from "@/lib/velocity/idempotency"
 import { paymentAmountsMatch } from "@/lib/velocity/validation"
 import { readGatewayChargeAmount } from "@/lib/gateway-fee"
@@ -71,6 +72,8 @@ export type VelocityReconciliationResult = {
   message: string | null
   /** True when this order just crossed into needing manual review (see MAX_CONSECUTIVE_PROVIDER_ERRORS / UNPOLLABLE). */
   manualReviewRequired?: boolean
+  /** True when the failure flow closed this order as a definitive failed payment. */
+  terminal?: boolean
 }
 
 export type ReconcileVelocityOrderOptions = {
@@ -79,6 +82,8 @@ export type ReconcileVelocityOrderOptions = {
   actorEmail?: string | null
   rawPayload?: Record<string, unknown> | null
   transactionTrace?: string | null
+  /** Defer closing on FAILED so a caller can aggregate every attempt first. */
+  deferFailureFlow?: boolean
 }
 
 type BuildObservedVelocityMetadataOptions = {
@@ -223,6 +228,94 @@ async function persistPollObservation(
       .where(and(eq(orders.id, orderId), inArray(orders.status, ["pending", "awaiting_verification", "expired"])))
     return observed
   })
+}
+
+/**
+ * Close an order whose transaction Velocity definitively reported as FAILED.
+ * Trusts the poll result (no sales-order re-check), releases the inventory,
+ * records a failed ledger entry, and notifies buyer + admin. Returns true only
+ * when this call won the status CAS and closed the order.
+ */
+async function runVelocityFailureFlow(
+  order: typeof orders.$inferSelect,
+  pollResult: PollTransactionResponse,
+  transactionTrace: string,
+  salesOrderTrace: string,
+  gatewayAmount: number,
+  source: string,
+): Promise<boolean> {
+  const normalized = normalizeVelocityPollResponse(pollResult)
+  const failureReason = `Velocity returned pollStatus: ${normalized.velocityPollStatus}, paymentStatus: ${normalized.velocityPaymentStatus}`
+  const closed = await failUnpaidOrderAndReleaseInventory(order.id, {
+    pollStatus: normalized.velocityPollStatus ?? "FAILED",
+    paymentStatus: normalized.velocityPaymentStatus ?? "FAILED",
+    failureReason,
+  })
+  if (!closed) return false
+
+  await db.insert(paymentLedger).values({
+    orderId: order.id,
+    eventId: order.eventId,
+    transactionTrace,
+    salesOrderTrace,
+    amount: gatewayAmount.toFixed(2),
+    currency: order.currency ?? "USD",
+    processor: "velocity",
+    velocityPollStatus: "FAILED",
+    localStatus: "failed",
+    source,
+    rawPayload: pollResult,
+    errorMessage: failureReason,
+  }).onConflictDoNothing()
+
+  trackEvent({
+    event: "PAYMENT_FAILED",
+    eventId: order.eventId,
+    orderId: order.id,
+    buyerEmail: order.guestEmail ?? undefined,
+    paymentMethod: order.paymentMethod,
+    amount: Number(order.totalAmount),
+    metadata: {
+      source,
+      transactionTrace,
+      salesOrderTrace,
+      pollStatus: normalized.velocityPollStatus,
+      paymentStatus: normalized.velocityPaymentStatus,
+    },
+  }).catch((error) => log.warn("velocity failure flow - analytics failed", { orderId: order.id, error: String(error) }))
+
+  alertPaymentFailed(
+    order.id,
+    transactionTrace,
+    salesOrderTrace,
+    failureReason,
+    order.paymentMethod ?? "velocity-card",
+  ).catch(() => {})
+
+  try {
+    const [event] = await db
+      .select({ title: events.title, slug: events.slug })
+      .from(events)
+      .where(eq(events.id, order.eventId))
+      .limit(1)
+    const eventTitle = event?.title ?? "your event"
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"
+    const eventUrl = event?.slug ? `${appUrl}/events/${event.slug}` : null
+    const name = order.guestName ?? "there"
+    const reference = order.id.slice(0, 8).toUpperCase()
+    if (order.guestEmail) {
+      await sendEmail({
+        to: order.guestEmail,
+        subject: `Your payment did not go through — ${eventTitle}`,
+        html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a"><h2>Your payment did not go through</h2><p>Hi ${name},</p><p>Your payment for <strong>${eventTitle}</strong> was not completed, so your order was closed and your seats released.</p><p>If money was deducted, contact us with reference <code>${reference}</code> — we will confirm and issue your tickets.</p>${eventUrl ? `<p><a href="${eventUrl}">Try again</a></p>` : ""}</div>`,
+        text: `Hi ${name},\n\nYour payment for ${eventTitle} was not completed, so your order was closed and your seats released. If money was deducted, contact us with reference ${reference}.\n${eventUrl ? `\nTry again: ${eventUrl}` : ""}`,
+      })
+    }
+  } catch (error) {
+    log.warn("velocity failure flow - buyer email failed", { orderId: order.id, error: String(error) })
+  }
+
+  return true
 }
 
 export async function reconcileVelocityOrder(
@@ -517,6 +610,25 @@ export async function reconcileVelocityOrder(
   }
   if (providerError) {
     return { ...polledResult, state: "PROVIDER_ERROR", message: pollResult.errorMessage ?? "Velocity provider error" }
+  }
+  if (normalized.localStatus === "FAILED" && isCurrentTrace && isAutomaticPoll(options.source) && !options.deferFailureFlow) {
+    const closed = await runVelocityFailureFlow(
+      order,
+      pollResult,
+      transactionTrace,
+      salesOrderTrace,
+      gatewayAmount,
+      options.source,
+    )
+    return {
+      ...polledResult,
+      state: "FAILED",
+      terminal: true,
+      orderStatus: closed ? "expired" : order.status,
+      message: closed
+        ? "Velocity confirmed that the payment failed; the order was closed."
+        : "Velocity confirmed that the payment failed",
+    }
   }
   if (normalized.localStatus !== "PAID") {
     return {
@@ -827,7 +939,7 @@ export async function reconcileVelocityOrderBeforeExpiry(
   let firstInconclusive: VelocityReconciliationResult | null = null
   let failedResult: VelocityReconciliationResult | null = null
   for (const transactionTrace of knownTraces) {
-    const result = await reconcileVelocityOrder({ ...options, transactionTrace })
+    const result = await reconcileVelocityOrder({ ...options, transactionTrace, deferFailureFlow: true })
     if (result.paid) return result
     if (result.state === "FAILED") failedResult ??= result
     else firstInconclusive ??= result
@@ -841,6 +953,30 @@ export async function reconcileVelocityOrderBeforeExpiry(
       paid: false,
       newlySettled: false,
       message: "A provider transaction ID exists without a matching trace; manual reconciliation is required",
+    }
+  }
+  // Every known trace failed and none is still pending: close the order once.
+  if (failedResult?.pollResult && failedResult.transactionTrace && failedResult.salesOrderTrace) {
+    const [order] = await db.select().from(orders).where(eq(orders.id, options.orderId)).limit(1)
+    if (order) {
+      const gatewayAmount = readGatewayChargeAmount(order.metadata, Number(order.totalAmount ?? 0))
+      const closed = await runVelocityFailureFlow(
+        order,
+        failedResult.pollResult,
+        failedResult.transactionTrace,
+        failedResult.salesOrderTrace,
+        gatewayAmount,
+        options.source,
+      )
+      if (closed) {
+        return {
+          ...failedResult,
+          state: "FAILED",
+          terminal: true,
+          orderStatus: "expired",
+          message: "Velocity confirmed that the payment failed; the order was closed.",
+        }
+      }
     }
   }
   return failedResult ?? reconcileVelocityOrder(options)

@@ -95,7 +95,30 @@ export async function cancelUnpaidOrderAndReleaseInventory(orderId: string): Pro
   return closeUnpaidOrder(orderId, "checkout_rejected", "cancelled")
 }
 
-async function closeUnpaidOrder(orderId: string, reason: string, status: "expired" | "cancelled"): Promise<boolean> {
+export type VelocityFailureMetadata = {
+  pollStatus?: string
+  paymentStatus?: string
+  failureReason: string
+}
+
+/**
+ * Close an order whose transaction Velocity definitively reported as FAILED.
+ * Unlike expireOrderAndReleaseInventory this trusts the poll result and does
+ * not perform a read-only sales-order re-check first.
+ */
+export async function failUnpaidOrderAndReleaseInventory(
+  orderId: string,
+  failure: VelocityFailureMetadata,
+): Promise<boolean> {
+  return closeUnpaidOrder(orderId, "payment_failed", "expired", failure)
+}
+
+async function closeUnpaidOrder(
+  orderId: string,
+  reason: string,
+  status: "expired" | "cancelled",
+  velocityFailure?: VelocityFailureMetadata,
+): Promise<boolean> {
   try {
     return await db.transaction(async (tx) => {
       await lockOrderMutation(tx, orderId)
@@ -170,11 +193,13 @@ async function closeUnpaidOrder(orderId: string, reason: string, status: "expire
         .set({
           metadata: {
             ...meta,
-            ...(reason === "payment_timeout" && meta.velocity ? {
+            ...(meta.velocity && (velocityFailure || reason === "payment_timeout") ? {
               velocity: {
                 ...meta.velocity,
+                ...(velocityFailure?.pollStatus ? { pollStatus: velocityFailure.pollStatus } : {}),
+                ...(velocityFailure?.paymentStatus ? { paymentStatus: velocityFailure.paymentStatus } : {}),
                 failedAt: archivedAt,
-                failureReason: "Payment was not confirmed within 24 hours; automatic polling stopped. Contact support if money was deducted.",
+                failureReason: velocityFailure?.failureReason ?? "Payment was not confirmed within 24 hours; automatic polling stopped. Contact support if money was deducted.",
                 manualReviewRequired: false,
                 manualReviewReason: null,
               },

@@ -37,6 +37,8 @@ export type AlertType =
   | "VELOCITY_NETWORK_ERROR"
   | "VELOCITY_CONFIG_MISSING"
   | "PAYMENT_AMOUNT_MISMATCH"
+  // Definitive payment failure
+  | "PAYMENT_FAILED"
 
 // ─── Alert Payload ──────────────────────────────────────────────────────────
 
@@ -240,6 +242,28 @@ export async function alertVelocityUnexpectedResponse(
     orderId,
     transactionTrace,
     context: responseBody ? { responsePreview: responseBody.slice(0, 1000) } : undefined,
+  })
+}
+
+/**
+ * Alert when transaction initiation fails critically (missing trace, missing redirect URL).
+ */
+export async function alertPaymentFailed(
+  orderId: string,
+  transactionTrace: string,
+  salesOrderTrace: string | null,
+  reason: string,
+  paymentMethod?: string,
+): Promise<void> {
+  await alertPaymentAnomaly({
+    type: "PAYMENT_FAILED",
+    severity: "high",
+    title: "Velocity confirmed the payment failed",
+    detail: `Velocity returned a definitive FAILED poll for order ${orderId}. ${reason}. The order was closed and its inventory released automatically.`,
+    orderId,
+    transactionTrace,
+    salesOrderTrace: salesOrderTrace ?? undefined,
+    paymentMethod,
   })
 }
 

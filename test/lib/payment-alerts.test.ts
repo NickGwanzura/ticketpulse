@@ -18,7 +18,7 @@ vi.mock("@/lib/url-config", () => ({
 }))
 
 // Import after mocks
-import { alertPaymentAnomaly, alertFinalizeNonPaid, alertRecheckHighErrorRate, alertPollUnknownStatus, alertCallbackOrderNotFound } from "@/lib/payment-alerts"
+import { alertPaymentAnomaly, alertFinalizeNonPaid, alertRecheckHighErrorRate, alertPollUnknownStatus, alertCallbackOrderNotFound, alertPaymentFailed } from "@/lib/payment-alerts"
 
 describe("payment-alerts", () => {
   beforeEach(() => {
@@ -171,6 +171,16 @@ describe("payment-alerts", () => {
       expect(mockSendAdminAlert).toHaveBeenCalledTimes(0) // medium = no WhatsApp
       const emailCall = mockSendEmail.mock.calls[0][0]
       expect(emailCall.subject).toContain("unknown status")
+    })
+  })
+
+  describe("alertPaymentFailed", () => {
+    it("sends a high severity alert when Velocity confirms a failed poll", async () => {
+      await alertPaymentFailed("order-1", "tx-trace-001", "so-trace-001", "pollStatus: FAILED, paymentStatus: FAILED", "velocity-ecocash")
+      expect(mockSendEmail).toHaveBeenCalledTimes(1)
+      expect(mockSendAdminAlert).toHaveBeenCalledTimes(1)
+      const emailCall = mockSendEmail.mock.calls[0][0]
+      expect(emailCall.subject).toContain("failed")
     })
   })
 

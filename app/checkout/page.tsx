@@ -198,7 +198,7 @@ function CheckoutInner() {
           return
         }
 
-        const terminalPollStatuses = ["CANCELLED", "EXPIRED"]
+        const terminalPollStatuses = ["CANCELLED", "EXPIRED", "FAILED"]
         const terminalOrderStatuses = ["cancelled", "expired"]
 
         if (
