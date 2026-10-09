@@ -10,7 +10,7 @@ import { hasAnalyticsConsent } from "@/lib/cookie-preferences"
 import { useCookiePreferences } from "@/lib/use-cookie-preferences"
 import { calculateGatewayFee } from "@/lib/gateway-fee"
 import {
-  ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, Tag, Percent, ChevronLeft, Check,
+  ArrowRight, Lock, Smartphone, CreditCard, Mail, User, Phone, Loader2, ChevronLeft, Check,
 } from "lucide-react"
 
 type CheckoutResponse = {
@@ -82,7 +82,7 @@ function CheckoutInner() {
     if (!ready || !checkoutEventSlug || analytics !== true || !hasAnalyticsConsent()) return
     void fetch('/api/analytics/track', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({event:'CHECKOUT_STARTED',eventSlug:checkoutEventSlug,sessionId:getAnalyticsSessionId()}) }).catch(() => {})
   }, [ready, checkoutEventSlug, analytics])
-  const [serverQuote, setServerQuote] = useState<{ amount: number; subtotal: number; gatewayFee: number; gatewayFeePercent: number; currency: string; normalizedPhone: string; discount?: number; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
+  const [serverQuote, setServerQuote] = useState<{ amount: number; subtotal: number; gatewayFee: number; gatewayFeePercent: number; currency: string; normalizedPhone: string; lines?: { tierId: string; quantity: number; unitPrice: number }[]; inputKey: string } | null>(null)
   const requestId = useRef<string | null>(null)
   const submittedCart = useRef<string | null>(null)
   const itemsRef = useRef(items)
@@ -121,10 +121,6 @@ function CheckoutInner() {
 
   const [eventQuestions, setEventQuestions] = useState<{ id: string; question: string; required: boolean }[]>([])
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({})
-  const [promoInput, setPromoInput] = useState("")
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: "percent" | "fixed"; value: number; discount: number } | null>(null)
-  const [promoError, setPromoError] = useState<string | null>(null)
-  const [promoLoading, setPromoLoading] = useState(false)
 
   async function saveCanonicalOrder(orderId: string) {
     const response = await fetch("/api/orders/" + orderId + "/data", { cache: "no-store", headers: orderAuthHeaders(orderId) })
@@ -298,14 +294,12 @@ function CheckoutInner() {
   // Compute the final total for the CTA label
   const firstCurrency = Object.keys(totalsByCurrency)[0] ?? "USD"
   const rawTotal = totalsByCurrency[firstCurrency] ?? 0
-  const estimatedSubtotal = appliedPromo ? Math.max(0, rawTotal - appliedPromo.discount) : rawTotal
+  const estimatedSubtotal = rawTotal
   const estimatedGatewayFee = calculateGatewayFee(estimatedSubtotal)
-  const inputKey = JSON.stringify({ form, items, promo: appliedPromo?.code, questionAnswers })
+  const inputKey = JSON.stringify({ form, items, questionAnswers })
   const currentQuote = serverQuote?.inputKey === inputKey ? serverQuote : null
   const finalTotal = currentQuote?.amount ?? estimatedSubtotal + estimatedGatewayFee
   const displayedSubtotal = currentQuote?.subtotal ?? estimatedSubtotal
-  const displayedDiscount = currentQuote?.discount ?? appliedPromo?.discount ?? 0
-  const displayedBaseSubtotal = displayedSubtotal + displayedDiscount
   const displayedGatewayFee = currentQuote?.gatewayFee ?? estimatedGatewayFee
   const isFree = finalTotal === 0
 
@@ -354,7 +348,6 @@ function CheckoutInner() {
           ...vendorAddonLines.map((l) => ({ kind: "vendor_addon" as const, listingId: l.listingId, quantity: l.qty })),
         ],
       }
-      if (appliedPromo) body.promoCode = appliedPromo.code
       if (eventQuestions.length > 0) body.questionResponses = questionAnswers
 
       if (!currentQuote) {
@@ -619,7 +612,7 @@ function CheckoutInner() {
           {currentQuote && (
             <div role="status" className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-sm">
               <p className="font-semibold">Review your payment: {formatCurrency(currentQuote.amount, currentQuote.currency)}</p>
-              <p className="mt-1">Ticket price {formatCurrency(currentQuote.subtotal + (currentQuote.discount ?? 0), currentQuote.currency)}{(currentQuote.discount ?? 0) > 0 ? ` − discount ${formatCurrency(currentQuote.discount ?? 0, currentQuote.currency)}` : ""} + gateway fees {formatCurrency(currentQuote.gatewayFee, currentQuote.currency)}.</p>
+              <p className="mt-1">Ticket price {formatCurrency(currentQuote.subtotal, currentQuote.currency)} + gateway fees {formatCurrency(currentQuote.gatewayFee, currentQuote.currency)}.</p>
               {!isFree && form.payment === "velocity-ecocash" && <p className="mt-1">Approval prompt goes to {currentQuote.normalizedPhone}. Check this number before paying.</p>}
               {!isFree && <p className="mt-1 text-xs text-ink-2">Gateway fees are included in the total shown above.</p>}
             </div>
@@ -688,88 +681,12 @@ function CheckoutInner() {
               ))}
             </ul>
 
-            {/* Promo code */}
-            <div className="py-3.5 border-t border-line">
-              {appliedPromo ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-700">
-                      <Tag size={12} /> {appliedPromo.code}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { setAppliedPromo(null); setPromoInput(""); setPromoError(null) }}
-                      className="text-[12px] text-ink-3 hover:text-red-500 transition"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={promoInput}
-                      onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-                      placeholder="Promo code"
-                      className="flex-1 min-w-0 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
-                    />
-                    <button
-                      type="button"
-                      disabled={promoLoading || !promoInput.trim()}
-                      onClick={async () => {
-                        const code = promoInput.trim().toUpperCase()
-                        if (!code) return
-                        setPromoLoading(true)
-                        setPromoError(null)
-                        try {
-                          const ticketItem = items.find(i => i.kind === "ticket")
-                          if (!ticketItem) return
-                          const res = await fetch(`/api/checkout/validate-promo?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}&code=${encodeURIComponent(code)}&amount=${rawTotal}`)
-                          const data = await res.json()
-                          if (data.valid) {
-                            let discount = 0
-                            const val = Number(data.value)
-                            if (data.type === "percent") {
-                              discount = Math.round(rawTotal * (val / 100) * 100) / 100
-                            } else {
-                              discount = Math.min(val, rawTotal)
-                            }
-                            setAppliedPromo({ code: data.code, type: data.type, value: val, discount })
-                            setPromoInput("")
-                          } else {
-                            setPromoError(data.error ?? "Invalid promo code")
-                          }
-                        } catch {
-                          setPromoError("Failed to validate promo code")
-                        } finally {
-                          setPromoLoading(false)
-                        }
-                      }}
-                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-paper-2 border border-line px-3 py-2 text-[12px] font-semibold text-ink hover:bg-paper hover:border-line-2 active:scale-[0.99] transition disabled:opacity-50"
-                    >
-                      {promoLoading ? <Loader2 size={12} className="animate-spin" /> : <Percent size={12} />}
-                      Apply
-                    </button>
-                  </div>
-                  {promoError && <p className="text-[12px] text-red-500">{promoError}</p>}
-                </div>
-              )}
-            </div>
-
             {/* Price and gateway fee are shown before the buyer submits payment. */}
             <div className="pt-3.5 border-t border-line space-y-2">
               <div className="flex items-baseline justify-between text-[13px]">
                 <span className="text-ink-2">{items.every(item => item.kind === "ticket") ? "Ticket price" : "Items subtotal"}</span>
-                <span>{formatCurrency(displayedBaseSubtotal, firstCurrency)}</span>
+                <span>{formatCurrency(displayedSubtotal, firstCurrency)}</span>
               </div>
-              {displayedDiscount > 0 && (
-                <div className="flex items-baseline justify-between text-[13px]">
-                  <span className="text-ink-3">Discount</span>
-                  <span className="font-semibold text-green-700">-{formatCurrency(displayedDiscount, firstCurrency)}</span>
-                </div>
-              )}
               {finalTotal > 0 && <div className="flex items-baseline justify-between text-[13px]">
                 <span className="text-ink-2">Gateway fees</span>
                 <span>{formatCurrency(displayedGatewayFee, firstCurrency)}</span>

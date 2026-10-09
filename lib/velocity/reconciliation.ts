@@ -42,7 +42,6 @@ export const MAX_CONSECUTIVE_PROVIDER_ERRORS = 20
 type OrderMetadata = Record<string, unknown> & {
   velocity?: VelocityOrderMetadata
   archive?: Record<string, unknown>
-  promo?: { id?: string }
   inventoryReserved?: boolean
 }
 

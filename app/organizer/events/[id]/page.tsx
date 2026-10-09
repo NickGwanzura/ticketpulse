@@ -546,7 +546,6 @@ export default async function EventOverviewPage({
                   { label: "Email attendees", href: `/organizer/events/${id}/email`, icon: Mail },
                   { label: "Sales funnel", href: `/organizer/events/${id}/funnel`, icon: TrendingUp },
                   { label: "WhatsApp broadcast", href: `/organizer/events/${id}/whatsapp`, icon: MessageCircle },
-                  { label: "Promo codes", href: `/organizer/events/${id}/promos`, icon: Tag },
                   { label: "Gate scanner", href: `/organizer/scan`, icon: ScanLine },
                   { label: "Complimentary tickets", href: `/organizer/events/${id}/staff`, icon: QrCode },
                   { label: "Photo gallery", href: `/organizer/events/${id}/gallery`, icon: ImageIcon },

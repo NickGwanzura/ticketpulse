@@ -40,7 +40,6 @@ const NAV_GROUPS = (eventId: string, isOwner: boolean): NavGroup[] => [
       { label: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
       { label: "Email",     href: `/organizer/events/${eventId}/email`, icon: Mail },
       { label: "SMS",       href: `/organizer/events/${eventId}/sms`, icon: MessageSquare },
-      { label: "Promos",    href: `/organizer/events/${eventId}/promos`, icon: Tag },
     ],
   },
   {

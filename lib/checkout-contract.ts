@@ -10,7 +10,6 @@ export const CheckoutBody = z.object({
     z.object({ kind: z.literal("vendor_addon"), listingId: z.string().uuid(), quantity: z.number().int().positive().max(10) }),
     z.object({ kind: z.literal("merch"), itemId: z.string().uuid(), quantity: z.number().int().positive().max(10), size: z.string().max(40).optional() }),
   ])).min(1).max(30),
-  promoCode: z.string().trim().max(40).optional(),
   questionResponses: z.record(z.string().uuid(), z.string().max(2000)).optional(),
   checkoutRequestId: z.string().uuid(), quoteOnly: z.boolean().optional().default(false),
   expectedAmount: z.number().finite().nonnegative().optional(), expectedCurrency: z.enum(["USD", "ZWG"]).optional(),
@@ -20,7 +19,7 @@ export function checkoutFingerprint(input: CheckoutInput, eventId: string, amoun
   return JSON.stringify({ eventId, email: input.email, paymentMethod: input.paymentMethod,
     phone: input.paymentMethod === "velocity-ecocash" ? formatPhone(input.phone) : "", currency,
     total: amount.toFixed(2), items: input.items.map(i => JSON.stringify(i)).sort(),
-    promo: input.promoCode?.toUpperCase() ?? "", questions: Object.entries(input.questionResponses ?? {}).sort(),
+    questions: Object.entries(input.questionResponses ?? {}).sort(),
   })
 }
 export function quoteMatches(input: Pick<CheckoutInput, "expectedAmount" | "expectedCurrency">, amount: number, currency: string) {

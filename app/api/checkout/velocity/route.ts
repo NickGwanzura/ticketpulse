@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { eq, and, inArray, desc, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, vendors, promoCodes, ticketQuestions } from "@/db/schema"
+import { events, merchItems, orders, orderItems, ticketTiers, vendorListings, vendors, ticketQuestions } from "@/db/schema"
 import { checkoutSubmitLimiter } from "@/lib/rate-limit"
 import { getConfig, initiateTransaction, createSalesOrder, getAuthType, getDefaultCustomerId, pollTransaction, getTransactionRedirectUrl, extractHostedSessionId } from "@/services/velocity"
 import { validateTransactionPayload, formatPhone } from "@/lib/velocity/validation"
@@ -521,34 +521,6 @@ export async function POST(req: Request) {
     total += Number(merch.price) * item.quantity
   }
 
-  let appliedPromo: { code: string; type: string; value: string; discount: number; id: string } | null = null
-  if (parsed.promoCode) {
-    const code = parsed.promoCode.toUpperCase()
-    const [promo] = await db
-      .select()
-      .from(promoCodes)
-      .where(and(eq(promoCodes.code, code), eq(promoCodes.eventId, event.id)))
-      .limit(1)
-
-    if (promo && promo.active) {
-      const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date()
-      const isMaxed = (promo.maxUses ?? 0) > 0 && (promo.usedCount ?? 0) >= (promo.maxUses ?? 0)
-      const meetsMin = !promo.minPurchaseAmount || Number(promo.minPurchaseAmount) <= 0 || total >= Number(promo.minPurchaseAmount)
-
-      if (!isExpired && !isMaxed && meetsMin) {
-        let discount = 0
-        if (promo.type === "percent") {
-          discount = Math.round(total * (Number(promo.value) / 100) * 100) / 100
-        } else {
-          discount = Math.min(Number(promo.value), total)
-        }
-        total = Math.max(0, Math.round((total - discount) * 100) / 100)
-        appliedPromo = { code: promo.code, type: promo.type, value: promo.value.toString(), discount, id: promo.id }
-      }
-    }
-  }
-
-  if (parsed.promoCode && !appliedPromo) return checkoutJson({ error: "This promo is no longer available or its minimum spend is not met. Review your total before paying.", code: "promo_changed" }, { status: 409 })
   const subtotal = Math.round(total * 100) / 100
   const gatewayFee = calculateGatewayFee(subtotal)
   total = Math.round((subtotal + gatewayFee) * 100) / 100
@@ -561,7 +533,7 @@ export async function POST(req: Request) {
     .select({ id: ticketQuestions.id, question: ticketQuestions.question, required: ticketQuestions.required })
     .from(ticketQuestions)
     .where(eq(ticketQuestions.eventId, event.id))
-  const quote = { amount: total, subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT, currency, discount: appliedPromo?.discount ?? 0, normalizedPhone: formatPhone(parsed.phone), questions: eventQuestionsList,
+  const quote = { amount: total, subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT, currency, normalizedPhone: formatPhone(parsed.phone), questions: eventQuestionsList,
     lines: ticketItems.map(i => ({ tierId: i.tierId, quantity: i.quantity, unitPrice: effectivePrice(tierById.get(i.tierId)!, i.quantity) })) }
   if (parsed.quoteOnly) return checkoutJson({ success: true, quote })
   if (!quoteMatches(parsed, total, currency)) return checkoutJson({ error: "Your total has changed. Review the updated amount and confirm again.", code: "price_changed", quote }, { status: 409 })
@@ -583,7 +555,6 @@ export async function POST(req: Request) {
 
   const baseMeta = {
     buyerFees: { itemSubtotal: subtotal, gatewayFee, gatewayFeePercent: GATEWAY_FEE_PERCENT },
-    ...(appliedPromo ? { promo: appliedPromo } : {}),
     ...(questionResponseMeta ? { questionResponses: questionResponseMeta } : {}),
     ...(merchOrderItems.length > 0
       ? { merchSelections: merchOrderItems.map((item) => ({ itemId: item.itemId, size: item.size ?? null })) }
@@ -642,10 +613,6 @@ export async function POST(req: Request) {
           const previous = merchById.get(current.id)!
           if (current.price !== previous.price || current.currency !== previous.currency) throw new Error('Merchandise pricing changed. Review your order again before paying.')
         }
-      }
-      if (appliedPromo) {
-        const [currentPromo] = await tx.select().from(promoCodes).where(eq(promoCodes.id, appliedPromo.id)).for('update')
-        if (!currentPromo || currentPromo.type !== appliedPromo.type || currentPromo.value !== appliedPromo.value || Number(currentPromo.minPurchaseAmount ?? 0) > subtotal + appliedPromo.discount) throw new Error('Promo terms changed. Review your order again before paying.')
       }
       const latestAvailability = await getTierAvailability(ticketItems.map((item) => item.tierId))
       for (const item of ticketItems) {
@@ -760,15 +727,6 @@ export async function POST(req: Request) {
         if (!reserved) throw new Error(`"${merch.name}" just sold out — please try again`)
       }
 
-      if (appliedPromo) {
-        const claimedPromo = await tx
-          .update(promoCodes)
-          .set({ usedCount: sql`COALESCE(${promoCodes.usedCount}, 0) + 1` })
-          .where(and(eq(promoCodes.id, appliedPromo.id), eq(promoCodes.active, true), sql`(${promoCodes.maxUses} IS NULL OR ${promoCodes.maxUses} = 0 OR COALESCE(${promoCodes.usedCount}, 0) < ${promoCodes.maxUses})`, sql`(${promoCodes.expiresAt} IS NULL OR ${promoCodes.expiresAt} > now())`))
-          .returning({ id: promoCodes.id })
-        if (!claimedPromo.length) throw new Error("The promo code is no longer available. Review your total.")
-      }
-
       return { orderId: order.id }
     })
   } catch (err) {
@@ -808,7 +766,7 @@ export async function POST(req: Request) {
 
   // Pre-payment funnel stages are recorded when the buyer actually reaches them.
 
-  // ── Zero-amount order (100% promo) — skip Velocity, mark paid directly ────
+  // ── Zero-amount order (free tickets) — skip Velocity, mark paid directly ────
   if (total <= 0) {
     await db
       .update(orders)

@@ -27,7 +27,6 @@ const Body = z.object({
     .array(z.discriminatedUnion("kind", [TicketItem, VendorAddonItem]))
     .min(1)
     .max(30),
-  promoCode: z.string().max(40).optional(),
   questionResponses: z.record(z.string().uuid(), z.string().min(0).max(2000)).optional(),
 })
 
@@ -72,18 +71,6 @@ describe("checkout Zod schema", () => {
       if (result.success) {
         expect(result.data.phone).toBe("")
       }
-    })
-
-    it("accepts checkout with promo code", () => {
-      const result = Body.safeParse({
-        email: "buyer@example.com",
-        name: "John Buyer",
-        paymentMethod: "velocity-ecocash",
-        eventSlug: "summer-sounds-2026",
-        items: [{ kind: "ticket", tierId: VALID_TIER_ID, quantity: 1 }],
-        promoCode: "SUMMER20",
-      })
-      expect(result.success).toBe(true)
     })
 
     it("accepts checkout with vendor addons", () => {

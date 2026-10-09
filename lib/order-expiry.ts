@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/db"
-import { merchItems, orders, orderItems, ticketTiers, tickets, promoCodes } from "@/db/schema"
+import { merchItems, orders, orderItems, ticketTiers, tickets } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { lockOrderMutation, type DbTx } from "@/lib/velocity/idempotency"
 
@@ -9,7 +9,6 @@ export class InventoryRecoveryError extends Error { constructor() { super('Relea
 type ExpirableOrderMetadata = Record<string, unknown> & {
   inventoryReserved?: boolean
   velocity?: object
-  promo?: { id?: string }
   archive?: Record<string, unknown> & {
     inventoryReleased?: boolean
     releasedMerchInventory?: boolean
@@ -69,13 +68,6 @@ export async function restoreExpiredOrderInventory(
         .where(and(eq(ticketTiers.id, tierId), sql`COALESCE(${ticketTiers.soldQuantity}, 0) + ${quantity} <= ${ticketTiers.totalQuantity}`)).returning({ id: ticketTiers.id })
       if (!restored.length) throw new InventoryRecoveryError()
     }
-  }
-
-  if (metadata.promo?.id) {
-    await tx
-      .update(promoCodes)
-      .set({ usedCount: sql`COALESCE(${promoCodes.usedCount}, 0) + 1` })
-      .where(eq(promoCodes.id, metadata.promo.id))
   }
 
   await tx.update(tickets).set({ status: "sold" }).where(eq(tickets.orderId, order.id))
@@ -168,13 +160,6 @@ async function closeUnpaidOrder(orderId: string, reason: string, status: "expire
             releasedMerchInventory = true
           }
         }
-      }
-
-      if (meta.promo?.id) {
-        await tx
-          .update(promoCodes)
-          .set({ usedCount: sql`GREATEST(0, COALESCE(${promoCodes.usedCount}, 0) - 1)` })
-          .where(eq(promoCodes.id, meta.promo.id))
       }
 
       await tx.update(tickets).set({ status: "cancelled" }).where(eq(tickets.orderId, orderId))

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mock=vi.hoisted(()=>({select:vi.fn(),withLock:vi.fn(),initiate:vi.fn(),existing:null as unknown,questions:[] as unknown[],promo:[] as unknown[]}))
+const mock=vi.hoisted(()=>({select:vi.fn(),withLock:vi.fn(),initiate:vi.fn(),existing:null as unknown,questions:[] as unknown[]}))
 vi.mock('@/db',()=>({db:{select:mock.select}}))
 vi.mock('@/lib/delivery',()=>({deliverTicketForPaidOrder:vi.fn()}))
 vi.mock('@/lib/order-expiry',()=>({cancelUnpaidOrderAndReleaseInventory:vi.fn()}))
@@ -13,14 +13,14 @@ vi.mock('@/lib/tickets',()=>({signTicketPayload:()=> 'a'.repeat(64),generateOrde
 vi.mock('@/lib/ticket-availability',()=>({getTierAvailability:async()=>new Map([['11111111-1111-4111-8111-111111111111',{usedQuantity:0,availableQuantity:100}]])}))
 import { POST } from '@/app/api/checkout/velocity/route'
 import { CheckoutBody, checkoutFingerprint } from '@/lib/checkout-contract'
-import { events, ticketTiers, ticketQuestions, orders, promoCodes } from '@/db/schema'
+import { events, ticketTiers, ticketQuestions, orders } from '@/db/schema'
 const id='11111111-1111-4111-8111-111111111111',eventId='22222222-2222-4222-8222-222222222222'
 const input={email:'buyer@example.com',name:'Buyer',phone:'0771234567',paymentMethod:'velocity-ecocash',eventSlug:'event',items:[{kind:'ticket',tierId:id,quantity:1}],checkoutRequestId:id,expectedAmount:20,expectedCurrency:'USD'}
 const send=(body:unknown)=>POST(new Request('https://example.test/api/checkout/velocity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}))
 beforeEach(()=>{
- vi.clearAllMocks();mock.existing=null;mock.questions=[];mock.promo=[]
+ vi.clearAllMocks();mock.existing=null;mock.questions=[]
  mock.select.mockImplementation(()=>({from:(table:unknown)=>{
-  const rows=table===events?[{id:eventId,slug:'event',status:'published',startsAt:new Date('2099-01-01')}]:table===ticketTiers?[{id,eventId,name:'General',price:'20.00',currency:'USD',totalQuantity:100,soldQuantity:0,earlyBirdQuantity:null}]:table===ticketQuestions?mock.questions:table===orders?(mock.existing?[mock.existing]:[]):table===promoCodes?mock.promo:[]
+  const rows=table===events?[{id:eventId,slug:'event',status:'published',startsAt:new Date('2099-01-01')}]:table===ticketTiers?[{id,eventId,name:'General',price:'20.00',currency:'USD',totalQuantity:100,soldQuantity:0,earlyBirdQuantity:null}]:table===ticketQuestions?mock.questions:table===orders?(mock.existing?[mock.existing]:[]):[]
   const query={where:()=>query,orderBy:()=>query,limit:()=>Promise.resolve(rows),then:(resolve:(x:unknown)=>unknown)=>Promise.resolve(rows).then(resolve)};return query
  }}))
 })
@@ -33,9 +33,6 @@ describe('actual checkout handler',()=>{
  it('rejects an unreviewed changed amount before payment',async()=>{
   const response=await send({...input,expectedAmount:10});expect(response.status).toBe(409)
   expect((await response.json()).code).toBe('price_changed');expect(mock.initiate).not.toHaveBeenCalled()
- })
- it('rejects expired or missing promo rather than charging full price',async()=>{
-  const response=await send({...input,promoCode:'EXPIRED'});expect(response.status).toBe(409);expect(mock.initiate).not.toHaveBeenCalled()
  })
  it('rejects duplicate cart lines before reservation',async()=>{
   const response=await send({...input,items:[...input.items,...input.items]});expect(response.status).toBe(400);expect(mock.withLock).not.toHaveBeenCalled()

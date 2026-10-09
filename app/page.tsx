@@ -43,7 +43,7 @@ const FAQ = [
 ]
 
 const STEPS = [
-  { icon: Ticket,      title: "Create ticket tiers",  body: "Build general admission, VIP, early bird, promo codes, staff tickets, merch, and event pages from one dashboard." },
+  { icon: Ticket,      title: "Create ticket tiers",  body: "Build general admission, VIP, early bird, staff tickets, merch, and event pages from one dashboard." },
   { icon: Wallet,      title: "Accept real payments", body: "EcoCash and card checkout create a traceable order, ledger entry, ticket record, and payout calculation." },
   { icon: ScanLine,    title: "Run the gate",         body: "QR scanning, duplicate detection, attendee exports, staff access, and live check-in stats keep entry controlled." },
   { icon: ReceiptText, title: "Reconcile and pay out", body: "Track gross sales, confirmed tickets, platform fees, Velocity settlements, paid out, and available balance." },

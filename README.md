@@ -1,10 +1,10 @@
 # TicketPulse Zimbabwe
 
-Zimbabwe's premier event ticketing platform. Built with Next.js 16, Neon Postgres, Drizzle ORM, Auth.js v5.
+Zimbabwe's premier event ticketing platform. Built with Next.js 16, PostgreSQL, Drizzle ORM, Auth.js v5.
 
 ## Tech Stack
 - Framework: Next.js 16 (App Router)
-- Database: Neon Postgres (serverless)
+- Database: PostgreSQL (hosted on Dokploy)
 - ORM: Drizzle ORM
 - Auth: Auth.js v5 (next-auth@beta)
 - Styling: Tailwind CSS v4
@@ -27,7 +27,9 @@ Zimbabwe's premier event ticketing platform. Built with Next.js 16, Neon Postgre
 ## Setup
 
 1. Copy `.env.example` to `.env.local` and fill in values
-2. Get `DATABASE_URL` from [neon.tech](https://neon.tech)
+2. Set `DATABASE_URL` to a PostgreSQL connection string. For local development use a local
+   database (e.g. `postgresql://<user>@localhost:5432/ticketpulse`); the production database
+   lives on Dokploy (see [Deployment](#deployment)) and should not be used for local work
 3. Run: `npm run auth:secret`
 4. Set up Google OAuth at [console.cloud.google.com](https://console.cloud.google.com)
 5. Create Resend API key at [resend.com](https://resend.com)
@@ -43,7 +45,7 @@ Zimbabwe's premier event ticketing platform. Built with Next.js 16, Neon Postgre
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
-| `npm run db:push` | Push schema to Neon |
+| `npm run db:push` | Push schema to the database in `DATABASE_URL` |
 | `npm run db:generate` | Generate migrations |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:studio` | Open Drizzle Studio |
@@ -53,7 +55,7 @@ Zimbabwe's premier event ticketing platform. Built with Next.js 16, Neon Postgre
 
 See [`.env.example`](./.env.example) for all required variables organised by section:
 
-- `DATABASE_URL` — Neon Postgres connection string
+- `DATABASE_URL` — PostgreSQL connection string
 - `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — NextAuth v5
 - `AUTH_RESEND_KEY`, `ADMIN_EMAIL` — Resend transactional email
 - `R2_*` — Cloudflare R2 credentials
@@ -63,8 +65,30 @@ See [`.env.example`](./.env.example) for all required variables organised by sec
 
 ## Deployment
 
-The app is designed to deploy on Railway. Ensure all environment variables from
-`.env.example` are set in the Railway dashboard before starting the service.
+The app is deployed on [Dokploy](https://dokploy.com) in the **Ticketpulse** project
+(`production` environment), which contains:
+
+| Resource | Type | Purpose |
+|----------|------|---------|
+| `Frontend` | Application | The Next.js app, built from the repo `Dockerfile` |
+| PostgreSQL | Database | Production database (`DATABASE_URL`) |
+| `OpenWA Fresh` | Compose | WhatsApp gateway (`OPENWA_*` variables) |
+
+Set all variables from `.env.example` in the `Frontend` application's environment settings
+in Dokploy. Leave `AUTH_URL`/`NEXTAUTH_URL` unset in production so Auth.js keeps the role
+subdomain (admin/organizer), and set `AUTH_COOKIE_DOMAIN` to share the session across them.
+Use the database's internal Dokploy hostname for `DATABASE_URL` when the app runs on the
+same server.
+
+### Dokploy CLI
+
+```bash
+dokploy auth                 # authenticate with your server URL and API key
+dokploy project all          # list projects (look for "Ticketpulse")
+dokploy application --help   # deploy / inspect the Frontend app
+```
+
+Never commit API keys or connection strings; keep them in Dokploy or `.env.local`.
 
 ## Flutter organizer app
 

@@ -506,7 +506,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           {[
                             { icon: Activity, label: "Live", href: `/organizer/events/${e.id}/live` },
                             { icon: Users, label: "Attendees", href: `/organizer/events/${e.id}/attendees` },
-                            { icon: Tag, label: "Promos", href: `/organizer/events/${e.id}/promos` },
                             { icon: HelpCircle, label: "Questions", href: `/organizer/events/${e.id}/questions` },
                             { icon: Mail, label: "Email", href: `/organizer/events/${e.id}/email` },
                           ].map(({ icon: Icon, label, href }) => (
@@ -564,7 +563,6 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                               {[
                                 { icon: Activity, title: "Live dashboard", href: `/organizer/events/${e.id}/live` },
                                 { icon: Users, title: "Attendees", href: `/organizer/events/${e.id}/attendees` },
-                                { icon: Tag, title: "Promo codes", href: `/organizer/events/${e.id}/promos` },
                                 { icon: HelpCircle, title: "Questions", href: `/organizer/events/${e.id}/questions` },
                                 { icon: Mail, title: "Email attendees", href: `/organizer/events/${e.id}/email` },
                               ].map(({ icon: Icon, title, href }) => (

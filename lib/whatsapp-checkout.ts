@@ -227,11 +227,7 @@ export async function handleInboundWhatsAppMessage(chatId: string, rawBody: stri
   const checkoutMeta = active?.checkoutMetadata
   if (active && checkoutMeta?.quote && !active.orderId) {
     if (/^pay$/i.test(body)) { await completeCheckout(chatId, active, true); return }
-    if (/^promo\s+/i.test(body)) {
-      const next = await upsertSession(chatId, { checkoutMetadata: { ...checkoutMeta, quote: null, promoCode: body.replace(/^promo\s+/i, '').trim().toUpperCase() } })
-      await completeCheckout(chatId, next); return
-    }
-    if (!RESTART_PATTERN.test(body)) { await sendText(chatId, 'Reply PAY to approve the reviewed total, PROMO followed by your code, or CANCEL before payment starts.'); return }
+    if (!RESTART_PATTERN.test(body)) { await sendText(chatId, 'Reply PAY to approve the reviewed total, or CANCEL before payment starts.'); return }
   }
   if (RESTART_PATTERN.test(body)) {
     const existing = await getSession(chatId)
@@ -387,7 +383,6 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
         checkoutRequestId: requestId, quoteOnly: !confirmed,
         expectedAmount: (previous.quote as { amount?: number } | undefined)?.amount,
         expectedCurrency: (previous.quote as { currency?: string } | undefined)?.currency,
-        promoCode: previous.promoCode,
         email: session.guestEmail,
         name: session.guestName,
         phone,
@@ -411,11 +406,11 @@ async function completeCheckout(chatId: string, session: typeof whatsappCheckout
     if (!confirmed) {
       if (data.quote.questions.length) {
         await upsertSession(chatId, { step: 'cancelled', checkoutMetadata: null })
-        await sendText(chatId, 'This event has attendee questions. Complete them, apply any promo, and review your payment securely here: ' + getBaseUrl() + '/events/' + event.slug)
+        await sendText(chatId, 'This event has attendee questions. Complete them and review your payment securely here: ' + getBaseUrl() + '/events/' + event.slug)
         return
       }
       await upsertSession(chatId, { step: 'phone', checkoutMetadata: { ...previous, checkoutRequestId: requestId, quote: data.quote } })
-      await sendText(chatId, 'Review your order: ' + session.quantity + ' ticket(s) for ' + event.title + '. Ticket price: ' + money(data.quote.subtotal + (data.quote.discount ?? 0), data.quote.currency) + (data.quote.discount ? '. Discount: -' + money(data.quote.discount, data.quote.currency) : '') + '. Gateway fees: ' + money(data.quote.gatewayFee, data.quote.currency) + '. Total: ' + money(data.quote.amount, data.quote.currency) + '. EcoCash prompt goes to ' + data.quote.normalizedPhone + '. Reply PAY to request payment, PROMO followed by a code, or CANCEL.')
+      await sendText(chatId, 'Review your order: ' + session.quantity + ' ticket(s) for ' + event.title + '. Ticket price: ' + money(data.quote.subtotal, data.quote.currency) + '. Gateway fees: ' + money(data.quote.gatewayFee, data.quote.currency) + '. Total: ' + money(data.quote.amount, data.quote.currency) + '. EcoCash prompt goes to ' + data.quote.normalizedPhone + '. Reply PAY to request payment, or CANCEL.')
       return
     }
     await upsertSession(chatId, { orderId: data.orderId, step: "done" })
