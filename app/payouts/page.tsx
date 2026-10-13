@@ -107,12 +107,18 @@ export default async function PayoutsDashboardPage() {
         subtitle="Track revenue, request withdrawals, and view payment history."
         width="xl"
         actions={
-          <a
-            href="/api/payouts/statement"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15 transition-colors"
-          >
-            <ReceiptText size={14} /> Download statement
-          </a>
+          <form action="/api/payouts/statement" method="get" className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="statement-from">From</label>
+            <input id="statement-from" type="date" name="from" className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[13px] text-white [color-scheme:dark]" />
+            <label className="sr-only" htmlFor="statement-to">To</label>
+            <input id="statement-to" type="date" name="to" className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[13px] text-white [color-scheme:dark]" />
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15 transition-colors"
+            >
+              <ReceiptText size={14} /> Download PDF
+            </button>
+          </form>
         }
       />
 
