@@ -301,6 +301,9 @@ export default async function PayoutsDashboardPage() {
                           <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
                             {STATUS_LABEL[p.status as PayoutStatus]}
                           </span>
+                          {p.status === "paid" && (
+                            <a href={`/api/payouts/${p.id}/receipt`} className="mt-1.5 block text-[11px] font-semibold text-ink underline underline-offset-2">Download receipt</a>
+                          )}
                         </td>
                         <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
                           {formatCurrency(Number(p.amount), p.currency)}
@@ -340,6 +343,9 @@ export default async function PayoutsDashboardPage() {
                     {p.proofReference && p.method !== "cash" && (
                       <p className="mt-1 text-[11px] text-ink-3">Proof: {p.proofReference}</p>
                     )}
+                    {p.status === "paid" && (
+                            <a href={`/api/payouts/${p.id}/receipt`} className="mt-2 inline-block text-[11px] font-semibold text-ink underline underline-offset-2">Download receipt</a>
+                          )}
                   </li>
                 ))}
               </ul>

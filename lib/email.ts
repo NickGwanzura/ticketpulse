@@ -286,11 +286,13 @@ export function sendPayoutNotificationEmail(args: {
   method: string
   destination: string
   eventTitle: string
+  attachments?: Attachment[]
 }) {
   return send({
     to: args.to,
     subject: `Payout sent: ${args.amount} ${args.currency}`,
     react: PayoutNotificationEmail(args),
+    attachments: args.attachments,
   })
 }
 

@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { payouts, events, users, payoutAuditLog } from "@/db/schema"
 import { log } from "@/lib/logger"
-import { sendPayoutNotificationEmail } from "@/lib/email"
+import { notifyPayoutCompleted } from "@/lib/payout-completion"
 import { recordAdminAudit } from "@/lib/admin-audit"
 import { PAYABLE_FROM, createPayoutAuditLog, isPayoutStatus, transitionPayout } from "@/lib/payout-transitions"
 
@@ -221,6 +221,7 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
     })
 
     log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
+    await notifyPayoutCompleted(inserted.id)
     revalidatePath("/admin/payouts")
     revalidatePath("/admin/reconciliation")
     revalidatePath("/payouts")
@@ -332,29 +333,9 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
   })
 
   if (result.ok && result.payout) {
-    // Email notification (non-DB — fire-and-forget even if it fails)
-    try {
-      const [user] = await db
-        .select({ name: users.name, email: users.email })
-        .from(users)
-        .where(eq(users.id, result.payout.userId))
-        .limit(1)
-
-      if (user?.email) {
-        await sendPayoutNotificationEmail({
-          to: user.email,
-          organizerName: user.name,
-          payoutId,
-          amount: String(result.payout.amount),
-          currency: result.payout.currency ?? "USD",
-          method: result.payout.method === "ecocash" ? "EcoCash" : "USD Bank",
-          destination: result.payout.accountName ?? result.payout.accountNumber ?? "nominated account",
-          eventTitle: result.payout.eventTitle ?? "Event",
-        })
-      }
-    } catch (emailErr) {
-      log.warn("Failed to send payout notification email", { payoutId, error: String(emailErr) })
-    }
+    // Email + WhatsApp with receipt and statement PDFs. Failures are logged
+    // inside and never undo the payout.
+    await notifyPayoutCompleted(payoutId)
   }
 
   revalidatePath("/admin/payouts")
