@@ -126,6 +126,13 @@ export default async function PayoutsDashboardPage() {
         {/* Trust journey */}
         <TrustJourney status={trustStatus} totalPaidPayouts={totalPaidPayouts} />
 
+        <p className="text-[13px] text-ink-2">
+          New to payouts?{" "}
+          <a href="/api/organizer/payout-sop" className="font-semibold text-ink underline underline-offset-2">
+            Download the organiser payout guide (PDF)
+          </a>
+        </p>
+
         {outstandingClawbacks > 0 && (
           <div className="rounded-2xl border border-red-500/25 bg-red-50/60 px-5 md:px-6 py-5 tp-fade-up-1">
             <p className="text-[14px] font-semibold tracking-tight text-red-900">
