@@ -5,7 +5,7 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { db } from "@/db"
 import { orders, events, orderItems, ticketTiers, tickets } from "@/db/schema"
-import { sendText, sendDocument, formatChatId, isSessionReady } from "@/lib/whatsapp"
+import { sendText, sendDocument, formatChatId, isSessionReady, maskPhone } from "@/lib/whatsapp"
 import { generateTicketPdfBuffer } from "@/lib/pdf/generate"
 import { generateOrderAccessUrl, generateTicketQrImageDataUrl } from "@/lib/tickets"
 import { formatDate } from "@/lib/utils"
@@ -228,19 +228,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // ── Send text confirmation first, then PDF ────────────────────────────
-    const [textResult, pdfResult] = await Promise.allSettled([
-      sendText(chatId, message),
-      pdfBase64
-        ? sendDocument({
-            chatId,
-            base64: pdfBase64,
-            mimetype: "application/pdf",
-            filename: `tickets-${orderId.slice(0, 8)}.pdf`,
-            caption: "Your ticket PDF — show the QR code at the door.",
-          })
-        : Promise.resolve(null),
-    ])
+    // ── Send text confirmation first, then PDF (in order) ─────────────────
+    const textResult = await sendText(chatId, message).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason) => ({ status: "rejected" as const, reason }),
+    )
+    const pdfResult = pdfBase64
+      ? await sendDocument({
+          chatId,
+          base64: pdfBase64,
+          mimetype: "application/pdf",
+          filename: `tickets-${orderId.slice(0, 8)}.pdf`,
+          caption: "Your ticket PDF — show the QR code at the door.",
+        }).then(
+          (value) => ({ status: "fulfilled" as const, value }),
+          (reason) => ({ status: "rejected" as const, reason }),
+        )
+      : { status: "fulfilled" as const, value: null }
 
     const textSent = textResult.status === "fulfilled"
     const pdfSent = pdfResult.status === "fulfilled" && pdfResult.value !== null
@@ -287,7 +291,7 @@ export async function POST(req: Request) {
 
     log.info("send-ticket — WhatsApp sent", {
       orderId,
-      phone: order.guestPhone,
+      phone: maskPhone(order.guestPhone),
       mode,
       textSent,
       pdfSent,

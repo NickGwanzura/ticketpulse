@@ -8,7 +8,7 @@ import { sendPayoutNotificationEmail } from "@/lib/email"
 import { log } from "@/lib/logger"
 import { buildPayoutStatementData } from "@/lib/payout-statement-data"
 import { getBaseUrl } from "@/lib/url-config"
-import { formatChatId, sendDocument, sendText } from "@/lib/whatsapp"
+import { formatChatId, isSessionReady, sendDocument, sendText } from "@/lib/whatsapp"
 
 const NOTIFIED_ACTION = "completion_notified"
 
@@ -137,7 +137,9 @@ export async function notifyPayoutCompleted(payoutId: string): Promise<void> {
       }
     }
 
-    if (owner.phone) {
+    if (owner.phone && !(await isSessionReady())) {
+      log.warn("payout completion whatsapp skipped: session not ready", { payoutId })
+    } else if (owner.phone) {
       try {
         const chatId = formatChatId(owner.phone)
         const first = receipt.organizerName.split(" ")[0] || "there"

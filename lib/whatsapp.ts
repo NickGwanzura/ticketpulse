@@ -137,12 +137,21 @@ async function openwaFetch<T = unknown>(
   return res.json() as Promise<T>
 }
 
+/** Mask a phone number for logs, keeping only the last 3 digits. */
+export function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "")
+  return digits.length > 3 ? `${"*".repeat(digits.length - 3)}${digits.slice(-3)}` : "***"
+}
+
 /**
  * Format a phone number into a WhatsApp chat ID.
  * Strips non-digits, removes leading 0 if present, and appends @c.us.
  *
+ * Local numbers (leading 0, or 9 digits starting with 7) get the 263
+ * Zimbabwe country code; numbers already carrying a country code are kept.
+ *
  * @example formatChatId("+263 77 123 4567") // "263771234567@c.us"
- * @example formatChatId("0771234567")        // "771234567@c.us"
+ * @example formatChatId("0771234567")        // "263771234567@c.us"
  */
 export function formatChatId(phone: string): string {
   let digits = phone.replace(/\D/g, "")
@@ -426,8 +435,8 @@ export async function sendAdminAlert(text: string): Promise<void> {
       try {
         await sendText(formatChatId(phone), text)
       } catch (err) {
-        console.error(`[whatsapp] failed to send admin alert to ${phone}:`, err)
-        log.error("whatsapp — failed to send admin alert", { phone, error: err instanceof Error ? err.message : String(err) })
+        console.error(`[whatsapp] failed to send admin alert to ${maskPhone(phone)}:`, err)
+        log.error("whatsapp — failed to send admin alert", { phone: maskPhone(phone), error: err instanceof Error ? err.message : String(err) })
       }
     }),
   )

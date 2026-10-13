@@ -72,13 +72,20 @@ The app is deployed on [Dokploy](https://dokploy.com) in the **Ticketpulse** pro
 |----------|------|---------|
 | `Frontend` | Application | The Next.js app, built from the repo `Dockerfile` |
 | PostgreSQL | Database | Production database (`DATABASE_URL`) |
-| `OpenWA Fresh` | Compose | WhatsApp gateway (`OPENWA_*` variables) |
+| `OpenWA Fresh` | Compose | WhatsApp gateway (`OPENWA_URL`, `OPENWA_API_KEY`, `OPENWA_SESSION_ID`, `OPENWA_WEBHOOK_SECRET`) |
 
 Set all variables from `.env.example` in the `Frontend` application's environment settings
 in Dokploy. Leave `AUTH_URL`/`NEXTAUTH_URL` unset in production so Auth.js keeps the role
 subdomain (admin/organizer), and set `AUTH_COOKIE_DOMAIN` to share the session across them.
 Use the database's internal Dokploy hostname for `DATABASE_URL` when the app runs on the
 same server.
+
+### WhatsApp (OpenWA)
+
+Set `OPENWA_URL` to the `OpenWA Fresh` service address, plus `OPENWA_API_KEY` and `OPENWA_SESSION_ID`.
+For the inbound "text to buy" bot, set `OPENWA_WEBHOOK_SECRET` and register
+`https://<your-domain>/api/webhooks/whatsapp` in OpenWA for the `message.received` event with the same secret.
+The linked WhatsApp session must be `ready` for tickets, payout receipts and admin alerts to send.
 
 ### Dokploy CLI
 
