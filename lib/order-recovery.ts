@@ -1,5 +1,5 @@
 import "server-only"
-import { eq, sql, inArray } from "drizzle-orm"
+import { and, eq, ne, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
 import { orders, orderItems, ticketTiers, tickets, events, paymentLedger, organizerFeeDues } from "@/db/schema"
 import { isDirectSalePaymentMethod } from "@/lib/direct-sale"
@@ -84,6 +84,7 @@ function buildManualCompletionMetadata(
   paymentRef: string,
   completedAt: string,
   completedBy: string,
+  proof?: { amountReceived: number; proofNote: string | null; expectedAmount: number },
 ): ManualCompletionMetadata {
   const metadata = asMetadata(current)
   const currentVelocity = metadata.velocity
@@ -111,6 +112,14 @@ function buildManualCompletionMetadata(
       completedAt,
       completedBy,
       source: "admin_manual_complete",
+      ...(proof
+        ? {
+            amountReceived: proof.amountReceived,
+            expectedAmount: proof.expectedAmount,
+            overpaid: proof.amountReceived > proof.expectedAmount + 0.005,
+            proofNote: proof.proofNote,
+          }
+        : {}),
     },
   }
 }
@@ -136,8 +145,16 @@ export const UNCONFIRMED_PAYMENT_MESSAGE =
  */
 export type CompletionAuthority = {
   actor: "admin" | "organizer"
+  /** Proof-of-payment reference: EcoCash/bank transaction id the admin has verified. */
   providerReference?: string | null
+  /** Amount shown on the customer's proof of payment. Required with a reference. */
+  amountReceived?: number | null
+  /** Free-text note: who sent the proof, via which channel, anything unusual. */
+  proofNote?: string | null
 }
+
+/** The admin's proof of payment was rejected (reused reference, short payment...). */
+export class ProofRejectedError extends UnconfirmedPaymentError {}
 
 /** Orders whose money never passes through the payment gateway. */
 function completesWithoutGateway(order: { paymentMethod: string | null; totalAmount: string | null }) {
@@ -194,10 +211,35 @@ export async function markOrderCompleteAction(
 
       wasPaid = current.status === "paid"
       let providerReference: string | null = null
+      let proofDetails: { amountReceived: number; proofNote: string | null; expectedAmount: number } | undefined
       if (!wasPaid && !completesWithoutGateway(current)) {
         const reference = authority.actor === "admin" ? authority.providerReference?.trim() : null
         if (!reference || reference.length < 4) throw new UnconfirmedPaymentError(UNCONFIRMED_PAYMENT_MESSAGE)
         providerReference = reference
+
+        // One proof of payment can only ever release one order.
+        const [reused] = await tx
+          .select({ id: orders.id })
+          .from(orders)
+          .where(and(
+            ne(orders.id, orderId),
+            sql`(lower(${orders.paymentRef}) = ${reference.toLowerCase()} OR lower(${orders.metadata}->'manualCompletion'->>'paymentRef') = ${reference.toLowerCase()})`,
+          ))
+          .limit(1)
+        if (reused) {
+          throw new ProofRejectedError(`Reference "${reference}" is already recorded on order #${reused.id.slice(0, 8)}. Each proof of payment can release only one order.`)
+        }
+
+        // The money received must cover the order, including the gateway fee.
+        const expected = Number(current.totalAmount ?? 0)
+        const received = authority.amountReceived
+        if (received == null || !Number.isFinite(received) || received <= 0) {
+          throw new ProofRejectedError("Enter the amount shown on the proof of payment.")
+        }
+        if (received + 0.005 < expected) {
+          throw new ProofRejectedError(`The proof shows ${received.toFixed(2)} but this order totals ${expected.toFixed(2)} ${current.currency ?? "USD"}. It cannot be completed until the full amount is received.`)
+        }
+        proofDetails = { amountReceived: received, proofNote: authority.proofNote?.trim() || null, expectedAmount: expected }
       }
       const now = new Date()
       completedAt = now.toISOString()
@@ -213,6 +255,7 @@ export async function markOrderCompleteAction(
         manualPaymentRef,
         completedAt,
         userEmail,
+        proofDetails,
       )
       await tx
         .update(orders)
@@ -276,6 +319,7 @@ export async function markOrderCompleteAction(
             completedAt,
             source: "admin_manual_complete",
             velocityTraces,
+            ...(proofDetails ?? {}),
           },
         }).onConflictDoNothing()
       }

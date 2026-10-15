@@ -15,6 +15,8 @@ export default function CompleteAndSendButton({
   variant = "desktop",
   action = completeAndSendAction,
   requireReference = false,
+  expectedAmount,
+  currency = "USD",
 }: {
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
@@ -22,14 +24,22 @@ export default function CompleteAndSendButton({
   action?: typeof completeAndSendAction
   /** Unpaid gateway order: an admin must enter the Velocity transaction reference. */
   requireReference?: boolean
+  /** Order total (gateway fee included), shown so the admin can check the proof against it. */
+  expectedAmount?: number
+  currency?: string
 }) {
+  const [open, setOpen] = useState(false)
   const [dismissedState, setDismissedState] = useState<ActionState>(null)
 
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, form: FormData) => {
       try {
         const reference = String(form.get("providerReference") ?? "").trim() || undefined
-        const result = await action(orderId, reference)
+        const amountRaw = String(form.get("amountReceived") ?? "").trim()
+        const amountReceived = amountRaw ? Number(amountRaw) : undefined
+        const note = String(form.get("proofNote") ?? "").trim() || undefined
+        const result = await action(orderId, reference, requireReference ? { amountReceived, note } : undefined)
+        if (result.success) setOpen(false)
         return { ok: result.success, message: result.message }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to complete and send"
@@ -60,19 +70,49 @@ export default function CompleteAndSendButton({
 
   return (
     <form action={formAction} className="relative inline-flex items-center gap-1">
-      {requireReference && (
-        <input
-          name="providerReference"
-          type="text"
-          required
-          minLength={4}
-          aria-label="Velocity transaction reference"
-          placeholder="Velocity ref"
-          className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px] text-ink placeholder:text-ink-3/60 focus:outline-none focus:ring-1 focus:ring-brand-600/20"
-        />
+      {requireReference && open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Complete order with proof of payment"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4"
+          onKeyDown={(e) => { if (e.key === "Escape" && !pending) setOpen(false) }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-paper p-5 shadow-xl ring-1 ring-line">
+            <h3 className="text-[16px] font-semibold tracking-tight text-ink">Complete with proof of payment</h3>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink-2">
+              Enter what the customer&apos;s proof shows. The order is released only if the reference has not been used before and the amount covers the order total.
+            </p>
+            {expectedAmount != null && (
+              <p className="mt-3 rounded-lg bg-paper-2 px-3 py-2 text-[12px] text-ink">
+                Order total (includes gateway fee): <span className="font-semibold">{currency} {expectedAmount.toFixed(2)}</span>
+              </p>
+            )}
+            <label className="mt-3 block text-[12px] font-semibold text-ink-2" htmlFor={`ref-${orderId}`}>Transaction reference</label>
+            <input id={`ref-${orderId}`} name="providerReference" type="text" required minLength={4} autoFocus autoComplete="off"
+              placeholder="e.g. EcoCash / bank transaction ID"
+              className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink focus:outline-none focus:ring-1 focus:ring-brand-600/30" />
+            <label className="mt-3 block text-[12px] font-semibold text-ink-2" htmlFor={`amt-${orderId}`}>Amount shown on the proof ({currency})</label>
+            <input id={`amt-${orderId}`} name="amountReceived" type="number" required min="0.01" step="0.01" inputMode="decimal"
+              className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink focus:outline-none focus:ring-1 focus:ring-brand-600/30" />
+            <label className="mt-3 block text-[12px] font-semibold text-ink-2" htmlFor={`note-${orderId}`}>Note (optional)</label>
+            <input id={`note-${orderId}`} name="proofNote" type="text" maxLength={300} autoComplete="off"
+              placeholder="Who sent it, on WhatsApp or email, anything unusual"
+              className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink focus:outline-none focus:ring-1 focus:ring-brand-600/30" />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" disabled={pending} onClick={() => setOpen(false)}
+                className="rounded-lg border border-line px-3 py-2 text-[12px] font-medium text-ink-2 hover:bg-paper-2 disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={pending}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-violet-700 disabled:opacity-60">
+                {pending ? <><Loader2 size={12} className="animate-spin" /> {STEPS[step]}</> : "Verify, complete & send"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <button
-        type="submit"
+        type={requireReference ? "button" : "submit"}
+        onClick={requireReference ? () => setOpen(true) : undefined}
         disabled={pending}
         className={cn(
           "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors",

@@ -338,11 +338,20 @@ export async function cancelTicketsAction(ticketIds: string[]) {
  * `providerReference` is the Velocity transaction reference an admin has
  * verified. It is only needed (and only honoured) for unpaid gateway orders.
  */
-export async function markOrderCompleteAction(orderId: string, providerReference?: string) {
+export async function markOrderCompleteAction(
+  orderId: string,
+  providerReference?: string,
+  proof?: { amountReceived?: number; note?: string },
+) {
   const session = await requireAdmin()
 
   const { markOrderCompleteAction: completeAction } = await import("@/lib/order-recovery")
-  const result = await completeAction(orderId, session.user.id, session.user.email ?? "admin", { actor: "admin", providerReference })
+  const result = await completeAction(orderId, session.user.id, session.user.email ?? "admin", {
+    actor: "admin",
+    providerReference,
+    amountReceived: proof?.amountReceived ?? null,
+    proofNote: proof?.note ?? null,
+  })
   await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, reason: providerReference ? `Provider reference: ${providerReference}` : undefined, after: { result: typeof result === "object" ? result : String(result) } })
   return result
 }
@@ -360,13 +369,28 @@ export async function sendTicketsAction(orderId: string) {
 /**
  * Complete order and send tickets in one idempotent action.
  */
-export async function completeAndSendAction(orderId: string, providerReference?: string) {
+export async function completeAndSendAction(
+  orderId: string,
+  providerReference?: string,
+  proof?: { amountReceived?: number; note?: string },
+) {
   const session = await requireAdmin()
 
   const { completeAndSendAction: combinedAction } = await import("@/lib/order-recovery")
-  const result = await combinedAction(orderId, session.user.id, session.user.email ?? "admin", {}, { actor: "admin", providerReference })
+  const result = await combinedAction(orderId, session.user.id, session.user.email ?? "admin", {}, {
+    actor: "admin",
+    providerReference,
+    amountReceived: proof?.amountReceived ?? null,
+    proofNote: proof?.note ?? null,
+  })
   if (providerReference) {
-    await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, reason: `Provider reference: ${providerReference}`, after: { result: result.message } })
+    await recordAdminAction(session, {
+      action: result.success ? "order.complete_manually" : "order.complete_manually_rejected",
+      targetType: "order",
+      targetId: orderId,
+      reason: [`Reference: ${providerReference}`, proof?.amountReceived != null ? `Amount on proof: ${proof.amountReceived}` : null, proof?.note].filter(Boolean).join(" | "),
+      after: { result: result.message },
+    })
   }
   return result
 }

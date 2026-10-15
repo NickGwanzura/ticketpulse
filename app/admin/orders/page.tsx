@@ -536,7 +536,7 @@ export default async function AdminOrdersPage({
                               <RecheckButton orderId={o.id} variant="menu" />
                             )}
                             {(o.status === "pending" || o.status === "awaiting_verification" || o.status === "expired") && (
-                              <CompleteAndSendButton orderId={o.id} variant="menu" requireReference={needsProviderReference(o)} />
+                              <CompleteAndSendButton orderId={o.id} variant="menu" requireReference={needsProviderReference(o)} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} />
                             )}
                             {o.status === "paid" && (
                               <>
@@ -683,7 +683,7 @@ export default async function AdminOrdersPage({
                         <RecheckButton orderId={o.id} variant="mobile" />
                       )}
                       {(o.status === "pending" || o.status === "awaiting_verification" || o.status === "expired") && (
-                        <CompleteAndSendButton orderId={o.id} variant="mobile" requireReference={needsProviderReference(o)} />
+                        <CompleteAndSendButton orderId={o.id} variant="mobile" requireReference={needsProviderReference(o)} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} />
                       )}
                       {o.status === "paid" && (
                         <>

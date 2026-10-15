@@ -311,6 +311,31 @@ export default async function AdminOrderDetailPage({
           ).slice().reverse()}
         />
 
+        {/* Paid after expiry */}
+        {order.status === "expired" && (() => {
+          const review = ((order.metadata ?? {}) as { recoveryReview?: { reason?: string; relatedOrderIds?: string[] } }).recoveryReview
+          return (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 md:px-6 py-4">
+              <p className="text-[14px] font-semibold tracking-tight text-amber-900">This order expired. Check whether the customer paid.</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-amber-900/80">
+                {review
+                  ? review.reason === "possible_replacement_fulfillment"
+                    ? "Velocity confirms payment, but this buyer may already hold a replacement ticket from another order. Review the related orders before issuing or refunding."
+                    : "Velocity confirms payment, but the tickets sold out after this order expired, so it was not restored automatically. Refund the buyer, or issue the ticket if you have capacity."
+                  : "If the customer sent proof of payment, use Complete & Send: enter the transaction reference and the amount on the proof. The order is restored (if stock allows), marked paid and the tickets are sent. You can also press Recheck payment to see whether Velocity already received it."}
+              </p>
+              {review?.relatedOrderIds && review.relatedOrderIds.length > 0 && (
+                <p className="mt-2 text-[12px] text-amber-900/80">
+                  Related orders:{" "}
+                  {review.relatedOrderIds.map((rid) => (
+                    <a key={rid} href={`/admin/orders/${rid}`} className="mr-2 font-mono underline underline-offset-2">#{rid.slice(0, 8)}</a>
+                  ))}
+                </p>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Recovery Actions */}
         {order.status !== "paid" && order.status !== "completed" && order.status !== "cancelled" && order.status !== "refunded" && (
           <div className="rounded-2xl border border-line bg-paper overflow-hidden">
@@ -331,6 +356,8 @@ export default async function AdminOrderDetailPage({
               <CompleteAndSendButton
                 orderId={id}
                 variant="mobile"
+                expectedAmount={Number(order.totalAmount ?? 0)}
+                currency={order.currency ?? "USD"}
                 requireReference={
                   !isDirectSalePaymentMethod(order.paymentMethod)
                   && order.paymentMethod !== "complimentary"
