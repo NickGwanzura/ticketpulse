@@ -1,3 +1,4 @@
+import { getWhatsAppHealth } from "@/lib/whatsapp"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
@@ -62,6 +63,7 @@ export default async function AdminOverviewPage() {
   const hasVelocity = sql`${orders.metadata}->>'velocity' IS NOT NULL`
   const liveEventWindow = or(isNull(events.endsAt), gte(events.endsAt, now))
   const issueWindowStart = orderIssueWindowStart(now)
+  const whatsappHealthPromise = getWhatsAppHealth()
   const heartbeatsPromise = getHeartbeats([HEARTBEAT_KEYS.cronTick, HEARTBEAT_KEYS.velocityWebhook]).catch((error) => {
     console.error("[admin] heartbeat read failed", error)
     return null
@@ -227,6 +229,7 @@ export default async function AdminOverviewPage() {
   ])
 
   const heartbeats = await heartbeatsPromise
+  const whatsappHealth = await whatsappHealthPromise
   const cronBeat = heartbeats?.get(HEARTBEAT_KEYS.cronTick)
   const webhookBeat = heartbeats?.get(HEARTBEAT_KEYS.velocityWebhook)
   const cronAgeMin = cronBeat?.lastSuccessAt ? (now.getTime() - cronBeat.lastSuccessAt.getTime()) / 60_000 : null
@@ -304,7 +307,7 @@ export default async function AdminOverviewPage() {
       </div>
 
       <div className="px-5 md:px-8 py-8 space-y-6">
-        <section aria-label="System health" className="grid sm:grid-cols-2 gap-3">
+        <section aria-label="System health" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
             {
               label: "Scheduler (cron tick)",
@@ -318,6 +321,7 @@ export default async function AdminOverviewPage() {
               value: !heartbeats ? "Health data unavailable" : webhookRejected ? `Last callback rejected ${ageLabel(webhookBeat?.lastErrorAt, now)}` : webhookBeat?.lastSuccessAt ? `Last callback ${ageLabel(webhookBeat.lastSuccessAt, now)}` : "No callback received yet",
               detail: webhookRejected ? (webhookBeat?.lastError ?? "Check the webhook secret and signature header in the Velocity dashboard.") : "Quiet is normal when nobody is paying; a rejected callback is not.",
             },
+            { label: "WhatsApp (OpenWA)", tone: whatsappHealth.tone, value: whatsappHealth.value, detail: whatsappHealth.detail },
           ].map(({ label, tone, value, detail }) => (
             <div key={label} className="rounded-xl border border-line bg-paper px-4 py-3 flex items-start gap-3">
               <span aria-hidden="true" className={`mt-1 inline-block h-2.5 w-2.5 shrink-0 rounded-full ${tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : tone === "bad" ? "bg-rose-500" : "bg-ink-3"}`} />
