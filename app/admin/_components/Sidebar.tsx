@@ -204,7 +204,7 @@ export default function Sidebar({
             </button>
           </div>
         </div>
-        <nav aria-label="Admin navigation" className="flex items-center gap-1 px-2 py-2">
+        <nav aria-label="Admin navigation" className="flex min-w-0 items-center gap-1 px-2 py-2">
           {MOBILE_PRIMARY.map(({ label, href, icon: Icon, badgeKey }) => {
             const active = isActive(href)
             const badge = badgeValue(badgeKey)
@@ -213,14 +213,14 @@ export default function Sidebar({
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12px] whitespace-nowrap transition-colors ${
+                className={`inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[12px] whitespace-nowrap transition-colors sm:px-2 ${
                   active
                     ? "bg-white/10 text-white font-semibold"
                     : "text-white/70 hover:text-white hover:bg-white/[0.06] font-medium"
                 }`}
               >
-                <Icon size={13} className={active ? "text-white" : "text-white/60"} />
-                {label}
+                <Icon size={13} className={`hidden sm:block ${active ? "text-white" : "text-white/60"}`} />
+                <span className="truncate">{label}</span>
                 {!!badge && (
                   <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-[9px] font-bold text-chrome">
                     {badge}
@@ -230,7 +230,7 @@ export default function Sidebar({
             )
           })}
           <details className="relative shrink-0">
-            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white">
               More
             </summary>
             <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-xl border border-white/15 bg-chrome p-2 shadow-xl">

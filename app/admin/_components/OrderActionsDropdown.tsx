@@ -10,6 +10,8 @@ export default function OrderActionsDropdown({ children }: { children: React.Rea
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent) {
+      // Clicks inside a modal opened from a menu item (rendered in a portal) are not "outside".
+      if ((e.target as Element | null)?.closest?.('[role="dialog"]')) return
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener("mousedown", handler)

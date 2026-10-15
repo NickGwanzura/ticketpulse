@@ -410,7 +410,7 @@ export default async function OrganizerOrdersPage({
                               {(o.status === "pending" || o.status === "awaiting_verification") && (
                                 isGatewayPayment(o)
                                   ? <RecheckButton orderId={o.id} variant="desktop" action={organizerRecheckPaymentAction} />
-                                  : <CompleteAndSendButton orderId={o.id} variant="desktop" action={organizerCompleteAndSendAction} />
+                                  : <CompleteAndSendButton orderId={o.id} variant="desktop" action={organizerCompleteAndSendAction} orderLabel={`#${o.id.slice(0, 8)}`} customer={o.guestName ?? o.guestEmail ?? undefined} status={o.status ?? undefined} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} />
                               )}
                               {o.status === "paid" && (
                                 <>
@@ -474,7 +474,7 @@ export default async function OrganizerOrdersPage({
                         {(o.status === "pending" || o.status === "awaiting_verification") && (
                           isGatewayPayment(o)
                             ? <RecheckButton orderId={o.id} variant="mobile" action={organizerRecheckPaymentAction} />
-                            : <CompleteAndSendButton orderId={o.id} variant="mobile" action={organizerCompleteAndSendAction} />
+                            : <CompleteAndSendButton orderId={o.id} variant="mobile" action={organizerCompleteAndSendAction} orderLabel={`#${o.id.slice(0, 8)}`} customer={o.guestName ?? o.guestEmail ?? undefined} status={o.status ?? undefined} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} />
                         )}
                         {o.status === "paid" && (
                           <>

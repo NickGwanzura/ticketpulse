@@ -358,6 +358,9 @@ export default async function AdminOrderDetailPage({
                 variant="mobile"
                 expectedAmount={Number(order.totalAmount ?? 0)}
                 currency={order.currency ?? "USD"}
+                orderLabel={`#${id.slice(0, 8)}`}
+                customer={customerName}
+                status={order.status ?? undefined}
                 requireReference={
                   !isDirectSalePaymentMethod(order.paymentMethod)
                   && order.paymentMethod !== "complimentary"
