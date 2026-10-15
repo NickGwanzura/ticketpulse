@@ -1,6 +1,7 @@
 "use server"
 
 import { auth } from "@/auth"
+import { isValidWhatsappContact } from "@/lib/phone"
 import { redirect } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { db } from "@/db"
@@ -15,11 +16,6 @@ function slugify(s: string) {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .slice(0, 40)
-}
-
-function isValidWhatsappContact(value: string) {
-  const compact = value.replace(/[\s()-]/g, "")
-  return /^(\+?263|0)?7[1789]\d{7}$/.test(compact)
 }
 
 export async function saveOrganizerProfileAction(formData: FormData) {

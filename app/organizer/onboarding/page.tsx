@@ -1,4 +1,5 @@
 import { auth } from "@/auth"
+import { isValidWhatsappContact } from "@/lib/phone"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { eq } from "drizzle-orm"
@@ -41,11 +42,6 @@ function StepIndicator({ current }: { current: number }) {
       })}
     </div>
   )
-}
-
-function isValidWhatsappContact(value: string | null | undefined) {
-  const compact = (value ?? "").replace(/[\s()-]/g, "")
-  return /^(\+?263|0)?7[1789]\d{7}$/.test(compact)
 }
 
 export default async function OnboardingPage({
@@ -135,7 +131,7 @@ export default async function OnboardingPage({
             )}
             {error === "whatsapp_required" && (
               <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-                Organizer WhatsApp contact is required. Use a valid Zimbabwean number such as +263 77 123 4567.
+                Organizer WhatsApp contact is required. Use a valid number with its country code, such as +263 77 123 4567.
               </div>
             )}
             {error === "generic" && (

@@ -1,4 +1,6 @@
 import { auth } from "@/auth"
+import { isValidWhatsappContact } from "@/lib/phone"
+import { PLATFORM_FEE_PERCENT } from "@/lib/platform-fee"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { ORDER_ISSUES, orderIssueCondition } from "@/lib/order-issues"
@@ -6,16 +8,16 @@ import { eq, desc, or, inArray, notInArray, sql, and } from "drizzle-orm"
 import {
   Plus, ArrowUpRight, ScanLine, AlertCircle,
   Ticket, DollarSign, Users,
-  Activity, Tag, Mail, MailCheck, HelpCircle, Zap,
+  Activity, Mail, MailCheck, HelpCircle, Zap,
   CheckCircle2, ClipboardList, ReceiptText,
 } from "lucide-react"
 
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { paymentMethodLabel } from "@/lib/order-labels"
 import { db } from "@/db"
-import { events, eventOrganisers, orders, ticketTiers, tickets, users } from "@/db/schema"
-import { getEventRevenueSummaries, getOrganizerRevenueSummary } from "@/lib/revenue-summary"
-import { getTicketTierSales } from "@/lib/ticket-tier-sales"
+import { events, eventOrganisers, orders, payouts, ticketTiers, tickets, users } from "@/db/schema"
+import { getOrganizerRevenueSummary } from "@/lib/revenue-summary"
+import { getDashboardRevenue, getDashboardSalesTrend, getDashboardTierSales } from "@/lib/organizer-dashboard-data"
 import TicketTierSalesBreakdown from "@/components/dashboard/TicketTierSalesBreakdown"
 import AiInsightCard from "@/components/ai/AiInsightCard"
 import EmptyState from "@/components/dashboard/EmptyState"
@@ -39,11 +41,6 @@ const STATUS: Record<string, { dot: string; label: string }> = {
   sold_out:  { dot: "bg-rose-500",    label: "Sold out" },
   cancelled: { dot: "bg-rose-500",    label: "Cancelled" },
   completed: { dot: "bg-ink-3",       label: "Ended" },
-}
-
-function hasValidWhatsappContact(phone: string | null | undefined) {
-  if (!phone) return false
-  return /^(\+?263|0)?7[1789]\d{7}$/.test(phone.replace(/[\s-]/g, ""))
 }
 
 function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
@@ -187,7 +184,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   ])
 
   if (!isAdmin && session.user.role !== "organizer" && invitedEventIds.length === 0) redirect("/dashboard")
-  if (isOrganizerRole && !hasValidWhatsappContact(profile?.phone)) {
+  if (isOrganizerRole && !isValidWhatsappContact(profile?.phone)) {
     redirect("/organizer/onboarding?step=2&error=whatsapp_required")
   }
 
@@ -214,10 +211,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   const eventIds = rawEvents.map(r => r.id)
 
-  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueCounts, tierSalesByEvent] = await Promise.all([
+  const [allTiers, revenueSummaries, organizerRevenueSummary, attendingByEvent, checkedInByEvent, recentOrdersRaw, issueCounts, tierSalesByEvent, salesTrend, [latestPaidPayout]] = await Promise.all([
     eventIds.length > 0 ? db.select({ eventId: ticketTiers.eventId, totalQuantity: ticketTiers.totalQuantity, price: ticketTiers.price, currency: ticketTiers.currency, salesEnd: ticketTiers.salesEnd }).from(ticketTiers).where(inArray(ticketTiers.eventId, eventIds)) : Promise.resolve([]),
     // Canonical per-event revenue — same maths as payout balances and admin pages.
-    getEventRevenueSummaries(eventIds),
+    getDashboardRevenue(eventIds),
     isAdmin ? Promise.resolve(null) : getOrganizerRevenueSummary(session.user.id),
     // Count actual issued buyer tickets, not tier soldQuantity reservations or paid orders whose delivery failed.
     eventIds.length > 0 ? db.select({ eventId: tickets.eventId, attending: sql<number>`COUNT(*)::int` }).from(tickets).where(and(inArray(tickets.eventId, eventIds), eq(tickets.isStaffTicket, false), notInArray(tickets.status, ["cancelled", "refunded"]))).groupBy(tickets.eventId) : Promise.resolve([]),
@@ -233,7 +230,15 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           duplicate_ledger: duplicate[0]?.count ?? 0,
         }))
       : Promise.resolve({ paid_no_tickets: 0, delivery_failed: 0, duplicate_ledger: 0 }),
-    getTicketTierSales(eventIds),
+    getDashboardTierSales(eventIds),
+    getDashboardSalesTrend(eventIds),
+    isAdmin
+      ? Promise.resolve([] as { id: string; amount: string; currency: string; processedAt: Date | null }[])
+      : db.select({ id: payouts.id, amount: payouts.amount, currency: payouts.currency, processedAt: payouts.processedAt })
+          .from(payouts)
+          .where(and(eq(payouts.userId, session.user.id), eq(payouts.status, "paid")))
+          .orderBy(desc(payouts.processedAt))
+          .limit(1),
   ])
 
   // eslint-disable-next-line react-hooks/purity -- Server-rendered countdown seed.
@@ -302,11 +307,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const missingTierCount = EVENTS.filter((e) => !e.hasTiers && !e.isPast).length
   const missingTierEvent = EVENTS.find(e => !e.hasTiers && !e.isPast)
   const checkinWindowCutoff = now + 24 * 60 * 60 * 1000
-  const lowCheckinEvent = EVENTS.find((e) => {
+  const lowCheckinEvents = EVENTS.filter((e) => {
     const activeWindow = e.status === "published" && !e.isPast && e.startsAt.getTime() <= checkinWindowCutoff
     const rate = e.sold > 0 ? e.checkedIn / e.sold : 1
     return activeWindow && e.sold >= 20 && rate < 0.5
   })
+  const lowCheckinEvent = lowCheckinEvents[0]
   const needsAttention = [
     { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
     { label: "Missing tiers", value: missingTierCount, href: missingTierEvent ? `/organizer/events/${missingTierEvent.id}/tiers` : "/organizer/events/new", icon: Ticket, tone: "rose" },
@@ -316,10 +322,10 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
     { label: "Sales closed", value: closedSalesCount, href: closedSalesEvent ? `/organizer/events/${closedSalesEvent.id}/tiers` : "/organizer/events", icon: AlertCircle, tone: "rose" },
     { label: "Low inventory", value: lowInventoryCount, href: lowInventoryEvent ? `/organizer/events/${lowInventoryEvent.id}/tiers` : "/organizer?filter=live", icon: Ticket, tone: "amber" },
     ...(lowCheckinEvent ? [{
-      label: "Low check-in rate",
-      value: Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100),
-      display: `${Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100)}%`,
-      href: `/organizer/events/${lowCheckinEvent.id}/live`,
+      label: lowCheckinEvents.length > 1 ? `Low check-in: ${lowCheckinEvents.length} events` : "Low check-in rate",
+      value: lowCheckinEvents.length > 1 ? lowCheckinEvents.length : Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100),
+      display: lowCheckinEvents.length > 1 ? undefined : `${Math.round((lowCheckinEvent.checkedIn / lowCheckinEvent.sold) * 100)}%`,
+      href: lowCheckinEvents.length > 1 ? "/organizer?filter=live" : `/organizer/events/${lowCheckinEvent.id}/live`,
       icon: Activity,
       tone: "amber" as const,
     }] : []),
@@ -329,6 +335,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const insightEvent = EVENTS.find(e => e.status === "published" && !e.isPast && e.sold > 0) || EVENTS.find(e => e.status === "published" && !e.isPast) || EVENTS[0]
   const SALES_TOP = [...EVENTS].filter(e => e.netRevenue > 0).sort((a, b) => b.netRevenue - a.netRevenue).slice(0, 5)
   const maxRevenue = Math.max(...SALES_TOP.map(e => e.netRevenue), 1)
+
+  const trendLast7 = salesTrend.slice(-7).reduce((sum, d) => sum + d.tickets, 0)
+  const trendPrev7 = salesTrend.slice(-14, -7).reduce((sum, d) => sum + d.tickets, 0)
+  const trendLast30 = salesTrend.reduce((sum, d) => sum + d.tickets, 0)
+  const trendToday = salesTrend[salesTrend.length - 1]?.tickets ?? 0
+  const trendMax = Math.max(...salesTrend.map((d) => d.tickets), 1)
+  const trendChange = trendPrev7 > 0 ? Math.round(((trendLast7 - trendPrev7) / trendPrev7) * 100) : null
+  const mixedCurrencies = new Set(EVENTS.map((e) => e.currency)).size > 1
 
   const firstName = session.user.name?.split(" ")[0] ?? "organizer"
 
@@ -449,6 +463,44 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           ))}
         </div>
 
+        {/* Sales trend */}
+        {salesTrend.length > 0 && (
+          <section aria-label="Ticket sales, last 30 days" className="rounded-2xl border border-line bg-paper p-5 tp-fade-up-1">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-[15px] font-semibold text-ink">Ticket sales, last 30 days</h2>
+                <p className="mt-0.5 text-[12px] text-ink-3">Tickets issued per day (Zimbabwe time), staff tickets excluded.</p>
+              </div>
+              <dl className="flex gap-6 text-right">
+                <div><dt className="text-[11px] text-ink-3">Today</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{trendToday.toLocaleString()}</dd></div>
+                <div>
+                  <dt className="text-[11px] text-ink-3">Last 7 days</dt>
+                  <dd className="text-[18px] font-bold tabular-nums text-ink">
+                    {trendLast7.toLocaleString()}
+                    {trendChange !== null && (
+                      <span className={`ml-1.5 text-[12px] font-semibold ${trendChange >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                        {trendChange >= 0 ? "+" : ""}{trendChange}%
+                      </span>
+                    )}
+                  </dd>
+                </div>
+                <div><dt className="text-[11px] text-ink-3">30 days</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{trendLast30.toLocaleString()}</dd></div>
+              </dl>
+            </div>
+            <div className="mt-4 flex h-24 items-end gap-[3px]" role="img" aria-label={`${trendLast30} tickets in the last 30 days, ${trendLast7} in the last 7 days`}>
+              {salesTrend.map((d) => (
+                <div key={d.date} className="group relative flex-1" title={`${d.date}: ${d.tickets} ticket${d.tickets === 1 ? "" : "s"}`}>
+                  <div
+                    className={`w-full rounded-sm ${d.tickets > 0 ? "bg-ink" : "bg-paper-3"}`}
+                    style={{ height: `${Math.max(d.tickets > 0 ? 6 : 2, Math.round((d.tickets / trendMax) * 96))}px` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-1 flex justify-between text-[10px] text-ink-3"><span>{salesTrend[0].date.slice(5)}</span><span>{salesTrend[salesTrend.length - 1].date.slice(5)}</span></div>
+          </section>
+        )}
+
         {/* Events + payout */}
         <div className="grid lg:grid-cols-[1fr_320px] gap-6 tp-fade-up-2">
 
@@ -464,7 +516,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 { v: "drafts",  l: draftCount         > 0 ? `Drafts ${draftCount}`          : "Drafts"  },
                 { v: "past",    l: pastCount          > 0 ? `Past ${pastCount}`             : "Past"    },
               ].map(f => (
-                  <Link key={f.v} href={`/organizer?filter=${f.v}`}
+                  <Link key={f.v} href={`/organizer?filter=${f.v}`} aria-current={filter === f.v ? "page" : undefined}
                     className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${filter === f.v ? "bg-paper-2 text-ink ring-1 ring-line" : "text-ink-2 hover:text-ink"}`}>
                     {f.l}
                   </Link>
@@ -641,9 +693,20 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               ) : (
                 <p className="text-center text-[13px] text-ink-3 py-2">No balance available to withdraw.</p>
               )}
+              {latestPaidPayout && (
+                <a href={`/api/payouts/${latestPaidPayout.id}/receipt`} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-paper py-2.5 text-[13px] font-semibold text-ink hover:bg-paper-2 transition-colors">
+                  <ReceiptText size={13} /> Latest payout receipt ({formatCurrency(Number(latestPaidPayout.amount), latestPaidPayout.currency ?? "USD")})
+                </a>
+              )}
               <a href="/api/payouts/statement" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-paper py-2.5 text-[13px] font-semibold text-ink-2 hover:bg-paper-2 transition-colors">
-                <ReceiptText size={13} /> Download payout report
+                <ReceiptText size={13} /> Download payout summary &amp; statement
               </a>
+              <ul className="mt-4 space-y-1 text-[11.5px] leading-relaxed text-ink-3">
+                <li>TicketPulse keeps {organizerRevenueSummary?.commissionRate ?? PLATFORM_FEE_PERCENT}% of ticket sales; you receive the rest.</li>
+                <li>Payouts go to your bank account in USD, usually within about 24 hours of approval. Minimum USD 1.00, one request at a time.</li>
+                {mixedCurrencies && <li>Your events use more than one currency; earnings and payouts here are in USD.</li>}
+              </ul>
+              <a href="/api/organizer/payout-sop" className="mt-2 inline-block text-[11.5px] font-semibold text-navy underline underline-offset-2">Download the payout guide (PDF)</a>
             </div>
 
             {/* AI insight */}

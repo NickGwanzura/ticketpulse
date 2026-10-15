@@ -1,4 +1,5 @@
 import { signIn } from "@/auth"
+import { isValidWhatsappContact } from "@/lib/phone"
 import Link from "next/link"
 import Logo from "@/components/ui/Logo"
 import { Check, User, CalendarCog, Store, Mail, ArrowRight, Ticket, QrCode, Wallet, BarChart3, MessageSquare, Zap, Smartphone } from "lucide-react"
@@ -31,11 +32,6 @@ function signupUrl(role: string, callbackUrl: string | null, error: keyof typeof
   if (name) params.set("name", name)
   if (phone) params.set("phone", phone)
   return `/auth/signup?${params.toString()}`
-}
-
-function isValidWhatsappContact(value: string) {
-  const compact = value.replace(/[\s()-]/g, "")
-  return /^(\+?263|0)?7[1789]\d{7}$/.test(compact)
 }
 
 export default async function SignUpPage({
