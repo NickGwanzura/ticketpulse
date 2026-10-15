@@ -5,7 +5,7 @@ import { log } from "@/lib/logger"
 export async function register() {
   log.info("application instrumentation registered", {
     environment: process.env.NODE_ENV,
-    release: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT_SHA ?? "unknown",
+    release: process.env.GIT_COMMIT_SHA ?? "unknown",
   })
 
   if (process.env.VELOCITY_SMS_BASE_URL) {

@@ -9,10 +9,9 @@ const DEV_BASE_URL = "http://localhost:8080"
  * Resolve the canonical base URL for the application.
  *
  * Priority:
- *   1. NEXT_PUBLIC_APP_URL env var (set on Railway/Vercel)
+ *   1. NEXT_PUBLIC_APP_URL env var (set on the Dokploy application)
  *   2. APP_URL env var (server-side fallback)
- *   3. Railway-provided RAILWAY_PUBLIC_DOMAIN (auto-set by Railway)
- *   4. Hardcoded production domain (ticketpulse.tech)
+ *   3. Hardcoded production domain (ticketpulse.tech)
  */
 export function getBaseUrl(): string {
   const envUrl =
@@ -25,10 +24,6 @@ export function getBaseUrl(): string {
       assertNotLocalhost(clean, "getBaseUrl")
     }
     return clean
-  }
-
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
   }
 
   if (process.env.NODE_ENV === "production") {
@@ -107,9 +102,7 @@ export function logUrlResolution(route: string, url: string): void {
       ? "NEXT_PUBLIC_APP_URL"
       : process.env.APP_URL
         ? "APP_URL"
-        : process.env.RAILWAY_PUBLIC_DOMAIN
-          ? "RAILWAY_PUBLIC_DOMAIN"
-          : "hardcoded_fallback",
+        : "hardcoded_fallback",
     nextPublicAppUrlSet: !!process.env.NEXT_PUBLIC_APP_URL,
   })
 }

@@ -1,6 +1,6 @@
 /**
  * Validates that all email templates produce URLs pointing to the correct
- * production domain (ticketpulse.tech), not localhost or a Railway subdomain.
+ * production domain (ticketpulse.tech), not localhost or a Dokploy preview domain.
  *
  * Usage: NODE_ENV=production npx tsx scripts/validate-email-urls.ts
  *
