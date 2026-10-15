@@ -1,11 +1,12 @@
 "use client"
 
+import { useState, useTransition } from "react"
 import { CheckCircle2, Send, Smartphone, Building2, XCircle, Banknote } from "lucide-react"
 import DataTable, { type DataTableColumn } from "@/components/ui/DataTable"
 import Badge, { type BadgeTone } from "@/components/ui/Badge"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import {
-  approvePayoutAction, rejectPayoutAction, markPayoutPaidAction, markPayoutProcessingAction,
+  approvePayoutAction, rejectPayoutAction, markPayoutPaidAction, markPayoutProcessingAction, resendPayoutReceiptAction,
   type getPayouts,
 } from "./actions"
 import PayoutsBulkActions from "./PayoutsBulkActions"
@@ -13,6 +14,27 @@ import PayoutsBulkActions from "./PayoutsBulkActions"
 // The table's column render/sort functions cannot be passed from a Server
 // Component to the client DataTable (that was crashing /admin/payouts), so
 // the table and its row actions live client-side and call the server actions.
+
+function ResendReceiptButton({ payoutId }: { payoutId: string }) {
+  const [pending, startTransition] = useTransition()
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  return (
+    <span className="inline-flex flex-col items-start gap-0.5">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => startTransition(async () => {
+          const result = await resendPayoutReceiptAction(payoutId)
+          setMessage({ ok: result.ok, text: result.message })
+        })}
+        className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-ink-2 hover:bg-paper-2 disabled:opacity-60"
+      >
+        <Send size={11} /> {pending ? "Sending…" : "Resend receipt"}
+      </button>
+      {message && <span role="status" className={`max-w-[200px] text-[10.5px] leading-tight ${message.ok ? "text-emerald-700" : "text-red-600"}`}>{message.text}</span>}
+    </span>
+  )
+}
 
 export type PayoutStatus = "pending" | "approved" | "processing" | "paid" | "held" | "rejected" | "failed" | "cancelled"
 
@@ -100,6 +122,7 @@ function payoutActionsCell(p: PayoutRow) {
       {p.status === "paid" && p.proofReference && (
         <span className="text-[11px] text-ink-3 font-medium">Ref: {p.proofReference}</span>
       )}
+      {p.status === "paid" && <ResendReceiptButton payoutId={p.id} />}
 
       {p.status === "rejected" && p.rejectionReason && (
         <span className="text-[11px] text-red-600 max-w-[120px] truncate" title={p.rejectionReason}>

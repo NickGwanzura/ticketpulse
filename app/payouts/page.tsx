@@ -228,7 +228,7 @@ export default async function PayoutsDashboardPage() {
               </span>
               <div>
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(availableBalance, "USD")} available</p>
-                <p className="text-[13px] text-ink-2">Request a payout to your EcoCash wallet or bank account.</p>
+                <p className="text-[13px] text-ink-2">Request a payout to your bank account (USD bank transfer).</p>
               </div>
             </div>
             <Link

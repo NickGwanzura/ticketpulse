@@ -82,17 +82,21 @@ export async function buildPayoutReceiptData(payoutId: string) {
  * Safe to call more than once per payout; the audit log guards against repeats.
  * Delivery failures are logged, never thrown, so they can't undo a payout.
  */
-export async function notifyPayoutCompleted(payoutId: string): Promise<void> {
+export async function notifyPayoutCompleted(
+  payoutId: string,
+  options: { force?: boolean } = {},
+): Promise<{ channels: string[] }> {
+  const channels: string[] = []
   try {
-    const [already] = await db
+    const [already] = options.force ? [] : await db
       .select({ id: payoutAuditLog.id })
       .from(payoutAuditLog)
       .where(and(eq(payoutAuditLog.payoutId, payoutId), eq(payoutAuditLog.action, NOTIFIED_ACTION)))
       .limit(1)
-    if (already) return
+    if (already) return { channels }
 
     const receipt = await buildPayoutReceiptData(payoutId)
-    if (!receipt) return
+    if (!receipt) return { channels }
 
     const [owner] = await db
       .select({ id: users.id, phone: users.phone })
@@ -100,7 +104,7 @@ export async function notifyPayoutCompleted(payoutId: string): Promise<void> {
       .innerJoin(users, eq(users.id, payouts.userId))
       .where(eq(payouts.id, payoutId))
       .limit(1)
-    if (!owner) return
+    if (!owner) return { channels }
 
     const { generatePayoutReceiptPdfBuffer } = await import("@/lib/pdf/payout-receipt-document")
     const { generatePayoutStatementPdfBuffer } = await import("@/lib/pdf/payout-statement-document")
@@ -113,7 +117,6 @@ export async function notifyPayoutCompleted(payoutId: string): Promise<void> {
     const receiptName = `TicketPulse_Payout_Receipt_${receipt.payoutReference}.pdf`
     const statementName = `TicketPulse_Payout_Statement_${new Date().toISOString().slice(0, 10)}.pdf`
     const amountText = receipt.amount.toFixed(2)
-    const channels: string[] = []
 
     if (receipt.organizerEmail) {
       try {
@@ -176,11 +179,12 @@ export async function notifyPayoutCompleted(payoutId: string): Promise<void> {
         payoutId,
         action: NOTIFIED_ACTION,
         toStatus: "paid",
-        performedBy: "system",
+        performedBy: options.force ? "admin_resend" : "system",
         notes: `Receipt ${receipt.receiptNumber} sent via ${channels.join(" + ")}`,
       })
     }
   } catch (err) {
     log.error("payout completion notification failed", { payoutId, error: String(err) })
   }
+  return { channels }
 }

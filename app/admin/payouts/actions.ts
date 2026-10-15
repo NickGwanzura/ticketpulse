@@ -353,3 +353,28 @@ export async function getPayoutAuditLog(payoutId: string) {
 
   return rows
 }
+
+/** Re-send the payout receipt and statement (email + WhatsApp) for a paid payout. */
+export async function resendPayoutReceiptAction(payoutId: string): Promise<AdminPayoutActionResult> {
+  const session = await requireAdmin().catch(() => null)
+  if (!session) return adminPayoutResult(false, "You are not authorized to resend receipts.")
+
+  const [payout] = await db.select({ id: payouts.id, status: payouts.status }).from(payouts).where(eq(payouts.id, payoutId)).limit(1)
+  if (!payout) return adminPayoutResult(false, "Payout not found.")
+  if (payout.status !== "paid") return adminPayoutResult(false, "Only paid payouts have a receipt.")
+
+  const { channels } = await notifyPayoutCompleted(payoutId, { force: true })
+  await recordAdminAudit({
+    actorId: session.user.id,
+    actorEmail: session.user.email,
+    action: "payout.receipt_resent",
+    targetType: "payout",
+    targetId: payoutId,
+    after: { channels },
+    reason: null,
+  })
+  if (channels.length === 0) {
+    return adminPayoutResult(false, "Nothing was sent. Check the organiser has an email or WhatsApp number and that WhatsApp is connected.")
+  }
+  return { ok: true, message: `Receipt re-sent by ${channels.join(" and ")}.`, payoutId }
+}
