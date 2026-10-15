@@ -57,6 +57,9 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null)
 const STORAGE_KEY = "tp_cart"
+const SAVED_AT_KEY = "tp_cart_saved_at"
+/** A cart untouched for this long is dropped, so old tickets never resurface at checkout. */
+const CART_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000
 const ORDERS_KEY = "tp_orders"
 
 function keyFor(item: CartLineInput): string {
@@ -80,7 +83,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     queueMicrotask(() => {
       try {
         const raw = localStorage.getItem(STORAGE_KEY)
-        if (raw) setItems(JSON.parse(raw))
+        const savedAt = Number(localStorage.getItem(SAVED_AT_KEY) ?? 0)
+        const fresh = savedAt === 0 || Date.now() - savedAt < CART_MAX_AGE_MS // carts saved before expiry existed are kept once
+        if (raw && fresh) setItems(JSON.parse(raw))
+        else if (raw) localStorage.removeItem(STORAGE_KEY)
       } catch (err) { console.warn("[cart] hydrate", err) }
       setReady(true)
     })
@@ -90,6 +96,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+      localStorage.setItem(SAVED_AT_KEY, String(Date.now()))
     } catch (err) { console.warn("[cart] persist cart", err) }
   }, [items, ready])
 
