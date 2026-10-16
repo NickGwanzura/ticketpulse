@@ -5,7 +5,7 @@ import { and, eq, inArray, notInArray, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { tickets } from "@/db/schema"
-import { getEventRevenueSummaries, type EventRevenueSummary } from "@/lib/revenue-summary"
+import { getEventRevenueSummaries, getNetRevenueByDay, type EventRevenueSummary } from "@/lib/revenue-summary"
 import { getTicketTierSales, type TicketTierSales } from "@/lib/ticket-tier-sales"
 
 /**
@@ -37,7 +37,7 @@ export async function getDashboardTierSales(eventIds: string[]): Promise<Map<str
   return new Map(await cachedTierSales([...eventIds].sort()))
 }
 
-export type SalesTrendDay = { date: string; tickets: number }
+export type SalesTrendDay = { date: string; tickets: number; net: number }
 
 const TREND_DAYS = 30
 
@@ -58,12 +58,13 @@ const cachedTrend = unstable_cache(
       ))
       .groupBy(sql`1`)
     const byDay = new Map(rows.map((r) => [r.day, r.count]))
+    const netByDay = await getNetRevenueByDay(eventIds, TREND_DAYS)
     const out: SalesTrendDay[] = []
     for (let i = TREND_DAYS - 1; i >= 0; i--) {
       // Day labels in Harare time (UTC+2, no DST).
       const d = new Date(Date.now() + 2 * 3_600_000 - i * 86_400_000)
       const key = d.toISOString().slice(0, 10)
-      out.push({ date: key, tickets: byDay.get(key) ?? 0 })
+      out.push({ date: key, tickets: byDay.get(key) ?? 0, net: netByDay.get(key) ?? 0 })
     }
     return out
   },

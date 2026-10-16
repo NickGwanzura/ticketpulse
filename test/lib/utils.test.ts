@@ -30,10 +30,17 @@ describe("cn", () => {
 
 describe("formatCurrency", () => {
   it("formats USD with en-US locale", () => {
-    // minimumFractionDigits is 0, so 12.5 stays as-is (no trailing zero)
+    // Money always shows two decimals: 12.50, never 12.5
     const result = formatCurrency(12.5, "USD")
     expect(result).toContain("$")
-    expect(result).toContain("12")
+    expect(result).toBe("$12.50")
+  })
+
+  it("keeps two decimals on whole amounts and totals with the gateway fee", () => {
+    expect(formatCurrency(10.3, "USD")).toBe("$10.30")
+    expect(formatCurrency(230.3, "USD")).toBe("$230.30")
+    expect(formatCurrency(5, "USD")).toBe("$5.00")
+    expect(formatCurrency(1080, "USD")).toBe("$1,080.00")
   })
 
   it("formats ZWL with en-ZW locale", () => {

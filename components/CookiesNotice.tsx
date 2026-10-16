@@ -68,15 +68,19 @@ export default function CookiesNotice() {
           </span>
           <div className="min-w-0">
             <p id="cookie-notice-title" className="text-[15px] font-semibold tracking-tight text-ink">Your privacy choices</p>
-            <p id="cookie-notice-description" className="mt-1 text-[13px] leading-relaxed text-ink-2">
+            <p id="cookie-notice-description" className="mt-1 hidden text-[13px] leading-relaxed text-ink-2 md:block">
               Essential cookies and browser storage keep sign-in, your cart and checkout working. With your permission, optional analytics help us understand event visits and checkout use. You can use TicketPulse with essential storage only.
             </p>
-            <nav aria-label="Legal policies" className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] font-semibold text-ink">
+            <p className="mt-1 text-[13px] leading-snug text-ink-2 md:hidden">
+              Essential storage keeps sign-in and your cart working. Analytics only with your permission.{" "}
+              <Link href="/legal/cookies" className="font-semibold text-ink underline underline-offset-4">Details</Link>
+            </p>
+            <nav aria-label="Legal policies" className="mt-3 hidden flex-wrap md:flex gap-x-4 gap-y-1 text-[12px] font-semibold text-ink">
               <Link href="/legal/cookies" className="py-1 underline underline-offset-4">Cookie Policy</Link>
               <Link href="/legal/terms" className="py-1 underline underline-offset-4">Terms of Service</Link>
               <Link href="/legal/privacy" className="py-1 underline underline-offset-4">Privacy Policy</Link>
             </nav>
-            <div className="mt-3 grid grid-cols-1 min-[400px]:grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => choose(false)}
@@ -92,7 +96,7 @@ export default function CookiesNotice() {
                 Allow analytics
               </button>
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-ink-3">Change your choice anytime in Cookie settings. This choice is separate from agreeing to the terms.</p>
+            <p className="mt-2 hidden text-[12px] leading-relaxed text-ink-3 md:block">Change your choice anytime in Cookie settings. This choice is separate from agreeing to the terms.</p>
           </div>
         </div>
       </div>

@@ -58,6 +58,23 @@ export default function NewOrganizerChecklist({
   const completed = steps.filter((s) => s.done).length
   const pct = Math.round((completed / steps.length) * 100)
 
+  // Once everything is done the checklist is just noise: keep a one-line receipt.
+  if (completed === steps.length) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-line bg-paper px-5 py-3">
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-green-50 ring-1 ring-green-500/20">
+          <Check size={14} className="text-brand-600" />
+        </span>
+        <p className="min-w-0 flex-1 text-[13px] text-ink-2">
+          <span className="font-semibold text-ink">Getting started complete.</span> Your event is live.
+        </p>
+        <Link href={steps[steps.length - 1].href} className="inline-flex min-h-11 shrink-0 items-center text-[12px] font-semibold text-navy underline underline-offset-2">
+          Track sales
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-2xl border border-line bg-paper overflow-hidden">
       <div className="px-5 md:px-6 py-4 border-b border-line">

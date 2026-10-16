@@ -1,3 +1,4 @@
+import { isProofStorageConfigured } from "@/lib/payment-proof"
 import React from "react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
@@ -17,6 +18,7 @@ import CompleteAndSendButton from "@/app/admin/_components/CompleteAndSendButton
 import ResendTicketsButton from "@/app/admin/_components/ResendTicketsButton"
 import RegeneratePdfButton from "@/app/admin/_components/RegeneratePdfButton"
 import DeleteOrderButton from "@/app/admin/_components/DeleteOrderButton"
+import { paymentMethodLabel } from "@/lib/order-labels"
 import OrderActionsDropdown from "@/app/admin/_components/OrderActionsDropdown"
 import { desc, eq, or, like, and, sql, inArray, gte } from "drizzle-orm"
 import { ORDER_ISSUE_LABEL, ORDER_ISSUE_WINDOW_DAYS, isOrderIssue, orderIssueCondition, orderIssueWindowStart } from "@/lib/order-issues"
@@ -55,12 +57,12 @@ const STATUS_LABEL: Record<string, string> = {
 function PaymentBadge({ status }: { status: string | null }) {
   const paidStatuses = ["paid", "completed"]
   if (paidStatuses.includes(status ?? "")) {
-    return <span className="text-[10px] font-medium text-emerald-600">Paid</span>
+    return <span className="text-[12px] font-medium text-emerald-600">Paid</span>
   }
   if (status === "refunded") {
-    return <span className="text-[10px] font-medium text-rose-600">Refunded</span>
+    return <span className="text-[12px] font-medium text-rose-600">Refunded</span>
   }
-  return <span className="text-[10px] font-medium text-amber-600">Pending</span>
+  return <span className="text-[12px] font-medium text-amber-600">Pending</span>
 }
 
 function FulfilmentBadge({ metadata }: { metadata: unknown }) {
@@ -68,9 +70,9 @@ function FulfilmentBadge({ metadata }: { metadata: unknown }) {
   const delivery = meta?.delivery as Record<string, unknown> | undefined
   const hasTickets = delivery?.ticketIssuedAt || (delivery?.status && delivery.status !== "NOT_STARTED")
   if (hasTickets) {
-    return <span className="text-[10px] font-medium text-emerald-600">Ticket Generated</span>
+    return <span className="text-[12px] font-medium text-emerald-600">Ticket Generated</span>
   }
-  return <span className="text-[10px] font-medium text-amber-600">Not Generated</span>
+  return <span className="text-[12px] font-medium text-amber-600">Not Generated</span>
 }
 
 function PdfVersionBadge({ metadata }: { metadata: unknown }) {
@@ -78,27 +80,27 @@ function PdfVersionBadge({ metadata }: { metadata: unknown }) {
   const delivery = meta?.delivery as Record<string, unknown> | undefined
   const pdfVersion = delivery?.pdfVersion as string | undefined
   if (!pdfVersion) {
-    return <span className="text-[10px] font-medium text-gray-400">No version</span>
+    return <span className="text-[12px] font-medium text-gray-400">No version</span>
   }
   if (pdfVersion === "A6_V1") {
-    return <span className="text-[10px] font-medium text-emerald-600">A6 ✓</span>
+    return <span className="text-[12px] font-medium text-emerald-600">A6 ✓</span>
   }
-  return <span className="text-[10px] font-medium text-amber-600">{pdfVersion}</span>
+  return <span className="text-[12px] font-medium text-amber-600">{pdfVersion}</span>
 }
 
 function DeliveryBadge({ metadata }: { metadata: unknown }) {
   const meta = metadata as Record<string, unknown> | null
   const delivery = meta?.delivery as Record<string, unknown> | undefined
   if (!delivery || delivery.status === "NOT_STARTED") {
-    return <span className="text-[10px] font-medium text-amber-600">Pending</span>
+    return <span className="text-[12px] font-medium text-amber-600">Pending</span>
   }
   if (delivery.status === "EMAIL_SENT" || delivery.status === "DELIVERED") {
-    return <span className="text-[10px] font-medium text-emerald-600">Sent</span>
+    return <span className="text-[12px] font-medium text-emerald-600">Sent</span>
   }
   if (delivery.status === "EMAIL_FAILED" || delivery.status === "FAILED") {
-    return <span className="text-[10px] font-medium text-rose-600">Failed</span>
+    return <span className="text-[12px] font-medium text-rose-600">Failed</span>
   }
-  return <span className="text-[10px] font-medium text-amber-600">Pending</span>
+  return <span className="text-[12px] font-medium text-amber-600">Pending</span>
 }
 
 const FILTER_PILLS = [
@@ -117,6 +119,15 @@ const LIMIT = 25
 
 // Unpaid orders whose money should have come through the gateway can only be
 // completed by an admin who has verified the Velocity transaction reference.
+/** Friendly payment method for the order lists ("velocity-ecocash" -> "EcoCash"). */
+const proofUploadEnabled = isProofStorageConfigured()
+
+function methodText(method: string | null): string {
+  if (method === "complimentary") return "Complimentary"
+  const label = paymentMethodLabel(method)
+  return label === "—" ? (method ?? "—") : label
+}
+
 function needsProviderReference(o: { paymentMethod: string | null; totalAmount: string | null }) {
   return !isDirectSalePaymentMethod(o.paymentMethod)
     && o.paymentMethod !== "complimentary"
@@ -384,7 +395,7 @@ export default async function AdminOrdersPage({
               type="text"
               name="q"
               defaultValue={query}
-              placeholder="Search by order #, email, name, or phone…"
+              placeholder="Search orders…"
               className="w-full rounded-xl border border-line bg-paper pl-9 pr-3 py-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-line-2 focus:ring-4 focus:ring-brand-500/10"
             />
             {statusFilter !== "all" && (
@@ -398,7 +409,7 @@ export default async function AdminOrdersPage({
             )}
           </form>
           <OrderEventFilter events={eventOptions} value={eventFilter} />
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-md:[mask-image:linear-gradient(to_right,#000_calc(100%-32px),transparent)]">
             {FILTER_PILLS.map(({ label, value }) => {
               const isActive = statusFilter === value
               const params = new URLSearchParams()
@@ -413,7 +424,7 @@ export default async function AdminOrdersPage({
                   key={value}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
+                  className={`tp-tap inline-flex items-center rounded-lg px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors ${
                     isActive
                       ? "bg-paper-2 text-ink font-semibold ring-1 ring-line"
                       : "text-ink-2 hover:text-ink hover:bg-paper-2 font-medium"
@@ -441,7 +452,7 @@ export default async function AdminOrdersPage({
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[900px]">
                   <thead>
-                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <tr className="border-b border-line text-[12px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-5 py-3 font-semibold">Order</th>
                       <th className="text-left px-3 py-3 font-semibold">Customer</th>
                       <th className="text-left px-3 py-3 font-semibold">Event</th>
@@ -465,7 +476,7 @@ export default async function AdminOrdersPage({
                         </td>
                         <td className="px-3 py-2 max-w-[160px]">
                           <p className="text-[13px] text-ink truncate">{customerName(o)}</p>
-                          <p className="text-[11px] text-ink-3 truncate">{o.guestEmail ?? o.guestPhone ?? "—"}</p>
+                          <p className="text-[12px] text-ink-3 truncate">{o.guestEmail ?? o.guestPhone ?? "—"}</p>
                         </td>
                         <td className="px-3 py-2 max-w-[160px]">
                           <span className="text-[13px] text-ink-2 line-clamp-1">{o.eventTitle ?? "—"}</span>
@@ -483,10 +494,10 @@ export default async function AdminOrdersPage({
                               <div className="inline-flex items-center gap-1.5" title={tooltip || undefined}>
                                 <Smartphone size={12} className="text-green-700 shrink-0" />
                                 <span className="text-[12px] text-ink-2 whitespace-nowrap">
-                                  {o.paymentMethod === "complimentary" ? "Complimentary" : o.paymentMethod ?? <span className="italic text-ink-3">—</span>}
+                                  {o.paymentMethod ? methodText(o.paymentMethod) : <span className="italic text-ink-3">—</span>}
                                 </span>
                                 {pollStatus && (
-                                  <span className={`text-[10px] font-semibold ${pollStatus === "SUCCESS" ? "text-emerald-600" : pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
+                                  <span className={`text-[12px] font-semibold ${pollStatus === "SUCCESS" ? "text-emerald-600" : pollStatus === "FAILED" ? "text-red-600" : "text-amber-600"}`}>
                                     {pollStatus}
                                   </span>
                                 )}
@@ -495,12 +506,12 @@ export default async function AdminOrdersPage({
                           })()}
                         </td>
                         <td className="px-3 py-2">
-                          <span className={`inline-block w-fit text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}>
+                          <span className={`inline-block w-fit text-[12px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}>
                             {STATUS_LABEL[o.status ?? ""] ?? o.status}
                           </span>
                           {reasonByOrder.has(o.id) && (
                             <p
-                              className="mt-1 max-w-[160px] truncate text-[10px] text-rose-600"
+                              className="mt-1 max-w-[160px] truncate text-[12px] text-rose-600"
                               title={reasonByOrder.get(o.id)}
                             >
                               {reasonByOrder.get(o.id)}
@@ -536,7 +547,7 @@ export default async function AdminOrdersPage({
                               <RecheckButton orderId={o.id} variant="menu" />
                             )}
                             {(o.status === "pending" || o.status === "awaiting_verification" || o.status === "expired") && (
-                              <CompleteAndSendButton orderId={o.id} variant="menu" requireReference={needsProviderReference(o)} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} orderLabel={`#${o.id.slice(0, 8)}`} customer={o.guestName ?? o.guestEmail ?? undefined} status={o.status ?? undefined} />
+                              <CompleteAndSendButton orderId={o.id} variant="menu" requireReference={needsProviderReference(o)} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} orderLabel={`#${o.id.slice(0, 8)}`} customer={o.guestName ?? o.guestEmail ?? undefined} status={o.status ?? undefined} proofUploadEnabled={proofUploadEnabled} />
                             )}
                             {o.status === "paid" && (
                               <>
@@ -547,7 +558,7 @@ export default async function AdminOrdersPage({
                                   href={`/orders/${o.id}/print`}
                                 prefetch={false}
                                   target="_blank"
-                                  className="inline-flex w-full items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                  className="inline-flex w-full items-center gap-1.5 tp-tap rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
                                   <Download size={12} className="shrink-0" />
                                   Download tickets
@@ -563,7 +574,7 @@ export default async function AdminOrdersPage({
                                   href={`/orders/${o.id}/print`}
                                 prefetch={false}
                                   target="_blank"
-                                  className="inline-flex w-full items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                                  className="inline-flex w-full items-center gap-1.5 tp-tap rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                                 >
                                   <Download size={12} className="shrink-0" />
                                   Download tickets
@@ -594,7 +605,7 @@ export default async function AdminOrdersPage({
                   <li key={o.id} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-1.5">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-mono font-semibold text-ink-3">
+                        <p className="text-[12px] font-mono font-semibold text-ink-3">
                           #{o.id.slice(0, 8)}
                         </p>
                         <p className="text-[14px] font-semibold tracking-tight text-ink line-clamp-1 mt-0.5">
@@ -612,24 +623,24 @@ export default async function AdminOrdersPage({
                           )}
                         </p>
                         <span
-                          className={`mt-1 inline-block text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
+                          className={`mt-1 inline-block text-[12px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full ${STATUS_STYLE[o.status ?? ""] ?? "bg-paper-2 text-ink-3"}`}
                         >
                           {STATUS_LABEL[o.status ?? ""] ?? o.status}
                         </span>
                       </div>
                     </div>
                     {reasonByOrder.has(o.id) && (
-                      <p className="text-[11px] text-rose-600 truncate">{reasonByOrder.get(o.id)}</p>
+                      <p className="text-[12px] text-rose-600 truncate">{reasonByOrder.get(o.id)}</p>
                     )}
                     {o.guestEmail && (
-                      <p className="text-[11px] text-ink-3 truncate">{o.guestEmail}</p>
+                      <p className="text-[12px] text-ink-3 truncate">{o.guestEmail}</p>
                     )}
                     {o.guestPhone && (
-                      <p className="text-[11px] text-ink-3 truncate">{o.guestPhone}</p>
+                      <p className="text-[12px] text-ink-3 truncate">{o.guestPhone}</p>
                     )}
                     {/* Verification detail for awaiting_verification */}
                     {o.status === "awaiting_verification" && (
-                      <p className="text-[11px] text-blue-600 font-medium mt-1">
+                      <p className="text-[12px] text-blue-600 font-medium mt-1">
                         {o.verificationSentAt
                           ? `Verification sent ${formatDateShort(o.verificationSentAt)}`
                           : "Not yet verified"}
@@ -640,13 +651,13 @@ export default async function AdminOrdersPage({
                           {o.paymentMethod ? (
                             <>
                               <Smartphone size={11} className="text-green-700" />
-                              {o.paymentMethod === "complimentary" ? "Complimentary" : o.paymentMethod}
+                              {methodText(o.paymentMethod)}
                             </>
                           ) : (
                             <span className="italic text-ink-3">No payment method</span>
                           )}
                           {o.paymentRef && (
-                            <span className="text-[10px] font-mono text-ink-3 ml-1" title={o.paymentRef}>
+                            <span className="text-[12px] font-mono text-ink-3 ml-1" title={o.paymentRef}>
                               #{o.paymentRef.slice(0, 8)}
                             </span>
                           )}
@@ -665,7 +676,7 @@ export default async function AdminOrdersPage({
                       <div className="text-right">
                         <span>{o.createdAt ? formatDateShort(o.createdAt) : "—"}</span>
                         {o.createdAt && (o.status === "pending" || o.status === "awaiting_verification") && (
-                          <p className="text-[10px] text-ink-3">
+                          <p className="text-[12px] text-ink-3">
                             {Math.floor((now.getTime() - new Date(o.createdAt).getTime()) / 1000 / 60 / 60)}h ago
                           </p>
                         )}
@@ -683,7 +694,7 @@ export default async function AdminOrdersPage({
                         <RecheckButton orderId={o.id} variant="mobile" />
                       )}
                       {(o.status === "pending" || o.status === "awaiting_verification" || o.status === "expired") && (
-                        <CompleteAndSendButton orderId={o.id} variant="mobile" requireReference={needsProviderReference(o)} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} orderLabel={`#${o.id.slice(0, 8)}`} customer={o.guestName ?? o.guestEmail ?? undefined} status={o.status ?? undefined} />
+                        <CompleteAndSendButton orderId={o.id} variant="mobile" requireReference={needsProviderReference(o)} expectedAmount={Number(o.totalAmount ?? 0)} currency={o.currency ?? "USD"} orderLabel={`#${o.id.slice(0, 8)}`} customer={o.guestName ?? o.guestEmail ?? undefined} status={o.status ?? undefined} proofUploadEnabled={proofUploadEnabled} />
                       )}
                       {o.status === "paid" && (
                         <>
@@ -694,7 +705,7 @@ export default async function AdminOrdersPage({
                             href={`/orders/${o.id}/print`}
                                 prefetch={false}
                             target="_blank"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 tp-tap rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                           >
                             <Download size={12} />
                             Tickets
@@ -709,7 +720,7 @@ export default async function AdminOrdersPage({
                             href={`/orders/${o.id}/print`}
                                 prefetch={false}
                             target="_blank"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 tp-tap rounded-lg bg-brand-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-brand-700 transition-colors"
                           >
                             <Download size={12} />
                             Tickets
@@ -720,12 +731,15 @@ export default async function AdminOrdersPage({
                         href={`/admin/orders/${o.id}`}
                                 prefetch={false}
                         target="_blank"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
+                        className="inline-flex items-center gap-1.5 tp-tap rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:border-line-2 transition-colors"
                       >
                         <ExternalLink size={12} />
                         View
                       </Link>
-                      <DeleteOrderButton orderId={o.id} variant="mobile" />
+                      {/* Destructive action sits on its own row, away from View. */}
+                      <div className="mt-1 flex w-full justify-end border-t border-line pt-2">
+                        <DeleteOrderButton orderId={o.id} variant="mobile" />
+                      </div>
                     </div>
                   </li>
                 ))}

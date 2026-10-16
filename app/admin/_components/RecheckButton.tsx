@@ -51,7 +51,7 @@ export default function RecheckButton({
           "disabled:opacity-50 disabled:cursor-not-allowed",
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px] text-amber-700 hover:bg-amber-50 border border-amber-200"
-            : "px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-50 border border-amber-200",
+            : "tp-tap px-3 py-2 text-[12px] text-amber-700 hover:bg-amber-50 border border-amber-200",
           variant === "menu" && "w-full justify-start",
         )}
         title="Re-check Velocity payment"

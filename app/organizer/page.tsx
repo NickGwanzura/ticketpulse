@@ -51,7 +51,7 @@ function CapacityBar({ sold, capacity }: { sold: number; capacity: number }) {
       <div className="flex-1 h-1 bg-paper-3 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[11px] text-ink-3 tabular-nums shrink-0">{pct}%</span>
+      <span className="text-[12px] text-ink-3 tabular-nums shrink-0">{pct}%</span>
     </div>
   )
 }
@@ -86,7 +86,7 @@ function EventHealthBadges({
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
       {badges.slice(0, 3).map((badge) => (
-        <span key={badge.label} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${badge.className}`}>
+        <span key={badge.label} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold ring-1 ${badge.className}`}>
           {badge.label}
         </span>
       ))}
@@ -316,9 +316,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const needsAttention = [
     { label: "Draft events", value: draftCount, href: draftCount > 0 ? `/organizer/events/${EVENTS.find(e => e.status === "draft")?.id}/edit` : "/organizer/events/new", icon: ClipboardList, tone: "amber" },
     { label: "Missing tiers", value: missingTierCount, href: missingTierEvent ? `/organizer/events/${missingTierEvent.id}/tiers` : "/organizer/events/new", icon: Ticket, tone: "rose" },
-    { label: "Paid, no tickets", value: paidNoTickets, href: "/organizer/orders?issue=paid_no_tickets", icon: AlertCircle, tone: "rose" },
-    { label: "Delivery issues", value: deliveryAttention, href: "/organizer/orders?issue=delivery_failed", icon: Mail, tone: "amber" },
-    { label: "Payment warnings", value: duplicateLedgers, href: "/organizer/orders?issue=duplicate_ledger", icon: Zap, tone: "amber" },
+    { label: "Paid, no tickets", value: paidNoTickets, href: "/contact", icon: AlertCircle, tone: "rose" },
+    { label: "Delivery issues", value: deliveryAttention, href: "/contact", icon: Mail, tone: "amber" },
+    { label: "Payment warnings", value: duplicateLedgers, href: "/contact", icon: Zap, tone: "amber" },
     { label: "Sales closed", value: closedSalesCount, href: closedSalesEvent ? `/organizer/events/${closedSalesEvent.id}/tiers` : "/organizer/events", icon: AlertCircle, tone: "rose" },
     { label: "Low inventory", value: lowInventoryCount, href: lowInventoryEvent ? `/organizer/events/${lowInventoryEvent.id}/tiers` : "/organizer?filter=live", icon: Ticket, tone: "amber" },
     ...(lowCheckinEvent ? [{
@@ -339,6 +339,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
   const trendLast7 = salesTrend.slice(-7).reduce((sum, d) => sum + d.tickets, 0)
   const trendPrev7 = salesTrend.slice(-14, -7).reduce((sum, d) => sum + d.tickets, 0)
   const trendLast30 = salesTrend.reduce((sum, d) => sum + d.tickets, 0)
+  const netLast7 = salesTrend.slice(-7).reduce((sum, d) => sum + d.net, 0)
+  const netLast30 = salesTrend.reduce((sum, d) => sum + d.net, 0)
   const trendToday = salesTrend[salesTrend.length - 1]?.tickets ?? 0
   const trendMax = Math.max(...salesTrend.map((d) => d.tickets), 1)
   const trendChange = trendPrev7 > 0 ? Math.round(((trendLast7 - trendPrev7) / trendPrev7) * 100) : null
@@ -352,7 +354,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
       <div className="border-b border-line bg-paper">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-6 md:py-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Organizer</p>
+            <p className="text-[12px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Organizer</p>
             <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
               {firstName}&apos;s events
             </h1>
@@ -414,8 +416,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <p className="text-[15px] font-semibold text-ink">Needs attention</p>
               <p className="text-[12px] text-ink-2 mt-0.5">Operational checks across publishing, payment, delivery, inventory, and payouts.</p>
             </div>
-            <Link href="/organizer/orders" className="inline-flex items-center gap-1 text-[12px] font-semibold text-navy">
-              Review orders <ArrowUpRight size={11} />
+            <Link href="/organizer/attendees" className="tp-tap inline-flex items-center gap-1 text-[12px] font-semibold text-navy">
+              View attendees <ArrowUpRight size={11} />
             </Link>
           </div>
           {needsAttention.length === 0 ? (
@@ -424,9 +426,9 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               Everything important is clear right now.
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-x-0 lg:divide-x divide-line">
+            <div className="-mb-px -mr-px grid grid-cols-2 lg:grid-cols-4">
               {needsAttention.map(({ label, value, display, href, icon: Icon, tone }) => (
-                <Link key={label} href={href} className="px-5 py-4 hover:bg-paper-2 transition-colors">
+                <Link key={label} href={href} className="border-b border-r border-line bg-paper px-4 py-4 hover:bg-paper-2 transition-colors sm:px-5">
                   <div className="flex items-center justify-between gap-3">
                     <span className={`inline-flex w-8 h-8 items-center justify-center rounded-lg ring-1 ${
                       tone === "rose" ? "bg-rose-50 text-rose-700 ring-rose-200" :
@@ -469,12 +471,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <h2 className="text-[15px] font-semibold text-ink">Ticket sales, last 30 days</h2>
-                <p className="mt-0.5 text-[12px] text-ink-3">Tickets issued per day (Zimbabwe time), staff tickets excluded.</p>
+                <p className="mt-0.5 text-[12px] text-ink-3">Bars show tickets issued per day (Zimbabwe time, staff tickets excluded). Net is after the TicketPulse fee.</p>
               </div>
-              <dl className="flex gap-6 text-right">
-                <div><dt className="text-[11px] text-ink-3">Today</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{trendToday.toLocaleString()}</dd></div>
+              <dl className="flex flex-wrap gap-x-6 gap-y-2 text-right">
+                <div><dt className="text-[12px] text-ink-3">Today</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{trendToday.toLocaleString()}</dd></div>
                 <div>
-                  <dt className="text-[11px] text-ink-3">Last 7 days</dt>
+                  <dt className="text-[12px] text-ink-3">Last 7 days</dt>
                   <dd className="text-[18px] font-bold tabular-nums text-ink">
                     {trendLast7.toLocaleString()}
                     {trendChange !== null && (
@@ -484,12 +486,14 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                     )}
                   </dd>
                 </div>
-                <div><dt className="text-[11px] text-ink-3">30 days</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{trendLast30.toLocaleString()}</dd></div>
+                <div><dt className="text-[12px] text-ink-3">30 days</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{trendLast30.toLocaleString()}</dd></div>
+                <div><dt className="text-[12px] text-ink-3">Net, 7 days</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{formatCurrency(netLast7, "USD")}</dd></div>
+                <div><dt className="text-[12px] text-ink-3">Net, 30 days</dt><dd className="text-[18px] font-bold tabular-nums text-ink">{formatCurrency(netLast30, "USD")}</dd></div>
               </dl>
             </div>
             <div className="mt-4 flex h-24 items-end gap-[3px]" role="img" aria-label={`${trendLast30} tickets in the last 30 days, ${trendLast7} in the last 7 days`}>
               {salesTrend.map((d) => (
-                <div key={d.date} className="group relative flex-1" title={`${d.date}: ${d.tickets} ticket${d.tickets === 1 ? "" : "s"}`}>
+                <div key={d.date} className="group relative flex-1" title={`${d.date}: ${d.tickets} ticket${d.tickets === 1 ? "" : "s"}, net ${formatCurrency(d.net, "USD")}`}>
                   <div
                     className={`w-full rounded-sm ${d.tickets > 0 ? "bg-ink" : "bg-paper-3"}`}
                     style={{ height: `${Math.max(d.tickets > 0 ? 6 : 2, Math.round((d.tickets / trendMax) * 96))}px` }}
@@ -497,7 +501,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 </div>
               ))}
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-ink-3"><span>{salesTrend[0].date.slice(5)}</span><span>{salesTrend[salesTrend.length - 1].date.slice(5)}</span></div>
+            <div className="mt-1 flex justify-between text-[12px] text-ink-3"><span>{salesTrend[0].date.slice(5)}</span><span>{salesTrend[salesTrend.length - 1].date.slice(5)}</span></div>
           </section>
         )}
 
@@ -517,7 +521,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 { v: "past",    l: pastCount          > 0 ? `Past ${pastCount}`             : "Past"    },
               ].map(f => (
                   <Link key={f.v} href={`/organizer?filter=${f.v}`} aria-current={filter === f.v ? "page" : undefined}
-                    className={`px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${filter === f.v ? "bg-paper-2 text-ink ring-1 ring-line" : "text-ink-2 hover:text-ink"}`}>
+                    className={`tp-tap inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-medium transition-colors ${filter === f.v ? "bg-paper-2 text-ink ring-1 ring-line" : "text-ink-2 hover:text-ink"}`}>
                     {f.l}
                   </Link>
                 ))}
@@ -550,7 +554,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           <p className="text-[13px] font-bold text-ink tabular-nums">{formatCurrency(e.netRevenue, e.currency)}</p>
                           <div className="text-right">
                             <p className="text-[12px] text-ink-3">{e.sold} / {e.capacity} attending</p>
-                            {e.checkedIn > 0 && <p className="text-[11px] text-green-700 font-semibold">{e.checkedIn} checked in</p>}
+                            {e.checkedIn > 0 && <p className="text-[12px] text-green-700 font-semibold">{e.checkedIn} checked in</p>}
                           </div>
                         </div>
                         <CapacityBar sold={e.sold} capacity={e.capacity} />
@@ -574,7 +578,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                 {/* Desktop */}
                 <table className="hidden md:table w-full">
                   <thead>
-                    <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
+                    <tr className="border-b border-line text-[12px] font-semibold tracking-widest text-ink-3 uppercase">
                       <th className="text-left px-5 py-3">Event</th>
                       <th className="text-left px-3 py-3">Date</th>
                       <th className="text-right px-3 py-3">Attending</th>
@@ -605,7 +609,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                           </td>
                           <td className="px-3 py-4 text-right">
                             <p className="text-[13px] font-semibold text-ink tabular-nums">{e.checkedIn}</p>
-                            {e.sold > 0 && <p className="text-[11px] text-ink-3">{Math.round((e.checkedIn / e.sold) * 100)}%</p>}
+                            {e.sold > 0 && <p className="text-[12px] text-ink-3">{Math.round((e.checkedIn / e.sold) * 100)}%</p>}
                           </td>
                           <td className="px-3 py-4 text-right text-[14px] font-bold text-ink tabular-nums whitespace-nowrap">
                             {formatCurrency(e.netRevenue, e.currency)}
@@ -644,7 +648,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
                         </summary>
                         <div className="mt-4">
                           <TicketTierSalesBreakdown tiers={e.tierSales} />
-                          <Link href={`/organizer/events/${e.id}/tiers`} className="mt-3 inline-block text-[12px] font-medium text-navy hover:underline">Manage ticket tiers</Link>
+                          <Link href={`/organizer/events/${e.id}/tiers`} className="tp-tap mt-3 inline-flex items-center text-[12px] font-medium text-navy hover:underline">Manage ticket tiers</Link>
                         </div>
                       </details>
                     ))}
@@ -658,7 +662,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           <div className="flex flex-col gap-4">
             {/* Payout card */}
             <div className="rounded-2xl border border-line bg-paper p-5">
-              <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-4">Earnings</p>
+              <p className="text-[12px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-4">Earnings</p>
               <p className="text-[28px] font-bold tracking-tight text-ink tabular-nums">{formatCurrency(availableBalance, "USD")}</p>
               <p className="text-[12px] text-ink-3 mt-0.5 mb-5">available balance</p>
               <div className="space-y-2.5 text-[13px] pb-5 border-b border-line mb-4">
@@ -701,12 +705,12 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
               <a href="/api/payouts/statement" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-paper py-2.5 text-[13px] font-semibold text-ink-2 hover:bg-paper-2 transition-colors">
                 <ReceiptText size={13} /> Download payout summary &amp; statement
               </a>
-              <ul className="mt-4 space-y-1 text-[11.5px] leading-relaxed text-ink-3">
+              <ul className="mt-4 space-y-1 text-[12px] leading-relaxed text-ink-3">
                 <li>TicketPulse keeps {organizerRevenueSummary?.commissionRate ?? PLATFORM_FEE_PERCENT}% of ticket sales; you receive the rest.</li>
                 <li>Payouts go to your bank account in USD, usually within about 24 hours of approval. Minimum USD 1.00, one request at a time.</li>
                 {mixedCurrencies && <li>Your events use more than one currency; earnings and payouts here are in USD.</li>}
               </ul>
-              <a href="/api/organizer/payout-sop" className="mt-2 inline-block text-[11.5px] font-semibold text-navy underline underline-offset-2">Download the payout guide (PDF)</a>
+              <a href="/api/organizer/payout-sop" className="mt-2 inline-block text-[12px] font-semibold text-navy underline underline-offset-2">Download the payout guide (PDF)</a>
             </div>
 
             {/* AI insight */}
@@ -730,8 +734,8 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           <div className="rounded-2xl border border-line bg-paper p-5">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-[15px] font-semibold text-ink">Net sales by event</h2>
-              <Link href="/organizer/orders" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
-                All orders <ArrowUpRight size={11} />
+              <Link href="/organizer/events" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1 hover:gap-1.5 transition-all">
+                All events <ArrowUpRight size={11} />
               </Link>
             </div>
             {SALES_TOP.length === 0 ? (
@@ -758,15 +762,15 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
           {/* Recent orders */}
           <div className="rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 py-4 border-b border-line">
-              <h2 className="text-[15px] font-semibold text-ink">Recent orders</h2>
+              <h2 className="text-[15px] font-semibold text-ink">Recent buyers</h2>
             </div>
             {recentOrdersRaw.length === 0 ? (
-              <EmptyState icon={Ticket} title="No orders yet" body="Orders appear as attendees buy tickets." />
+              <EmptyState icon={Ticket} title="No buyers yet" body="Buyers appear here as tickets are sold." />
             ) : (
               <ul className="divide-y divide-line">
                 {recentOrdersRaw.map((o, index) => (
                   <li key={o.id ?? index}>
-                    <Link href={`/organizer/orders?q=${encodeURIComponent(o.id)}`} className="px-5 py-3.5 flex items-center gap-3 hover:bg-paper-2 transition-colors">
+                    <Link href={`/organizer/attendees?q=${encodeURIComponent(o.guestEmail || o.guestName || "")}`} className="px-5 py-3.5 flex items-center gap-3 hover:bg-paper-2 transition-colors">
                       <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${o.status === "refunded" ? "bg-rose-400" : "bg-emerald-500"}`} aria-hidden />
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-semibold text-ink truncate">{o.guestName || o.guestEmail || "Guest"}</p>

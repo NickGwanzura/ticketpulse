@@ -1299,3 +1299,10 @@ aside[class*="rounded-xl"][class*="bg-white"] {
 .tp-btn-split--sm .tp-btn-split__cap {
   padding: 0 10px;
 }
+
+/* Minimum touch target (44px) on touch screens; mouse users keep compact controls. */
+@utility tp-tap {
+  @media (pointer: coarse) {
+    min-height: 44px;
+  }
+}

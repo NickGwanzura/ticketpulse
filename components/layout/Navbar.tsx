@@ -27,6 +27,8 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
   const { data: session } = useSession()
   const pathname = usePathname()
   const isHome = pathname === "/"
+  // Organisers and admins are working, not shopping: no buyer cart in their header.
+  const staffArea = /^\/(organizer|admin|payouts)(\/|$)/.test(pathname ?? "")
   const { totalCount, ready } = useCart()
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -87,7 +89,8 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Link
+          {!staffArea && (
+<Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
             className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white text-ink transition hover:border-accent/30 hover:text-accent"
@@ -99,6 +102,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               </span>
             )}
           </Link>
+)}
 
           {session ? (
             <>
@@ -151,7 +155,8 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
-          <Link
+          {!staffArea && (
+<Link
             href="/cart"
             aria-label={`Cart, ${totalCount} item${totalCount === 1 ? "" : "s"}`}
             className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink"
@@ -163,6 +168,7 @@ export default function Navbar(_props: { featured?: NavbarFeaturedItem[] }) {
               </span>
             )}
           </Link>
+)}
           <button
             onClick={() => setMenuOpen((open) => !open)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink hover:bg-paper-2"

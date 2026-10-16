@@ -290,7 +290,7 @@ export default async function AdminOverviewPage() {
       <div className="border-b border-line bg-paper">
         <div className="px-5 md:px-8 py-6 md:py-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Admin</p>
+            <p className="text-[12px] font-semibold tracking-[0.16em] text-ink-3 uppercase mb-1">Admin</p>
             <h1 className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">Platform overview</h1>
             <p className="mt-2 text-[13px] text-ink-2">The work that needs attention, at a glance. <span className="text-ink-3">Data as of {asOf} (Harare).</span></p>
           </div>
@@ -328,7 +328,7 @@ export default async function AdminOverviewPage() {
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold text-ink-2">{label}</p>
                 <p className="text-[13px] font-semibold text-ink">{value}</p>
-                <p className="mt-0.5 text-[11.5px] text-ink-3 leading-snug">{detail}</p>
+                <p className="mt-0.5 text-[12px] text-ink-3 leading-snug">{detail}</p>
               </div>
             </div>
           ))}
@@ -344,7 +344,7 @@ export default async function AdminOverviewPage() {
             <p className="flex-1 text-[13px] font-semibold text-amber-900">
               {actionCount.toLocaleString()} admin action{actionCount === 1 ? "" : "s"} need attention.
             </p>
-            <Link href="#operations" className="shrink-0 text-[12px] font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2">
+            <Link href="#operations" className="tp-tap inline-flex shrink-0 items-center text-[12px] font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2">
               Open queue
             </Link>
           </div>
@@ -356,7 +356,7 @@ export default async function AdminOverviewPage() {
               <h2 id="operations-heading" className="text-[15px] font-semibold text-ink">Needs attention</h2>
               <p className="text-[12px] text-ink-2 mt-0.5">Payment, delivery, approval, and moderation work in one place.</p>
             </div>
-            <Link href="/admin/reconciliation" className="inline-flex items-center gap-1 text-[12px] font-semibold text-navy">
+            <Link href="/admin/reconciliation" className="tp-tap inline-flex items-center gap-1 text-[12px] font-semibold text-navy">
               Full reconciliation <ArrowUpRight size={11} />
             </Link>
           </div>
@@ -377,7 +377,7 @@ export default async function AdminOverviewPage() {
                   </div>
                   <p className="mt-3 text-[22px] font-bold text-ink tabular-nums">{value.toLocaleString()}</p>
                   <p className="mt-1 text-[12px] font-semibold text-ink-2">{label}</p>
-                  <p className="mt-1 text-[11px] text-ink-3 leading-snug">{detail}</p>
+                  <p className="mt-1 text-[12px] text-ink-3 leading-snug">{detail}</p>
                 </Link>
               ))}
             </div>
@@ -410,7 +410,7 @@ export default async function AdminOverviewPage() {
             <div key={label} className="px-5 py-5">
               <p className="text-[12px] text-ink-3 mb-2">{label}</p>
               <p className="text-[24px] md:text-[26px] font-bold tracking-tight text-ink leading-none tabular-nums">{value}</p>
-              <p className="mt-1.5 text-[11px] text-ink-3">{sub}</p>
+              <p className="mt-1.5 text-[12px] text-ink-3">{sub}</p>
             </div>
           ))}
         </section>
@@ -419,7 +419,7 @@ export default async function AdminOverviewPage() {
           <section aria-labelledby="orders-heading" className="rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 py-4 border-b border-line flex items-center justify-between">
               <h2 id="orders-heading" className="text-[14px] font-semibold text-ink">Recent orders</h2>
-              <Link href="/admin/orders" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1">
+              <Link href="/admin/orders" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1">
                 All orders <ArrowUpRight size={11} />
               </Link>
             </div>
@@ -432,9 +432,9 @@ export default async function AdminOverviewPage() {
                   <li key={order.id} className="px-5 py-3 flex items-center gap-3 hover:bg-paper-2 transition-colors">
                     <Link href={`/admin/orders/${order.id}`} className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-ink truncate">{order.contactName ?? "Guest"}</p>
-                      <p className="text-[11px] text-ink-3 truncate">{order.eventTitle ?? "Event unavailable"}</p>
+                      <p className="text-[12px] text-ink-3 truncate">{order.eventTitle ?? "Event unavailable"}</p>
                     </Link>
-                    <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${status.className}`}>{status.label}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[12px] font-semibold ${status.className}`}>{status.label}</span>
                     <span className="text-[12px] font-semibold text-ink tabular-nums">{formatCurrency(Number(order.totalAmount ?? 0), order.currency ?? "USD")}</span>
                   </li>
                 )
@@ -445,7 +445,7 @@ export default async function AdminOverviewPage() {
           <section aria-labelledby="events-heading" className="rounded-2xl border border-line bg-paper overflow-hidden">
             <div className="px-5 py-4 border-b border-line flex items-center justify-between">
               <h2 id="events-heading" className="text-[14px] font-semibold text-ink">Live &amp; upcoming events</h2>
-              <Link href="/admin/events?status=published" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1">
+              <Link href="/admin/events?status=published" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1">
                 Manage <ArrowUpRight size={11} />
               </Link>
             </div>
@@ -458,7 +458,7 @@ export default async function AdminOverviewPage() {
                     <CalendarCheck size={14} className="text-ink-3 shrink-0" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-semibold text-ink truncate">{event.title}</p>
-                      <p className="text-[11px] text-ink-3 truncate">{event.organizerName ?? event.organizerEmail ?? "No organiser"}</p>
+                      <p className="text-[12px] text-ink-3 truncate">{event.organizerName ?? event.organizerEmail ?? "No organiser"}</p>
                     </div>
                   </li>
                 ))}
@@ -471,9 +471,9 @@ export default async function AdminOverviewPage() {
           <div className="px-5 py-4 border-b border-line flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 id="review-heading" className="text-[14px] font-semibold text-ink">Approvals &amp; verification</h2>
-              {pendingReviewCount > 0 && <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">{pendingReviewCount}</span>}
+              {pendingReviewCount > 0 && <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-amber-100 text-amber-800 text-[12px] font-bold">{pendingReviewCount}</span>}
             </div>
-            <Link href="/admin/events?status=pending_review" className="text-[12px] font-semibold text-navy inline-flex items-center gap-1">
+            <Link href="/admin/events?status=pending_review" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1">
               Event approvals <ArrowUpRight size={11} />
             </Link>
           </div>
@@ -487,7 +487,7 @@ export default async function AdminOverviewPage() {
               {draftEvents.map((event) => (
                 <li key={`event-${event.id}`} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Event approval</span>
+                    <span className="text-[12px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Event approval</span>
                     <p className="mt-1 text-[14px] font-semibold text-ink">{event.title}</p>
                     <p className="text-[12px] text-ink-2">by {event.organizerName ?? event.organizerEmail ?? "—"}</p>
                   </div>
@@ -502,7 +502,7 @@ export default async function AdminOverviewPage() {
               {pendingOrganizers.map((organizer) => (
                 <li key={`organizer-${organizer.id}`} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-blue bg-blue/10 px-1.5 py-0.5 rounded">Organiser approval</span>
+                    <span className="text-[12px] font-bold tracking-widest uppercase text-blue bg-blue/10 px-1.5 py-0.5 rounded">Organiser approval</span>
                     <p className="mt-1 text-[14px] font-semibold text-ink">{organizer.name ?? "—"}</p>
                     <p className="text-[12px] text-ink-2">{organizer.email}</p>
                   </div>
@@ -523,7 +523,7 @@ export default async function AdminOverviewPage() {
               {unverifiedUsers.map((user) => (
                 <li key={`user-${user.id}`} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Email verification</span>
+                    <span className="text-[12px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Email verification</span>
                     <p className="mt-1 text-[14px] font-semibold text-ink">{user.name ?? "—"}</p>
                     <p className="text-[12px] text-ink-2">{user.email}</p>
                   </div>
