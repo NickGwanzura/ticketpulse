@@ -1,18 +1,15 @@
 // Site-wide maintenance mode. Imported by proxy.ts, so it must stay
 // Edge-safe: no Node built-ins, no database, no other app imports.
 //
-// ON by default in production for the 16 Oct 2026 hosting outage (the
-// database server is down). Turn it off by setting MAINTENANCE_MODE=off on the
-// host and redeploying/restarting. MAINTENANCE_UNTIL (ISO time) sets the
+// OFF unless MAINTENANCE_MODE=on is set on the host (used during the
+// 16 Oct 2026 hosting outage). MAINTENANCE_UNTIL (ISO time) sets the
 // "expected back" time shown to visitors.
 
 const DEFAULT_UNTIL = "2026-10-16T12:00:00Z" // 14:00 Zimbabwe time
 
 export function isMaintenanceOn(): boolean {
   const mode = (process.env.MAINTENANCE_MODE ?? "").trim().toLowerCase()
-  if (mode === "off" || mode === "false" || mode === "0") return false
-  if (mode === "on" || mode === "true" || mode === "1") return true
-  return process.env.NODE_ENV === "production"
+  return mode === "on" || mode === "true" || mode === "1"
 }
 
 export function maintenanceUntil(): Date {
