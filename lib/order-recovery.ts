@@ -1,3 +1,4 @@
+import { proofKeyBelongsToOrder } from "@/lib/payment-proof"
 import "server-only"
 import { and, eq, ne, sql, inArray } from "drizzle-orm"
 import { db } from "@/db"
@@ -84,7 +85,7 @@ function buildManualCompletionMetadata(
   paymentRef: string,
   completedAt: string,
   completedBy: string,
-  proof?: { amountReceived: number; proofNote: string | null; expectedAmount: number },
+  proof?: { amountReceived: number; proofNote: string | null; expectedAmount: number; proofKey?: string | null },
 ): ManualCompletionMetadata {
   const metadata = asMetadata(current)
   const currentVelocity = metadata.velocity
@@ -118,6 +119,7 @@ function buildManualCompletionMetadata(
             expectedAmount: proof.expectedAmount,
             overpaid: proof.amountReceived > proof.expectedAmount + 0.005,
             proofNote: proof.proofNote,
+            ...(proof.proofKey ? { proofKey: proof.proofKey } : {}),
           }
         : {}),
     },
@@ -151,6 +153,8 @@ export type CompletionAuthority = {
   amountReceived?: number | null
   /** Free-text note: who sent the proof, via which channel, anything unusual. */
   proofNote?: string | null
+  /** Private storage key of an uploaded proof file (see lib/payment-proof). */
+  proofKey?: string | null
 }
 
 /** The admin's proof of payment was rejected (reused reference, short payment...). */
@@ -211,7 +215,7 @@ export async function markOrderCompleteAction(
 
       wasPaid = current.status === "paid"
       let providerReference: string | null = null
-      let proofDetails: { amountReceived: number; proofNote: string | null; expectedAmount: number } | undefined
+      let proofDetails: { amountReceived: number; proofNote: string | null; expectedAmount: number; proofKey?: string | null } | undefined
       if (!wasPaid && !completesWithoutGateway(current)) {
         const reference = authority.actor === "admin" ? authority.providerReference?.trim() : null
         if (!reference || reference.length < 4) throw new UnconfirmedPaymentError(UNCONFIRMED_PAYMENT_MESSAGE)
@@ -239,7 +243,11 @@ export async function markOrderCompleteAction(
         if (received + 0.005 < expected) {
           throw new ProofRejectedError(`The proof shows ${received.toFixed(2)} but this order totals ${expected.toFixed(2)} ${current.currency ?? "USD"}. It cannot be completed until the full amount is received.`)
         }
-        proofDetails = { amountReceived: received, proofNote: authority.proofNote?.trim() || null, expectedAmount: expected }
+        const proofKey = authority.proofKey?.trim() || null
+        if (proofKey && !proofKeyBelongsToOrder(proofKey, orderId)) {
+          throw new ProofRejectedError("The attached proof file does not belong to this order. Upload it again.")
+        }
+        proofDetails = { amountReceived: received, proofNote: authority.proofNote?.trim() || null, expectedAmount: expected, proofKey }
       }
       const now = new Date()
       completedAt = now.toISOString()

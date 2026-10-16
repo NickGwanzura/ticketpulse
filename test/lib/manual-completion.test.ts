@@ -133,6 +133,20 @@ describe("markOrderCompleteAction", () => {
     expect(result.message).toMatch(/amount/i)
   })
 
+  it("accepts a proof file stored under this order", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 20, proofKey: `proofs/${ID}/abc.png` })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a proof file that belongs to a different order", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 20, proofKey: "proofs/99999999-9999-9999-9999-999999999999/abc.png" })
+    expect(result.success).toBe(false)
+    expect(result.message).toMatch(/does not belong/)
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+
   it("rejects a reference already used on another order", async () => {
     mocks.order = pendingOrder("velocity-ecocash")
     mocks.reused = { id: "99999999-9999-9999-9999-999999999999" }

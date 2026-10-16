@@ -341,7 +341,7 @@ export async function cancelTicketsAction(ticketIds: string[]) {
 export async function markOrderCompleteAction(
   orderId: string,
   providerReference?: string,
-  proof?: { amountReceived?: number; note?: string },
+  proof?: { amountReceived?: number; note?: string; proofKey?: string },
 ) {
   const session = await requireAdmin()
 
@@ -351,6 +351,7 @@ export async function markOrderCompleteAction(
     providerReference,
     amountReceived: proof?.amountReceived ?? null,
     proofNote: proof?.note ?? null,
+    proofKey: proof?.proofKey ?? null,
   })
   await recordAdminAction(session, { action: "order.complete_manually", targetType: "order", targetId: orderId, reason: providerReference ? `Provider reference: ${providerReference}` : undefined, after: { result: typeof result === "object" ? result : String(result) } })
   return result
@@ -372,7 +373,7 @@ export async function sendTicketsAction(orderId: string) {
 export async function completeAndSendAction(
   orderId: string,
   providerReference?: string,
-  proof?: { amountReceived?: number; note?: string },
+  proof?: { amountReceived?: number; note?: string; proofKey?: string },
 ) {
   const session = await requireAdmin()
 
@@ -382,6 +383,7 @@ export async function completeAndSendAction(
     providerReference,
     amountReceived: proof?.amountReceived ?? null,
     proofNote: proof?.note ?? null,
+    proofKey: proof?.proofKey ?? null,
   })
   if (providerReference) {
     await recordAdminAction(session, {

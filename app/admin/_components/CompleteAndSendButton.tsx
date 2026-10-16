@@ -27,6 +27,7 @@ export default function CompleteAndSendButton({
   orderLabel,
   customer,
   status,
+  proofUploadEnabled = false,
 }: {
   orderId: string
   variant?: "desktop" | "mobile" | "menu"
@@ -42,6 +43,8 @@ export default function CompleteAndSendButton({
   customer?: string
   /** Current order status, e.g. "expired". */
   status?: string
+  /** True when private proof storage is configured, so a screenshot can be attached. */
+  proofUploadEnabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [dismissedState, setDismissedState] = useState<ActionState>(null)
@@ -56,7 +59,17 @@ export default function CompleteAndSendButton({
         const amountRaw = String(form.get("amountReceived") ?? "").trim()
         const amountReceived = amountRaw ? Number(amountRaw) : undefined
         const note = String(form.get("proofNote") ?? "").trim() || undefined
-        const result = await action(orderId, reference, requireReference ? { amountReceived, note } : undefined)
+        let proofKey: string | undefined
+        const file = form.get("proofFile")
+        if (requireReference && proofUploadEnabled && file instanceof File && file.size > 0) {
+          const upload = new FormData()
+          upload.set("file", file)
+          const res = await fetch(`/api/admin/orders/${orderId}/proof`, { method: "POST", body: upload })
+          const body = (await res.json().catch(() => ({}))) as { key?: string; error?: string }
+          if (!res.ok || !body.key) return { ok: false, message: body.error ?? "Could not upload the proof file." }
+          proofKey = body.key
+        }
+        const result = await action(orderId, reference, requireReference ? { amountReceived, note, proofKey } : undefined)
         if (result.success) setOpen(false)
         return { ok: result.success, message: result.message }
       } catch (e) {
@@ -127,7 +140,7 @@ export default function CompleteAndSendButton({
           "relative overflow-hidden disabled:cursor-wait",
           variant === "desktop"
             ? "px-2.5 py-1.5 text-[11px] text-violet-700 hover:bg-violet-50 border border-violet-200"
-            : "px-3 py-2 text-[12px] text-violet-700 hover:bg-violet-50 border border-violet-200",
+            : "tp-tap px-3 py-2 text-[12px] text-violet-700 hover:bg-violet-50 border border-violet-200",
           variant === "menu" && "w-full justify-start",
           pending && "bg-violet-50",
           state?.ok && !pending && showToast && "bg-green-50 text-green-700 border-green-200",
@@ -202,6 +215,14 @@ export default function CompleteAndSendButton({
                     <input id={`${titleId}-amt`} name="amountReceived" type="number" required min="0.01" step="0.01" inputMode="decimal"
                       className="mt-1 w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-[14px] text-ink focus:outline-none focus:ring-2 focus:ring-brand-600/30" />
                   </div>
+                  {proofUploadEnabled && (
+                    <div>
+                      <label className="block text-[12px] font-semibold text-ink-2" htmlFor={`${titleId}-file`}>Proof screenshot or PDF (optional, max 5 MB)</label>
+                      <input id={`${titleId}-file`} name="proofFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="mt-1 block w-full text-[13px] text-ink-2 file:mr-3 file:min-h-10 file:rounded-lg file:border file:border-line file:bg-paper-2 file:px-3 file:text-[13px] file:font-medium file:text-ink" />
+                      <p className="mt-1 text-[12px] text-ink-3">Stored privately. Only admins can open it.</p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-[12px] font-semibold text-ink-2" htmlFor={`${titleId}-note`}>Note (optional)</label>
                     <input id={`${titleId}-note`} name="proofNote" type="text" maxLength={300} autoComplete="off"
