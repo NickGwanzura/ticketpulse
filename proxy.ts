@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import { NextResponse } from "next/server"
 import { authConfig } from "@/auth.config"
+import { isMaintenanceOn, maintenanceHtml, maintenanceUntil } from "@/lib/maintenance"
 
 // Middleware runs on the Edge runtime — it must not transitively
 // import lib/password (node:crypto) or other Node-only deps.
@@ -55,6 +56,22 @@ function roleHostRedirect(
 }
 
 export default auth((req) => {
+  // Site-wide maintenance: every page shows the notice with a 503 so search
+  // engines and browsers treat it as temporary. See lib/maintenance.ts.
+  if (isMaintenanceOn()) {
+    const until = maintenanceUntil()
+    const retryAfter = Math.max(300, Math.round((until.getTime() - Date.now()) / 1000))
+    return new NextResponse(maintenanceHtml(until), {
+      status: 503,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Retry-After": String(retryAfter),
+        "X-Robots-Tag": "noindex",
+      },
+    })
+  }
+
   const { nextUrl } = req
   const path = nextUrl.pathname
 
