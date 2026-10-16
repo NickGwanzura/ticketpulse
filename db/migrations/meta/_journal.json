@@ -92,6 +92,13 @@
       "when": 1790956800000,
       "tag": "0012_drop_promo_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792148524156,
+      "tag": "0013_organizer_onboarding_profile",
+      "breakpoints": true
     }
   ]
 }

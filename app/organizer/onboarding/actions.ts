@@ -25,15 +25,39 @@ export async function saveOrganizerProfileAction(formData: FormData) {
   const bio = ((formData.get("bio") as string) ?? "").trim().slice(0, 280)
   const phone = ((formData.get("whatsappContact") as string) ?? "").trim()
   const rawSlug = ((formData.get("organizerSlug") as string) ?? "").trim()
+  const organizerType = ((formData.get("organizerType") as string) ?? "").trim()
+  const organizerEntityName = ((formData.get("organizerEntityName") as string) ?? "").trim().slice(0, 160)
+  const organizerLocation = ((formData.get("organizerLocation") as string) ?? "").trim().slice(0, 120)
+  const organizerReferenceUrl = ((formData.get("organizerReferenceUrl") as string) ?? "").trim().slice(0, 300)
   const organizerSlug = rawSlug ? slugify(rawSlug) : slugify(session.user.name ?? session.user.email ?? session.user.id)
   if (!isValidWhatsappContact(phone)) {
     redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+  }
+  if (!["individual", "business", "community"].includes(organizerType) || organizerLocation.length < 2) {
+    redirect("/organizer/onboarding?step=2&error=details_required")
+  }
+  if (organizerReferenceUrl) {
+    try {
+      const parsed = new URL(organizerReferenceUrl)
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Invalid URL")
+    } catch {
+      redirect("/organizer/onboarding?step=2&error=invalid_url")
+    }
   }
 
   try {
     await db
       .update(users)
-      .set({ organizerBio: bio || null, organizerSlug, phone, updatedAt: new Date() })
+      .set({
+        organizerBio: bio || null,
+        organizerSlug,
+        phone,
+        organizerType,
+        organizerEntityName: organizerEntityName || null,
+        organizerLocation,
+        organizerReferenceUrl: organizerReferenceUrl || null,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, session.user.id))
 
     await trackOrganizerLifecycle({

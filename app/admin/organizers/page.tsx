@@ -25,6 +25,7 @@ import { approveOrganizerAction, freezeOrganizerWithoutEventsAction, unfreezeOrg
 import EmptyState from "@/components/dashboard/EmptyState"
 import PageHeader from "@/components/dashboard/PageHeader"
 import Pagination from "@/components/ui/Pagination"
+import { organizerProfileScore } from "@/lib/organizer-profile-score"
 
 const LIMIT = 25
 const NEW_DAYS = 14
@@ -96,6 +97,11 @@ export default async function AdminOrganizersPage({
       name: users.name,
       email: users.email,
       phone: users.phone,
+      organizerType: users.organizerType,
+      organizerEntityName: users.organizerEntityName,
+      organizerLocation: users.organizerLocation,
+      organizerReferenceUrl: users.organizerReferenceUrl,
+      organizerBio: users.organizerBio,
       emailVerified: users.emailVerified,
       approvedAt: users.approvedAt,
       organizerFrozenAt: users.organizerFrozenAt,
@@ -211,12 +217,16 @@ export default async function AdminOrganizersPage({
           <EmptyState icon={UsersRound} title="No organizers found" body="Try changing the search or status filter." variant="inline" />
         ) : (
           <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+            <div className="border-b border-line bg-blue-50 px-5 py-3 text-[12px] leading-relaxed text-blue-900">
+              Profile score is a completeness aid out of 100, based on details supplied here. It is not identity verification or an automatic approval decision. Organizer checks are guided by the RBZ 2025 AML/CFT/CPF guidelines and POTRAZ data-protection requirements.
+            </div>
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[1000px]">
+              <table className="w-full min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-line bg-paper-2 text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
                     <th className="text-left px-5 py-3">Organizer</th>
                     <th className="text-left px-3 py-3">Phone</th>
+                    <th className="text-left px-3 py-3">Profile</th>
                     <th className="text-left px-3 py-3">Registered</th>
                     <th className="text-left px-3 py-3">Approval</th>
                     <th className="text-left px-3 py-3">Activity</th>
@@ -225,6 +235,7 @@ export default async function AdminOrganizersPage({
                 </thead>
                 <tbody className="divide-y divide-line">
                   {organizers.map((organizer) => {
+                    const score = organizerProfileScore(organizer)
                     return (
                       <tr key={organizer.id} className="hover:bg-paper-2 transition-colors">
                         <td className="px-5 py-4">
@@ -233,8 +244,25 @@ export default async function AdminOrganizersPage({
                             {organizer.isNew && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">New</span>}
                           </div>
                           <p className="text-[12px] text-ink-3 mt-0.5">{organizer.email ?? "No email"}</p>
+                          <p className="text-[11px] text-ink-3 mt-1">
+                            {organizer.organizerType ? organizer.organizerType.replace("community", "community group") : "Organizer type not provided"}
+                            {organizer.organizerLocation ? ` · ${organizer.organizerLocation}` : " · Location not provided"}
+                          </p>
+                          {organizer.organizerEntityName && <p className="text-[11px] text-ink-3 mt-0.5">Business/group: {organizer.organizerEntityName}</p>}
+                          {organizer.organizerReferenceUrl && <a href={organizer.organizerReferenceUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue hover:underline">Review reference</a>}
                         </td>
                         <td className="px-3 py-4 text-[13px] text-ink-2">{organizer.phone ?? "No phone"}</td>
+                        <td className="px-3 py-4">
+                          <div className="w-24">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-semibold text-ink">{score}</span>
+                              <span className="text-ink-3">/100</span>
+                            </div>
+                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-paper-3">
+                              <div className="h-full rounded-full bg-blue" style={{ width: `${score}%` }} />
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-3 py-4 text-[12px] text-ink-2 whitespace-nowrap">
                           {organizer.createdAt ? organizer.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                           <p className="text-[11px] text-ink-3 mt-1">
@@ -274,6 +302,9 @@ export default async function AdminOrganizersPage({
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-1.5">
+                            <Link href={`/admin/organizers/${organizer.id}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-paper-2 text-[12px] font-medium text-ink-2 hover:text-navy" title="Open organizer review">
+                              Review <ArrowUpRight size={12} />
+                            </Link>
                             {organizer.email && <a href={onboardingEmailHref(organizer.email, organizer.name)} title={`Email ${organizer.email}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-50 text-[12px] font-medium text-sky-700 hover:bg-sky-100"><Mail size={12} /> Email</a>}
                             {organizer.phone && <a href={phoneHref(organizer.phone)} title={`Call ${organizer.phone}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-[12px] font-medium text-emerald-700 hover:bg-emerald-100"><Phone size={12} /> Call</a>}
                             {organizer.phone && <a href={whatsappHref(organizer.phone, organizer.name)} target="_blank" rel="noreferrer" title={`Message ${organizer.phone} on WhatsApp`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-50 text-[12px] font-medium text-green-700 hover:bg-green-100"><MessageCircle size={12} /> WhatsApp</a>}
@@ -302,12 +333,20 @@ export default async function AdminOrganizersPage({
             </div>
 
             <ul className="md:hidden divide-y divide-line">
-              {organizers.map((organizer) => (
+              {organizers.map((organizer) => {
+                const score = organizerProfileScore(organizer)
+                return (
                 <li key={organizer.id} className="p-5 space-y-3">
                   <div>
                     <p className="text-[14px] font-semibold text-ink">{organizer.name ?? "Unnamed organizer"}</p>
                     <p className="text-[12px] text-ink-3">{organizer.email ?? "No email"}</p>
                     <p className="text-[12px] text-ink-3">{organizer.phone ?? "No phone"}</p>
+                    <p className="text-[11px] text-ink-3 mt-1">
+                      {organizer.organizerType ? organizer.organizerType.replace("community", "community group") : "Organizer type not provided"}
+                      {organizer.organizerLocation ? ` · ${organizer.organizerLocation}` : " · Location not provided"}
+                    </p>
+                    {organizer.organizerEntityName && <p className="text-[11px] text-ink-3">Business/group: {organizer.organizerEntityName}</p>}
+                    {organizer.organizerReferenceUrl && <a href={organizer.organizerReferenceUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue hover:underline">Review reference</a>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-2">
                     <span>{organizer.createdAt ? `Joined ${organizer.createdAt.toLocaleDateString("en-GB")}` : "Join date unknown"}</span>
@@ -315,7 +354,9 @@ export default async function AdminOrganizersPage({
                     <span>·</span><span>{organizer.daysRegistered}d registered</span>
                     <span>·</span><span>{organizer.organizerFrozenAt ? "Frozen" : organizer.approvedAt ? "Approved" : "Pending approval"}</span>
                   </div>
+                  <p className="text-[12px] font-semibold text-ink">Profile completeness: {score}/100</p>
                   <div className="flex items-center gap-2">
+                    <Link href={`/admin/organizers/${organizer.id}`} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-paper-2 text-[12px] font-medium text-ink-2"><ArrowUpRight size={12} /> Review details</Link>
                     {organizer.email && <a href={onboardingEmailHref(organizer.email, organizer.name)} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-sky-50 text-[12px] font-medium text-sky-700"><Mail size={12} /> Email</a>}
                     {organizer.phone && <a href={phoneHref(organizer.phone)} className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-[12px] font-medium text-emerald-700"><Phone size={12} /> Call</a>}
                     {organizer.phone && <a href={whatsappHref(organizer.phone, organizer.name)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-green-50 text-[12px] font-medium text-green-700"><MessageCircle size={12} /> WhatsApp</a>}
@@ -335,7 +376,8 @@ export default async function AdminOrganizersPage({
                     ))}
                   </div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
 
             <Pagination currentPage={currentPage} totalPages={totalPages} baseUrl="/admin/organizers" queryParams={{ q: searchQuery || undefined, status: status === "all" ? undefined : status }} />

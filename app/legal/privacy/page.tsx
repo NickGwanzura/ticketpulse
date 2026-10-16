@@ -15,12 +15,13 @@ export default function PrivacyPage() {
           body: <>
             <ul>
               <li><strong>Account and contact details:</strong> your name, email address, phone number, account role and profile information you provide.</li>
+              <li><strong>Organizer profile details:</strong> organizer type, city and country, optional business or group name, short description, and optional public website or social link. These help us understand and contact organizers and review event accounts.</li>
               <li><strong>Orders and tickets:</strong> event selections, ticket holders, order references, payment status, ticket delivery, transfers, check-ins, refunds and purchase history.</li>
               <li><strong>Payment and settlement details:</strong> the payment method, EcoCash number, transaction references and, for organizer bank payouts, the account holder, account number and bank name you submit. Card payments use a hosted payment provider; do not send full card details or PINs to TicketPulse support.</li>
               <li><strong>Content and messages:</strong> event or vendor information, uploaded images, reviews, support enquiries and answers to event booking questions.</li>
               <li><strong>Technical information:</strong> browser information, request logs and security information such as IP addresses. If you allow optional analytics, we also record event visits and checkout interactions linked to a random browser-session identifier.</li>
             </ul>
-            <p>You provide information through forms and account activity. Payment providers also send transaction status and reference information needed to reconcile an order.</p>
+            <p>You provide information through forms and account activity. Payment providers also send transaction status and reference information needed to reconcile an order. Organizer onboarding is designed to collect only basic contact and profile details. TicketPulse is guided by the Reserve Bank of Zimbabwe&apos;s 2025 AML/CFT/CPF guidelines and POTRAZ data-protection requirements; additional information may be requested if a payment partner or a specific review requires it.</p>
           </>,
         },
         {

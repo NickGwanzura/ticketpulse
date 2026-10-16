@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   CalendarCheck,
   CheckCircle2,
+  Clock3,
   CreditCard,
   FileWarning,
   Inbox,
@@ -14,7 +15,7 @@ import {
   Users,
   Zap,
 } from "lucide-react"
-import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
@@ -25,12 +26,23 @@ import { ORDER_ISSUES, ORDER_ISSUE_WINDOW_DAYS, orderIssueCondition, orderIssueW
 import { HEARTBEAT_KEYS, ageLabel, getHeartbeats } from "@/lib/heartbeat"
 import { approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import ConfirmReasonButton from "@/app/admin/_components/ConfirmReasonButton"
-import { approveOrganizerAction, rejectOrganizerAction, verifyUserEmailAction } from "@/app/admin/actions/users"
+import { approveOrganizerAction, rejectOrganizerAction } from "@/app/admin/actions/users"
 import RejectEventButton from "@/app/admin/actions/RejectEventButton"
 import EmptyState from "@/components/dashboard/EmptyState"
 import PollNowButton from "@/app/admin/_components/PollNowButton"
+import { organizerProfileScore } from "@/lib/organizer-profile-score"
 
 type QueueTone = "rose" | "amber" | "green" | "blue"
+
+function waitingLabel(createdAt: Date | null, now: Date): string {
+  if (!createdAt) return "Waiting time unavailable"
+  const minutes = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / 60_000))
+  if (minutes < 60) return `Waiting ${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `Waiting ${hours}h`
+  const days = Math.floor(hours / 24)
+  return `Waiting ${days}d`
+}
 
 function queueToneClasses(tone: QueueTone) {
   return tone === "rose"
@@ -76,7 +88,6 @@ export default async function AdminOverviewPage() {
     topEventRows,
     draftEvents,
     pendingOrganizers,
-    unverifiedUsers,
     [velocityCountRow],
     [pendingPayoutsRow],
     [pendingReviewsRow],
@@ -128,6 +139,7 @@ export default async function AdminOverviewPage() {
       title: events.title,
       description: events.description,
       category: events.category,
+      createdAt: events.createdAt,
       organizerName: users.name,
       organizerEmail: users.email,
       total: sql<number>`COUNT(*) OVER()::int`,
@@ -135,7 +147,7 @@ export default async function AdminOverviewPage() {
       .from(events)
       .leftJoin(users, sql`${events.organizerId}::text = ${users.id}::text`)
       .where(eq(events.status, "pending_review"))
-      .orderBy(desc(events.createdAt))
+      .orderBy(asc(events.createdAt))
       .limit(5),
 
     db.select({
@@ -143,22 +155,18 @@ export default async function AdminOverviewPage() {
       name: users.name,
       email: users.email,
       phone: users.phone,
+      emailVerified: users.emailVerified,
+      organizerType: users.organizerType,
+      organizerEntityName: users.organizerEntityName,
+      organizerLocation: users.organizerLocation,
+      organizerReferenceUrl: users.organizerReferenceUrl,
+      organizerBio: users.organizerBio,
+      createdAt: users.createdAt,
       total: sql<number>`COUNT(*) OVER()::int`,
     })
       .from(users)
       .where(and(eq(users.role, "organizer"), isNull(users.approvedAt)))
-      .orderBy(desc(users.createdAt))
-      .limit(5),
-
-    db.select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      total: sql<number>`COUNT(*) OVER()::int`,
-    })
-      .from(users)
-      // Organizers awaiting approval already appear in the organiser list above (approval requires a verified email); counting them here too double-counted them.
-      .orderBy(desc(users.createdAt))
+      .orderBy(asc(users.createdAt))
       .limit(5),
 
     db.select({
@@ -254,8 +262,7 @@ export default async function AdminOverviewPage() {
   const duplicateLedgers = orderIssueCounts.duplicate_ledger
   const pendingEventCount = Number(draftEvents[0]?.total ?? 0)
   const pendingOrganizerCount = Number(pendingOrganizers[0]?.total ?? 0)
-  const unverifiedUserCount = Number(unverifiedUsers[0]?.total ?? 0)
-  const pendingReviewCount = pendingEventCount + pendingOrganizerCount + unverifiedUserCount
+  const pendingReviewCount = pendingEventCount + pendingOrganizerCount
   const staleDraftCount = staleDraftsRow?.count ?? 0
   const staleReviewCount = staleReviewsRow?.count ?? 0
   const noEventOrganizerCount = noEventOrganizersRow?.count ?? 0
@@ -271,7 +278,7 @@ export default async function AdminOverviewPage() {
     { label: "Payout requests", value: pendingPayouts, href: "/admin/payouts?status=pending", icon: CreditCard, tone: "amber" as const, detail: `${pendingPayoutAmount} awaiting review` },
     { label: "Reviews", value: pendingReviews, href: "/admin/reviews", icon: CheckCircle2, tone: "blue" as const, detail: "Customer reviews awaiting moderation" },
     { label: "Old event reviews", value: staleReviewCount, href: "/admin/events?status=pending_review", icon: CalendarCheck, tone: "amber" as const, detail: "Publish requests waiting over 24 hours" },
-    { label: "Approvals & verification", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events, organisers awaiting approval, and unverified attendee/vendor accounts" },
+    { label: "Event & organiser approvals", value: pendingReviewCount, href: "#review", icon: Users, tone: "blue" as const, detail: "Events and organisers awaiting admin approval" },
   ].filter((item) => item.value > 0)
 
   // Informational counts: worth watching, but not admin work, so they are
@@ -470,17 +477,22 @@ export default async function AdminOverviewPage() {
         <section id="review" aria-labelledby="review-heading" className="rounded-2xl border border-line bg-paper overflow-hidden">
           <div className="px-5 py-4 border-b border-line flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 id="review-heading" className="text-[14px] font-semibold text-ink">Approvals &amp; verification</h2>
+              <h2 id="review-heading" className="text-[14px] font-semibold text-ink">Event &amp; organiser approvals</h2>
               {pendingReviewCount > 0 && <span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-amber-100 text-amber-800 text-[12px] font-bold">{pendingReviewCount}</span>}
             </div>
-            <Link href="/admin/events?status=pending_review" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1">
-              Event approvals <ArrowUpRight size={11} />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/admin/events?status=pending_review" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1">
+                Events <ArrowUpRight size={11} />
+              </Link>
+              <Link href="/admin/organizers?status=pending" className="tp-tap text-[12px] font-semibold text-navy inline-flex items-center gap-1">
+                Organisers <ArrowUpRight size={11} />
+              </Link>
+            </div>
           </div>
           {pendingReviewCount === 0 ? (
             <div className="px-5 py-8 flex items-center gap-3 text-[13px] text-emerald-700">
               <CheckCircle2 size={16} className="text-emerald-500" aria-hidden="true" />
-              All clear — nothing waiting for review.
+              <span>All clear — no event or organiser approvals are waiting.</span>
             </div>
           ) : (
             <ul className="divide-y divide-line">
@@ -490,6 +502,7 @@ export default async function AdminOverviewPage() {
                     <span className="text-[12px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Event approval</span>
                     <p className="mt-1 text-[14px] font-semibold text-ink">{event.title}</p>
                     <p className="text-[12px] text-ink-2">by {event.organizerName ?? event.organizerEmail ?? "—"}</p>
+                    <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-ink-3"><Clock3 size={12} />{waitingLabel(event.createdAt, now)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <RejectEventButton eventId={event.id} action={rejectEventAction} compact />
@@ -505,8 +518,19 @@ export default async function AdminOverviewPage() {
                     <span className="text-[12px] font-bold tracking-widest uppercase text-blue bg-blue/10 px-1.5 py-0.5 rounded">Organiser approval</span>
                     <p className="mt-1 text-[14px] font-semibold text-ink">{organizer.name ?? "—"}</p>
                     <p className="text-[12px] text-ink-2">{organizer.email}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-3">
+                      <span className="inline-flex items-center gap-1"><Clock3 size={12} />{waitingLabel(organizer.createdAt, now)}</span>
+                      <span>Profile completeness: {organizerProfileScore(organizer)}/100</span>
+                      <span>{organizer.emailVerified ? "Email verified" : "Email link not completed"}</span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      href={`/admin/organizers/${organizer.id}`}
+                      className="min-h-10 inline-flex items-center gap-1 rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors"
+                    >
+                      Review profile <ArrowUpRight size={13} />
+                    </Link>
                     <ConfirmReasonButton
                       action={rejectOrganizerAction.bind(null, organizer.id)}
                       label="Reject"
@@ -520,22 +544,9 @@ export default async function AdminOverviewPage() {
                   </div>
                 </li>
               ))}
-              {unverifiedUsers.map((user) => (
-                <li key={`user-${user.id}`} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="min-w-0">
-                    <span className="text-[12px] font-bold tracking-widest uppercase text-ink-3 bg-paper-2 px-1.5 py-0.5 rounded">Email verification</span>
-                    <p className="mt-1 text-[14px] font-semibold text-ink">{user.name ?? "—"}</p>
-                    <p className="text-[12px] text-ink-2">{user.email}</p>
-                  </div>
-                  <form action={verifyUserEmailAction.bind(null, user.id)} className="shrink-0">
-                    <button type="submit" className="min-h-10 rounded-lg border border-line bg-paper text-ink px-4 py-2 text-[13px] font-semibold hover:bg-paper-2 transition-colors">Verify email</button>
-                  </form>
-                </li>
-              ))}
               {[
                 { label: "event approvals", shown: draftEvents.length, total: pendingEventCount, href: "/admin/events?status=pending_review" },
                 { label: "organiser approvals", shown: pendingOrganizers.length, total: pendingOrganizerCount, href: "/admin/organizers" },
-                { label: "unverified accounts", shown: unverifiedUsers.length, total: unverifiedUserCount, href: "/admin/users" },
               ].filter((row) => row.total > row.shown).map((row) => (
                 <li key={`more-${row.label}`} className="px-5 py-3 text-[12px] text-ink-3 flex items-center justify-between gap-3">
                   <span>Showing {row.shown} of {row.total} {row.label}.</span>

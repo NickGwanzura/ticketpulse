@@ -56,7 +56,16 @@ export default async function OnboardingPage({
   const step = Number(sp.step ?? "1")
   const error = sp.error
   const [profile] = await db
-    .select({ phone: users.phone, approvedAt: users.approvedAt })
+    .select({
+      phone: users.phone,
+      approvedAt: users.approvedAt,
+      organizerSlug: users.organizerSlug,
+      organizerBio: users.organizerBio,
+      organizerType: users.organizerType,
+      organizerEntityName: users.organizerEntityName,
+      organizerLocation: users.organizerLocation,
+      organizerReferenceUrl: users.organizerReferenceUrl,
+    })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1)
@@ -121,7 +130,7 @@ export default async function OnboardingPage({
             </span>
             <h1 className="text-[22px] font-bold tracking-tight text-ink mb-1">Your organizer profile</h1>
             <p className="text-[13px] text-ink-2 mb-6">
-              This shows on your public organizer page. You can change it any time from your account settings.
+              These details help TicketPulse understand and contact organizers. Your profile description and page handle can appear publicly; the business name, location, and review link are for account review.
             </p>
 
             {error === "slug_taken" && (
@@ -132,6 +141,16 @@ export default async function OnboardingPage({
             {error === "whatsapp_required" && (
               <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
                 Organizer WhatsApp contact is required. Use a valid number with its country code, such as +263 77 123 4567.
+              </div>
+            )}
+            {error === "details_required" && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+                Choose an organizer type and enter your city and country so we know who is organising the event.
+              </div>
+            )}
+            {error === "invalid_url" && (
+              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+                Enter a complete website or social link beginning with https:// or http://.
               </div>
             )}
             {error === "generic" && (
@@ -177,6 +196,68 @@ export default async function OnboardingPage({
 
               <div>
                 <label className="block text-[13px] font-semibold text-ink mb-1.5">
+                  Organizer type <span className="text-rose-600">*</span>
+                </label>
+                <select
+                  name="organizerType"
+                  required
+                  defaultValue={profile?.organizerType ?? "individual"}
+                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                >
+                  <option value="individual">Individual / sole trader</option>
+                  <option value="business">Registered business</option>
+                  <option value="community">Community group or other organisation</option>
+                </select>
+                <p className="text-[11px] text-ink-3 mt-1">This helps us understand who is organising the event. No registration documents are required at this stage.</p>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold text-ink mb-1.5">
+                  Business or group name <span className="text-ink-3 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  name="organizerEntityName"
+                  maxLength={160}
+                  defaultValue={profile?.organizerEntityName ?? ""}
+                  placeholder="Use this if you organise events for a business or group"
+                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold text-ink mb-1.5">
+                  City and country <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="organizerLocation"
+                  required
+                  maxLength={120}
+                  defaultValue={profile?.organizerLocation ?? ""}
+                  placeholder="e.g. Harare, Zimbabwe"
+                  autoComplete="address-level2"
+                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold text-ink mb-1.5">
+                  Website or social page for review <span className="text-ink-3 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  name="organizerReferenceUrl"
+                  maxLength={300}
+                  defaultValue={profile?.organizerReferenceUrl ?? ""}
+                  placeholder="https://"
+                  autoComplete="url"
+                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold text-ink mb-1.5">
                   Your page URL handle
                 </label>
                 <div className="flex items-center rounded-xl border border-line bg-paper overflow-hidden focus-within:border-green-500 focus-within:ring-4 focus-within:ring-brand-500/10 transition">
@@ -187,12 +268,17 @@ export default async function OnboardingPage({
                     type="text"
                     name="organizerSlug"
                     placeholder={session.user.name ? session.user.name.toLowerCase().replace(/\s+/g, "-") : "your-name"}
+                    defaultValue={profile?.organizerSlug ?? ""}
                     maxLength={40}
                     pattern="[a-zA-Z0-9\-]+"
                     className="flex-1 px-3 py-3 text-[14px] text-ink bg-transparent focus:outline-none"
                   />
                 </div>
                 <p className="text-[11px] text-ink-3 mt-1">Letters, numbers, and hyphens only.</p>
+              </div>
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] leading-relaxed text-blue-900">
+                <strong>Light-touch organizer review.</strong> We collect enough information to identify and contact organizers. TicketPulse is guided by the RBZ 2025 AML/CFT/CPF guidelines and POTRAZ data-protection requirements. We do not ask for ID scans or proof of address here; we may request more information later if a payment partner or a specific review requires it.
               </div>
 
               <div>
@@ -203,6 +289,7 @@ export default async function OnboardingPage({
                   name="bio"
                   rows={3}
                   maxLength={280}
+                  defaultValue={profile?.organizerBio ?? ""}
                   placeholder="Tell attendees who you are and what kind of events you organize..."
                   className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition resize-none"
                 />
