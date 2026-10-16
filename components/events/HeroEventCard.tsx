@@ -11,6 +11,7 @@ interface HeroEventProps {
   startsAt: Date | string
   coverImage?: string | null
   lowestPrice?: number | null
+  ticketsAvailable?: boolean
   currency?: string
   soldQuantity?: number
   totalQuantity?: number
@@ -53,14 +54,14 @@ function timeUntil(date: Date): { label: string; kind: "soon" | "near" | "far" }
 
 export default function HeroEventCard({
   slug, title, category, venue, city, startsAt,
-  coverImage, lowestPrice, currency = "USD",
+  coverImage, lowestPrice, ticketsAvailable, currency = "USD",
   sponsored, tags,
 }: HeroEventProps) {
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
   const CategoryIcon = CATEGORY_ICON[category.toLowerCase()] ?? TicketIcon
   const gradient = CATEGORY_GRADIENT[category.toLowerCase()] ?? "from-navy via-blue-800 to-indigo-900"
-  const sellingFast = tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy"
+  const sellingFast = ticketsAvailable !== false && (tags?.includes("selling-fast") ?? title.trim().toLowerCase() === "shenergy")
 
   return (
     <section className="tp-premium-card group relative overflow-hidden rounded-3xl border border-orange-200/35 bg-navy shadow-xl shadow-orange-950/12 transition-all duration-300 hover:-translate-y-1 hover:border-orange-300/70 hover:shadow-[0_34px_90px_-30px_rgba(201,82,42,0.42)]">
@@ -149,7 +150,7 @@ export default function HeroEventCard({
             )}
             <SplitCTA
               href={`/events/${slug}`}
-              label={lowestPrice != null ? `Get tickets from ${formatCurrency(lowestPrice, currency)}` : "Get tickets"}
+              label={ticketsAvailable === false ? "Sold out" : lowestPrice != null ? `Get tickets from ${formatCurrency(lowestPrice, currency)}` : "Get tickets"}
               size="lg"
             />
           </div>

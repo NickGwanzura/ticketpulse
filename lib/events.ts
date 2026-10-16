@@ -1,6 +1,7 @@
 import { db } from "@/db"
 import { events, ticketTiers, tickets } from "@/db/schema"
 import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm"
+import { getLowestAvailableTicketPrices } from "@/lib/available-ticket-price"
 
 export interface FeaturedEvent {
   id: string
@@ -14,6 +15,7 @@ export interface FeaturedEvent {
   featured: boolean
   sponsored: boolean
   lowestPrice: number | null
+  ticketsAvailable: boolean
   currency: string
   status: string
   soldQuantity: number
@@ -36,7 +38,7 @@ export async function getFeaturedEvents(limit = 3): Promise<FeaturedEvent[]> {
 // failed refresh serves the previous copy instead of breaking every page.
 // Checkout validates real inventory separately, so slightly stale counts here
 // only affect browsing.
-const FEATURED_TTL_MS = 30_000
+const FEATURED_TTL_MS = 10_000
 const FEATURED_STALE_MS = 10 * 60_000
 const FEATURED_MAX = 100
 let featuredCache: { at: number; value: FeaturedEvent[] } | null = null
@@ -99,6 +101,13 @@ async function loadFeaturedEvents(limit: number): Promise<FeaturedEvent[]> {
         eventId: ticketTiers.eventId,
         price: ticketTiers.price,
         currency: ticketTiers.currency,
+        totalQuantity: ticketTiers.totalQuantity,
+        soldQuantity: ticketTiers.soldQuantity,
+        salesStart: ticketTiers.salesStart,
+        salesEnd: ticketTiers.salesEnd,
+        earlyBirdPrice: ticketTiers.earlyBirdPrice,
+        earlyBirdUntil: ticketTiers.earlyBirdUntil,
+        earlyBirdQuantity: ticketTiers.earlyBirdQuantity,
       })
       .from(ticketTiers)
       .where(inArray(ticketTiers.eventId, eventIds)),
@@ -124,13 +133,7 @@ async function loadFeaturedEvents(limit: number): Promise<FeaturedEvent[]> {
       .groupBy(tickets.eventId),
   ])
 
-  const lowestByEvent = new Map<string, { price: number; currency: string }>()
-  for (const t of priceRows) {
-    const price = Number(t.price)
-    const currency = t.currency ?? "USD"
-    const cur = lowestByEvent.get(t.eventId)
-    if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
-  }
+  const lowestByEvent = getLowestAvailableTicketPrices(priceRows)
 
   const attendingByEvent = new Map<string, number>()
   for (const a of attendingRows) {
@@ -157,6 +160,7 @@ async function loadFeaturedEvents(limit: number): Promise<FeaturedEvent[]> {
       featured: r.featured ?? false,
       sponsored: r.sponsored ?? false,
       lowestPrice: low?.price ?? null,
+      ticketsAvailable: low != null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",
       soldQuantity: attendingByEvent.get(r.id) ?? 0,
