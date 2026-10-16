@@ -20,6 +20,34 @@ export function maintenanceUntil(): Date {
   return Number.isNaN(parsed.getTime()) ? new Date(DEFAULT_UNTIL) : parsed
 }
 
+const ART_SVG = `<svg class="art-svg" viewBox="0 0 480 500" role="img" aria-label="Servers being patched, protected by a shield">
+<defs><linearGradient id="rk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a4f8c"/><stop offset="1" stop-color="#143d6b"/></linearGradient></defs>
+<g stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 7" fill="none">
+<path d="M330 150 C 400 150, 410 230, 392 300"/><path d="M110 330 C 60 330, 60 420, 140 440"/>
+</g>
+<rect x="110" y="80" width="220" height="320" rx="20" fill="url(#rk)" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+<g>
+<rect x="130" y="102" width="180" height="80" rx="12" fill="#0b2a4d"/>
+<rect x="148" y="124" width="70" height="6" rx="3" fill="rgba(255,255,255,.25)"/><rect x="148" y="138" width="54" height="6" rx="3" fill="rgba(255,255,255,.15)"/><rect x="148" y="152" width="62" height="6" rx="3" fill="rgba(255,255,255,.15)"/>
+<circle cx="272" cy="142" r="7" fill="#22c55e"/><circle cx="292" cy="142" r="7" fill="rgba(255,255,255,.2)"/>
+</g>
+<g>
+<rect x="130" y="200" width="180" height="80" rx="12" fill="#0b2a4d"/>
+<rect x="148" y="222" width="70" height="6" rx="3" fill="rgba(255,255,255,.25)"/><rect x="148" y="236" width="54" height="6" rx="3" fill="rgba(255,255,255,.15)"/><rect x="148" y="250" width="62" height="6" rx="3" fill="rgba(255,255,255,.15)"/>
+<circle class="blink" cx="272" cy="240" r="7" fill="#ba4926"/><circle cx="292" cy="240" r="7" fill="rgba(255,255,255,.2)"/>
+</g>
+<g>
+<rect x="130" y="298" width="180" height="80" rx="12" fill="#0b2a4d"/>
+<rect x="148" y="320" width="70" height="6" rx="3" fill="rgba(255,255,255,.25)"/><rect x="148" y="334" width="54" height="6" rx="3" fill="rgba(255,255,255,.15)"/><rect x="148" y="348" width="62" height="6" rx="3" fill="rgba(255,255,255,.15)"/>
+<circle cx="272" cy="338" r="7" fill="#22c55e"/><circle cx="292" cy="338" r="7" fill="rgba(255,255,255,.2)"/>
+</g>
+<g class="gear"><circle cx="112" cy="84" r="30" fill="none" stroke="#ba4926" stroke-width="14" stroke-dasharray="8 7.7"/><circle cx="112" cy="84" r="20" fill="#ba4926"/><circle cx="112" cy="84" r="8" fill="#0a2540"/></g>
+<g transform="translate(0 6)">
+<path d="M352 300 l70 25 v58 c0 50 -32 84 -70 100 c-38 -16 -70 -50 -70 -100 v-58 z" fill="#ba4926" stroke="#0a2540" stroke-width="6"/>
+<path d="M322 392 l22 22 l44 -48" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>`
+
 const WHATSAPP = "263788689923"
 const EMAIL = "nick@spiritusglobal.tech"
 
@@ -47,7 +75,19 @@ export function maintenanceHtml(until: Date): string {
 body{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--paper2);color:var(--ink);font-family:Mona,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 .bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:var(--chrome);color:#fff;padding:11px 16px;font-size:13px;font-weight:600;text-align:center}
 .tag{font-family:Grift,"Arial Narrow",sans-serif;font-weight:900;letter-spacing:.14em;text-transform:uppercase;background:var(--accent);color:#fff;padding:3px 9px;border-radius:6px;font-size:12px}
-.wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.split{flex:1;display:grid;grid-template-columns:1fr}
+.art{position:relative;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:14px;padding:12px 16px;color:#fff;background:linear-gradient(160deg,#0a2540 0%,#131132 100%);overflow:hidden}
+.art::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.art-svg{position:relative;width:76px;flex:none;height:auto}
+.art-cap{position:relative;text-align:left}
+.art-cap b{display:block;font-family:Grift,"Arial Narrow",sans-serif;font-weight:900;font-size:15px;letter-spacing:.14em;text-transform:uppercase}
+.art-cap span{display:block;margin-top:4px;font-size:13px;color:#b9c6d9}
+.blink{animation:p 1.1s ease-in-out infinite}
+.gear{transform-box:fill-box;transform-origin:center;animation:spin 8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.blink,.gear{animation:none}}
+@media (min-width:960px){.split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.art{flex-direction:column;gap:10px;padding:48px}.art-cap{text-align:center}.art-svg{width:100%;max-width:440px}.art-cap b{font-size:18px}.art-cap span{font-size:15px}}
+.wrap{display:flex;align-items:center;justify-content:center;padding:24px 16px}
 main{width:100%;max-width:560px;background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:20px;padding:28px 22px;box-shadow:0 24px 60px -32px rgba(10,37,64,.35)}
 .logo{display:block;width:120px;height:auto;margin:-14px 0 0 -10px}
 .pill{display:inline-flex;align-items:center;gap:8px;font-family:Grift,"Arial Narrow",sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8a3416;background:#fdf1ec;border:1px solid #f3cbb9;padding:6px 10px;border-radius:999px}
@@ -72,6 +112,8 @@ p strong{color:var(--ink)}
 </head>
 <body>
 <div class="bar" role="alert"><span class="tag">Urgent</span> Unscheduled upstream maintenance by our EU server provider</div>
+<div class="split">
+<aside class="art" aria-hidden="false">${ART_SVG}<div class="art-cap"><b>Protecting your data</b><span>Upstream server patch in progress</span></div></aside>
 <div class="wrap"><main>
 <img class="logo" src="/ticketpulse-logo.svg" alt="TicketPulse" width="120" height="120">
 <span class="pill"><span class="dot" aria-hidden="true"></span> Urgent maintenance</span>
@@ -91,6 +133,7 @@ p strong{color:var(--ink)}
 </div>
 <p class="foot">We're sorry for the disruption. This page refreshes itself every 5 minutes.</p>
 </main></div>
+</div>
 <script>
 (function(){
   var until=new Date(${JSON.stringify(untilIso)}).getTime();
