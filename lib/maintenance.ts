@@ -6,7 +6,7 @@
 // host and redeploying/restarting. MAINTENANCE_UNTIL (ISO time) sets the
 // "expected back" time shown to visitors.
 
-const DEFAULT_UNTIL = "2026-10-16T11:00:00Z" // 13:00 Zimbabwe time, about 4 hours from the outage notice
+const DEFAULT_UNTIL = "2026-10-16T12:00:00Z" // 14:00 Zimbabwe time
 
 export function isMaintenanceOn(): boolean {
   const mode = (process.env.MAINTENANCE_MODE ?? "").trim().toLowerCase()

@@ -1,5 +1,5 @@
 import NextAuth from "next-auth"
-import { NextResponse } from "next/server"
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server"
 import { authConfig } from "@/auth.config"
 import { isMaintenanceOn, maintenanceHtml, maintenanceUntil } from "@/lib/maintenance"
 
@@ -55,23 +55,7 @@ function roleHostRedirect(
   return NextResponse.redirect(destination)
 }
 
-export default auth((req) => {
-  // Site-wide maintenance: every page shows the notice with a 503 so search
-  // engines and browsers treat it as temporary. See lib/maintenance.ts.
-  if (isMaintenanceOn()) {
-    const until = maintenanceUntil()
-    const retryAfter = Math.max(300, Math.round((until.getTime() - Date.now()) / 1000))
-    return new NextResponse(maintenanceHtml(until), {
-      status: 503,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
-        "Retry-After": String(retryAfter),
-        "X-Robots-Tag": "noindex",
-      },
-    })
-  }
-
+const authProxy = auth((req) => {
   const { nextUrl } = req
   const path = nextUrl.pathname
 
@@ -145,13 +129,47 @@ export default auth((req) => {
   return NextResponse.next({ request: { headers: requestHeaders } })
 })
 
+/** Paths the auth layer never handled: API routes and static assets. */
+const SKIP_AUTH = /^\/(?:api\/|_next\/static|_next\/image|favicon\.ico|images\/|fonts\/)|\.svg$/
+
+/**
+ * Maintenance runs before anything else, on pages AND API routes, so nobody can
+ * sign in, open a dashboard or start a checkout while the site is closed.
+ * Only /api/health stays open so the host can tell whether the database is back.
+ */
+export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  const path = req.nextUrl.pathname
+
+  if (isMaintenanceOn() && path !== "/api/health") {
+    const until = maintenanceUntil()
+    const retryAfter = String(Math.max(300, Math.round((until.getTime() - Date.now()) / 1000)))
+    if (path.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "TicketPulse is closed for urgent maintenance. Please try again later.", code: "maintenance", until: until.toISOString() },
+        { status: 503, headers: { "Retry-After": retryAfter, "Cache-Control": "no-store" } },
+      )
+    }
+    return new NextResponse(maintenanceHtml(until), {
+      status: 503,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Retry-After": retryAfter,
+        "X-Robots-Tag": "noindex",
+      },
+    })
+  }
+
+  // Outside maintenance, keep the original behaviour: API calls and static
+  // files skip the auth layer entirely (it used to be excluded by the matcher).
+  if (SKIP_AUTH.test(path)) return NextResponse.next()
+  return (authProxy as unknown as (req: NextRequest, event: NextFetchEvent) => ReturnType<typeof NextResponse.next>)(req, event)
+}
+
 export const config = {
-  // Only run on page routes, not on API calls or static assets.
-  // API calls handle their own auth. This prevents auth-middleware
-  // redirects from interrupting API requests made by the client,
-  // which was causing "page keeps refreshing" when organizers filled
-  // out the event creation form (geocode AI calls, etc.).
+  // Every request except build assets and public static files. API routes are
+  // included so maintenance can close them; proxy() skips auth for them.
   matcher: [
-    "/((?!api/|_next/static|_next/image|favicon.ico|images/|fonts/|.*\\.svg$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|images/|fonts/|.*\\.svg$).*)",
   ],
 }
