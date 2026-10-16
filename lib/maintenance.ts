@@ -21,7 +21,7 @@ export function maintenanceUntil(): Date {
 }
 
 const WHATSAPP = "263788689923"
-const EMAIL = "nick@ticketpulse.tech"
+const EMAIL = "nick@spiritusglobal.tech"
 
 export function maintenanceHtml(until: Date): string {
   const untilIso = until.toISOString()
