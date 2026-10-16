@@ -3,14 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  LayoutDashboard, Calendar, ClipboardList, ScanLine, Wallet,
+  LayoutDashboard, Calendar, ScanLine, Wallet, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const ORGANIZER_TABS = [
   { label: "Dashboard", href: "/organizer", icon: LayoutDashboard },
   { label: "Events", href: "/organizer/events", icon: Calendar },
-  { label: "Orders", href: "/organizer/orders", icon: ClipboardList },
+  { label: "Attendees", href: "/organizer/attendees", icon: Users },
   { label: "Scanner", href: "/organizer/scan", icon: ScanLine },
   { label: "Payouts", href: "/payouts", icon: Wallet },
 ]
