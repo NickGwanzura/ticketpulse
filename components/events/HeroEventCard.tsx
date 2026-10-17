@@ -17,6 +17,7 @@ interface HeroEventProps {
   totalQuantity?: number
   sponsored?: boolean
   tags?: string[] | null
+  returnTo?: string
 }
 
 const CATEGORY_ICON: Record<string, LucideIcon> = {
@@ -56,6 +57,7 @@ export default function HeroEventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, lowestPrice, ticketsAvailable, currency = "USD",
   sponsored, tags,
+  returnTo,
 }: HeroEventProps) {
   const date = startsAt instanceof Date ? startsAt : new Date(startsAt)
   const remaining = timeUntil(date)
@@ -149,7 +151,7 @@ export default function HeroEventCard({
               </span>
             )}
             <SplitCTA
-              href={`/events/${slug}`}
+              href={returnTo ? `/events/${slug}?returnTo=${encodeURIComponent(returnTo)}` : `/events/${slug}`}
               label={ticketsAvailable === false ? "Sold out" : lowestPrice != null ? `Get tickets from ${formatCurrency(lowestPrice, currency)}` : "Get tickets"}
               size="lg"
             />

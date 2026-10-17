@@ -1,20 +1,30 @@
 import { NextResponse } from "next/server"
 import { eq, and, asc } from "drizzle-orm"
+import { z } from "zod"
 import { db } from "@/db"
 import { events, ticketQuestions } from "@/db/schema"
+import { apiLimiter } from "@/lib/rate-limit"
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const eventSlug = searchParams.get("eventSlug")
+  const limited = await apiLimiter.checkRequest(req)
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(limited.retryAfterMs / 1000)) } },
+    )
+  }
 
-  if (!eventSlug) {
-    return NextResponse.json({ error: "Missing eventSlug" }, { status: 400 })
+  const { searchParams } = new URL(req.url)
+  const parsed = z.string().trim().min(1).max(160).safeParse(searchParams.get("eventSlug"))
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid eventSlug" }, { status: 400 })
   }
 
   const [event] = await db
     .select({ id: events.id })
     .from(events)
-    .where(eq(events.slug, eventSlug))
+    .where(and(eq(events.slug, parsed.data), eq(events.status, "published")))
     .limit(1)
 
   if (!event) {

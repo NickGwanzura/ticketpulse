@@ -20,20 +20,37 @@ export const revalidate = 15
 
 import { db } from "@/db"
 import { events, ticketTiers, tickets } from "@/db/schema"
-import { and, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
+import { and, desc, eq, gte, ilike, inArray, lt, notInArray, or, sql } from "drizzle-orm"
 import { getLowestAvailableTicketPrices } from "@/lib/available-ticket-price"
+import { nextHarareDate, parseDiscoveryDate, parseDiscoveryPrice } from "@/lib/event-discovery"
 
 const CATEGORIES = ["All", "Concerts", "Food & Drink", "Cocktail Experience", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; q?: string; view?: string }>
+  searchParams: Promise<{
+    category?: string
+    q?: string
+    view?: string
+    city?: string
+    from?: string
+    to?: string
+    minPrice?: string
+    maxPrice?: string
+    currency?: string
+  }>
 }) {
   const sp = await searchParams
   const activeCategory = sp.category ?? "all"
-  const query = sp.q ?? ""
+  const query = (sp.q ?? "").trim().slice(0, 100)
   const activeView = sp.view === "past" ? "past" : "upcoming"
+  const city = (sp.city ?? "").trim().slice(0, 80)
+  const from = parseDiscoveryDate(sp.from)
+  const to = parseDiscoveryDate(sp.to)
+  const minPrice = parseDiscoveryPrice(sp.minPrice)
+  const maxPrice = parseDiscoveryPrice(sp.maxPrice)
+  const currency = sp.currency === "ZWG" ? "ZWG" : "USD"
   const now = new Date()
   const isPastView = activeView === "past"
 
@@ -60,6 +77,29 @@ export default async function EventsPage({
         ilike(events.city, safe)
       )!
     )
+  }
+
+  if (city) conditions.push(ilike(events.city, `%${city.replace(/[%_\\]/g, (m) => "\\" + m)}%`))
+  if (from) conditions.push(gte(events.startsAt, from))
+  if (to) conditions.push(lt(events.startsAt, nextHarareDate(to)))
+  if (minPrice !== null || maxPrice !== null) {
+    const effectivePrice = sql`CASE
+      WHEN discovery_tier.early_bird_price IS NOT NULL
+        AND (discovery_tier.early_bird_until IS NULL OR discovery_tier.early_bird_until > ${now})
+        AND (discovery_tier.early_bird_quantity IS NULL OR COALESCE(discovery_tier.sold_quantity, 0) < discovery_tier.early_bird_quantity)
+      THEN discovery_tier.early_bird_price::numeric
+      ELSE discovery_tier.price::numeric
+    END`
+    conditions.push(sql`EXISTS (
+      SELECT 1 FROM ticket_tiers discovery_tier
+      WHERE discovery_tier.event_id = ${events.id}
+        AND discovery_tier.currency = ${currency}
+        AND discovery_tier.total_quantity > COALESCE(discovery_tier.sold_quantity, 0)
+        AND (discovery_tier.sales_start IS NULL OR discovery_tier.sales_start <= ${now})
+        AND (discovery_tier.sales_end IS NULL OR discovery_tier.sales_end > ${now})
+        AND (${minPrice}::numeric IS NULL OR ${effectivePrice} >= ${minPrice})
+        AND (${maxPrice}::numeric IS NULL OR ${effectivePrice} <= ${maxPrice})
+    )`)
   }
 
   const rows = await db
@@ -167,6 +207,19 @@ export default async function EventsPage({
 
   // A single upcoming event gets the large hero card instead of a grid.
   const isHeroView = eventCards.length === 1 && !query && activeCategory === "all"
+    && !city && !from && !to && minPrice === null && maxPrice === null
+
+  const filterParams = new URLSearchParams()
+  if (activeView === "past") filterParams.set("view", "past")
+  if (activeCategory !== "all") filterParams.set("category", activeCategory)
+  if (query) filterParams.set("q", query)
+  if (city) filterParams.set("city", city)
+  if (sp.from && from) filterParams.set("from", sp.from)
+  if (sp.to && to) filterParams.set("to", sp.to)
+  if (sp.minPrice && minPrice !== null) filterParams.set("minPrice", String(minPrice))
+  if (sp.maxPrice && maxPrice !== null) filterParams.set("maxPrice", String(maxPrice))
+  if ((minPrice !== null || maxPrice !== null) && sp.currency) filterParams.set("currency", currency)
+  const returnToResults = `/events${filterParams.size ? `?${filterParams.toString()}` : ""}`
 
   const firstEvent = isHeroView ? eventCards[0] : null
 
@@ -209,6 +262,7 @@ export default async function EventsPage({
               currency={firstEvent.currency}
               soldQuantity={firstEvent.soldQuantity}
               totalQuantity={firstEvent.totalQuantity}
+              returnTo={returnToResults}
             />
 
             {/* Waitlist */}
@@ -220,17 +274,34 @@ export default async function EventsPage({
         {!isHeroView && (
           <>
             {/* Search & filters */}
-            <form className="flex flex-col md:flex-row gap-3 mb-6">
+            <form className="grid grid-cols-1 gap-3 mb-6 md:grid-cols-2 xl:grid-cols-6">
               <input type="hidden" name="view" value={activeView} />
-              <div className="relative flex-1 max-w-xl">
+              {activeCategory !== "all" && <input type="hidden" name="category" value={activeCategory} />}
+              <div className="relative md:col-span-2 xl:col-span-2">
                 <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" />
                 <input
                   type="text"
                   name="q"
                   placeholder="Search events, venues, cities…"
                   defaultValue={query}
+                  maxLength={100}
                   className="w-full h-12 rounded-xl border border-line bg-paper pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 shadow-sm shadow-ink/[0.03] focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
                 />
+              </div>
+              <input name="city" type="search" placeholder="City or town" defaultValue={city} maxLength={80} aria-label="Filter by city" className="h-12 rounded-xl border border-line bg-paper px-4 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-navy focus:ring-4 focus:ring-navy/10" />
+              <label className="flex h-12 items-center gap-2 rounded-xl border border-line bg-paper px-3 text-xs text-ink-3">
+                From <input name="from" type="date" defaultValue={sp.from && from ? sp.from : ""} aria-label="Events from date" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none" />
+              </label>
+              <label className="flex h-12 items-center gap-2 rounded-xl border border-line bg-paper px-3 text-xs text-ink-3">
+                To <input name="to" type="date" defaultValue={sp.to && to ? sp.to : ""} aria-label="Events through date" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none" />
+              </label>
+              <div className="flex gap-2 md:col-span-2 xl:col-span-2">
+                <select name="currency" defaultValue={currency} aria-label="Price currency" className="h-12 rounded-xl border border-line bg-paper px-3 text-sm text-ink">
+                  <option value="USD">USD</option><option value="ZWG">ZWG</option>
+                </select>
+                <input name="minPrice" type="number" min="0" max="1000000" step="0.01" placeholder="Min price" defaultValue={minPrice ?? ""} aria-label="Minimum ticket price" className="h-12 min-w-0 w-1/2 rounded-xl border border-line bg-paper px-3 text-sm text-ink placeholder:text-ink-3" />
+                <input name="maxPrice" type="number" min="0" max="1000000" step="0.01" placeholder="Max price" defaultValue={maxPrice ?? ""} aria-label="Maximum ticket price" className="h-12 min-w-0 w-1/2 rounded-xl border border-line bg-paper px-3 text-sm text-ink placeholder:text-ink-3" />
+                <button type="submit" className="h-12 shrink-0 rounded-xl bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink/90">Filter</button>
               </div>
             </form>
 
@@ -243,6 +314,12 @@ export default async function EventsPage({
                 if (view.value === "past") params.set("view", "past")
                 if (activeCategory !== "all") params.set("category", activeCategory)
                 if (query) params.set("q", query)
+                if (city) params.set("city", city)
+                if (sp.from && from) params.set("from", sp.from)
+                if (sp.to && to) params.set("to", sp.to)
+                if (minPrice !== null) params.set("minPrice", String(minPrice))
+                if (maxPrice !== null) params.set("maxPrice", String(maxPrice))
+                if (minPrice !== null || maxPrice !== null) params.set("currency", currency)
                 const href = params.toString() ? `/events?${params.toString()}` : "/events"
                 const active = activeView === view.value
                 return (
@@ -270,6 +347,13 @@ export default async function EventsPage({
                 const params = new URLSearchParams()
                 if (activeView === "past") params.set("view", "past")
                 if (val !== "all") params.set("category", val)
+                if (query) params.set("q", query)
+                if (city) params.set("city", city)
+                if (sp.from && from) params.set("from", sp.from)
+                if (sp.to && to) params.set("to", sp.to)
+                if (minPrice !== null) params.set("minPrice", String(minPrice))
+                if (maxPrice !== null) params.set("maxPrice", String(maxPrice))
+                if (minPrice !== null || maxPrice !== null) params.set("currency", currency)
                 const href = params.toString() ? `/events?${params.toString()}` : "/events"
                 return (
                   <Link
@@ -290,8 +374,8 @@ export default async function EventsPage({
 
             {eventCards.length > 0 ? (
               <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 md:gap-5">
-                {eventCards.map((event) => (
-                  <EventCard key={event.id} {...event} />
+                  {eventCards.map((event) => (
+                  <EventCard key={event.id} {...event} returnTo={returnToResults} />
                 ))}
               </div>
             ) : (

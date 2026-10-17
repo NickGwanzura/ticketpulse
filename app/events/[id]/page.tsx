@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import Link from "next/link"
 import { Ban, Calendar, CheckCircle2, Clock, DollarSign, ExternalLink, Eye, HelpCircle, MapPin, Star, Ticket, Users, Wallet } from "lucide-react"
 
 // ISR: re-generate this page at most every 30 seconds.
@@ -25,6 +26,7 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { getTierAvailability } from "@/lib/ticket-availability"
 import { getEventRevenueSummaries } from "@/lib/revenue-summary"
 import type { VendorListing } from "@/types"
+import { safeEventReturnTo } from "@/lib/event-discovery"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -125,8 +127,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
 }
 
-export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EventDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ returnTo?: string | string[] }>
+}) {
   const { id } = await params
+  const { returnTo: rawReturnTo } = await searchParams
+  const returnTo = safeEventReturnTo(rawReturnTo)
   const session = await auth()
 
   const where = UUID_RE.test(id)
@@ -416,6 +426,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   return (
     <div>
       <EventViewTracker eventId={row.id} />
+      <div className="mx-auto max-w-7xl px-5 pt-4 md:px-8">
+        <Link href={returnTo} className="inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 transition hover:text-ink">
+          <span aria-hidden>←</span> Back to events
+        </Link>
+      </div>
       {isPublicEvent && (
         <>
           <script

@@ -4,7 +4,7 @@ import { eq, and, inArray, desc, sql, isNotNull } from "drizzle-orm"
 import Link from "next/link"
 import {
   Ticket, Users, DollarSign, Activity, Mail, MessageCircle,
-  Tag, QrCode, ShoppingBag, ImageIcon, Store, ArrowUpRight,
+  QrCode, ShoppingBag, ImageIcon, Store, ArrowUpRight,
   TrendingUp, Calendar, ScanLine, HelpCircle, Wallet, CheckCircle2,
   AlertTriangle, ClipboardCheck, Star,
 } from "lucide-react"
@@ -22,6 +22,7 @@ import AiInsightCard from "@/components/ai/AiInsightCard"
 import { publishOrganizerEventAction } from "../actions"
 import PublishEventButton from "../PublishEventButton"
 import DeleteEventForm from "../DeleteEventForm"
+import { getEventSetupChecklist, isEventReadyForReview } from "@/lib/event-readiness"
 
 export const metadata = { title: "Event overview" }
 
@@ -61,9 +62,12 @@ export default async function EventOverviewPage({
       slug: events.slug,
       status: events.status,
       category: events.category,
+      description: events.description,
       city: events.city,
       startsAt: events.startsAt,
+      endsAt: events.endsAt,
       venue: events.venue,
+      coverImage: events.coverImage,
     })
     .from(events)
     .where(eq(events.id, id))
@@ -80,6 +84,8 @@ export default async function EventOverviewPage({
       currency: ticketTiers.currency,
       totalQuantity: ticketTiers.totalQuantity,
       soldQuantity: ticketTiers.soldQuantity,
+      salesStart: ticketTiers.salesStart,
+      salesEnd: ticketTiers.salesEnd,
     })
     .from(ticketTiers)
     .where(eq(ticketTiers.eventId, id))
@@ -189,6 +195,10 @@ export default async function EventOverviewPage({
   const daysRemaining = Math.max(0, Math.ceil((new Date(event.startsAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
   const isPublished = event.status === "published"
   const isPendingReview = event.status === "pending_review"
+  const setupItems = getEventSetupChecklist(id, event, tiers)
+  const readyForReview = isEventReadyForReview(setupItems)
+  const requiredSetupItems = setupItems.filter((item) => item.required)
+  const completedRequiredSetupItems = requiredSetupItems.filter((item) => item.complete).length
   const publishAction = publishOrganizerEventAction.bind(null, id)
   const healthItems = [
     { label: "Event is published", ok: isPublished, href: `/organizer/events/${id}`, action: "Publish" },
@@ -235,9 +245,15 @@ export default async function EventOverviewPage({
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200">
                   Draft
                 </span>
-                <form action={publishAction}>
-                  <PublishEventButton />
-                </form>
+                {readyForReview ? (
+                  <form action={publishAction}>
+                    <PublishEventButton />
+                  </form>
+                ) : (
+                  <Link href="#setup-checklist" className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper hover:bg-ink/85 transition">
+                    Finish setup <ArrowUpRight size={14} />
+                  </Link>
+                )}
               </>
             )}
             <Link
@@ -286,6 +302,40 @@ export default async function EventOverviewPage({
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
             Your draft is saved. Account approval is required before you can submit it for publishing.
           </div>
+        )}
+        {sp.publishError === "setup_incomplete" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+            Finish the required setup steps below before submitting this event for review.
+          </div>
+        )}
+
+        {!isPublished && !isPendingReview && (
+          <section id="setup-checklist" className="scroll-mt-6 rounded-2xl border border-line bg-paper p-5 md:p-6" aria-labelledby="setup-checklist-title">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[16px] font-semibold tracking-tight text-ink" id="setup-checklist-title">Get your event ready</p>
+                <p className="mt-1 text-[12px] text-ink-2">Complete the required steps before sending your event for review.</p>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-[11px] font-bold ring-1 ${readyForReview ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"}`}>
+                {completedRequiredSetupItems} of {requiredSetupItems.length} required steps
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {setupItems.map((item) => (
+                <Link key={item.key} href={item.href} className="flex items-start gap-3 rounded-xl border border-line bg-paper-2/40 p-3 transition hover:border-line-2 hover:bg-paper-2">
+                  {item.complete ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-700" /> : <ClipboardCheck size={16} className="mt-0.5 shrink-0 text-amber-700" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+                      {item.label}
+                      {!item.required && <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-3 ring-1 ring-line">Optional</span>}
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-relaxed text-ink-3">{item.detail}</span>
+                  </span>
+                  {!item.complete && <span className="shrink-0 pt-0.5 text-[11px] font-semibold text-navy">{item.required ? "Complete" : "Set dates"}</span>}
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="rounded-2xl border border-line bg-paper overflow-hidden">

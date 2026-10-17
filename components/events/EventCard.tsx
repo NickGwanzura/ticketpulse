@@ -21,6 +21,7 @@ interface EventCardProps {
   totalQuantity?: number
   isPast?: boolean
   tags?: string[] | null
+  returnTo?: string
 }
 
 interface CategoryVisual {
@@ -126,6 +127,7 @@ export default function EventCard({
   slug, title, category, venue, city, startsAt,
   coverImage, featured, sponsored, lowestPrice, ticketsAvailable, currency = "USD", status,
   isPast, tags,
+  returnTo,
 }: EventCardProps) {
   const visual = CATEGORY_VISUAL[category.toLowerCase()] ?? {
     gradient: "from-slate-100 to-slate-50",
@@ -143,7 +145,7 @@ export default function EventCard({
 
   return (
     <Link
-      href={`/events/${slug}`}
+      href={returnTo ? `/events/${slug}?returnTo=${encodeURIComponent(returnTo)}` : `/events/${slug}`}
       className="tp-premium-card group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-white transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_24px_60px_-28px_rgba(201,82,42,0.34)]"
     >
       <span className="pointer-events-none absolute inset-x-5 top-0 z-20 h-px bg-gradient-to-r from-transparent via-orange-300/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />

@@ -34,6 +34,9 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/dotenv ./node_modules/dotenv
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/check-db-schema.mjs ./scripts/check-db-schema.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/db/required-schema-columns.json ./db/required-schema-columns.json
 
 USER nextjs
 
@@ -47,4 +50,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=15s --start-period=30s --retries=3 \
   CMD wget -q -O - "http://127.0.0.1:$PORT/api/health" || exit 1
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node scripts/check-db-schema.mjs && node server.js"]

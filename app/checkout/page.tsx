@@ -119,8 +119,16 @@ function CheckoutInner() {
     } catch { /* sessionStorage may be unavailable */ }
   }, [])
 
-  const [eventQuestions, setEventQuestions] = useState<{ id: string; question: string; required: boolean }[]>([])
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({})
+  const [eventQuestionState, setEventQuestionState] = useState<{
+    eventSlug: string
+    questions: { id: string; question: string; required: boolean }[]
+  }>({ eventSlug: "", questions: [] })
+  const [questionAnswerState, setQuestionAnswerState] = useState<{
+    eventSlug: string
+    answers: Record<string, string>
+  }>({ eventSlug: "", answers: {} })
+  const eventQuestions = eventQuestionState.eventSlug === checkoutEventSlug ? eventQuestionState.questions : []
+  const questionAnswers = questionAnswerState.eventSlug === checkoutEventSlug ? questionAnswerState.answers : {}
 
   async function saveCanonicalOrder(orderId: string) {
     const response = await fetch("/api/orders/" + orderId + "/data", { cache: "no-store", headers: orderAuthHeaders(orderId) })
@@ -254,16 +262,27 @@ function CheckoutInner() {
 
   // Fetch event questions once cart is ready
   useEffect(() => {
-    if (!ready || items.length === 0) return
-    const ticketItem = items.find((i) => i.kind === "ticket")
-    if (!ticketItem) return
-    fetch(`/api/checkout/questions?eventSlug=${encodeURIComponent(ticketItem.eventSlug)}`, { cache: "no-store" })
+    if (!ready || !checkoutEventSlug) return
+
+    const controller = new AbortController()
+    fetch(`/api/checkout/questions?eventSlug=${encodeURIComponent(checkoutEventSlug)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => {
-        if (data.questions) setEventQuestions(data.questions)
+        if (Array.isArray(data.questions)) {
+          setEventQuestionState({ eventSlug: checkoutEventSlug, questions: data.questions })
+        }
       })
-      .catch(() => { /* questions are optional */ })
-  }, [ready, items])
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        // Event questions are optional, and checkout remains usable if this
+        // supporting request is temporarily unavailable.
+      })
+
+    return () => controller.abort()
+  }, [ready, checkoutEventSlug])
 
   if (!ready) {
     return (
@@ -358,7 +377,9 @@ function CheckoutInner() {
         const result = await quoted.json()
         if (!quoted.ok) throw new Error(result.error ?? "Could not confirm the current price")
         setServerQuote({ ...result.quote, inputKey })
-        if (result.quote.questions) setEventQuestions(result.quote.questions)
+        if (result.quote.questions) {
+          setEventQuestionState({ eventSlug: ticketLines[0].eventSlug, questions: result.quote.questions })
+        }
         setSubmitting(false)
         return
       }
@@ -550,7 +571,13 @@ function CheckoutInner() {
                       type="text"
                       required={q.required}
                       value={questionAnswers[q.id] ?? ""}
-                      onChange={(e) => setQuestionAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      onChange={(e) => setQuestionAnswerState((prev) => ({
+                        eventSlug: checkoutEventSlug ?? "",
+                        answers: {
+                          ...(prev.eventSlug === checkoutEventSlug ? prev.answers : {}),
+                          [q.id]: e.target.value,
+                        },
+                      }))}
                       placeholder="Your answer"
                       className="w-full rounded-md border border-input bg-paper px-4 py-3 text-[15px] text-ink placeholder:text-ink-3 transition focus:border-cta focus:outline-none focus:ring-4 focus:ring-cta/10"
                     />

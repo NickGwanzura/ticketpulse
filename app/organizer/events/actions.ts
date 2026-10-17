@@ -13,6 +13,7 @@ import { log } from "@/lib/logger"
 import { isFutureEventStart } from "@/lib/event-schedule"
 import { requireApprovedOrganizer } from "@/lib/organizer-eligibility"
 import { trackOrganizerLifecycle } from "@/lib/organizer-lifecycle"
+import { getEventSetupChecklist, isEventReadyForReview } from "@/lib/event-readiness"
 
 export async function publishOrganizerEventAction(eventId: string) {
   const eligibility = await requireApprovedOrganizer()
@@ -27,9 +28,15 @@ export async function publishOrganizerEventAction(eventId: string) {
     .select({
       id: events.id,
       title: events.title,
+      description: events.description,
+      category: events.category,
+      venue: events.venue,
+      city: events.city,
+      coverImage: events.coverImage,
       status: events.status,
       organizerId: events.organizerId,
       startsAt: events.startsAt,
+      endsAt: events.endsAt,
     })
     .from(events)
     .where(eq(events.id, eventId))
@@ -45,13 +52,19 @@ export async function publishOrganizerEventAction(eventId: string) {
     redirect(`/organizer/events/${eventId}?publishError=past_start`)
   }
 
-  const [tierCount] = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
+  const tiers = await db
+    .select({
+      price: ticketTiers.price,
+      totalQuantity: ticketTiers.totalQuantity,
+      salesStart: ticketTiers.salesStart,
+      salesEnd: ticketTiers.salesEnd,
+    })
     .from(ticketTiers)
     .where(eq(ticketTiers.eventId, eventId))
 
-  if ((tierCount?.count ?? 0) < 1) {
-    redirect(`/organizer/events/${eventId}/tiers?error=missing_tiers`)
+  const setupItems = getEventSetupChecklist(eventId, event, tiers)
+  if (!isEventReadyForReview(setupItems)) {
+    redirect(`/organizer/events/${eventId}?publishError=setup_incomplete`)
   }
 
   await db

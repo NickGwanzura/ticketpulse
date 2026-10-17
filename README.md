@@ -45,11 +45,15 @@ Zimbabwe's premier event ticketing platform. Built with Next.js 16, PostgreSQL, 
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run db:check` | Check critical runtime columns before deployment |
 | `npm run db:push` | Push schema to the database in `DATABASE_URL` |
 | `npm run db:generate` | Generate migrations |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:studio` | Open Drizzle Studio |
 | `npm run auth:secret` | Generate `AUTH_SECRET` |
+
+Production schema checks and the Dokploy startup guard are documented in
+[`docs/production-schema-check.md`](./docs/production-schema-check.md).
 
 ## Environment Variables
 

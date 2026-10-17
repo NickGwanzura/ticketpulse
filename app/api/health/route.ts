@@ -3,6 +3,7 @@ import { db } from "@/db"
 import { inArray, sql } from "drizzle-orm"
 import { systemHeartbeats } from "@/db/schema"
 import { log } from "@/lib/logger"
+import requiredSchemaColumns from "@/db/required-schema-columns.json"
 
 const CRITICAL_HEARTBEATS = ["cron:tick", "cron:recheckVelocity", "cron:expireOrders"]
 const HEARTBEAT_STALE_MS = 10 * 60 * 1000
@@ -32,6 +33,35 @@ export async function GET() {
     // essentially nothing on Neon's serverless Postgres.
     await db.execute(sql`SELECT 1`)
 
+    const expectedColumns = requiredSchemaColumns.map(([table, column]) => sql`(${table}, ${column})`)
+    const schemaResult = await db.execute(sql`
+      SELECT expected.table_name, expected.column_name
+      FROM (VALUES ${sql.join(expectedColumns, sql`, `)}) AS expected(table_name, column_name)
+      LEFT JOIN information_schema.columns actual
+        ON actual.table_schema = current_schema()
+       AND actual.table_name = expected.table_name
+       AND actual.column_name = expected.column_name
+      WHERE actual.column_name IS NULL
+      ORDER BY expected.table_name, expected.column_name
+    `)
+    const missingColumns = schemaResult.rows as Array<{ table_name: string; column_name: string }>
+
+    if (missingColumns.length > 0) {
+      const names = missingColumns.map(({ table_name, column_name }) => `${table_name}.${column_name}`)
+      log.error("health check found missing database schema", { missingColumns: names })
+      return NextResponse.json(
+        {
+          status: "error",
+          timestamp: ts,
+          db: "ok",
+          schema: "missing",
+          missingColumns: names,
+          message: "Required database columns are missing. Apply the current Drizzle schema with npm run db:push, then redeploy.",
+        },
+        { status: 503 },
+      )
+    }
+
     let staleHeartbeats: string[] = []
     try {
       const rows = await db
@@ -60,6 +90,7 @@ export async function GET() {
       status: staleHeartbeats.length > 0 ? "degraded" : "ok",
       timestamp: ts,
       db: "ok",
+      schema: "ok",
       cron: staleHeartbeats.length > 0 ? "degraded" : "ok",
       staleHeartbeats,
       latencyMs: Date.now() - startedAt,
