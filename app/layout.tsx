@@ -74,6 +74,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const bare = path.startsWith("/coming-soon")
   const isHome = path === "/"
   const isCheckout = path.startsWith("/checkout")
+  // Working areas: no promo banner or buyer support button covering the content.
+  const isStaffArea = /^\/(organizer|admin|payouts)(\/|$)/.test(path)
 
   let featured: NavbarFeaturedItem[] = []
   if (!bare) {
@@ -146,11 +148,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
         <Providers>
-          {!bare && !isHome && !isCheckout && <TopBar />}
+          {!bare && !isHome && !isCheckout && !isStaffArea && <TopBar />}
           {!bare && !isCheckout && <Navbar featured={featured} />}
           <div className={bare ? "" : "min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]"}>{children}</div>
-          {!bare && !isCheckout && <Footer />}
-          {!bare && <CookiesNotice />}
+          {!bare && !isCheckout && !isStaffArea && <Footer />}
           {!bare && !isCheckout && <WhatsAppWidget phone="263718353219" label="Support" />}
           <CommandPalette />
           <MobileNav />

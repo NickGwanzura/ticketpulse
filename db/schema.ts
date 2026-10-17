@@ -76,11 +76,6 @@ export const vendorCategoryEnum = pgEnum("vendor_category", [
   "other",
 ])
 
-export const promoCodeTypeEnum = pgEnum("promo_code_type", [
-  "percent",
-  "fixed",
-])
-
 export const userRoleEnum = pgEnum("user_role", [
   "attendee",
   "organizer",
@@ -128,6 +123,10 @@ export const users = pgTable("users", {
   bio: text("bio"),
   organizerSlug: text("organizer_slug").unique(),
   organizerBio: text("organizer_bio"),
+  organizerType: text("organizer_type"),
+  organizerEntityName: text("organizer_entity_name"),
+  organizerLocation: text("organizer_location"),
+  organizerReferenceUrl: text("organizer_reference_url"),
   passwordHash: text("password_hash"),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("6.00"),
   approvedAt: timestamp("approved_at", { mode: "date" }),
@@ -339,24 +338,6 @@ export const reviews = pgTable("reviews", {
   index("reviews_order_id_idx").on(table.orderId),
   index("reviews_status_idx").on(table.status),
   index("reviews_created_at_idx").on(table.createdAt),
-])
-
-// ─── Promo codes ──────────────────────────────────────────────────────────────
-
-export const promoCodes = pgTable("promo_codes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
-  code: text("code").notNull(),
-  type: promoCodeTypeEnum("type").notNull(),
-  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
-  maxUses: integer("max_uses").default(0),
-  usedCount: integer("used_count").default(0),
-  minPurchaseAmount: decimal("min_purchase_amount", { precision: 10, scale: 2 }).default("0"),
-  expiresAt: timestamp("expires_at"),
-  active: boolean("active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  uniqueIndex("promo_codes_code_event_idx").on(table.code, table.eventId),
 ])
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
@@ -648,7 +629,6 @@ export const organiserInvites = pgTable("organiser_invites", {
 export const eventsRelations = relations(events, ({ one, many }) => ({
   organizer: one(users, { fields: [events.organizerId], references: [users.id] }),
   ticketTiers: many(ticketTiers),
-  promoCodes: many(promoCodes),
   tickets: many(tickets),
   orders: many(orders),
   merch: many(merchItems),

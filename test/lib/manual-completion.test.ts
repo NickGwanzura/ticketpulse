@@ -9,18 +9,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   order: null as Record<string, unknown> | null,
+  /** Another order that already carries the submitted reference. */
+  reused: null as Record<string, unknown> | null,
   update: vi.fn(),
   insert: vi.fn(),
 }))
 
-function selectChain() {
-  return { from: () => ({ where: () => ({ limit: async () => (mocks.order ? [mocks.order] : []) }) }) }
+function selectChain(columns?: unknown) {
+  // select({ id }) is the "is this proof already used?" lookup; select() loads the order.
+  const rows = () => (columns ? (mocks.reused ? [mocks.reused] : []) : mocks.order ? [mocks.order] : [])
+  return { from: () => ({ where: () => ({ limit: async () => rows() }) }) }
 }
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/db", () => {
   const tx = {
-    select: () => selectChain(),
+    select: (columns?: unknown) => selectChain(columns),
     update: (...args: unknown[]) => {
       mocks.update(...args)
       return { set: () => ({ where: async () => undefined }) }
@@ -68,6 +72,7 @@ function pendingOrder(paymentMethod: string, totalAmount = "20.00") {
 }
 
 beforeEach(() => {
+  mocks.reused = null
   mocks.update.mockReset()
   mocks.insert.mockReset()
 })
@@ -100,11 +105,55 @@ describe("markOrderCompleteAction", () => {
     expect(result.success).toBe(false)
   })
 
-  it("lets an admin complete with a verified provider reference", async () => {
+  it("lets an admin complete with a verified reference and the full amount", async () => {
     mocks.order = pendingOrder("velocity-ecocash")
-    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345" })
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 20 })
     expect(result.success).toBe(true)
     expect(mocks.update).toHaveBeenCalled()
+  })
+
+  it("accepts an overpayment", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 25 })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a proof that is short of the order total", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 19.5 })
+    expect(result.success).toBe(false)
+    expect(result.message).toMatch(/19\.50/)
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+
+  it("requires the amount shown on the proof", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345" })
+    expect(result.success).toBe(false)
+    expect(result.message).toMatch(/amount/i)
+  })
+
+  it("accepts a proof file stored under this order", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 20, proofKey: `proofs/${ID}/abc.png` })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a proof file that belongs to a different order", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 20, proofKey: "proofs/99999999-9999-9999-9999-999999999999/abc.png" })
+    expect(result.success).toBe(false)
+    expect(result.message).toMatch(/does not belong/)
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+
+  it("rejects a reference already used on another order", async () => {
+    mocks.order = pendingOrder("velocity-ecocash")
+    mocks.reused = { id: "99999999-9999-9999-9999-999999999999" }
+    const result = await markOrderCompleteAction(ID, "admin-1", "admin@example.com", { actor: "admin", providerReference: "TXN-12345", amountReceived: 20 })
+    expect(result.success).toBe(false)
+    expect(result.message).toMatch(/99999999/)
+    expect(mocks.update).not.toHaveBeenCalled()
   })
 
   it("still lets organisers complete direct sales", async () => {

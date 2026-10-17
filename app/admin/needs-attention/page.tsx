@@ -27,10 +27,18 @@ type Group = {
   hint: string
   condition: SQL
   window: Date
+  /** Expired orders are hidden from normal lists; this group is about exactly those. */
+  includeInactive?: boolean
+}
+
+const REVIEW_REASON_LABEL: Record<string, string> = {
+  inventory_unavailable: "Tickets sold out after the order expired",
+  inventory_unavailable_after_payment: "Tickets sold out after the order expired",
+  possible_replacement_fulfillment: "Buyer may already hold a replacement ticket",
 }
 
 async function loadGroup(group: Group) {
-  const where = and(activeOrderListCondition, group.condition, gte(orders.createdAt, group.window))
+  const where = and(group.includeInactive ? undefined : activeOrderListCondition, group.condition, gte(orders.createdAt, group.window))
   const [countRow] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(orders)
@@ -45,6 +53,7 @@ async function loadGroup(group: Group) {
       guestEmail: orders.guestEmail,
       createdAt: orders.createdAt,
       eventTitle: events.title,
+      reviewReason: sql<string | null>`${orders.metadata}->'recoveryReview'->>'reason'`,
     })
     .from(orders)
     .leftJoin(events, eq(orders.eventId, events.id))
@@ -63,6 +72,18 @@ export default async function NeedsAttentionPage() {
   const now = Date.now()
   const issueWindow = orderIssueWindowStart()
   const groups: Group[] = [
+    {
+      key: "paid_after_expiry",
+      title: "Paid after expiry: needs a decision",
+      hint: "The payment came through after the order expired and could not be restored automatically. Refund the buyer, or issue the ticket if stock allows. Recheck payment first.",
+      condition: and(
+        eq(orders.status, "expired"),
+        sql`${orders.metadata}->'recoveryReview' IS NOT NULL`,
+        sql`${orders.metadata}->'manualCompletion' IS NULL`,
+      ) as SQL,
+      window: new Date(now - 30 * 86_400_000),
+      includeInactive: true,
+    },
     ...ORDER_ISSUES.map((issue) => ({
       key: issue,
       title: ORDER_ISSUE_LABEL[issue],
@@ -128,6 +149,7 @@ export default async function NeedsAttentionPage() {
                         </p>
                         <p className="text-[11px] text-ink-3 truncate">
                           {o.eventTitle ?? "—"} · {o.createdAt ? formatDateShort(o.createdAt) : "—"}
+                          {o.reviewReason ? ` · ${REVIEW_REASON_LABEL[o.reviewReason] ?? o.reviewReason}` : ""}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">

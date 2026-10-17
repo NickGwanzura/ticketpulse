@@ -13,7 +13,7 @@ it("shows separate tier counts, stock, revenue and pending allocations", () => {
   expect(vip).toHaveTextContent("Available70")
   expect(vip).toHaveTextContent("Complimentary2")
   expect(vip).toHaveTextContent("Reserved / pending4")
-  expect(vip).toHaveTextContent("Ticket revenue$1,080")
+  expect(vip).toHaveTextContent("Ticket revenue$1,080.00")
   expect(within(vip).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "24")
   expect(ga).toHaveTextContent("0 sold / 200 capacity")
   expect(ga).toHaveTextContent("ZWG")
@@ -27,7 +27,7 @@ it("displays revenue in its original currencies without adding them together", (
     ] },
   ]} />)
   const tier = screen.getByRole("listitem")
-  expect(tier).toHaveTextContent("Ticket revenue$50ZWG")
+  expect(tier).toHaveTextContent("Ticket revenue$50.00ZWG")
   expect(tier).toHaveTextContent("250")
 })
 

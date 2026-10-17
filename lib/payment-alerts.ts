@@ -377,6 +377,29 @@ export async function alertVelocityManualReviewRequired(
 }
 
 /**
+ * Alert when a customer's payment is confirmed but their expired order could
+ * not be restored automatically (no stock left, or they may already have a
+ * replacement order). A person has to decide: refund, or issue the ticket.
+ */
+export async function alertExpiredOrderPaidNeedsDecision(
+  orderId: string,
+  reason: string,
+  paymentMethod?: string,
+): Promise<void> {
+  const why = reason === "possible_replacement_fulfillment"
+    ? "the buyer may already hold a replacement ticket from another order"
+    : "the tickets sold out after the order expired"
+  await alertPaymentAnomaly({
+    type: "VELOCITY_MANUAL_REVIEW_REQUIRED",
+    severity: "high",
+    title: "Paid after expiry: decision needed",
+    detail: `Velocity confirms payment for an expired order, but it was not restored automatically because ${why}. Open Admin > Needs attention, then refund the buyer or issue the ticket.`,
+    orderId,
+    paymentMethod,
+  })
+}
+
+/**
  * Alert when the callback handler receives a notification for an unknown order.
  */
 export async function alertCallbackOrderNotFound(

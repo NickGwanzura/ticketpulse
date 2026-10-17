@@ -1,3 +1,4 @@
+import { isProofStorageConfigured } from "@/lib/payment-proof"
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { desc, eq } from "drizzle-orm"
@@ -311,6 +312,55 @@ export default async function AdminOrderDetailPage({
           ).slice().reverse()}
         />
 
+        {/* Manual completion record */}
+        {(() => {
+          const mc = ((order.metadata ?? {}) as { manualCompletion?: { paymentRef?: string; completedBy?: string; completedAt?: string; amountReceived?: number; expectedAmount?: number; overpaid?: boolean; proofNote?: string | null; proofKey?: string } }).manualCompletion
+          if (!mc) return null
+          return (
+            <div className="rounded-2xl border border-line bg-paper px-5 md:px-6 py-4">
+              <h3 className="text-[15px] font-semibold tracking-tight text-ink">Completed manually</h3>
+              <dl className="mt-3 grid gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
+                {mc.paymentRef && <div><dt className="text-ink-3">Reference</dt><dd className="font-mono font-medium text-ink">{mc.paymentRef}</dd></div>}
+                {mc.amountReceived != null && <div><dt className="text-ink-3">Amount on proof</dt><dd className="font-medium text-ink">{order.currency ?? "USD"} {Number(mc.amountReceived).toFixed(2)}{mc.overpaid ? " (overpaid)" : ""}</dd></div>}
+                {mc.completedBy && <div><dt className="text-ink-3">Completed by</dt><dd className="font-medium text-ink">{mc.completedBy}</dd></div>}
+                {mc.completedAt && <div><dt className="text-ink-3">When</dt><dd className="font-medium text-ink">{new Date(mc.completedAt).toLocaleString("en-GB", { timeZone: "Africa/Harare" })}</dd></div>}
+                {mc.proofNote && <div className="sm:col-span-2"><dt className="text-ink-3">Note</dt><dd className="text-ink">{mc.proofNote}</dd></div>}
+              </dl>
+              {mc.proofKey && (
+                <a href={`/api/admin/orders/${id}/proof?key=${encodeURIComponent(mc.proofKey)}`} target="_blank" rel="noopener noreferrer"
+                  className="tp-tap mt-3 inline-flex items-center text-[13px] font-semibold text-navy underline underline-offset-2">
+                  Open proof file
+                </a>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* Paid after expiry */}
+        {order.status === "expired" && (() => {
+          const review = ((order.metadata ?? {}) as { recoveryReview?: { reason?: string; relatedOrderIds?: string[] } }).recoveryReview
+          return (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 md:px-6 py-4">
+              <p className="text-[14px] font-semibold tracking-tight text-amber-900">This order expired. Check whether the customer paid.</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-amber-900/80">
+                {review
+                  ? review.reason === "possible_replacement_fulfillment"
+                    ? "Velocity confirms payment, but this buyer may already hold a replacement ticket from another order. Review the related orders before issuing or refunding."
+                    : "Velocity confirms payment, but the tickets sold out after this order expired, so it was not restored automatically. Refund the buyer, or issue the ticket if you have capacity."
+                  : "If the customer sent proof of payment, use Complete & Send: enter the transaction reference and the amount on the proof. The order is restored (if stock allows), marked paid and the tickets are sent. You can also press Recheck payment to see whether Velocity already received it."}
+              </p>
+              {review?.relatedOrderIds && review.relatedOrderIds.length > 0 && (
+                <p className="mt-2 text-[12px] text-amber-900/80">
+                  Related orders:{" "}
+                  {review.relatedOrderIds.map((rid) => (
+                    <a key={rid} href={`/admin/orders/${rid}`} className="mr-2 font-mono underline underline-offset-2">#{rid.slice(0, 8)}</a>
+                  ))}
+                </p>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Recovery Actions */}
         {order.status !== "paid" && order.status !== "completed" && order.status !== "cancelled" && order.status !== "refunded" && (
           <div className="rounded-2xl border border-line bg-paper overflow-hidden">
@@ -331,6 +381,12 @@ export default async function AdminOrderDetailPage({
               <CompleteAndSendButton
                 orderId={id}
                 variant="mobile"
+                expectedAmount={Number(order.totalAmount ?? 0)}
+                currency={order.currency ?? "USD"}
+                orderLabel={`#${id.slice(0, 8)}`}
+                customer={customerName}
+                status={order.status ?? undefined}
+                proofUploadEnabled={isProofStorageConfigured()}
                 requireReference={
                   !isDirectSalePaymentMethod(order.paymentMethod)
                   && order.paymentMethod !== "complimentary"

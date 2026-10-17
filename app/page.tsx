@@ -205,6 +205,7 @@ export default async function Home() {
                 startsAt={featuredEvents[0].startsAt}
                 coverImage={featuredEvents[0].coverImage}
                 lowestPrice={featuredEvents[0].lowestPrice}
+                ticketsAvailable={featuredEvents[0].ticketsAvailable}
                 currency={featuredEvents[0].currency}
                 soldQuantity={featuredEvents[0].soldQuantity}
                 totalQuantity={featuredEvents[0].totalQuantity}

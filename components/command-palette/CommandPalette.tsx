@@ -50,7 +50,7 @@ const STATIC_PAGES: SearchResult[] = [
   { id: "organizer-fees", type: "page", title: "Organizer fees", subtitle: "Admin · Per-organiser fee overrides", href: "/admin/organizer-fees" },
   { id: "audit-log", type: "page", title: "Audit log", subtitle: "Admin · Payout status change history", href: "/admin/audit-log" },
   { id: "my-payouts", type: "page", title: "My payouts", subtitle: "Organiser · Balance & payout history", href: "/payouts" },
-  { id: "my-orders", type: "page", title: "My orders", subtitle: "Organiser · Order list", href: "/organizer/orders" },
+  { id: "my-attendees", type: "page", title: "My attendees", subtitle: "Organiser · Who is coming to your events", href: "/organizer/attendees" },
   { id: "scan", type: "page", title: "Scan", subtitle: "Organiser · Gate/QR ticket scanner", href: "/organizer/scan" },
 ]
 

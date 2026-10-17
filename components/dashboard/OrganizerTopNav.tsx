@@ -2,14 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutGrid, CalendarDays, Receipt, QrCode, Wallet } from "lucide-react"
+import { LayoutGrid, CalendarDays, Users, QrCode, Wallet } from "lucide-react"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/organizer", icon: LayoutGrid },
   { label: "Events", href: "/organizer/events", icon: CalendarDays },
-  { label: "Orders", href: "/organizer/orders", icon: Receipt },
+  { label: "Attendees", href: "/organizer/attendees", icon: Users },
   { label: "Scan", href: "/organizer/scan", icon: QrCode },
   { label: "Payouts", href: "/payouts", icon: Wallet },
 ]

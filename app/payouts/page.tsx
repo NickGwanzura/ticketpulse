@@ -107,18 +107,31 @@ export default async function PayoutsDashboardPage() {
         subtitle="Track revenue, request withdrawals, and view payment history."
         width="xl"
         actions={
-          <a
-            href="/api/payouts/statement"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15 transition-colors"
-          >
-            <ReceiptText size={14} /> Download statement
-          </a>
+          <form action="/api/payouts/statement" method="get" className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="statement-from">From</label>
+            <input id="statement-from" type="date" name="from" className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[13px] text-white [color-scheme:dark]" />
+            <label className="sr-only" htmlFor="statement-to">To</label>
+            <input id="statement-to" type="date" name="to" className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[13px] text-white [color-scheme:dark]" />
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-white/15 transition-colors"
+            >
+              <ReceiptText size={14} /> Download PDF
+            </button>
+          </form>
         }
       />
 
       <div className="max-w-7xl mx-auto px-5 md:px-8 py-10 space-y-8">
         {/* Trust journey */}
         <TrustJourney status={trustStatus} totalPaidPayouts={totalPaidPayouts} />
+
+        <p className="text-[13px] text-ink-2">
+          New to payouts?{" "}
+          <a href="/api/organizer/payout-sop" className="font-semibold text-ink underline underline-offset-2">
+            Download the organiser payout guide (PDF)
+          </a>
+        </p>
 
         {outstandingClawbacks > 0 && (
           <div className="rounded-2xl border border-red-500/25 bg-red-50/60 px-5 md:px-6 py-5 tp-fade-up-1">
@@ -215,7 +228,7 @@ export default async function PayoutsDashboardPage() {
               </span>
               <div>
                 <p className="text-[14px] font-semibold tracking-tight text-ink">{formatCurrency(availableBalance, "USD")} available</p>
-                <p className="text-[13px] text-ink-2">Request a payout to your EcoCash wallet or bank account.</p>
+                <p className="text-[13px] text-ink-2">Request a payout to your bank account (USD bank transfer).</p>
               </div>
             </div>
             <Link
@@ -288,6 +301,9 @@ export default async function PayoutsDashboardPage() {
                           <span className={`text-[11px] font-semibold tracking-wide uppercase px-2 py-1 rounded-full ${STATUS_STYLE[p.status as PayoutStatus]}`}>
                             {STATUS_LABEL[p.status as PayoutStatus]}
                           </span>
+                          {p.status === "paid" && (
+                            <a href={`/api/payouts/${p.id}/receipt`} className="mt-1.5 block text-[11px] font-semibold text-ink underline underline-offset-2">Download receipt</a>
+                          )}
                         </td>
                         <td className="px-3 py-4 text-right text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
                           {formatCurrency(Number(p.amount), p.currency)}
@@ -327,6 +343,9 @@ export default async function PayoutsDashboardPage() {
                     {p.proofReference && p.method !== "cash" && (
                       <p className="mt-1 text-[11px] text-ink-3">Proof: {p.proofReference}</p>
                     )}
+                    {p.status === "paid" && (
+                            <a href={`/api/payouts/${p.id}/receipt`} className="mt-2 inline-block text-[11px] font-semibold text-ink underline underline-offset-2">Download receipt</a>
+                          )}
                   </li>
                 ))}
               </ul>

@@ -160,7 +160,12 @@ export default function TicketSelector({ eventSlug, eventTitle, eventStartsAt, e
         })
       }
     })
-    router.push("/checkout")
+    // Check out only this event, so tickets left in the cart from another event
+    // don't send the buyer to the "choose an order" screen.
+    const currencies = [...new Set(tiers.filter((t) => (qtys[t.id] ?? 0) > 0).map((t) => t.currency))]
+    const params = new URLSearchParams({ event: eventSlug })
+    if (currencies.length === 1) params.set("currency", currencies[0])
+    router.push(`/checkout?${params.toString()}`)
   }
 
   return (

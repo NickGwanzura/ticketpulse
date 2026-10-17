@@ -15,7 +15,7 @@ import { POST } from '@/app/api/checkout/velocity/route'
 import { CheckoutBody, checkoutFingerprint } from '@/lib/checkout-contract'
 import { events, ticketTiers, ticketQuestions, orders } from '@/db/schema'
 const id='11111111-1111-4111-8111-111111111111',eventId='22222222-2222-4222-8222-222222222222'
-const input={email:'buyer@example.com',name:'Buyer',phone:'0771234567',paymentMethod:'velocity-ecocash',eventSlug:'event',items:[{kind:'ticket',tierId:id,quantity:1}],checkoutRequestId:id,expectedAmount:20,expectedCurrency:'USD'}
+const input={email:'buyer@example.com',name:'Buyer',phone:'0771234567',paymentMethod:'velocity-ecocash',eventSlug:'event',items:[{kind:'ticket',tierId:id,quantity:1}],checkoutRequestId:id,expectedAmount:20.6,expectedCurrency:'USD'}
 const send=(body:unknown)=>POST(new Request('https://example.test/api/checkout/velocity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}))
 beforeEach(()=>{
  vi.clearAllMocks();mock.existing=null;mock.questions=[]
@@ -27,7 +27,7 @@ beforeEach(()=>{
 describe('actual checkout handler',()=>{
  it('quotes the current price without creating an order or starting payment',async()=>{
   const response=await send({...input,quoteOnly:true});expect(response.status).toBe(200)
-  expect((await response.json()).quote).toMatchObject({amount:20,currency:'USD',normalizedPhone:'+263771234567'})
+  expect((await response.json()).quote).toMatchObject({amount:20.6,currency:'USD',normalizedPhone:'+263771234567'})
   expect(mock.withLock).not.toHaveBeenCalled();expect(mock.initiate).not.toHaveBeenCalled()
  })
  it('rejects an unreviewed changed amount before payment',async()=>{

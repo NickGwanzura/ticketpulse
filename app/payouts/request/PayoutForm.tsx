@@ -4,23 +4,13 @@ import { useRouter } from "next/navigation"
 import { useActionState, useState, useEffect } from "react"
 import Link from "next/link"
 import {
-  ArrowLeft, Send, Smartphone, Building2, AlertCircle, CheckCircle2,
+  ArrowLeft, Send, Building2, AlertCircle, CheckCircle2,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { requestPayoutAction } from "../actions"
 import { useToast } from "@/components/ui/Toast"
 
 type PayoutMethod = "ecocash" | "bank_usd"
-
-const METHOD_LABELS: Record<PayoutMethod, string> = {
-  ecocash: "EcoCash",
-  bank_usd: "USD Bank Transfer",
-}
-
-const METHOD_ICONS: Record<PayoutMethod, typeof Smartphone> = {
-  ecocash: Smartphone,
-  bank_usd: Building2,
-}
 
 type BalanceData = {
   availableBalance: number
@@ -37,9 +27,8 @@ type BalanceData = {
 export default function PayoutForm({ balance }: { balance: BalanceData }) {
   const router = useRouter()
   const { toast } = useToast()
-  const [method, setMethod] = useState<PayoutMethod>("bank_usd")
+  const method: PayoutMethod = "bank_usd"
   const [amount, setAmount] = useState("")
-  const [ecocashNumber, setEcocashNumber] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [accountName, setAccountName] = useState("")
   const [bankName, setBankName] = useState("")
@@ -144,51 +133,15 @@ export default function PayoutForm({ balance }: { balance: BalanceData }) {
               )}
             </div>
 
-            {/* Payout method */}
+            {/* Payouts are made by USD bank transfer only. */}
             <div>
               <label className="text-[13px] font-semibold text-ink mb-1.5 block">Payout method</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.entries(METHOD_LABELS) as [PayoutMethod, string][]).map(([key, label]) => {
-                  const Icon = METHOD_ICONS[key]
-                  const isActive = method === key
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setMethod(key)}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-[12px] font-medium transition-all ${
-                        isActive
-                          ? "border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600/20"
-                          : "border-line text-ink-2 hover:text-ink hover:bg-paper-2"
-                      }`}
-                    >
-                      <Icon size={18} className={isActive ? "text-brand-600" : "text-ink-3"} />
-                      {label.split(" ")[0]}
-                    </button>
-                  )
-                })}
+              <div className="flex items-center gap-2 rounded-xl border border-brand-600 bg-brand-50 px-3 py-3 text-[13px] font-medium text-brand-700 ring-1 ring-brand-600/20">
+                <Building2 size={16} className="text-brand-600" /> USD bank transfer
               </div>
               <input type="hidden" name="method" value={method} />
             </div>
 
-            {/* EcoCash details */}
-            {method === "ecocash" && (
-              <div>
-                <label className="text-[13px] font-semibold text-ink mb-1.5 block">EcoCash number</label>
-                <input
-                  name="ecocashNumber"
-                  type="tel"
-                  placeholder="0771 234 567"
-                  value={ecocashNumber}
-                  onChange={(e) => setEcocashNumber(e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3/50 focus:outline-none focus:ring-2 focus:ring-brand-600/20 focus:border-brand-600 transition"
-                />
-                <p className="text-[12px] text-ink-3 mt-1">Funds are settled to this EcoCash number</p>
-              </div>
-            )}
-
-            {/* Bank details */}
             {method === "bank_usd" && (
               <div className="space-y-4">
                 <div>

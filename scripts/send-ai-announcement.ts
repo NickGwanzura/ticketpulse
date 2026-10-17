@@ -5,7 +5,9 @@
  * Uses neon HTTP (bypasses lib/db which uses WebSocket Pool).
  *
  * Usage:
- *   railway run npx tsx scripts/send-ai-announcement.ts
+ *   Run it from the Dokploy application terminal (Frontend > Terminal), where the
+ *   environment variables are already set:
+ *   npx tsx scripts/send-ai-announcement.ts
  */
 
 const RESEND_API_KEY = process.env.AUTH_RESEND_KEY

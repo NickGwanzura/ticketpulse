@@ -13,14 +13,15 @@ export const metadata: Metadata = {
   },
 }
 
-// ISR: re-generate every 60 seconds.
+// ISR: refresh ticket availability and prices every 15 seconds.
 // The events list changes when organisers publish new events or
-// update ticket counts — once a minute is fresh enough.
-export const revalidate = 60
+// update ticket counts, so cards should track tier changes promptly.
+export const revalidate = 15
 
 import { db } from "@/db"
 import { events, ticketTiers, tickets } from "@/db/schema"
 import { and, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm"
+import { getLowestAvailableTicketPrices } from "@/lib/available-ticket-price"
 
 const CATEGORIES = ["All", "Concerts", "Food & Drink", "Cocktail Experience", "Marathons", "Film", "Walkathons", "Exhibitions", "Expeditions"]
 
@@ -96,6 +97,13 @@ export default async function EventsPage({
             eventId: ticketTiers.eventId,
             price: ticketTiers.price,
             currency: ticketTiers.currency,
+            totalQuantity: ticketTiers.totalQuantity,
+            soldQuantity: ticketTiers.soldQuantity,
+            salesStart: ticketTiers.salesStart,
+            salesEnd: ticketTiers.salesEnd,
+            earlyBirdPrice: ticketTiers.earlyBirdPrice,
+            earlyBirdUntil: ticketTiers.earlyBirdUntil,
+            earlyBirdQuantity: ticketTiers.earlyBirdQuantity,
           })
           .from(ticketTiers)
           .where(inArray(ticketTiers.eventId, eventIds)),
@@ -122,13 +130,7 @@ export default async function EventsPage({
       ])
     : [[], [], []]
 
-  const lowestByEvent = new Map<string, { price: number; currency: string }>()
-  for (const t of priceRows) {
-    const price = Number(t.price)
-    const currency = t.currency ?? "USD"
-    const cur = lowestByEvent.get(t.eventId)
-    if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
-  }
+  const lowestByEvent = getLowestAvailableTicketPrices(priceRows)
 
   const attendingByEvent = new Map<string, number>()
   for (const a of attendingRows) {
@@ -154,6 +156,7 @@ export default async function EventsPage({
       coverImage: r.coverImage,
       featured: r.featured ?? false,
       lowestPrice: low?.price ?? null,
+      ticketsAvailable: low != null,
       currency: low?.currency ?? "USD",
       status: r.status ?? "published",
       soldQuantity: attendingByEvent.get(r.id) ?? 0,
@@ -202,6 +205,7 @@ export default async function EventsPage({
               startsAt={firstEvent.startsAt}
               coverImage={firstEvent.coverImage}
               lowestPrice={firstEvent.lowestPrice}
+              ticketsAvailable={firstEvent.ticketsAvailable}
               currency={firstEvent.currency}
               soldQuantity={firstEvent.soldQuantity}
               totalQuantity={firstEvent.totalQuantity}

@@ -25,7 +25,7 @@ export default function CookiesPage() {
             <ul>
               <li><strong>Sign-in and security:</strong> Auth.js session, CSRF and callback cookies support authentication. Names can include secure prefixes depending on the site address. The session cookie has a default lifetime of up to 30 days and can be renewed by sign-in activity.</li>
               <li><strong>Access:</strong> the tp_access cookie remembers access to the launch area when that feature is enabled.</li>
-              <li><strong>Cart and orders:</strong> tp_cart, tp_orders and tp_order_access in local storage retain your cart, recent orders and proof of access to guest orders until changed or cleared.</li>
+              <li><strong>Cart and orders:</strong> tp_cart (with tp_cart_saved_at, which clears an untouched cart after 3 days), tp_orders and tp_order_access in local storage retain your cart, recent orders and proof of access to guest orders until changed or cleared.</li>
               <li><strong>Checkout recovery:</strong> session storage holds a checkout request reference, payment-checking state and contact details you entered so the same tab can recover after a refresh.</li>
               <li><strong>Your cookie choice:</strong> tp_cookie_preferences_v1 in local storage records whether you allow optional analytics. We use that choice for 180 days unless you change or clear it earlier.</li>
             </ul>

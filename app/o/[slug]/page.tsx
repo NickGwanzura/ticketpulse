@@ -6,8 +6,9 @@ import { db } from "@/db"
 import { events, users, ticketTiers } from "@/db/schema"
 import { eq, and, asc, inArray, gte } from "drizzle-orm"
 import { formatCurrency } from "@/lib/utils"
+import { getLowestAvailableTicketPrices } from "@/lib/available-ticket-price"
 
-export const revalidate = 60
+export const revalidate = 15
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -95,24 +96,26 @@ export default async function OrganizerPublicPage({ params }: Props) {
           eventId: ticketTiers.eventId,
           price: ticketTiers.price,
           currency: ticketTiers.currency,
+          totalQuantity: ticketTiers.totalQuantity,
+          soldQuantity: ticketTiers.soldQuantity,
+          salesStart: ticketTiers.salesStart,
+          salesEnd: ticketTiers.salesEnd,
+          earlyBirdPrice: ticketTiers.earlyBirdPrice,
+          earlyBirdUntil: ticketTiers.earlyBirdUntil,
+          earlyBirdQuantity: ticketTiers.earlyBirdQuantity,
         })
         .from(ticketTiers)
         .where(inArray(ticketTiers.eventId, eventIds))
     : []
 
-  const lowestByEvent = new Map<string, { price: number; currency: string }>()
-  for (const t of priceRows) {
-    const price = Number(t.price)
-    const currency = t.currency ?? "USD"
-    const cur = lowestByEvent.get(t.eventId)
-    if (!cur || price < cur.price) lowestByEvent.set(t.eventId, { price, currency })
-  }
+  const lowestByEvent = getLowestAvailableTicketPrices(priceRows)
 
   const eventCards = eventRows.map((e) => {
     const low = lowestByEvent.get(e.id)
     return {
       ...e,
       lowestPrice: low?.price ?? null,
+      ticketsAvailable: low != null,
       currency: low?.currency ?? "USD",
     }
   })
@@ -239,7 +242,9 @@ export default async function OrganizerPublicPage({ params }: Props) {
 
                     {/* Price */}
                     <div className="pt-3 border-t border-line">
-                      {event.lowestPrice !== null ? (
+                      {event.ticketsAvailable === false ? (
+                        <p className="text-[13px] font-medium text-rose-700">Sold out</p>
+                      ) : event.lowestPrice !== null ? (
                         <p className="text-[13px] font-bold text-ink">
                           From{" "}
                           <span className="text-navy">

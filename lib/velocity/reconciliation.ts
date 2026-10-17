@@ -897,6 +897,9 @@ export async function reconcileVelocityOrder(
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    if (error instanceof InventoryRecoveryError && !(order.metadata as { recoveryReview?: unknown } | null)?.recoveryReview) {
+      import("@/lib/payment-alerts").then((m) => m.alertExpiredOrderPaidNeedsDecision(order.id, "inventory_unavailable_after_payment", order.paymentMethod ?? undefined)).catch(() => {})
+    }
     if (error instanceof InventoryRecoveryError) await db.update(orders).set({ metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{recoveryReview}', ${JSON.stringify({reason:'inventory_unavailable_after_payment', providerPaid:true, invoiceId, checkedAt:new Date().toISOString()})}::jsonb)` }).where(eq(orders.id, order.id))
     alertPaymentAnomaly({
       type: "VELOCITY_API_UNEXPECTED_FORMAT",

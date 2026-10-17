@@ -2,6 +2,12 @@ import { NextResponse, after } from "next/server"
 import { createHmac, timingSafeEqual } from "node:crypto"
 import { handleInboundWhatsAppMessage } from "@/lib/whatsapp-checkout"
 import { log } from "@/lib/logger"
+import { rateLimit } from "@/lib/rate-limit"
+
+// A delivery id may only be processed once (OpenWA redelivers on timeouts).
+const seenDeliveries = rateLimit({ windowMs: 60 * 60_000, max: 1 })
+// Cap how fast one sender can drive the checkout bot.
+const senderLimiter = rateLimit({ windowMs: 60_000, max: 20 })
 
 type OpenWaWebhookEnvelope = {
   event: string
@@ -59,6 +65,15 @@ export async function POST(req: Request) {
   const isGroup = data.isGroup === true
 
   if (!chatId || isGroup || !body.trim()) {
+    return NextResponse.json({ ok: true })
+  }
+
+  const deliveryKey = envelope.idempotencyKey || envelope.deliveryId
+  if (deliveryKey && !seenDeliveries.check(`wa-delivery:${deliveryKey}`).allowed) {
+    return NextResponse.json({ ok: true, duplicate: true })
+  }
+  if (!senderLimiter.check(`wa-sender:${chatId}`).allowed) {
+    log.warn("webhooks/whatsapp — sender rate limited", { sender: chatId.slice(-6) })
     return NextResponse.json({ ok: true })
   }
 

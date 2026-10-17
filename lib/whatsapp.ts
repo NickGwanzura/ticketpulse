@@ -112,6 +112,13 @@ async function wacrmMediaUrl(options: SendMediaOptions, extension: string): Prom
   })
 }
 
+const RETRYABLE_STATUS = new Set([429, 502, 503, 504])
+const RETRY_DELAYS_MS = [500, 1500]
+
+function isTimeout(err: unknown): boolean {
+  return err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")
+}
+
 async function openwaFetch<T = unknown>(
   path: string,
   options: RequestInit & { sessionId?: string } = {},
@@ -119,30 +126,60 @@ async function openwaFetch<T = unknown>(
   const { baseUrl, apiKey } = config()
   const url = `${baseUrl.replace(/\/+$/, "")}/api${path}`
 
-  const res = await fetch(url, {
-    ...options,
-    signal: options.signal ?? AbortSignal.timeout(20_000),
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": apiKey,
-      ...options.headers,
-    },
-  })
+  // Retry only when the request clearly did not get processed: the connection
+  // failed outright, or a proxy answered 429/502/503/504. A timeout is NOT
+  // retried (the message may already have been delivered), so a slow gateway
+  // cannot cause duplicate sends.
+  for (let attempt = 0; ; attempt++) {
+    let res: Response
+    try {
+      res = await fetch(url, {
+        ...options,
+        signal: options.signal ?? AbortSignal.timeout(20_000),
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey,
+          ...options.headers,
+        },
+      })
+    } catch (err) {
+      if (attempt < RETRY_DELAYS_MS.length && !isTimeout(err)) {
+        log.warn("whatsapp — OpenWA unreachable, retrying", { path, attempt: attempt + 1 })
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]))
+        continue
+      }
+      throw err
+    }
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "Unknown error")
-    throw new Error(`OpenWA API error (${res.status}): ${body}`)
+    if (!res.ok) {
+      if (RETRYABLE_STATUS.has(res.status) && attempt < RETRY_DELAYS_MS.length) {
+        log.warn("whatsapp — OpenWA busy, retrying", { path, status: res.status, attempt: attempt + 1 })
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]))
+        continue
+      }
+      const body = await res.text().catch(() => "Unknown error")
+      throw new Error(`OpenWA API error (${res.status}): ${body}`)
+    }
+
+    return res.json() as Promise<T>
   }
+}
 
-  return res.json() as Promise<T>
+/** Mask a phone number for logs, keeping only the last 3 digits. */
+export function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "")
+  return digits.length > 3 ? `${"*".repeat(digits.length - 3)}${digits.slice(-3)}` : "***"
 }
 
 /**
  * Format a phone number into a WhatsApp chat ID.
  * Strips non-digits, removes leading 0 if present, and appends @c.us.
  *
+ * Local numbers (leading 0, or 9 digits starting with 7) get the 263
+ * Zimbabwe country code; numbers already carrying a country code are kept.
+ *
  * @example formatChatId("+263 77 123 4567") // "263771234567@c.us"
- * @example formatChatId("0771234567")        // "771234567@c.us"
+ * @example formatChatId("0771234567")        // "263771234567@c.us"
  */
 export function formatChatId(phone: string): string {
   let digits = phone.replace(/\D/g, "")
@@ -368,6 +405,41 @@ export async function isSessionReady(): Promise<boolean> {
   }
 }
 
+// ─── Health ─────────────────────────────────────────────────────────────────
+
+export type WhatsAppHealth = {
+  tone: "ok" | "warn" | "bad" | "unknown"
+  value: string
+  detail: string
+}
+
+/** One-shot status for the admin dashboard. Never throws; gives up after 3 seconds. */
+export async function getWhatsAppHealth(): Promise<WhatsAppHealth> {
+  try {
+    if (provider() === "openwa" && (!process.env.OPENWA_URL || !process.env.OPENWA_API_KEY || !process.env.OPENWA_SESSION_ID)) {
+      return { tone: "bad", value: "Not configured", detail: "Set OPENWA_URL, OPENWA_API_KEY and OPENWA_SESSION_ID. Tickets, receipts and alerts cannot be sent on WhatsApp until then." }
+    }
+    const session = await Promise.race([
+      getSession(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
+    ])
+    if (session.status === "ready") {
+      return { tone: "ok", value: `Connected${session.phone ? ` (${session.phone})` : ""}`, detail: "Ticket PDFs, payout receipts and admin alerts can be sent." }
+    }
+    if (session.status === "qr_ready") {
+      return { tone: "bad", value: "Scan QR to reconnect", detail: "The WhatsApp session is logged out. Scan the QR code in OpenWA to restore sending." }
+    }
+    return { tone: "warn", value: `Session ${session.status.replace(/_/g, " ")}`, detail: "WhatsApp is not ready to send yet. Messages will fail until the session is connected." }
+  } catch (err) {
+    const timedOut = err instanceof Error && err.message === "timeout"
+    return {
+      tone: "bad",
+      value: timedOut ? "Not responding" : "Unreachable",
+      detail: "The OpenWA gateway could not be reached. Check that OPENWA_URL points at the running OpenWA service in Dokploy.",
+    }
+  }
+}
+
 // ─── Admin Alerts ───────────────────────────────────────────────────────────
 
 /**
@@ -426,8 +498,8 @@ export async function sendAdminAlert(text: string): Promise<void> {
       try {
         await sendText(formatChatId(phone), text)
       } catch (err) {
-        console.error(`[whatsapp] failed to send admin alert to ${phone}:`, err)
-        log.error("whatsapp — failed to send admin alert", { phone, error: err instanceof Error ? err.message : String(err) })
+        console.error(`[whatsapp] failed to send admin alert to ${maskPhone(phone)}:`, err)
+        log.error("whatsapp — failed to send admin alert", { phone: maskPhone(phone), error: err instanceof Error ? err.message : String(err) })
       }
     }),
   )

@@ -12,7 +12,7 @@ const HEARTBEAT_STALE_MS = 10 * 60 * 1000
  *
  * Returns 200 when the server is alive and the database is reachable.
  * Returns 503 if the DB ping fails — useful for load-balancer probes and
- * monitoring (e.g. Better Uptime, Pingdom, Railway health checks).
+ * monitoring (e.g. Better Uptime, Pingdom, Dokploy health checks).
  *
  * Response shape:
  * ```json

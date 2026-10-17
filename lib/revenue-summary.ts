@@ -209,6 +209,49 @@ async function getGrossByEvent(filter: { eventIds?: string[]; organizerId?: stri
 }
 
 /**
+ * Net earnings per day (Zimbabwe time) for the last `days` days, using the same
+ * rules as the revenue summary: issued tickets on confirmed orders, prorated from
+ * the order item total, less each event's platform fee. Days are YYYY-MM-DD.
+ */
+export async function getNetRevenueByDay(eventIds: string[], days = 30): Promise<Map<string, number>> {
+  const byDay = new Map<string, number>()
+  if (eventIds.length === 0) return byDay
+
+  const result = await db.execute(sql`
+    WITH ticket_items AS (
+      SELECT
+        oi.id,
+        to_char((COALESCE(o.paid_at, o.created_at) AT TIME ZONE 'Africa/Harare')::date, 'YYYY-MM-DD') AS day,
+        COALESCE(e.platform_fee_percent, 6.00)::numeric AS fee_percent,
+        oi.quantity,
+        oi.total,
+        COUNT(t.id)::int AS issued_count
+      FROM order_items oi
+      INNER JOIN orders o ON o.id = oi.order_id
+      INNER JOIN events e ON e.id = o.event_id
+      LEFT JOIN tickets t
+        ON t.order_id = o.id
+       AND t.tier_id = oi.tier_id
+       AND t.is_staff_ticket = false
+       AND t.status IN ('sold', 'used')
+      WHERE o.event_id IN (${sql.join(eventIds.map((id) => sql`${id}`), sql`, `)})
+        AND o.status IN ('paid', 'completed')
+        AND oi.type = 'ticket'
+        AND oi.quantity > 0
+        AND COALESCE(o.paid_at, o.created_at) >= now() - (${days + 1} * interval '1 day')
+        AND (o.payment_method IS NULL OR o.payment_method NOT IN (${sql.join([...DIRECT_PAYMENT_METHODS, "complimentary"].map((m) => sql`${m}`), sql`, `)}))
+      GROUP BY oi.id, day, fee_percent, oi.quantity, oi.total
+    )
+    SELECT day,
+      COALESCE(SUM(LEAST(issued_count, quantity) * (total::numeric / NULLIF(quantity, 0)) * (1 - fee_percent / 100)), 0)::numeric AS net
+    FROM ticket_items
+    GROUP BY day
+  `)
+  for (const row of result.rows as Record<string, unknown>[]) byDay.set(String(row.day), money(row.net))
+  return byDay
+}
+
+/**
  * Per-event summaries. Payout figures count payouts linked to the event
  * (`payouts.event_id`), which includes manual payouts recorded by admins.
  */

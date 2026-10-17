@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/auth-guard"
 import { db } from "@/db"
 import { payouts, events, users, payoutAuditLog } from "@/db/schema"
 import { log } from "@/lib/logger"
-import { sendPayoutNotificationEmail } from "@/lib/email"
+import { notifyPayoutCompleted } from "@/lib/payout-completion"
 import { recordAdminAudit } from "@/lib/admin-audit"
 import { PAYABLE_FROM, createPayoutAuditLog, isPayoutStatus, transitionPayout } from "@/lib/payout-transitions"
 
@@ -221,6 +221,7 @@ export async function recordManualPayoutAction(formData: FormData): Promise<Admi
     })
 
     log.info("Manual payout recorded", { payoutId: inserted.id, userId, amount: cleanAmount, by: admin })
+    await notifyPayoutCompleted(inserted.id)
     revalidatePath("/admin/payouts")
     revalidatePath("/admin/reconciliation")
     revalidatePath("/payouts")
@@ -332,29 +333,9 @@ export async function markPayoutPaidAction(payoutId: string, proofReference?: st
   })
 
   if (result.ok && result.payout) {
-    // Email notification (non-DB — fire-and-forget even if it fails)
-    try {
-      const [user] = await db
-        .select({ name: users.name, email: users.email })
-        .from(users)
-        .where(eq(users.id, result.payout.userId))
-        .limit(1)
-
-      if (user?.email) {
-        await sendPayoutNotificationEmail({
-          to: user.email,
-          organizerName: user.name,
-          payoutId,
-          amount: String(result.payout.amount),
-          currency: result.payout.currency ?? "USD",
-          method: result.payout.method === "ecocash" ? "EcoCash" : "USD Bank",
-          destination: result.payout.accountName ?? result.payout.accountNumber ?? "nominated account",
-          eventTitle: result.payout.eventTitle ?? "Event",
-        })
-      }
-    } catch (emailErr) {
-      log.warn("Failed to send payout notification email", { payoutId, error: String(emailErr) })
-    }
+    // Email + WhatsApp with receipt and statement PDFs. Failures are logged
+    // inside and never undo the payout.
+    await notifyPayoutCompleted(payoutId)
   }
 
   revalidatePath("/admin/payouts")
@@ -371,4 +352,29 @@ export async function getPayoutAuditLog(payoutId: string) {
     .orderBy(desc(payoutAuditLog.createdAt))
 
   return rows
+}
+
+/** Re-send the payout receipt and statement (email + WhatsApp) for a paid payout. */
+export async function resendPayoutReceiptAction(payoutId: string): Promise<AdminPayoutActionResult> {
+  const session = await requireAdmin().catch(() => null)
+  if (!session) return adminPayoutResult(false, "You are not authorized to resend receipts.")
+
+  const [payout] = await db.select({ id: payouts.id, status: payouts.status }).from(payouts).where(eq(payouts.id, payoutId)).limit(1)
+  if (!payout) return adminPayoutResult(false, "Payout not found.")
+  if (payout.status !== "paid") return adminPayoutResult(false, "Only paid payouts have a receipt.")
+
+  const { channels } = await notifyPayoutCompleted(payoutId, { force: true })
+  await recordAdminAudit({
+    actorId: session.user.id,
+    actorEmail: session.user.email,
+    action: "payout.receipt_resent",
+    targetType: "payout",
+    targetId: payoutId,
+    after: { channels },
+    reason: null,
+  })
+  if (channels.length === 0) {
+    return adminPayoutResult(false, "Nothing was sent. Check the organiser has an email or WhatsApp number and that WhatsApp is connected.")
+  }
+  return { ok: true, message: `Receipt re-sent by ${channels.join(" and ")}.`, payoutId }
 }

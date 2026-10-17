@@ -5,6 +5,7 @@ import { orders, paymentLedger } from "@/db/schema"
 import { InventoryRecoveryError, restoreExpiredOrderInventory } from "@/lib/order-expiry"
 import { lockOrderMutation } from "@/lib/velocity/idempotency"
 import { getSalesOrderById } from "@/services/velocity"
+import { alertExpiredOrderPaidNeedsDecision } from "@/lib/payment-alerts"
 import { readGatewayChargeAmount } from "@/lib/gateway-fee"
 import type { VelocitySalesOrderLookup } from "@/types/velocity"
 
@@ -75,6 +76,7 @@ export async function recoverPaidSalesOrder(orderId: string, source: string, opt
       )).limit(5)
       if (replacements.length || (!current.guestEmail && !current.guestPhone)) {
         await tx.update(orders).set({ metadata: { ...meta, recoveryReview: { reason: "possible_replacement_fulfillment", relatedOrderIds: replacements.map((row) => row.id), checkedAt: new Date().toISOString() } } }).where(eq(orders.id, orderId))
+        alertExpiredOrderPaidNeedsDecision(orderId, "possible_replacement_fulfillment", current.paymentMethod ?? undefined).catch(() => {})
         return { paid: false, newlySettled: false, status: current.status, safeToExpire: false }
       }
     }
@@ -93,6 +95,7 @@ export async function recoverPaidSalesOrder(orderId: string, source: string, opt
   }).catch(async (error) => {
     if (!(error instanceof InventoryRecoveryError)) throw error
     await db.update(orders).set({ metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{recoveryReview}', ${JSON.stringify({ reason: 'inventory_unavailable_after_payment', checkedAt: new Date().toISOString(), salesOrderId: remote.id, providerPaid: true })}::jsonb)` }).where(eq(orders.id, orderId))
+    alertExpiredOrderPaidNeedsDecision(orderId, "inventory_unavailable_after_payment", order.paymentMethod ?? undefined).catch(() => {})
     return { paid: false, newlySettled: false, status: 'expired', safeToExpire: false }
   })
 }
