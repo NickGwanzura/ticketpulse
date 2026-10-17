@@ -39,4 +39,4 @@ export function isOrderPaid(status: OrderRecord["status"] | undefined): boolean 
   return status === "paid" || status === "completed"
 }
 
-export const SUPPORT_WHATSAPP = "263788689923"
+export const SUPPORT_WHATSAPP = "263718353219"

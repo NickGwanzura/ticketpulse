@@ -7,7 +7,7 @@ const WHATSAPP_MESSAGE = [
   "Event: ",
 ].join("\n")
 
-export const ECOCASH_HELP_URL = `https://wa.me/263788689923?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
+export const ECOCASH_HELP_URL = `https://wa.me/263718353219?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
 
 export default function CheckoutPaymentNotice() {
   return (

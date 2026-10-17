@@ -76,7 +76,7 @@ export default async function OrderLookupPage({ searchParams }: Props) {
         </p>
         <p>
           Still stuck?{" "}
-          <a href="https://wa.me/263788689923" target="_blank" rel="noopener noreferrer" className="font-medium text-ink-2 underline hover:text-ink transition">
+          <a href="https://wa.me/263718353219" target="_blank" rel="noopener noreferrer" className="font-medium text-ink-2 underline hover:text-ink transition">
             WhatsApp support
           </a>{" "}
           with your checkout email.

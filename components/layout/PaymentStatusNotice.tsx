@@ -33,7 +33,7 @@ export default function PaymentStatusNotice() {
         <p className="min-w-0 flex-1 text-[12px] leading-5 md:text-[13px]">
           <strong>EcoCash payment notice:</strong> {process.env.NEXT_PUBLIC_PAYMENT_INCIDENT_MESSAGE} Please don’t pay again if your wallet was debited. For help, WhatsApp&nbsp;
           <a
-            href="https://wa.me/263788689923"
+            href="https://wa.me/263718353219"
             className="inline-flex min-h-8 items-center gap-1 font-bold text-amber-800 underline decoration-amber-400 underline-offset-2 hover:text-amber-700"
             target="_blank"
             rel="noreferrer"

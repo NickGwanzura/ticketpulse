@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const name = order.guestName ?? "there"
     const orderUrl = generateOrderAccessUrl(order.id, appUrl)
     const eventUrl = ev?.slug ? `${appUrl}/events/${ev.slug}` : null
-    const supportUrl = "https://wa.me/263788689923"
+    const supportUrl = "https://wa.me/263718353219"
     const reference = order.id.slice(0, 8).toUpperCase()
 
     try {
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 <p>If the payment is confirmed, tickets will be delivered automatically. If it is definitely declined, you can try again${eventUrl ? `:` : "."}</p>
 ${eventUrl ? `<p><a href="${eventUrl}" style="color:#0a2540;font-weight:600">Get tickets for ${eventTitle} →</a></p>` : ""}
 <p style="color:#6b7280;font-size:13px;margin-top:24px">Reference: <code style="background:#f4f4f5;padding:2px 6px;border-radius:4px">${reference}</code></p>
-<p style="color:#6b7280;font-size:13px">TicketPulse &middot; <a href="mailto:nick@ticketpulse.tech" style="color:#6b7280">nick@ticketpulse.tech</a> &middot; WhatsApp +263 788 689 923</p>
+<p style="color:#6b7280;font-size:13px">TicketPulse &middot; <a href="mailto:nick@ticketpulse.tech" style="color:#6b7280">nick@ticketpulse.tech</a> &middot; WhatsApp +263 718 353 219</p>
 </div>`,
         text: `Hi ${name},\n\nWe noticed you started checkout for ${eventTitle} but haven't received payment confirmation after 15 minutes.\n\nPlease do not pay again. If your bank shows a debit, WhatsApp ${supportUrl} with reference ${reference}, amount and time, and a screenshot with sensitive numbers covered. Never send a PIN, CVV, password, or full card number.\n\nTickets will be delivered automatically if the payment clears.\n\nCheck your order: ${orderUrl}\n\nReference: ${reference}\n\nTicketPulse`,
       })

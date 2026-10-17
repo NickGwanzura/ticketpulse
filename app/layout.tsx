@@ -117,7 +117,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               contactPoint: {
                 "@type": "ContactPoint",
                 contactType: "Customer Service",
-                telephone: "+263-788-689-923",
+                telephone: "+263-718-353-219",
                 email: "nick@ticketpulse.tech",
                 url: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticketpulse.tech"}/contact`,
                 availableLanguage: "English",
@@ -151,7 +151,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className={bare ? "" : "min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]"}>{children}</div>
           {!bare && !isCheckout && <Footer />}
           {!bare && <CookiesNotice />}
-          {!bare && !isCheckout && <WhatsAppWidget phone="263788689923" label="Support" />}
+          {!bare && !isCheckout && <WhatsAppWidget phone="263718353219" label="Support" />}
           <CommandPalette />
           <MobileNav />
         </Providers>

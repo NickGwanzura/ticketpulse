@@ -822,7 +822,7 @@ function PaymentWaitingOverlay({
         </div>
 
         <p role="status" className="mt-4 text-sm text-white/70">{message ?? "Your payment can continue if you leave this page. Please do not pay again."}</p>
-        <a href={"https://wa.me/263788689923?text=" + encodeURIComponent("Please help with payment " + orderId)} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm text-white underline">WhatsApp support</a>
+        <a href={"https://wa.me/263718353219?text=" + encodeURIComponent("Please help with payment " + orderId)} target="_blank" rel="noreferrer" className="mt-4 inline-block text-sm text-white underline">WhatsApp support</a>
         {isLow && !isCard && (
           <div className="mt-4 rounded-xl bg-amber-500/15 border border-amber-400/20 px-4 py-3">
             <p className="text-[13px] font-semibold text-amber-300">

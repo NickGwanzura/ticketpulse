@@ -9,7 +9,7 @@ const BRAND = {
   tagline: "Your events, delivered.",
   get appUrl(): string { return getBaseUrl() },
   get iconUrl(): string { return `${getBaseUrl()}/favicon.jpg` },
-  support: "https://wa.me/263788689923",
+  support: "https://wa.me/263718353219",
 } as const
 
 function footer(isAdmin: boolean): string {

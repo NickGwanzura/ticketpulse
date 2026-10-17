@@ -19,7 +19,7 @@ export const SMS_TEMPLATES = {
   TICKET_CONFIRMATION: {
     variables: [],
     description: "Ticket confirmation after successful purchase",
-    body: "Your TicketPulse tickets are confirmed! Open your tickets and QR codes at ticketpulse.tech/orders and show them at the door. Need help? WhatsApp +263 788 689 923.",
+    body: "Your TicketPulse tickets are confirmed! Open your tickets and QR codes at ticketpulse.tech/orders and show them at the door. Need help? WhatsApp +263 718 353 219.",
   },
   EVENT_REMINDER_24H: {
     variables: [],
@@ -29,7 +29,7 @@ export const SMS_TEMPLATES = {
   TICKET_TRANSFER_RECEIVED: {
     variables: [],
     description: "Ticket transfer received notification",
-    body: "Someone has sent you a ticket on TicketPulse! Check your email to claim it. Questions? WhatsApp +263 788 689 923.",
+    body: "Someone has sent you a ticket on TicketPulse! Check your email to claim it. Questions? WhatsApp +263 718 353 219.",
   },
   TICKETS_RESENT: {
     variables: [],

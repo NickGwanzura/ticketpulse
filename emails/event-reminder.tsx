@@ -93,7 +93,7 @@ export default function EventReminderEmail({
         <Text style={{ fontSize: 13, color: BRAND.ink2, margin: 0, lineHeight: "20px" }}>
           Need help? Reply to this email or message us on{" "}
           <a
-            href="https://wa.me/263788689923"
+            href="https://wa.me/263718353219"
             style={{ color: BRAND.blue, textDecoration: "underline" }}
           >
             WhatsApp
