@@ -39,7 +39,7 @@ export default function PaymentStatusNotice() {
             rel="noreferrer"
           >
             <MessageCircle size={13} aria-hidden="true" />
-            +263 78 868 9923
+            0718353219
           </a>
           &nbsp;for help.
         </p>

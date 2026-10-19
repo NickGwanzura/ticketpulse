@@ -45,7 +45,7 @@ const ART_SVG = `<svg class="art-svg" viewBox="0 0 480 500" role="img" aria-labe
 </g>
 </svg>`
 
-const WHATSAPP = "263788689923"
+const WHATSAPP = "263718353219"
 const EMAIL = "nick@spiritusglobal.tech"
 
 export function maintenanceHtml(until: Date): string {
