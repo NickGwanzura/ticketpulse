@@ -38,14 +38,8 @@ export default function VendorCard({ vendor }: VendorCardProps) {
         <p className="text-[13px] text-ink-2 line-clamp-2 mb-4">{vendor.tagline}</p>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-ink-2 mb-4">
-          <span className="inline-flex items-center gap-1">
-            <Star size={12} className="text-amber-500 fill-amber-500" />
-            <span className="font-semibold text-ink">{vendor.rating.toFixed(1)}</span>
-            <span className="text-ink-3">({vendor.reviewCount})</span>
-          </span>
-          <span className="text-ink-3">·</span>
-          <span className="text-ink-3">{vendor.totalEvents} events</span>
-          <span className="text-ink-3">·</span>
+          {vendor.rating > 0 && <span className="inline-flex items-center gap-1"><Star size={12} className="text-amber-500 fill-amber-500" /><span className="font-semibold text-ink">{vendor.rating.toFixed(1)}</span></span>}
+          {vendor.totalEvents > 0 && <span className="text-ink-3">{vendor.totalEvents} events</span>}
           <span className="inline-flex items-center gap-1 text-ink-2">
             <MapPin size={11} className="text-ink-3" />
             {vendor.city}
@@ -54,9 +48,9 @@ export default function VendorCard({ vendor }: VendorCardProps) {
 
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-line">
           <div>
-            <span className="text-[11px] text-ink-3">From</span>
+            {vendor.priceFrom > 0 && <span className="text-[11px] text-ink-3">From</span>}
             <span className="ml-1.5 text-[15px] font-semibold tracking-tight text-ink">
-              {formatCurrency(vendor.priceFrom, vendor.currency)}
+              {vendor.priceFrom > 0 ? formatCurrency(vendor.priceFrom, vendor.currency) : "Ask for a quote"}
             </span>
           </div>
           <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-navy group-hover:gap-1.5 transition-all">

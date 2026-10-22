@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { and, eq } from "drizzle-orm"
 import {
-  Star, MapPin, ShieldCheck, Calendar, Clock, Globe, Phone, Mail,
+  Star, MapPin, ShieldCheck, Calendar,
   Check, ArrowUpRight, MessageSquare, Sparkles,
 } from "lucide-react"
 import { db } from "@/db"
@@ -32,8 +32,8 @@ function vendorRowToProfile(row: typeof vendors.$inferSelect, packageRows: Array
     verified: row.verified ?? false,
     rating: row.rating ? Number(row.rating) : 0,
     reviewCount: 0,
-    totalEvents: 0,
-    responseTimeHours: 24,
+    totalEvents: row.totalEvents ?? 0,
+    responseTimeHours: 0,
     priceFrom,
     currency: "USD",
     portfolio: portfolio.map((url, index) => ({
@@ -55,7 +55,7 @@ function vendorRowToProfile(row: typeof vendors.$inferSelect, packageRows: Array
         description: row.priceRange ?? "Request availability and pricing for your event.",
         price: priceFrom,
         currency: "USD",
-        bullets: ["Scope confirmed with the vendor", "Organizer enquiry routed by TicketPulse", "Booking support available"],
+        bullets: ["Request availability", "Agree scope and price with the vendor"],
       },
     ],
   }
@@ -103,21 +103,10 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
                 <p className="mt-2 text-[15px] md:text-[16px] text-ink-2 max-w-xl">{vendor.tagline}</p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-ink-2">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Star size={13} className="text-amber-500 fill-amber-500" />
-                    <span className="font-semibold text-ink">{vendor.rating.toFixed(1)}</span>
-                    <span className="text-ink-3">({vendor.reviewCount} reviews)</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar size={13} className="text-ink-3" />
-                    <span className="font-medium text-ink">{vendor.totalEvents}</span>
-                    <span className="text-ink-3">events</span>
-                  </span>
+                  {vendor.rating > 0 && <span className="inline-flex items-center gap-1.5"><Star size={13} className="text-amber-500 fill-amber-500" /><span className="font-semibold text-ink">{vendor.rating.toFixed(1)} rating</span></span>}
+                  {vendor.totalEvents > 0 && <span className="inline-flex items-center gap-1.5"><Calendar size={13} className="text-ink-3" /><span className="font-medium text-ink">{vendor.totalEvents}</span><span className="text-ink-3">events</span></span>}
                   <span className="inline-flex items-center gap-1.5 text-ink-2">
                     <MapPin size={13} className="text-ink-3" /> {vendor.city}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-ink-2">
-                    <Clock size={13} className="text-ink-3" /> Replies in {vendor.responseTimeHours}h
                   </span>
                 </div>
               </div>
@@ -151,20 +140,6 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
               <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">About</p>
               <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight text-ink mb-4">What we do</h2>
               <p className="text-[15px] leading-relaxed text-ink-2">{vendor.description}</p>
-
-              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { k: vendor.totalEvents.toString(),     l: "Events delivered" },
-                  { k: vendor.rating.toFixed(1),          l: "Avg rating" },
-                  { k: `${vendor.responseTimeHours}h`,    l: "Response time" },
-                  { k: vendor.serves.length.toString(),   l: "Cities served" },
-                ].map((s) => (
-                  <div key={s.l} className="rounded-2xl border border-line bg-paper p-4">
-                    <p className="text-[22px] font-bold tracking-tight text-ink leading-none">{s.k}</p>
-                    <p className="text-[12px] text-ink-3 mt-1.5">{s.l}</p>
-                  </div>
-                ))}
-              </div>
 
               <div className="mt-6 flex flex-wrap gap-2">
                 {vendor.serves.map((c) => (
@@ -250,30 +225,13 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
             <div id="contact" className="lg:sticky lg:top-24 rounded-2xl border border-line bg-paper p-6 shadow-sm shadow-ink/[0.04] scroll-mt-24">
               <EnquiryForm
                 vendorSlug={vendor.slug}
-                vendorId={vendor.id ?? vendor.slug}
                 vendorName={vendor.businessName}
-                responseTimeHours={vendor.responseTimeHours}
               />
-
-              <div className="border-t border-line pt-5 space-y-2.5">
-                <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
-                  <Phone size={13} className="text-ink-3" />
-                  <span className="text-ink font-medium">+263 77 hidden, sign in to view</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
-                  <Mail size={13} className="text-ink-3" />
-                  <span className="text-ink font-medium">Sign in to view</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
-                  <Globe size={13} className="text-ink-3" />
-                  <span>Public profile · ticketpulse.tech/v/{vendor.slug}</span>
-                </div>
-              </div>
 
               <div className="mt-5 rounded-xl bg-paper-2 border border-line p-3.5 flex items-start gap-2.5">
                 <ShieldCheck size={15} className="text-brand-600 mt-0.5 shrink-0" />
                 <p className="text-[12px] leading-relaxed text-ink-2">
-                  All payments are held by TicketPulse and released to the vendor on event completion. Refundable if cancelled within terms.
+                  TicketPulse forwards your request to the vendor. Availability and price are confirmed before any booking or payment.
                 </p>
               </div>
             </div>
@@ -282,9 +240,9 @@ export default async function VendorProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <MobileBuyBar
-        label="Get a quote"
-        primary={formatCurrency(vendor.priceFrom, vendor.currency)}
-        secondary="From"
+        label="Request availability"
+        primary={vendor.priceFrom > 0 ? formatCurrency(vendor.priceFrom, vendor.currency) : "Get a quote"}
+        secondary={vendor.priceFrom > 0 ? "From" : ""}
         href="#contact"
       />
     </div>

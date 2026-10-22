@@ -1,12 +1,13 @@
 import Link from "next/link"
-import { Sparkles, ArrowRight, Check, ShieldCheck, Wallet, Calendar } from "lucide-react"
+import { Sparkles, ArrowRight, Check, ShieldCheck, MessageSquare, ListChecks } from "lucide-react"
 import { inputBaseClass } from "@/lib/utils"
 import { applyVendorAction } from "./actions"
+import { auth } from "@/auth"
 
 const PERKS = [
-  { icon: Wallet,      title: "Verified payouts",  body: "USD settlement to bank or EcoCash after confirmed bookings are reconciled." },
-  { icon: ShieldCheck, title: "Verification badge", body: "Earn the verified badge after your first 5 paid events on the platform." },
-  { icon: Calendar,    title: "Calendar sync",      body: "We block your calendar automatically once an event is confirmed." },
+  { icon: MessageSquare, title: "Direct enquiries", body: "Receive event requests in your dashboard and reply to clients directly." },
+  { icon: ShieldCheck, title: "Reviewed profile", body: "Approved vendors appear in the public marketplace with a verification badge." },
+  { icon: ListChecks, title: "Service packages", body: "Publish clear packages and prices so clients know what to ask for." },
 ]
 
 export default async function VendorsApplyPage({
@@ -15,6 +16,8 @@ export default async function VendorsApplyPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const session = await auth()
+  const canApply = session?.user?.role === "vendor" || session?.user?.role === "attendee" || session?.user?.role === "admin"
 
   return (
     <div className="bg-paper-2 min-h-[calc(100vh-4rem)]">
@@ -33,7 +36,7 @@ export default async function VendorsApplyPage({
               List your service. <span className="text-brand-600">Get booked.</span>
             </h1>
             <p className="mt-4 text-[15px] md:text-[16px] leading-relaxed text-ink-2 max-w-md">
-              Join the marketplace organizers reach for first. Free to apply, we approve in 48 hours.
+              Apply for a free listing, build your profile, and receive event booking requests from clients.
             </p>
 
             <ul className="mt-8 space-y-5">
@@ -55,9 +58,9 @@ export default async function VendorsApplyPage({
               <ul className="space-y-2">
                 {[
                   "Registered Zimbabwean business or sole-trader",
-                  "Two recent client references",
-                  "Public phone or email contact",
-                  "Photos of past work (3+)",
+                  "A reachable phone and email",
+                  "A clear description of your service",
+                  "A portfolio link or work examples are recommended",
                 ].map((c) => (
                   <li key={c} className="flex items-center gap-2 text-[14px] text-ink-2">
                     <Check size={14} className="text-brand-600 shrink-0" />
@@ -71,7 +74,7 @@ export default async function VendorsApplyPage({
           {/* Form */}
           <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 shadow-sm shadow-ink/[0.04]">
             <h2 className="text-[20px] font-semibold tracking-tight text-ink mb-1">Apply to list</h2>
-            <p className="text-xs text-ink-3 mb-6">Takes about 3 minutes. We&apos;ll email you within 48 hours.</p>
+            <p className="text-xs text-ink-3 mb-6">Takes about 3 minutes. We&apos;ll email you after review.</p>
 
             {error === "invalid" && (
               <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
@@ -84,7 +87,15 @@ export default async function VendorsApplyPage({
               </div>
             )}
 
-            <form action={applyVendorAction} className="space-y-4">
+            {!session && (
+              <div className="space-y-3">
+                <p className="text-[14px] leading-relaxed text-ink-2">Create a vendor account to submit your business details and manage enquiries in one place.</p>
+                <Link href="/auth/signup?role=vendor&callbackUrl=/vendors/apply" className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-brand-700">Create vendor account <ArrowRight size={15} /></Link>
+                <Link href="/auth/signin?callbackUrl=/vendors/apply" className="flex w-full items-center justify-center rounded-xl border border-line px-4 py-3.5 text-sm font-semibold text-ink hover:bg-paper-2">Already have an account? Sign in</Link>
+              </div>
+            )}
+            {session && !canApply && <p className="text-[14px] text-ink-2">This account cannot submit a vendor application. Use a vendor or attendee account.</p>}
+            {canApply && <form action={applyVendorAction} className="space-y-4">
               <div>
                 <label htmlFor="businessName" className="block text-[12px] font-medium text-ink-2 mb-1.5">Business name</label>
                 <input
@@ -192,7 +203,7 @@ export default async function VendorsApplyPage({
                 Submit application <ArrowRight size={15} />
               </button>
               <p className="text-[12px] text-ink-3 text-center">No fee. Cancel any time.</p>
-            </form>
+            </form>}
           </div>
         </div>
       </div>

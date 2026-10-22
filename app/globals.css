@@ -1,9 +1,33 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "HONOR Sans";
+  src: url("/fonts/honor-sans/HONORSans-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "HONOR Sans";
+  src: url("/fonts/honor-sans/HONORSans-Medium.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "HONOR Sans";
+  src: url("/fonts/honor-sans/HONORSans-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
+
 @theme {
-  --font-heading: var(--font-mona), "system-ui", sans-serif;
+  --font-heading: "HONOR Sans", "system-ui", sans-serif;
   --font-display: var(--font-grift), "Arial Narrow", sans-serif;
-  --font-body: var(--font-mona), "system-ui", sans-serif;
+  --font-body: "HONOR Sans", "system-ui", sans-serif;
   --font-sans: var(--font-body);
 
   --color-paper: #ffffff;

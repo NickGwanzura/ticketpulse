@@ -41,13 +41,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ listings })
   }
 
-  const conditions = category && (VENDOR_CATS as readonly string[]).includes(category)
-    ? [eq(vendors.category, category as VendorCat)]
-    : []
+  const conditions = [eq(vendors.verified, true)]
+  if (category && (VENDOR_CATS as readonly string[]).includes(category)) {
+    conditions.push(eq(vendors.category, category as VendorCat))
+  }
   const allVendors = await db
-    .select()
+    .select({
+      id: vendors.id,
+      businessName: vendors.businessName,
+      category: vendors.category,
+      logo: vendors.logo,
+      description: vendors.description,
+      city: vendors.city,
+      rating: vendors.rating,
+      totalEvents: vendors.totalEvents,
+      priceRange: vendors.priceRange,
+    })
     .from(vendors)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(and(...conditions))
 
   return NextResponse.json({ vendors: allVendors })
 }

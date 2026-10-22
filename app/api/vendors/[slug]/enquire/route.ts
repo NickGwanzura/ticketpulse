@@ -1,26 +1,40 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
 import { vendors, vendorEnquiries } from "@/db/schema"
 import { sendEmail, adminEmail } from "@/lib/email"
 import { vendorEnquiryEmail } from "@/lib/email-templates"
+import { rateLimit } from "@/lib/rate-limit"
 
 const BodySchema = z.object({
-  vendorId: z.string().min(1).max(64),
-  name: z.string().min(1).max(120),
-  email: z.email(),
-  phone: z.string().max(40).optional().nullable(),
-  message: z.string().min(10).max(4000),
-  eventDate: z.string().max(40).optional().nullable(),
-  guestCount: z.union([z.string().max(20), z.number()]).optional().nullable(),
+  name: z.string().trim().min(2).max(120),
+  email: z.email().max(254),
+  phone: z.string().trim().min(5).max(40).optional(),
+  message: z.string().trim().min(10).max(4000),
+  eventDate: z.iso.date().refine(
+    (value) => new Date(`${value}T23:59:59+02:00`) >= new Date(),
+    "Choose today or a future date",
+  ),
+  guestCount: z.number().int().positive().max(100000).optional(),
 })
 
-// Treat ids that look like uuids as DB lookups; everything else is an
-// in-memory slug (the static VENDORS array doesn't expose a real id yet).
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const enquiryLimiter = rateLimit({ windowMs: 60_000, max: 5 })
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const limit = await enquiryLimiter.checkRequest(req)
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } },
+    )
+  }
+
+  const { slug } = await params
+  if (!z.uuid().safeParse(slug).success) {
+    return NextResponse.json({ error: "Vendor not found" }, { status: 404 })
+  }
+
   let raw: unknown
   try {
     raw = await req.json()
@@ -36,66 +50,60 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { vendorId, name, email, phone, message, eventDate, guestCount } = parsed.data
+  const { name, email, phone, message, eventDate, guestCount } = parsed.data
+  let vendor: { email: string | null; businessName: string } | undefined
 
-  let vendorEmail: string | null = null
-  let vendorName = "Vendor"
+  try {
+    ;[vendor] = await db
+      .select({ email: vendors.email, businessName: vendors.businessName })
+      .from(vendors)
+      .where(and(eq(vendors.id, slug), eq(vendors.verified, true)))
+      .limit(1)
 
-  if (UUID_RE.test(vendorId) && process.env.DATABASE_URL) {
-    try {
-      const [vendor] = await db
-        .select({
-          email: vendors.email,
-          businessName: vendors.businessName,
-        })
-        .from(vendors)
-        .where(eq(vendors.id, vendorId))
-        .limit(1)
-      if (vendor) {
-        vendorEmail = vendor.email
-        vendorName = vendor.businessName
-
-        await db.insert(vendorEnquiries).values({
-          vendorId,
-          name,
-          email,
-          phone: phone ?? null,
-          eventDate: eventDate ?? null,
-          guestCount: guestCount == null ? null : String(guestCount),
-          message,
-        })
-      }
-    } catch (err) {
-      console.warn("[vendor enquire] db lookup", err)
+    if (!vendor) {
+      return NextResponse.json({ error: "Vendor not found" }, { status: 404 })
     }
+
+    await db.insert(vendorEnquiries).values({
+      vendorId: slug,
+      name,
+      email,
+      phone: phone ?? null,
+      eventDate,
+      guestCount: guestCount == null ? null : String(guestCount),
+      message,
+    })
+  } catch (err) {
+    console.error("[vendor enquire] failed to save request", err)
+    return NextResponse.json({ error: "We could not save your request. Please try again." }, { status: 503 })
   }
 
   const built = vendorEnquiryEmail({
-    vendorName,
+    vendorName: vendor.businessName,
     customerName: name,
     customerEmail: email,
     customerPhone: phone ?? null,
-    eventDate: eventDate ?? null,
+    eventDate,
     guestCount: guestCount ?? null,
     message,
   })
 
   // If the vendor has no reachable email, fall back to admin only.
-  const to = vendorEmail ?? adminEmail
-  const cc = vendorEmail ? adminEmail : undefined
+  const to = vendor.email ?? adminEmail
+  const cc = vendor.email ? adminEmail : undefined
 
   try {
-    await sendEmail({
+    const result = await sendEmail({
       to,
       cc,
-      subject: `New enquiry for ${vendorName}`,
+      subject: `New booking request for ${vendor.businessName}`,
       html: built.html,
       text: built.text,
       replyTo: email,
     })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, notificationSent: !("skipped" in result) })
   } catch (err) {
-    const messageOut = err instanceof Error ? err.message : "Failed to send"
-    return NextResponse.json({ error: messageOut }, { status: 502 })
+    console.error("[vendor enquire] saved request but notification failed", err)
+    return NextResponse.json({ ok: true, notificationSent: false })
   }
 }
