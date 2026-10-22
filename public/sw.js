@@ -1,10 +1,9 @@
-const CACHE = "ticketpulse-v1"
+const CACHE = "ticketpulse-v2"
 
 const PRECACHE_URLS = [
   "/",
   "/events",
   "/how-it-works",
-  "/pricing",
   "/about",
   "/contact",
   "/help",

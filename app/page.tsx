@@ -38,7 +38,7 @@ const FAQ = [
   { q: "Do I need an account to buy tickets?",      a: "No. Pay with just your name and email (plus your number for EcoCash). Your tickets are emailed the moment payment clears, and sent on WhatsApp too if you add your number. Lost the email? Use Find my tickets and we'll email you a fresh link." },
   { q: "How do I get my ticket after I buy?",       a: "As soon as payment clears, your QR tickets appear on screen and a printable PDF is emailed to you. Add your phone number at checkout to get them on WhatsApp as well. All your orders live under My tickets on the device you bought on." },
   { q: "What payments do you accept?",              a: "EcoCash, Visa and Mastercard. EcoCash asks you to approve a prompt on your phone; cards go through a secure payment page." },
-  { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse deducts the 6% fee from confirmed ticket sales and shows gross, fee, paid out, pending, and available balance before withdrawal." },
+  { q: "How do organizers get paid?",               a: "Organizers request payouts from the dashboard. TicketPulse shows gross sales, applicable fees, paid out, pending, and available balance before withdrawal." },
 ]
 
 const STEPS = [
@@ -258,9 +258,6 @@ export default async function Home() {
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <Button href="/auth/signup?role=organizer" size="lg">
               Get started <ArrowRight size={15} />
-            </Button>
-            <Button href="/pricing" variant="secondary" size="lg">
-              View pricing
             </Button>
           </div>
         </div>

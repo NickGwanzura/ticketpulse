@@ -32,9 +32,9 @@ const SERVICES = [
 ]
 
 const PACKAGES = [
-  { name: "Quick creative", price: "From $35", body: "One polished poster or social graphic, with copy and one revision.", items: ["One design concept", "Print and social sizes", "One revision"] },
-  { name: "Launch kit", price: "From $75", body: "A ready-to-publish set for announcing and selling an event.", items: ["Poster and five social tiles", "Caption and WhatsApp copy", "Launch checklist"] },
-  { name: "Campaign partner", price: "Custom quote", body: "Ongoing creative and promotion help for a larger event or season.", items: ["Full content calendar", "Sponsor and partner assets", "Weekly creative support"] },
+  { name: "Quick creative", body: "One polished poster or social graphic, with copy and one revision.", items: ["One design concept", "Print and social sizes", "One revision"] },
+  { name: "Launch kit", body: "A ready-to-publish set for announcing and selling an event.", items: ["Poster and five social tiles", "Caption and WhatsApp copy", "Launch checklist"] },
+  { name: "Campaign partner", body: "Ongoing creative and promotion help for a larger event or season.", items: ["Full content calendar", "Sponsor and partner assets", "Weekly creative support"] },
 ]
 
 export default function MarketingPage() {
@@ -57,9 +57,6 @@ export default function MarketingPage() {
             <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition-colors">
               Request a marketing brief <ArrowRight size={15} />
             </Link>
-            <Link href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-5 py-3.5 text-sm font-semibold text-ink hover:border-line-2 transition-colors">
-              See platform pricing
-            </Link>
           </div>
         </div>
       </section>
@@ -80,14 +77,13 @@ export default function MarketingPage() {
 
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 md:py-20">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Simple packages</p>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Marketing support</p>
           <h2 className="text-[26px] md:text-[36px] font-bold tracking-tight text-ink mb-8">Choose the level of help you need.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {PACKAGES.map((pkg, index) => (
               <div key={pkg.name} className={`rounded-2xl border bg-paper p-6 ${index === 1 ? "border-navy/30 shadow-sm shadow-navy/5" : "border-line"}`}>
                 {index === 1 && <span className="inline-flex rounded-full bg-navy px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white mb-4">Most popular</span>}
                 <h3 className="text-[18px] font-semibold tracking-tight text-ink">{pkg.name}</h3>
-                <p className="mt-2 text-[24px] font-bold tracking-tight text-ink">{pkg.price}</p>
                 <p className="mt-2 text-[13px] leading-relaxed text-ink-2">{pkg.body}</p>
                 <ul className="mt-5 space-y-2.5">
                   {pkg.items.map((item) => <li key={item} className="flex gap-2 text-[13px] text-ink-2"><Check size={14} className="mt-0.5 shrink-0 text-brand-600" />{item}</li>)}
@@ -95,7 +91,7 @@ export default function MarketingPage() {
               </div>
             ))}
           </div>
-          <p className="mt-5 text-[12px] text-ink-3">Prices are starting points. Final quotes depend on turnaround, number of assets, revisions and campaign scope.</p>
+          <p className="mt-5 text-[12px] text-ink-3">We confirm scope and send a quote before work begins.</p>
         </div>
       </section>
 
