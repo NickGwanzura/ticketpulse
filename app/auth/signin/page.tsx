@@ -1,5 +1,7 @@
 import { signIn } from "@/auth"
+import { AuthError } from "next-auth"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import Logo from "@/components/ui/Logo"
 import Image from "next/image"
 import {
@@ -38,12 +40,17 @@ const FEATURES = [
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string; callbackUrl?: string; email?: string }>
+  searchParams: Promise<{ reset?: string; callbackUrl?: string; email?: string; error?: string }>
 }) {
   const sp = await searchParams
   const resetOk = sp.reset === "ok"
   const callbackUrl = localCallback(sp.callbackUrl) ?? "/dashboard"
   const email = sp.email?.toLowerCase().trim() ?? ""
+  const signInError = sp.error === "CredentialsSignin"
+    ? "The email or password is incorrect. Please try again."
+    : sp.error === "AuthError"
+      ? "We couldn't sign you in right now. Please try again or reset your password."
+      : null
 
   return (
     <div className="grid lg:grid-cols-2 min-h-[calc(100vh-6rem)] md:min-h-[calc(100vh-9rem)]">
@@ -73,15 +80,32 @@ export default async function SignInPage({
             </div>
           ) : null}
 
+          {signInError ? (
+            <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-3 text-[13px] font-medium text-rose-700">
+              {signInError}
+            </div>
+          ) : null}
+
           {/* Email + password */}
           <form
             action={async (formData: FormData) => {
               "use server"
-              await signIn("credentials", {
-                email: formData.get("email") as string,
-                password: formData.get("password") as string,
-                redirectTo: callbackUrl,
-              })
+              const submittedEmail = String(formData.get("email") ?? "").toLowerCase().trim()
+              try {
+                await signIn("credentials", {
+                  email: submittedEmail,
+                  password: String(formData.get("password") ?? ""),
+                  redirectTo: callbackUrl,
+                })
+              } catch (error) {
+                if (!(error instanceof AuthError)) throw error
+                const params = new URLSearchParams({
+                  error: error.type === "CredentialsSignin" ? "CredentialsSignin" : "AuthError",
+                  email: submittedEmail,
+                })
+                if (callbackUrl !== "/dashboard") params.set("callbackUrl", callbackUrl)
+                redirect(`/auth/signin?${params.toString()}`)
+              }
             }}
             className="rounded-2xl border border-accent/15 bg-paper p-6 md:p-7 shadow-[0_24px_70px_-44px_rgba(201,82,42,0.65)] space-y-5"
           >
