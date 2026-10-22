@@ -47,7 +47,7 @@ export default async function SignInPage({
   const callbackUrl = localCallback(sp.callbackUrl) ?? "/dashboard"
   const email = sp.email?.toLowerCase().trim() ?? ""
   const signInError = sp.error === "CredentialsSignin"
-    ? "The email or password is incorrect. Please try again."
+    ? "We couldn't sign you in. Check your details or try again in a minute."
     : sp.error === "AuthError"
       ? "We couldn't sign you in right now. Please try again or reset your password."
       : null
