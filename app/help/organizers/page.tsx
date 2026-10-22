@@ -4,7 +4,6 @@ import {
   ArrowRight,
   CalendarCog,
   Wallet,
-  Percent,
   Banknote,
   Smartphone,
   ScanLine,
@@ -45,11 +44,11 @@ const STEPS = [
   },
 ]
 
-const PRICING_PERKS = [
+const PAYOUT_PERKS = [
   {
-    icon: Percent,
-    title: "Clear fee per ticket sold",
-        body: "TicketPulse applies the fee shown for each event, with 6% as the standard rate. No monthly fees, no setup costs, no hidden charges.",
+    icon: Wallet,
+    title: "Understand your event balance",
+    body: "See confirmed sales, deductions and the amount available before requesting a payout.",
   },
   {
     icon: Banknote,
@@ -96,10 +95,6 @@ const EVENT_DAY = [
 
 const FAQS = [
   {
-    q: "How much does TicketPulse charge organizers?",
-    a: "TicketPulse applies the fee shown for each event, with 6% as the standard rate. There are no setup fees, no monthly subscriptions, and no hidden costs. You only pay when tickets are sold.",
-  },
-  {
     q: "When and how do I get paid?",
     a: "You can request a payout at any time from your organizer dashboard. Once requested, funds are sent to your selected settlement method after TicketPulse review. The event fee is deducted automatically.",
   },
@@ -144,7 +139,7 @@ const FAQS = [
 export const metadata = {
   title: "Help for organizers",
   description:
-    "How TicketPulse works for event organizers. Clear event fees, EcoCash or bank payouts, and built-in scanning.",
+    "How TicketPulse works for event organizers, including EcoCash or bank payouts and built-in scanning.",
   alternates: { canonical: "/help/organizers" },
 }
 
@@ -241,17 +236,17 @@ export default function HelpOrganizersPage() {
         </div>
       </section>
 
-      {/* Pricing / Payouts */}
+      {/* Payouts */}
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-16">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">
-            Pricing & payouts
+            Payouts
           </p>
           <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">
-            Simple pricing. Flexible payouts.
+            Track your balance and request payouts.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PRICING_PERKS.map(({ icon: Icon, title, body }) => (
+            {PAYOUT_PERKS.map(({ icon: Icon, title, body }) => (
               <div
                 key={title}
                 className="flex gap-4 rounded-2xl border border-line bg-paper p-5"
@@ -334,7 +329,7 @@ export default function HelpOrganizersPage() {
                 Ready to sell your first tickets?
               </h2>
               <p className="mt-3 text-[15px] text-white/80 max-w-md leading-relaxed">
-                No upfront fees, no monthly costs. A clear event fee per ticket sold and payouts when you want them.
+                Create your event, follow each confirmed sale, and request a payout from your organizer dashboard.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 md:justify-end">

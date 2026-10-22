@@ -2,7 +2,7 @@ import Link from "next/link"
 import CookieSettingsButton from "@/components/CookieSettingsButton"
 import {
   ArrowRight, Globe, Mail, MapPin, MessageCircle,
-  ScanLine, ShieldCheck, Smartphone, Ticket, Wallet,
+  ScanLine, ShieldCheck, Smartphone, Ticket,
 } from "lucide-react"
 
 function IconInstagram(props: React.SVGProps<SVGSVGElement>) {
@@ -60,7 +60,7 @@ const TRUST = [
   { icon: Ticket, label: "EcoCash + Visa checkout" },
   { icon: Smartphone, label: "Instant QR delivery" },
   { icon: ScanLine, label: "Gate scanner included" },
-  { icon: Wallet, label: "6% organizer fee" },
+  { icon: ShieldCheck, label: "Order lookup and support" },
 ]
 
 export default function Footer() {
