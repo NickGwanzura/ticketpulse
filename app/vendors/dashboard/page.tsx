@@ -5,12 +5,13 @@ import { BadgeCheck, ExternalLink, Pencil, Star } from "lucide-react"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { vendors, vendorEnquiries, vendorListings, vendorPackages } from "@/db/schema"
+import { users, vendors, vendorEnquiries, vendorListings, vendorPackages } from "@/db/schema"
 import { vendorCategoryLabel } from "@/lib/utils"
 import { VENDOR_VISUAL } from "@/lib/vendors"
 import VendorDashboardForm from "./VendorDashboardForm"
 import VendorPackagesPanel from "./VendorPackagesPanel"
 import VendorEnquiriesPanel from "./VendorEnquiriesPanel"
+import VerifyVendorEmailButton from "./VerifyVendorEmailButton"
 
 export const dynamic = "force-dynamic"
 
@@ -20,6 +21,8 @@ export default async function VendorDashboardPage() {
 
   const [vendor] = await db.select().from(vendors).where(eq(vendors.userId, session.user.id)).limit(1)
   if (!vendor) redirect("/vendors/apply")
+  const [account] = await db.select({ email: users.email, emailVerified: users.emailVerified })
+    .from(users).where(eq(users.id, session.user.id)).limit(1)
 
   const [packages, enquiries, listings] = await Promise.all([
     db.select().from(vendorPackages).where(eq(vendorPackages.vendorId, vendor.id)).orderBy(desc(vendorPackages.createdAt)),
@@ -91,10 +94,10 @@ export default async function VendorDashboardPage() {
                 )}
               </div>
             </div>
-            <Link href={`/vendors/${vendor.id}`} target="_blank"
+            {vendor.verified && <Link href={`/vendors/${vendor.id}`} target="_blank"
               className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3 py-2 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
               <ExternalLink size={13} /> View listing
-            </Link>
+            </Link>}
           </div>
         </div>
       </div>
@@ -106,9 +109,18 @@ export default async function VendorDashboardPage() {
             {applicationState === "verified" ? "Your profile is live in the marketplace." : applicationState === "rejected" ? "Your application needs an update before it can go live." : "Your application is under review."}
           </p>
           <p className="text-[12px] text-ink-2 mt-1">
-            {applicationState === "verified" ? "Keep your packages and availability current so organizers can book with confidence." : applicationState === "rejected" ? "Update your profile below, then contact the team for the next review step." : "You can complete your profile and add packages now. We will notify you when the review is complete."}
+            {applicationState === "verified" ? "Keep your packages and availability current so organizers can book with confidence." : applicationState === "rejected" ? "Update and resubmit your application for another review." : "You can complete your profile and add packages now. We will notify you when the review is complete."}
           </p>
+          {applicationState === "rejected" && <Link href="/vendors/apply" className="mt-3 inline-block text-xs font-semibold text-rose-800 underline">Update and resubmit application</Link>}
         </div>
+
+        {!account?.emailVerified && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+            <p className="text-sm font-semibold text-amber-900">Verify your account email</p>
+            <p className="mt-1 text-xs text-ink-2">Approval and direct booking emails require a verified address. Your enquiries remain visible here while you wait.</p>
+            <VerifyVendorEmailButton />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[["Profile", `${pct}%`], ["Packages", String(packages.length)], ["New enquiries", String(newEnquiries)], ["Booked services", String(listings.length)]].map(([label, value]) => (
@@ -145,10 +157,17 @@ export default async function VendorDashboardPage() {
           </div>
         )}
 
-        {pct === 100 && (
+        {pct === 100 && vendor.verified && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 flex items-center gap-3 tp-fade-up-1">
             <BadgeCheck size={16} className="text-emerald-600 shrink-0" />
             <p className="text-[13px] font-semibold text-emerald-800">Profile complete. Organizers can find and book you.</p>
+          </div>
+        )}
+
+        {pct === 100 && !vendor.verified && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-center gap-3 tp-fade-up-1">
+            <BadgeCheck size={16} className="text-amber-700 shrink-0" />
+            <p className="text-[13px] font-semibold text-amber-900">Profile complete. Your listing will appear after approval.</p>
           </div>
         )}
 
@@ -161,7 +180,6 @@ export default async function VendorDashboardPage() {
               businessName: vendor.businessName,
               description:  vendor.description ?? "",
               phone:        vendor.phone ?? "",
-              email:        vendor.email ?? "",
               city:         vendor.city ?? "",
               priceRange:   vendor.priceRange ?? "",
               logo:         vendor.logo ?? null,

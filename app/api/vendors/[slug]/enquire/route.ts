@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/db"
-import { vendors, vendorEnquiries } from "@/db/schema"
+import { users, vendors, vendorEnquiries } from "@/db/schema"
 import { sendEmail, adminEmail } from "@/lib/email"
 import { vendorEnquiryEmail } from "@/lib/email-templates"
 import { rateLimit } from "@/lib/rate-limit"
@@ -51,12 +51,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   }
 
   const { name, email, phone, message, eventDate, guestCount } = parsed.data
-  let vendor: { email: string | null; businessName: string } | undefined
+  let vendor: { email: string | null; businessName: string; accountEmail: string | null; accountEmailVerified: Date | null } | undefined
 
   try {
     ;[vendor] = await db
-      .select({ email: vendors.email, businessName: vendors.businessName })
+      .select({ email: vendors.email, businessName: vendors.businessName, accountEmail: users.email, accountEmailVerified: users.emailVerified })
       .from(vendors)
+      .leftJoin(users, eq(vendors.userId, users.id))
       .where(and(eq(vendors.id, slug), eq(vendors.verified, true)))
       .limit(1)
 
@@ -88,9 +89,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     message,
   })
 
-  // If the vendor has no reachable email, fall back to admin only.
-  const to = vendor.email ?? adminEmail
-  const cc = vendor.email ? adminEmail : undefined
+  // Booking details leave the app only for a verified address owned by the vendor account.
+  // Legacy listings with an unverified or mismatched contact email stay visible in the
+  // vendor dashboard; the admin receives the notification instead.
+  const verifiedEmail = vendor.accountEmailVerified && vendor.accountEmail &&
+    vendor.email?.toLowerCase() === vendor.accountEmail.toLowerCase()
+    ? vendor.accountEmail : null
+  const to = verifiedEmail ?? adminEmail
+  const cc = verifiedEmail ? adminEmail : undefined
 
   try {
     const result = await sendEmail({

@@ -231,11 +231,12 @@ export function sendEmailVerificationEmail(args: {
   to: string
   name?: string | null
   url: string
+  purpose?: "organizer" | "vendor"
 }) {
   return send({
     to: args.to,
     subject: "Verify your email address — TicketPulse",
-    react: VerifyEmailEmail({ name: args.name, url: args.url }),
+    react: VerifyEmailEmail({ name: args.name, url: args.url, purpose: args.purpose }),
   })
 }
 

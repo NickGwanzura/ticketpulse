@@ -59,15 +59,21 @@ export async function GET(
       .where(eq(emailVerificationTokens.id, row.id))
   })
 
-  await trackOrganizerLifecycle({
-    step: "EMAIL_VERIFIED",
-    organizerId: row.userId,
-    dedupeKey: `organizer:${row.userId}:email-verified`,
-    source: "email_verification",
-  })
+  const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, row.userId)).limit(1)
+  if (user?.role === "organizer") {
+    await trackOrganizerLifecycle({
+      step: "EMAIL_VERIFIED",
+      organizerId: row.userId,
+      dedupeKey: `organizer:${row.userId}:email-verified`,
+      source: "email_verification",
+    })
+  }
 
   // Redirect to organizer dashboard with success flag
   const session = await auth()
-  const dashboardUrl = session?.user?.id ? "/organizer?verified=1" : "/auth/signin?verified=1"
+  const destination = user?.role === "vendor" ? "/vendors/dashboard" : "/organizer"
+  const dashboardUrl = session?.user?.id === row.userId
+    ? `${destination}?verified=1`
+    : `/auth/signin?verified=1&callbackUrl=${encodeURIComponent(destination)}`
   return NextResponse.redirect(new URL(dashboardUrl, _req.url))
 }

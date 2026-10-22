@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm"
 
 import { auth } from "@/auth"
 import { db } from "@/db"
-import { vendors } from "@/db/schema"
+import { users, vendors } from "@/db/schema"
 import { sendEmail } from "@/lib/email"
 import { vendorApprovedEmail, vendorDeclinedEmail } from "@/lib/email-templates"
 
@@ -19,17 +19,24 @@ export async function approveVendorAction(vendorId: string) {
   await requireAdmin()
 
   const [vendor] = await db
-    .select({ businessName: vendors.businessName, email: vendors.email, verified: vendors.verified })
+    .select({ businessName: vendors.businessName, email: vendors.email, verified: vendors.verified, userId: vendors.userId })
     .from(vendors)
     .where(eq(vendors.id, vendorId))
     .limit(1)
+
+  if (!vendor?.userId) redirect("/admin/vendors?error=unverified")
+  const [account] = await db.select({ email: users.email, emailVerified: users.emailVerified })
+    .from(users).where(eq(users.id, vendor.userId)).limit(1)
+  if (!account?.emailVerified || !account.email || account.email.toLowerCase() !== vendor.email?.toLowerCase()) {
+    redirect("/admin/vendors?error=unverified")
+  }
 
   await db
     .update(vendors)
     .set({ verified: true, rejectedAt: null })
     .where(eq(vendors.id, vendorId))
 
-  if (vendor?.email && !vendor.verified) {
+  if (vendor.email && !vendor.verified) {
     const tpl = vendorApprovedEmail({ businessName: vendor.businessName })
     sendEmail({
       to: vendor.email,
@@ -43,6 +50,7 @@ export async function approveVendorAction(vendorId: string) {
 
   revalidatePath("/admin/vendors")
   revalidatePath("/vendors")
+  revalidatePath(`/vendors/${vendorId}`)
 }
 
 export async function rejectVendorAction(vendorId: string) {
@@ -75,4 +83,5 @@ export async function rejectVendorAction(vendorId: string) {
 
   revalidatePath("/admin/vendors")
   revalidatePath("/vendors")
+  revalidatePath(`/vendors/${vendorId}`)
 }

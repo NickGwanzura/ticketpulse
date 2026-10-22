@@ -1,7 +1,9 @@
 import Link from "next/link"
 import { Sparkles, ArrowRight, Check, ShieldCheck, MessageSquare, ListChecks } from "lucide-react"
-import { inputBaseClass } from "@/lib/utils"
-import { applyVendorAction } from "./actions"
+import { eq } from "drizzle-orm"
+import { db } from "@/db"
+import { vendors } from "@/db/schema"
+import VendorApplicationForm from "./VendorApplicationForm"
 import { auth } from "@/auth"
 
 const PERKS = [
@@ -10,14 +12,21 @@ const PERKS = [
   { icon: ListChecks, title: "Service packages", body: "Publish clear packages and prices so clients know what to ask for." },
 ]
 
-export default async function VendorsApplyPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>
-}) {
-  const { error } = await searchParams
+export default async function VendorsApplyPage() {
   const session = await auth()
   const canApply = session?.user?.role === "vendor" || session?.user?.role === "attendee" || session?.user?.role === "admin"
+  const [existing] = session?.user?.id
+    ? await db.select().from(vendors).where(eq(vendors.userId, session.user.id)).limit(1)
+    : [undefined]
+  const portfolio = Array.isArray(existing?.portfolio) ? existing.portfolio : []
+  const defaults = {
+    businessName: existing?.businessName ?? "",
+    category: existing?.category ?? "",
+    city: existing?.city ?? "",
+    phone: existing?.phone ?? "",
+    description: existing?.description ?? "",
+    portfolioLink: portfolio[0] ?? "",
+  }
 
   return (
     <div className="bg-paper-2 min-h-[calc(100vh-4rem)]">
@@ -73,19 +82,8 @@ export default async function VendorsApplyPage({
 
           {/* Form */}
           <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 shadow-sm shadow-ink/[0.04]">
-            <h2 className="text-[20px] font-semibold tracking-tight text-ink mb-1">Apply to list</h2>
-            <p className="text-xs text-ink-3 mb-6">Takes about 3 minutes. We&apos;ll email you after review.</p>
-
-            {error === "invalid" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
-                Please check the highlighted details and submit again. Descriptions must be at least 30 characters.
-              </div>
-            )}
-            {error === "forbidden" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-700">
-                You do not have permission to apply as a vendor. Only attendees and current vendors can apply.
-              </div>
-            )}
+            <h2 className="text-[20px] font-semibold tracking-tight text-ink mb-1">{existing ? "Update your application" : "Apply to list"}</h2>
+            <p className="text-xs text-ink-3 mb-6">{existing?.verified ? "Submitting changes will temporarily hide your listing until an admin approves it again." : "Takes about 3 minutes. We'll email you after review."}</p>
 
             {!session && (
               <div className="space-y-3">
@@ -95,115 +93,10 @@ export default async function VendorsApplyPage({
               </div>
             )}
             {session && !canApply && <p className="text-[14px] text-ink-2">This account cannot submit a vendor application. Use a vendor or attendee account.</p>}
-            {canApply && <form action={applyVendorAction} className="space-y-4">
-              <div>
-                <label htmlFor="businessName" className="block text-[12px] font-medium text-ink-2 mb-1.5">Business name</label>
-                <input
-                  id="businessName"
-                  name="businessName"
-                  type="text"
-                  required
-                  placeholder="e.g. Mama's Kitchen"
-                  className={inputBaseClass}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="category" className="block text-[12px] font-medium text-ink-2 mb-1.5">Category</label>
-                <select
-                  id="category"
-                  name="category"
-                  required
-                  className="w-full bg-paper border border-line rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                >
-                  <option value="">Choose a category…</option>
-                  <option value="catering">Catering</option>
-                  <option value="bar">Bar service</option>
-                  <option value="food_truck">Food truck</option>
-                  <option value="photography">Photography</option>
-                  <option value="sound">Sound &amp; AV</option>
-                  <option value="security">Security</option>
-                  <option value="decor">Decor</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="city" className="block text-[12px] font-medium text-ink-2 mb-1.5">Primary city</label>
-                  <input
-                    id="city"
-                    name="city"
-                    type="text"
-                    required
-                    placeholder="Harare"
-                    className={inputBaseClass}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="phone" className="block text-[12px] font-medium text-ink-2 mb-1.5">Phone</label>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    required
-                    placeholder="+263 77…"
-                    className={inputBaseClass}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-[12px] font-medium text-ink-2 mb-1.5">Contact email</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  placeholder="hello@yourbusiness.co.zw"
-                  className={inputBaseClass}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="description" className="block text-[12px] font-medium text-ink-2 mb-1.5">About your service</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  rows={4}
-                  required
-                  minLength={30}
-                  placeholder="What do you offer, who are your past clients, what makes you the right pick?"
-                  className={`${inputBaseClass} resize-none`}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="portfolioLink" className="block text-[12px] font-medium text-ink-2 mb-1.5">Portfolio link (optional)</label>
-                <input
-                  id="portfolioLink"
-                  name="portfolioLink"
-                  type="url"
-                  placeholder="https://…"
-                  className={inputBaseClass}
-                />
-              </div>
-
-              <label className="flex items-start gap-2.5 text-[13px] text-ink-2 leading-relaxed pt-2">
-                <input type="checkbox" name="terms" required className="mt-0.5 accent-navy" />
-                <span>
-                  I agree to the <Link href="/legal/terms" className="text-navy font-semibold hover:underline">Vendor Terms</Link> and confirm the information above is accurate.
-                </span>
-              </label>
-
-              <button
-                type="submit"
-                className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-sm shadow-brand-600/20 text-sm mt-2"
-              >
-                Submit application <ArrowRight size={15} />
-              </button>
-              <p className="text-[12px] text-ink-3 text-center">No fee. Cancel any time.</p>
-            </form>}
+            {canApply && !session?.user?.email && <p className="text-sm text-rose-700">Add an email address to your account before applying.</p>}
+            {canApply && session?.user?.email && (
+              <VendorApplicationForm email={session.user.email} defaults={defaults} resubmitting={!!existing} />
+            )}
           </div>
         </div>
       </div>

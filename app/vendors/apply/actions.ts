@@ -10,6 +10,7 @@ import { db } from "@/db"
 import { users, vendors } from "@/db/schema"
 import { log } from "@/lib/logger"
 import { adminEmail, sendEmail } from "@/lib/email"
+import { sendVendorEmailVerification } from "@/lib/vendor-email-verification"
 
 const VENDOR_CATEGORIES = [
   "catering",
@@ -27,11 +28,17 @@ const VendorApplySchema = z.object({
   category: z.enum(VENDOR_CATEGORIES),
   city: z.string().trim().min(2).max(80),
   phone: z.string().trim().min(5).max(40),
-  email: z.email().max(120),
   description: z.string().trim().min(30).max(2000),
-  portfolioLink: z.union([z.literal(""), z.url().max(500)]).transform((value) => value.trim()),
+  portfolioLink: z.union([z.literal(""), z.url().max(500).refine((value) => /^https?:\/\//i.test(value), "Use an HTTP or HTTPS link")]).transform((value) => value.trim()),
   terms: z.literal("on"),
 })
+
+export type VendorApplyState = {
+  error: string | null
+  fieldErrors: Record<string, string[] | undefined>
+}
+
+export const initialVendorApplyState: VendorApplyState = { error: null, fieldErrors: {} }
 
 function escapeHtml(value: string) {
   return value
@@ -42,7 +49,7 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;")
 }
 
-export async function applyVendorAction(formData: FormData) {
+export async function applyVendorAction(_state: VendorApplyState, formData: FormData): Promise<VendorApplyState> {
   const session = await auth()
   if (!session?.user?.id) {
     redirect("/auth/signin?callbackUrl=/vendors/apply")
@@ -50,32 +57,41 @@ export async function applyVendorAction(formData: FormData) {
 
   // Only vendors, attendees, and admins can apply
   if (session.user.role !== "vendor" && session.user.role !== "attendee" && session.user.role !== "admin") {
-    redirect("/vendors/apply?error=forbidden")
+    return { error: "This account cannot apply as a vendor.", fieldErrors: {} }
   }
+
+  const [account] = await db.select({ email: users.email }).from(users).where(eq(users.id, session.user.id)).limit(1)
+  if (!account?.email) return { error: "Add an email address to your account before applying.", fieldErrors: {} }
 
   const parsed = VendorApplySchema.safeParse({
     businessName: formData.get("businessName"),
     category: formData.get("category"),
     city: formData.get("city"),
     phone: formData.get("phone"),
-    email: formData.get("email"),
     description: formData.get("description"),
     portfolioLink: formData.get("portfolioLink") ?? "",
     terms: formData.get("terms"),
   })
 
   if (!parsed.success) {
-    redirect("/vendors/apply?error=invalid")
+    return {
+      error: "Please correct the highlighted fields and submit again.",
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+    }
   }
 
   const data = parsed.data
-  const portfolio = data.portfolioLink ? [data.portfolioLink] : []
 
   const [existingVendor] = await db
-    .select({ id: vendors.id })
+    .select({ id: vendors.id, portfolio: vendors.portfolio })
     .from(vendors)
     .where(eq(vendors.userId, session.user.id))
     .limit(1)
+
+  const existingPortfolio = Array.isArray(existingVendor?.portfolio) ? existingVendor.portfolio : []
+  const portfolio = data.portfolioLink
+    ? [data.portfolioLink, ...existingPortfolio.filter((url) => url !== data.portfolioLink)].slice(0, 12)
+    : existingPortfolio
 
   let vendorId = existingVendor?.id
 
@@ -87,9 +103,11 @@ export async function applyVendorAction(formData: FormData) {
         category: data.category,
         city: data.city,
         phone: data.phone,
-        email: data.email,
+        email: account.email,
         description: data.description,
         portfolio,
+        verified: false,
+        rejectedAt: null,
       })
       .where(eq(vendors.id, existingVendor.id))
   } else {
@@ -99,7 +117,7 @@ export async function applyVendorAction(formData: FormData) {
       category: data.category,
       city: data.city,
       phone: data.phone,
-      email: data.email,
+      email: account.email,
       description: data.description,
       portfolio,
       verified: false,
@@ -114,6 +132,10 @@ export async function applyVendorAction(formData: FormData) {
       .where(eq(users.id, session.user.id))
   }
 
+  await sendVendorEmailVerification(session.user.id).catch((error) => {
+    log.error("vendors/apply — verification email failed", { error: String(error) })
+  })
+
   await sendEmail({
     to: adminEmail,
     subject: `New vendor application: ${data.businessName}`,
@@ -122,7 +144,7 @@ export async function applyVendorAction(formData: FormData) {
       `Category: ${data.category}`,
       `City: ${data.city}`,
       `Phone: ${data.phone}`,
-      `Email: ${data.email}`,
+      `Email: ${account.email}`,
       `Applicant: ${session.user.email ?? session.user.id}`,
       `Profile: /vendors/${vendorId}`,
     ].join("\n"),
@@ -132,7 +154,7 @@ export async function applyVendorAction(formData: FormData) {
       <p><strong>Category:</strong> ${escapeHtml(data.category)}</p>
       <p><strong>City:</strong> ${escapeHtml(data.city)}</p>
       <p><strong>Phone:</strong> ${escapeHtml(data.phone)}</p>
-      <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(account.email)}</p>
       <p><strong>Applicant:</strong> ${escapeHtml(session.user.email ?? session.user.id)}</p>
       <p><strong>Profile:</strong> /vendors/${escapeHtml(vendorId ?? "")}</p>
     `,

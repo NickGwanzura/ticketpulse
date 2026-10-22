@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Mail, Phone, MapPin, Tag, Building2, Check, AlertCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Phone, MapPin, Tag, Building2, Check, AlertCircle } from "lucide-react"
 
 import ImageUploader from "@/components/ui/ImageUploader"
 import { updateVendorProfile } from "./actions"
@@ -10,7 +11,6 @@ type InitialState = {
   businessName: string
   description:  string
   phone:        string
-  email:        string
   city:         string
   priceRange:   string
   logo:         string | null
@@ -24,14 +24,14 @@ type Props = {
 
 type Status =
   | { kind: "idle" }
-  | { kind: "saved" }
+  | { kind: "saved"; reviewRequired: boolean }
   | { kind: "error"; message: string }
 
 export default function VendorDashboardForm({ vendorId, initial }: Props) {
+  const router = useRouter()
   const [businessName, setBusinessName] = useState(initial.businessName)
   const [description, setDescription]   = useState(initial.description)
   const [phone, setPhone]               = useState(initial.phone)
-  const [email, setEmail]               = useState(initial.email)
   const [city, setCity]                 = useState(initial.city)
   const [priceRange, setPriceRange]     = useState(initial.priceRange)
   const [logo, setLogo]                 = useState<string | null>(initial.logo)
@@ -48,14 +48,14 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
         businessName: businessName.trim(),
         description:  description.trim() || null,
         phone:        phone.trim() || null,
-        email:        email.trim() || null,
         city:         city.trim() || null,
         priceRange:   priceRange.trim() || null,
         logo,
         portfolio,
       })
       if (result.ok) {
-        setStatus({ kind: "saved" })
+        setStatus({ kind: "saved", reviewRequired: result.reviewRequired })
+        router.refresh()
       } else {
         setStatus({ kind: "error", message: result.error })
       }
@@ -129,22 +129,6 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-[12px] font-medium text-ink-2 mb-1.5">
-                Contact email
-              </label>
-              <div className="relative">
-                <Mail size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="hello@yourbusiness.co.zw"
-                  className="w-full bg-paper border border-line rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                />
-              </div>
-            </div>
 
             <div>
               <label htmlFor="city" className="block text-[12px] font-medium text-ink-2 mb-1.5">
@@ -208,7 +192,7 @@ export default function VendorDashboardForm({ vendorId, initial }: Props) {
         <div className="flex-1 min-h-[1.25rem]" aria-live="polite">
           {status.kind === "saved" && (
             <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-green-700">
-              <Check size={14} /> Profile saved.
+              <Check size={14} /> {status.reviewRequired ? "Changes saved and sent for review. Your listing is hidden until approved." : "Profile saved."}
             </p>
           )}
           {status.kind === "error" && (

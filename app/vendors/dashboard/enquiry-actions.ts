@@ -12,7 +12,7 @@ const StatusSchema = z.enum(["new", "contacted", "quoted", "accepted", "declined
 
 export async function updateVendorEnquiryStatus(enquiryId: string, status: string) {
   const session = await auth()
-  if (!session?.user?.id || session.user.role !== "vendor") return { ok: false, error: "Only signed-in vendors can update enquiries." }
+  if (!session?.user?.id) return { ok: false, error: "Sign in to update enquiries." }
   const parsedId = z.uuid().safeParse(enquiryId)
   const parsedStatus = StatusSchema.safeParse(status)
   if (!parsedId.success || !parsedStatus.success) return { ok: false, error: "Invalid enquiry update." }
