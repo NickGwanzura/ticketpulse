@@ -12,7 +12,7 @@ import CommandPalette from "@/components/command-palette/CommandPalette"
 import MobileNav from "@/components/layout/MobileNav"
 import { getFeaturedEvents } from "@/lib/events"
 import { formatDateShort } from "@/lib/utils"
-import { grift, mona } from "@/lib/fonts"
+import { grift } from "@/lib/fonts"
 import { THEME_CHROME_COLOR, THEME_INIT_SCRIPT } from "@/lib/theme"
 
 export const metadata: Metadata = {
@@ -96,7 +96,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     // suppressHydrationWarning: the head script sets data-theme / data-theme-pref /
     // style.colorScheme on <html> before React hydrates, by design.
-    <html lang="en" className={`${mona.variable} ${grift.variable}`} suppressHydrationWarning>
+    <html lang="en" className={grift.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>

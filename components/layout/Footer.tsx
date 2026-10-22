@@ -203,6 +203,9 @@ export default function Footer() {
             <Link href="/legal/terms" className="transition hover:text-white">Terms</Link>
             <Link href="/legal/privacy" className="transition hover:text-white">Privacy</Link>
             <Link href="/legal/cookies" className="transition hover:text-white">Cookies</Link>
+            <a href="/fonts/honor-sans/LICENSE.txt" className="transition hover:text-white">
+              HONOR Sans © HONOR Device Co., Ltd. · licence
+            </a>
             <CookieSettingsButton className="transition hover:text-white" />
             <a
               href="https://velocity.qantra.co.zw/"

@@ -11,7 +11,7 @@ import type { VendorCategory } from "@/types"
 
 export const metadata: Metadata = {
   title: "Vendor marketplace",
-  description: "Find and book verified vendors for your event in Zimbabwe — catering, photography, sound, security, decor and more.",
+  description: "Find approved event vendors in Zimbabwe and request availability for catering, photography, sound, security, decor and more.",
   alternates: { canonical: "/vendors" },
 }
 
@@ -110,10 +110,10 @@ export default async function VendorsPage({
           </div>
 
           <h1 className="text-[36px] md:text-[60px] font-bold tracking-[-0.025em] leading-[1.04] text-ink max-w-3xl">
-            Trusted vendors. <span className="text-brand-600">Booked direct.</span>
+            Find event vendors. <span className="text-brand-600">Request direct.</span>
           </h1>
           <p className="mt-4 md:mt-5 text-[15px] md:text-[18px] leading-relaxed text-ink-2 max-w-xl">
-            Catering, photography, sound, security and more, verified by TicketPulse, rated by organizers across Zimbabwe.
+            Browse approved catering, photography, sound, security and decor providers across Zimbabwe. Ask for availability before committing.
           </p>
 
           {/* Quick stats */}
@@ -248,10 +248,10 @@ export default async function VendorsPage({
               <div>
                 <p className="text-[11px] font-semibold tracking-[0.18em] text-white/70 uppercase mb-3">For vendors</p>
                 <h2 className="text-[26px] md:text-[36px] font-bold tracking-tight leading-[1.1]">
-                  Get booked by Zimbabwe&apos;s biggest organizers.
+                  Get discovered by event clients across Zimbabwe.
                 </h2>
                 <p className="mt-3 text-[15px] md:text-[16px] leading-relaxed text-white/80 max-w-md">
-                  List your service, set your packages, and get matched with events across Harare, Bulawayo, Vic Falls and beyond. We handle payouts.
+                  List your service, set your packages, and receive booking requests through TicketPulse. Confirm scope and price with each client.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
@@ -264,7 +264,7 @@ export default async function VendorsPage({
                     href="/help/vendors"
                     className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 text-white font-semibold px-5 py-3.5 text-sm hover:bg-white/10 transition"
                   >
-                    How payouts work
+                    Vendor guide
                   </Link>
                   <Link
                     href="/marketing"
@@ -276,10 +276,10 @@ export default async function VendorsPage({
               </div>
               <ul className="grid grid-cols-2 gap-3">
                 {[
-                  ["Direct bookings", "No middleman, no markup. Organizers find you."],
-                  ["Verified payouts", "USD bank or EcoCash settlement after reconciliation."],
-                  ["Profile boost", "Verified badge after your first 5 paid events."],
-                  ["Calendar sync", "Avoid double bookings with our event calendar."],
+                  ["Free listing", "Apply and build your public service profile."],
+                  ["Booking requests", "Receive enquiries with event date and requirements."],
+                  ["Service packages", "Show clients what you offer and your starting price."],
+                  ["Vendor workspace", "Track enquiries and keep your profile current."],
                 ].map(([title, body]) => (
                   <li key={title} className="rounded-2xl bg-white/[0.06] border border-white/10 p-4 backdrop-blur">
                     <p className="text-[13px] font-semibold tracking-tight">{title}</p>

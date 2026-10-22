@@ -1,12 +1,12 @@
 import Link from "next/link"
-import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck, Wallet, Calendar, Star, FileCheck2, MessageSquare, BadgeCheck } from "lucide-react"
+import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck, Calendar, Star, FileCheck2, MessageSquare, BadgeCheck } from "lucide-react"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 
 const STEPS = [
-  { n: "01", title: "Apply", body: "Send your business details, category, city, contact information, and basic verification documents." },
+  { n: "01", title: "Apply", body: "Create an account and send your business details, category, city, contact information, and service description." },
   { n: "02", title: "Build profile", body: "Add packages, photos, serving areas, minimum notice, capacity, and starting prices." },
   { n: "03", title: "Confirm scope", body: "Organizers enquire, you confirm availability, price, timing, and what is included." },
-  { n: "04", title: "Get paid", body: "Confirmed bookings and payout details are tracked so both sides know what is owed and when." },
+  { n: "04", title: "Agree the booking", body: "Agree payment and cancellation terms directly with the organizer before confirming the work." },
 ]
 
 const REQUIREMENTS = [
@@ -32,7 +32,7 @@ const BOOKING_GUIDE = [
   {
     icon: BadgeCheck,
     title: "Build trust",
-    body: "Keep photos current, honour confirmed prices, and ask organizers to review you after successful events.",
+    body: "Keep your profile current, honour confirmed prices, and collect references from successful events.",
   },
 ]
 
@@ -76,7 +76,7 @@ export default function HelpVendorsPage() {
       {/* How it works */}
       <section className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-20">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">The flow</p>
-        <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">From application to payout.</h2>
+        <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">From application to booking request.</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {STEPS.map((s) => (
             <div key={s.n} className="rounded-2xl border border-line bg-paper p-6">
@@ -92,12 +92,12 @@ export default function HelpVendorsPage() {
       <section className="bg-paper-2 border-y border-line">
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-14 md:py-20">
           <p className="text-[11px] font-semibold tracking-[0.18em] text-blue uppercase mb-2">Why list with us</p>
-          <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">Three reasons vendors stay.</h2>
+          <h2 className="text-[24px] md:text-[32px] font-bold tracking-tight text-ink mb-8">Why list your service.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { icon: Wallet,      title: "Guaranteed payouts",  body: "Money in escrow before you start. No more chasing organizers." },
-              { icon: Calendar,    title: "Discoverable profile", body: "Listed in front of every organizer searching your category." },
-              { icon: ShieldCheck, title: "Dispute support",      body: "We mediate cancellations, scope changes, and rating disputes." },
+              { icon: MessageSquare, title: "Enquiries in one place", body: "Receive requests in your vendor dashboard and track each conversation." },
+              { icon: Calendar, title: "Discoverable profile", body: "Approved profiles can appear in the vendor directory." },
+              { icon: ShieldCheck, title: "Clear service details", body: "Show your packages, areas served, and starting prices before clients enquire." },
             ].map(({ icon: Icon, title, body }) => (
               <div key={title} className="rounded-2xl border border-line bg-paper p-6">
                 <span className="inline-flex w-10 h-10 items-center justify-center rounded-xl bg-green-50 ring-1 ring-green-500/15 mb-4">
@@ -156,7 +156,7 @@ export default function HelpVendorsPage() {
           <div className="relative grid md:grid-cols-2 gap-6 items-center">
             <div>
               <h2 className="text-[26px] md:text-[36px] font-bold tracking-[-0.02em] leading-[1.05]">
-                Ready to take bookings?
+                Ready to receive booking requests?
               </h2>
               <p className="mt-3 text-[15px] text-white/80 max-w-md leading-relaxed">
                 Free to apply. We approve in 48 hours.
