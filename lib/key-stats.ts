@@ -2,13 +2,12 @@ import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { events, orderItems, orders, reviews, tickets } from "@/db/schema"
-import { confirmedOrderStatus, paymentTimeSince } from "@/lib/revenue"
+import { confirmedOrderStatus } from "@/lib/revenue"
 
 /**
  * Platform-wide key statistics for the admin Key Stats module and the
- * shareable client-facing PDF. All revenue figures use the canonical
- * confirmed-order definition from lib/revenue.ts so they agree with the
- * analytics dashboard and payouts maths.
+ * shareable client-facing PDF. Monetary figures are confirmed USD order
+ * value, including direct sales, and are distinct from platform ticket revenue.
  */
 
 export type MonthlyRevenuePoint = {
@@ -60,6 +59,12 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
   const now = new Date()
   const since30 = new Date(now.getTime() - 30 * 86400000)
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const confirmedUsdOrders = and(
+    confirmedOrderStatus,
+    sql`COALESCE(${orders.currency}, 'USD') = 'USD'`,
+    sql`${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`,
+  )
+  const settledSince30 = sql`COALESCE(${orders.paidAt}, ${orders.completedAt}) >= ${since30}`
 
   const [
     [salesRow],
@@ -79,18 +84,18 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
         count: sql<number>`COUNT(*)::int`,
       })
       .from(orders)
-      .where(confirmedOrderStatus),
+      .where(confirmedUsdOrders),
     db
       .select({ count: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int` })
       .from(orderItems)
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(and(confirmedOrderStatus, eq(orderItems.type, "ticket"))),
+      .where(and(confirmedUsdOrders, eq(orderItems.type, "ticket"))),
     db
       .select({
         count: sql<number>`COUNT(DISTINCT COALESCE(${orders.userId}, LOWER(${orders.guestEmail})))::int`,
       })
       .from(orders)
-      .where(confirmedOrderStatus),
+      .where(confirmedUsdOrders),
     db
       .select({
         count: sql<number>`COUNT(*)::int`,
@@ -116,12 +121,12 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
         count: sql<number>`COUNT(*)::int`,
       })
       .from(orders)
-      .where(and(confirmedOrderStatus, paymentTimeSince(since30))),
+      .where(and(confirmedUsdOrders, settledSince30)),
     db
       .select({ count: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)::int` })
       .from(orderItems)
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(and(confirmedOrderStatus, paymentTimeSince(since30), eq(orderItems.type, "ticket"))),
+      .where(and(confirmedUsdOrders, settledSince30, eq(orderItems.type, "ticket"))),
     db
       .select({
         month: sql<string>`TO_CHAR(DATE_TRUNC('month', COALESCE(${orders.paidAt}, ${orders.completedAt})), 'YYYY-MM')`,
@@ -131,7 +136,7 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
       .from(orders)
       .where(
         and(
-          confirmedOrderStatus,
+          confirmedUsdOrders,
           sql`COALESCE(${orders.paidAt}, ${orders.completedAt}) >= ${sixMonthsAgo}`,
         ),
       )
@@ -146,7 +151,7 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
       })
       .from(orders)
       .innerJoin(events, eq(events.id, orders.eventId))
-      .where(confirmedOrderStatus)
+      .where(confirmedUsdOrders)
       .groupBy(orders.eventId, events.title, events.city, events.startsAt)
       .orderBy(desc(sql`SUM(${orders.totalAmount})`))
       .limit(5),
@@ -165,7 +170,7 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
         .innerJoin(orders, eq(orderItems.orderId, orders.id))
         .where(
           and(
-            confirmedOrderStatus,
+            confirmedUsdOrders,
             eq(orderItems.type, "ticket"),
             inArray(orders.eventId, topEventIds),
           ),
@@ -184,7 +189,7 @@ export async function getPlatformKeyStats(): Promise<PlatformKeyStats> {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        confirmedOrderStatus,
+        confirmedUsdOrders,
         eq(orderItems.type, "ticket"),
         sql`COALESCE(${orders.paidAt}, ${orders.completedAt}) >= ${sixMonthsAgo}`,
       ),

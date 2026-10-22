@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, or, sql } from "drizzle-orm"
+import { and, desc, eq, or, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { events, orders, paymentLedger } from "@/db/schema"
@@ -75,10 +75,13 @@ export type PaymentsApiResponse = {
 }
 
 const PAGE_SIZE = 25
-const settledOrderStatus = sql`${orders.status} IN ('paid', 'completed') AND ${orders.paymentMethod} IS DISTINCT FROM 'complimentary'`
+// USD settled order value includes direct sales and non-ticket items. It is
+// intentionally distinct from platform ticket revenue in Analytics.
+const settledOrderStatus = sql`${orders.status} IN ('paid', 'completed') AND ${orders.paymentMethod} IS DISTINCT FROM 'complimentary' AND COALESCE(${orders.currency}, 'USD') = 'USD'`
 const failedOrderStatus = sql`${orders.status} IN ('cancelled', 'refunded')`
 const pendingOrderStatus = sql`${orders.status} IN ('pending', 'awaiting_verification')`
 const settledLedgerStatus = sql`${paymentLedger.localStatus} IN ('paid', 'completed', 'success', 'paid_success')`
+const settledAt = sql`COALESCE(${orders.paidAt}, ${orders.completedAt})`
 
 export async function getAdminPaymentsData(page: number): Promise<PaymentsApiResponse> {
   const safePage = Math.max(1, page)
@@ -109,10 +112,10 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
     duplicateRows,
   ] = await Promise.all([
     db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(settledOrderStatus),
-    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, gte(orders.paidAt, todayStart))),
-    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, gte(orders.paidAt, sevenDaysAgo))),
-    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, gte(orders.paidAt, thirtyDaysAgo))),
-    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, gte(orders.paidAt, fourteenDaysAgo), sql`${orders.paidAt} < ${sevenDaysAgo}`)),
+    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, sql`${settledAt} >= ${todayStart}`)),
+    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, sql`${settledAt} >= ${sevenDaysAgo}`)),
+    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, sql`${settledAt} >= ${thirtyDaysAgo}`)),
+    db.select({ total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)` }).from(orders).where(and(settledOrderStatus, sql`${settledAt} >= ${fourteenDaysAgo}`, sql`${settledAt} < ${sevenDaysAgo}`)),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(settledOrderStatus),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(failedOrderStatus),
     db.select({ count: sql<number>`COUNT(*)::int` }).from(orders).where(pendingOrderStatus),
@@ -142,10 +145,10 @@ export async function getAdminPaymentsData(page: number): Promise<PaymentsApiRes
       .groupBy(orders.paymentMethod)
       .orderBy(orders.paymentMethod),
     db.select({
-      day: sql<string>`DATE(${orders.paidAt})`,
+      day: sql<string>`DATE(${settledAt})`,
       total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
-    }).from(orders).where(and(settledOrderStatus, gte(orders.paidAt, fourteenDaysAgo)))
-      .groupBy(sql`DATE(${orders.paidAt})`).orderBy(sql`DATE(${orders.paidAt})`),
+    }).from(orders).where(and(settledOrderStatus, sql`${settledAt} >= ${fourteenDaysAgo}`))
+      .groupBy(sql`DATE(${settledAt})`).orderBy(sql`DATE(${settledAt})`),
     db.select({
       id: paymentLedger.id,
       orderId: paymentLedger.orderId,

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 
 import { auth } from "@/auth"
 import PageHeader from "@/components/dashboard/PageHeader"
@@ -24,10 +25,15 @@ export default async function AdminPaymentsPage({
       <PageHeader
         eyebrow="Payments"
         title="Payments"
-        subtitle="Real-time payment dashboard with live updates."
+        subtitle="Live payment operations. Value cards show settled USD order value; Analytics shows platform ticket revenue."
         width="full"
       />
       <div className="px-5 md:px-8 py-8 md:py-10">
+        <nav aria-label="Payment tools" className="mb-6 flex flex-wrap gap-2">
+          <Link href="/admin/velocity" className="rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2">Velocity transactions</Link>
+          <Link href="/admin/reconciliation" className="rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2">Reconciliation</Link>
+          <Link href="/admin/needs-attention" className="rounded-lg border border-line bg-paper px-3 py-2 text-[12px] font-semibold text-ink hover:border-line-2">Payment exceptions</Link>
+        </nav>
         <PaymentsViewer initialData={initialData} />
       </div>
     </div>

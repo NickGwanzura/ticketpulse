@@ -3,6 +3,7 @@ import PageHeader from "@/components/dashboard/PageHeader"
 import { formatDate } from "@/lib/utils"
 import { getPlatformSettings, updatePlatformSettings } from "./actions"
 import { Save } from "lucide-react"
+import SectionLinks from "@/app/admin/_components/SectionLinks"
 
 export default async function AdminSettingsPage() {
   const settings = await getPlatformSettings()
@@ -17,6 +18,10 @@ export default async function AdminSettingsPage() {
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10">
+        <SectionLinks label="System tools" links={[
+          { label: "Audit log", href: "/admin/audit-log" },
+          { label: "Communications", href: "/admin/communications" },
+        ]} />
         <form
           action={async (formData: FormData) => {
             "use server"

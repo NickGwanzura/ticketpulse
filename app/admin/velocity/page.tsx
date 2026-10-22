@@ -90,6 +90,7 @@ export default async function AdminVelocityPage({
     .select({
       status: orders.status,
       totalAmount: orders.totalAmount,
+      currency: orders.currency,
       metadata: orders.metadata,
     })
     .from(orders)
@@ -112,13 +113,13 @@ export default async function AdminVelocityPage({
     else pollPending++
   }
 
-  const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
-
-  const undeliveredRevenue = 0 // no longer applicable since awaiting_verification is removed
+  const totalRevenue = velocityPaid
+    .filter((o) => (o.currency ?? "USD") === "USD")
+    .reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
   const pendingSettlement = allVelocityOrders
     .filter((o) => {
-      if (o.status !== "pending") return false
+      if (o.status !== "pending" || (o.currency ?? "USD") !== "USD") return false
       const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
       const vel = meta.velocity
       return vel?.paymentStatus === "SUCCESS" || vel?.pollStatus === "SUCCESS"
@@ -136,7 +137,6 @@ export default async function AdminVelocityPage({
       pollSuccess,
       pollFailed,
       pollPending,
-      undeliveredRevenue,
       pendingSettlement,
     },
   }

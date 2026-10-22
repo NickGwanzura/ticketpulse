@@ -35,7 +35,6 @@ export type VelocityApiResponse = {
     pollSuccess: number
     pollFailed: number
     pollPending: number
-    undeliveredRevenue: number
     pendingSettlement: number
   }
 }
@@ -114,6 +113,7 @@ export async function GET(request: Request) {
     .select({
       status: orders.status,
       totalAmount: orders.totalAmount,
+      currency: orders.currency,
       metadata: orders.metadata,
     })
     .from(orders)
@@ -136,13 +136,13 @@ export async function GET(request: Request) {
     else pollPending++
   }
 
-  const totalRevenue = velocityPaid.reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
-
-  const undeliveredRevenue = 0 // awaiting_verification status removed
+  const totalRevenue = velocityPaid
+    .filter((o) => (o.currency ?? "USD") === "USD")
+    .reduce((s, o) => s + Number(o.totalAmount ?? 0), 0)
 
   // Gateway confirmed payment but TicketPulse hasn't finalized yet
   const pendingSettlement = allVelocityOrders.filter((o) => {
-    if (o.status !== "pending") return false
+    if (o.status !== "pending" || (o.currency ?? "USD") !== "USD") return false
     const meta = (o.metadata ?? {}) as { velocity?: VelocityOrderMetadata }
     const vel = meta.velocity
     return vel?.paymentStatus === "SUCCESS" || vel?.pollStatus === "SUCCESS"
@@ -159,7 +159,6 @@ export async function GET(request: Request) {
       pollSuccess,
       pollFailed,
       pollPending,
-      undeliveredRevenue,
       pendingSettlement,
     },
   }

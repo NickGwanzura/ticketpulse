@@ -12,6 +12,7 @@ import { events, ticketTiers, orders, users, tickets } from "@/db/schema"
 import PageHeader from "@/components/dashboard/PageHeader"
 import EmptyState from "@/components/dashboard/EmptyState"
 import Pagination from "@/components/ui/Pagination"
+import SectionLinks from "@/app/admin/_components/SectionLinks"
 import { formatCurrency, formatDateShort } from "@/lib/utils"
 import { publishEventAction, approveEventAction, rejectEventAction } from "@/app/admin/actions/events"
 import DeleteEventForm from "@/app/organizer/events/DeleteEventForm"
@@ -191,6 +192,11 @@ export default async function AdminEventsPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
+        <SectionLinks label="Approval queues" links={[
+          { label: "Organizers", href: "/admin/organizers" },
+          { label: "Vendors", href: "/admin/vendors" },
+          { label: "Reviews", href: "/admin/reviews" },
+        ]} />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 tp-fade-up-1">
           {stats.map(({ label, value, icon: Icon, tone, bg }) => (
             <div key={label} className="rounded-2xl border border-line bg-paper p-5 flex items-center gap-4 tp-lift">

@@ -303,6 +303,12 @@ export default async function AdminOverviewPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <PollNowButton />
+            <Link href="/admin/needs-attention" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
+              <AlertTriangle size={13} className="text-amber-600" /> Order exceptions
+            </Link>
+            <Link href="/admin/stock-audit" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
+              <Ticket size={13} /> Stock audit
+            </Link>
             <Link href="/admin/reconciliation" className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-[13px] font-medium text-ink hover:border-line-2 transition-colors">
               <Zap size={13} className="text-amber-500" /> Reconciliation
             </Link>

@@ -68,11 +68,14 @@ export default async function OrganizerFeeDuesPage({
 
   const filtered = active === "all" ? rows : rows.filter((r) => r.status === active)
 
-  const [outstandingTotalRow] = await db
-    .select({ total: sql<string>`COALESCE(SUM(${organizerFeeDues.feeAmount}), 0)` })
+  const outstandingTotals = await db
+    .select({
+      currency: sql<string>`COALESCE(${organizerFeeDues.currency}, 'USD')`,
+      total: sql<string>`COALESCE(SUM(${organizerFeeDues.feeAmount}), 0)`,
+    })
     .from(organizerFeeDues)
     .where(eq(organizerFeeDues.status, "outstanding"))
-  const outstandingTotal = Number(outstandingTotalRow?.total ?? 0)
+    .groupBy(sql`COALESCE(${organizerFeeDues.currency}, 'USD')`)
 
   const counts = new Map<string, number>()
   for (const r of rows) counts.set(r.status ?? "outstanding", (counts.get(r.status ?? "outstanding") ?? 0) + 1)
@@ -100,7 +103,11 @@ export default async function OrganizerFeeDuesPage({
             <Clock size={16} className="text-amber-700" />
           </span>
           <div>
-            <p className="text-[20px] font-bold text-ink tabular-nums">{formatCurrency(outstandingTotal, "USD")}</p>
+            <p className="text-[20px] font-bold text-ink tabular-nums">
+              {outstandingTotals.length > 0
+                ? outstandingTotals.map((row) => formatCurrency(Number(row.total), row.currency)).join(" · ")
+                : formatCurrency(0, "USD")}
+            </p>
             <p className="text-[12px] text-ink-2">Outstanding fees owed to the platform</p>
           </div>
         </div>

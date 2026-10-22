@@ -212,19 +212,20 @@ export default function PaymentsViewer({ initialData }: Props) {
       )}
 
       {/* Stat cards — one grid so columns stay aligned across rows */}
+      <p className="text-[12px] text-ink-3">Settled USD order value includes direct sales and non-ticket items; it is separate from platform ticket revenue.</p>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={DollarSign} label="Today" value={formatCurrency(stats.todayRevenue, "USD")} />
+        <StatCard icon={DollarSign} label="USD orders today" value={formatCurrency(stats.todayRevenue, "USD")} />
         <StatCard
           icon={TrendingUp}
-          label="This Week"
+          label="USD orders this week"
           value={formatCurrency(stats.weekRevenue, "USD")}
           sub={stats.weekDelta >= 0 ? `+${stats.weekDelta.toFixed(1)}% vs prev` : `${stats.weekDelta.toFixed(1)}% vs prev`}
           positive={stats.weekDelta >= 0}
         />
-        <StatCard icon={Activity} label="This Month" value={formatCurrency(stats.monthRevenue, "USD")} />
+        <StatCard icon={Activity} label="USD orders this month" value={formatCurrency(stats.monthRevenue, "USD")} />
         <StatCard
           icon={DollarSign}
-          label="All Time"
+          label="USD orders all time"
           value={formatCurrency(stats.allTimeRevenue, "USD")}
           sub={`${stats.successRate}% success rate`}
           positive={stats.successRate >= 80}
@@ -376,6 +377,7 @@ export default function PaymentsViewer({ initialData }: Props) {
                   </div>
                   <div className="text-right">
                     <p className="text-[16px] font-bold text-ink tabular-nums">{formatCurrency(row.revenue, "USD")}</p>
+                    <p className="text-[11px] text-ink-3">USD settled order value</p>
                     <p className={`text-[12px] font-medium tabular-nums ${rate >= 80 ? "text-emerald-700" : "text-rose-600"}`}>
                       {rate}% success
                     </p>

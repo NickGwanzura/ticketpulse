@@ -305,7 +305,7 @@ export default function VelocityViewer({ initialData }: Props) {
 
   const statCards = [
     {
-      label: "Total Velocity revenue",
+      label: "USD paid order value",
       value: formatCurrency(stats.totalRevenue, "USD"),
       icon: DollarSign,
       tone: "text-green-700",

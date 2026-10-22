@@ -210,7 +210,7 @@ export function KeyStatsDocument({ stats }: { stats: PlatformKeyStats }) {
   const maxMonthly = Math.max(...stats.monthlyTrend.map((m) => m.revenue), 1)
 
   const heroCards = [
-    { label: "Gross ticket sales", value: money(stats.grossSales) },
+    { label: "Confirmed USD order value", value: money(stats.grossSales) },
     { label: "Tickets sold", value: count(stats.ticketsSold) },
     { label: "Events hosted", value: count(stats.eventsHosted) },
     { label: "Attendees reached", value: count(stats.uniqueAttendees) },
@@ -277,7 +277,7 @@ export function KeyStatsDocument({ stats }: { stats: PlatformKeyStats }) {
 
         <View style={styles.momentumStrip}>
           <View style={styles.momentumItem}>
-            <Text style={styles.statLabel}>Last 30 days — revenue</Text>
+            <Text style={styles.statLabel}>Last 30 days — USD order value</Text>
             <Text style={[styles.statValue, { color: COLORS.emerald }]}>
               {money(stats.last30.revenue)}
             </Text>
@@ -292,7 +292,7 @@ export function KeyStatsDocument({ stats }: { stats: PlatformKeyStats }) {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Monthly gross sales — last 6 months</Text>
+        <Text style={styles.sectionTitle}>Monthly USD order value — last 6 months</Text>
         <View style={{ marginBottom: 16 }}>
           {stats.monthlyTrend.map((m) => (
             <View key={m.label} style={styles.trendRow}>
@@ -313,7 +313,7 @@ export function KeyStatsDocument({ stats }: { stats: PlatformKeyStats }) {
 
         {stats.topEvents.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Top events by gross sales</Text>
+            <Text style={styles.sectionTitle}>Top events by USD order value</Text>
             <View style={styles.table}>
               <View style={[styles.tr, styles.trHead]}>
                 <Text style={{ flex: 3 }}>Event</Text>

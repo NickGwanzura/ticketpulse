@@ -17,6 +17,7 @@ import {
 } from "./actions"
 import ManualPayoutForm from "./ManualPayoutForm"
 import Badge from "@/components/ui/Badge"
+import SectionLinks from "@/app/admin/_components/SectionLinks"
 import PayoutsTable, { STATUS_LABEL, STATUS_TONE, payoutMethodLabel, type PayoutStatus } from "./PayoutsTable"
 
 const TABS: { key: PayoutStatus | "all"; label: string }[] = [
@@ -92,6 +93,10 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
+        <SectionLinks label="Finance tools" links={[
+          { label: "Organizer fee dues", href: "/admin/organizer-fees" },
+          { label: "Reconciliation", href: "/admin/reconciliation" },
+        ]} />
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 tp-fade-up-1">
           {statsCards.map(({ label, value, icon: Icon, tone, bg }) => (

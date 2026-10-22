@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import {
-  ArrowUpRight, ArrowDownRight, MapPin, CreditCard, TrendingUp, BarChart2, Users, PieChart,
+  ArrowUpRight, ArrowDownRight, MapPin, CreditCard, TrendingUp, BarChart2, Users, PieChart, FileDown,
 } from "lucide-react"
 import { eq, sql } from "drizzle-orm"
 
@@ -68,7 +68,7 @@ export default async function AdminAnalyticsPage({
   const paidOrderCount = currentOrders.length
   const prevRevenue = previousOrders.reduce((sum, order) => sum + order.grossRevenue, 0)
   const prevOrderCount = previousOrders.length
-  const revenueDelta = prevRevenue > 0 ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : 0
+  const revenueDelta = prevRevenue > 0 ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : null
 
   const ticketsSold = currentOrders.reduce((sum, order) => sum + order.issuedTickets, 0)
   const prevTickets = previousOrders.reduce((sum, order) => sum + order.issuedTickets, 0)
@@ -89,12 +89,9 @@ export default async function AdminAnalyticsPage({
   // Previous period avg order value
   const prevAvg = prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0
 
-  // ── Tickets per event (published events in period) ──────────────────────
-  const [eventCountRow] = await db
-    .select({ count: sql<number>`COUNT(*)::int` })
-    .from(events)
-
-  const totalEvents = eventCountRow?.count ?? 0
+  // Use only events with confirmed ticket sales in this period as the base.
+  const activeEventIds = new Set(currentOrders.filter((order) => order.issuedTickets > 0).map((order) => order.eventId))
+  const totalEvents = activeEventIds.size
   const ticketsPerEvent = totalEvents > 0 ? Math.round(ticketsSold / totalEvents * 10) / 10 : 0
 
   // ── Sub-stats breakdown ─────────────────────────────────────────────────
@@ -118,7 +115,7 @@ export default async function AdminAnalyticsPage({
       up:    refundDelta <= 0, // lower refund rate is "up" (good)
     },
     {
-      label: "Tickets / event",
+      label: "Tickets / selling event",
       value: String(ticketsPerEvent),
       delta: 0,
       up:    true,
@@ -226,6 +223,10 @@ export default async function AdminAnalyticsPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper px-4 py-3">
+          <p className="text-[12px] text-ink-2">Revenue here is USD issued-ticket value paid through the platform. The shareable one-pager reports confirmed USD order value, including direct sales.</p>
+          <a href="/api/admin/key-stats/pdf" className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-navy px-3 py-2 text-[12px] font-semibold text-white hover:bg-navy-700"><FileDown size={14} /> Download platform one-pager</a>
+        </div>
         {excludedCurrencyOrders > 0 && (
           <p className="rounded-xl border border-line bg-paper-2 px-4 py-3 text-[12px] text-ink-2">
             Figures are USD only. {excludedCurrencyOrders.toLocaleString()} confirmed{" "}
@@ -243,12 +244,9 @@ export default async function AdminAnalyticsPage({
                 <p className="text-[26px] md:text-[28px] font-bold tracking-tight text-ink leading-none">
                   {formatCurrency(currentRevenue, "USD")}
                 </p>
-                {prevRevenue > 0 && (
-                  <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${revenueDelta >= 0 ? "text-green-700" : "text-rose-700"}`}>
-                    {revenueDelta >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                    {Math.abs(revenueDelta).toFixed(1)}% vs prev
-                  </span>
-                )}
+                <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${revenueDelta === null ? "text-ink-3" : revenueDelta >= 0 ? "text-green-700" : "text-rose-700"}`}>
+                  {revenueDelta === null ? "No prior-period baseline" : <>{revenueDelta >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}{Math.abs(revenueDelta).toFixed(1)}% vs prev</>}
+                </span>
               </div>
             </div>
             <div className="inline-flex items-center rounded-lg bg-paper-2 ring-1 ring-line p-1 self-start sm:self-auto">

@@ -6,15 +6,14 @@ import { signOut } from "next-auth/react"
 import {
   LayoutGrid, BarChart3, Wallet, Users, Calendar, Receipt, Settings,
   LogOut, Shield, Megaphone, Activity, GitCompareArrows, Star, CreditCard,
-  PieChart, Store, Contact, History, UsersRound, AlertTriangle,
+  Store, Contact, History, UsersRound, AlertTriangle,
 } from "lucide-react"
 import NotificationBell from "@/components/notifications/NotificationBell"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }>; badgeKey?: string }
 type NavGroup = { label?: string; items: NavItem[] }
 
-// Grouped by the job an admin is doing: daily money/order work first, then
-// approvals, then reference data and settings.
+// Daily destinations stay visible; specialist tools remain one click away.
 const NAV_GROUPS: NavGroup[] = [
   {
     items: [
@@ -22,52 +21,48 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Operations",
+    label: "Work",
     items: [
-      { label: "Needs attention", href: "/admin/needs-attention", icon: AlertTriangle },
-      { label: "Stock audit",    href: "/admin/stock-audit",    icon: GitCompareArrows },
       { label: "Orders",         href: "/admin/orders",         icon: Receipt },
       { label: "Payments",       href: "/admin/payments",       icon: CreditCard },
-      { label: "Velocity",       href: "/admin/velocity",       icon: Activity },
-      { label: "Reconciliation", href: "/admin/reconciliation", icon: GitCompareArrows },
-      { label: "Communications", href: "/admin/communications", icon: Megaphone },
-    ],
-  },
-  {
-    label: "Approvals",
-    items: [
-      { label: "Events",     href: "/admin/events",     icon: Calendar,   badgeKey: "pendingEvents" },
-      { label: "Organizers", href: "/admin/organizers", icon: UsersRound, badgeKey: "pendingOrganizers" },
-      { label: "Vendors",    href: "/admin/vendors",    icon: Store,      badgeKey: "pendingVendors" },
-      { label: "Reviews",    href: "/admin/reviews",    icon: Star,       badgeKey: "pendingReviews" },
+      { label: "Approvals", href: "/admin/events", icon: Calendar, badgeKey: "pendingEvents" },
     ],
   },
   {
     label: "Finance",
     items: [
       { label: "Payouts",        href: "/admin/payouts",        icon: Wallet,     badgeKey: "pendingPayouts" },
-      { label: "Organizer fees", href: "/admin/organizer-fees", icon: CreditCard },
     ],
   },
   {
-    label: "People & data",
+    label: "Insights",
     items: [
-      { label: "Users",     href: "/admin/users",     icon: Users },
       { label: "Customers", href: "/admin/customers", icon: Contact },
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-      { label: "Key Stats", href: "/admin/key-stats", icon: PieChart },
     ],
   },
   {
     label: "System",
     items: [
       { label: "Settings", href: "/admin/settings", icon: Settings },
-      { label: "Audit log", href: "/admin/audit-log", icon: History },
     ],
   },
 ]
 
-const NAV_FLAT: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
+const SPECIALIST_TOOLS: NavItem[] = [
+  { label: "Needs attention", href: "/admin/needs-attention", icon: AlertTriangle },
+  { label: "Stock audit", href: "/admin/stock-audit", icon: GitCompareArrows },
+  { label: "Velocity", href: "/admin/velocity", icon: Activity },
+  { label: "Reconciliation", href: "/admin/reconciliation", icon: GitCompareArrows },
+  { label: "Communications", href: "/admin/communications", icon: Megaphone },
+  { label: "Organizers", href: "/admin/organizers", icon: UsersRound, badgeKey: "pendingOrganizers" },
+  { label: "Vendors", href: "/admin/vendors", icon: Store, badgeKey: "pendingVendors" },
+  { label: "Reviews", href: "/admin/reviews", icon: Star, badgeKey: "pendingReviews" },
+  { label: "Organizer fees", href: "/admin/organizer-fees", icon: CreditCard },
+  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Audit log", href: "/admin/audit-log", icon: History },
+]
+const NAV_FLAT: NavItem[] = [...NAV_GROUPS.flatMap((g) => g.items), ...SPECIALIST_TOOLS]
 const MOBILE_PRIMARY_HREFS = new Set(["/admin", "/admin/payments", "/admin/events", "/admin/orders"])
 const MOBILE_PRIMARY = NAV_FLAT.filter((item) => MOBILE_PRIMARY_HREFS.has(item.href))
 const MOBILE_MORE = NAV_FLAT.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href))
@@ -171,6 +166,18 @@ export default function Sidebar({
           ))}
         </nav>
 
+        <details className="border-t border-white/10 px-2 py-2" open={SPECIALIST_TOOLS.some((item) => isActive(item.href))}>
+          <summary className="min-h-11 cursor-pointer rounded-lg px-3 py-3 text-[12px] font-semibold text-white/75 hover:bg-white/[0.06]">Specialist tools</summary>
+          <div className="max-h-64 space-y-0.5 overflow-y-auto">
+            {SPECIALIST_TOOLS.map(({ label, href, icon: Icon, badgeKey }) => (
+              <Link key={href} href={href} className={`flex min-h-10 items-center gap-2 rounded-lg px-3 text-[12px] ${isActive(href) ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                <Icon size={13} />{label}
+                {!!badgeValue(badgeKey) && <span className="ml-auto rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-chrome">{badgeValue(badgeKey)}</span>}
+              </Link>
+            ))}
+          </div>
+        </details>
+
         {/* Sign out */}
         <div className="px-3 pb-4 pt-2 border-t border-white/10 flex items-center gap-1">
           <button
@@ -233,7 +240,7 @@ export default function Sidebar({
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/[0.06] hover:text-white">
               More
             </summary>
-            <div className="absolute right-0 top-full z-40 mt-1 w-56 rounded-xl border border-white/15 bg-chrome p-2 shadow-xl">
+            <div className="absolute right-0 top-full z-40 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-xl border border-white/15 bg-chrome p-2 shadow-xl">
               {MOBILE_MORE.map(({ label, href, icon: Icon, badgeKey }) => {
                 const active = isActive(href)
                 const badge = badgeValue(badgeKey)

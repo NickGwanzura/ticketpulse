@@ -21,6 +21,7 @@ type ReconciliationIssue = PaymentAuditIssue & {
 type RouteSearchParams = {
   q?: string
   severity?: string
+  page?: string
   sent?: string
   settlement?: string
 }
@@ -164,6 +165,24 @@ export default async function AdminReconciliationPage({
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const velocityReport = await getVelocityReconciliationReport()
 
+  const [scopeRow] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(orders)
+    .leftJoin(events, eq(events.id, orders.eventId))
+    .where(whereClause)
+  const pageSize = 250
+  const totalOrders = scopeRow?.count ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalOrders / pageSize))
+  const requestedPage = Number.parseInt(sp.page ?? "1", 10)
+  const currentPage = Number.isFinite(requestedPage) ? Math.min(Math.max(requestedPage, 1), totalPages) : 1
+  const pageHref = (page: number) => {
+    const params = new URLSearchParams()
+    if (query) params.set("q", query)
+    if (severityFilter !== "all") params.set("severity", severityFilter)
+    params.set("page", String(page))
+    return `/admin/reconciliation?${params.toString()}#order-findings`
+  }
+
   const orderRows = await db
     .select({
       id: orders.id,
@@ -182,7 +201,8 @@ export default async function AdminReconciliationPage({
     .leftJoin(events, eq(events.id, orders.eventId))
     .where(whereClause)
     .orderBy(desc(orders.createdAt))
-    .limit(250)
+    .limit(pageSize)
+    .offset((currentPage - 1) * pageSize)
 
   const orderIds = orderRows.map((order) => order.id)
 
@@ -296,6 +316,13 @@ export default async function AdminReconciliationPage({
       />
 
       <div className="px-5 md:px-8 py-8 md:py-10 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper px-4 py-3 text-[13px] text-ink-2">
+          <span>Order mismatch scan: page {currentPage} of {totalPages}, covering {orderRows.length} of {totalOrders} matching orders. Findings below apply to this page.</span>
+          {totalPages > 1 && <div className="flex gap-2">
+            {currentPage > 1 && <Link href={pageHref(currentPage - 1)} className="rounded-lg border border-line px-3 py-1.5 font-semibold text-ink">Previous</Link>}
+            {currentPage < totalPages && <Link href={pageHref(currentPage + 1)} className="rounded-lg border border-line px-3 py-1.5 font-semibold text-ink">Next</Link>}
+          </div>}
+        </div>
         <section className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
@@ -601,7 +628,7 @@ export default async function AdminReconciliationPage({
           </div>
         </section>
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div id="order-findings" className="scroll-mt-24 grid gap-3 md:grid-cols-4">
           {[
             { label: "Orders checked", value: orderRows.length.toLocaleString(), icon: CheckCircle2, tone: "text-navy", bg: "bg-blue-50" },
             { label: "Orders with issues", value: findings.length.toLocaleString(), icon: ShieldAlert, tone: "text-amber-700", bg: "bg-amber-50" },
@@ -723,6 +750,11 @@ export default async function AdminReconciliationPage({
             </div>
           </div>
         )}
+        {totalPages > 1 && <nav aria-label="Order audit pages" className="flex items-center justify-end gap-2 text-[12px] text-ink-2">
+          <span>Page {currentPage} of {totalPages}</span>
+          {currentPage > 1 && <Link href={pageHref(currentPage - 1)} className="rounded-lg border border-line bg-paper px-3 py-2 font-semibold text-ink">Previous</Link>}
+          {currentPage < totalPages && <Link href={pageHref(currentPage + 1)} className="rounded-lg border border-line bg-paper px-3 py-2 font-semibold text-ink">Next</Link>}
+        </nav>}
       </div>
     </div>
   )
