@@ -18,7 +18,7 @@ export interface NavbarFeaturedItem {
 
 const LINKS = [
   { label: "Events", href: "/events" },
-  { label: "Vendors", href: "/vendors" },
+  { label: "Marketplace", href: "/vendors" },
   { label: "My tickets", href: "/orders" },
   { label: "Help Center", href: "/help" },
 ]
