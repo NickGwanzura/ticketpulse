@@ -31,7 +31,6 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
     links: [
       ["Start selling", "/auth/signup?role=organizer"],
       ["How it works", "/how-it-works"],
-      ["Pricing", "/pricing"],
       ["Payouts", "/payouts"],
       ["Organizer help", "/help/organizers"],
       ["Marketing on demand", "/marketing"],

@@ -21,13 +21,12 @@ export const metadata: Metadata = {
 }
 import {
   ArrowRight, ArrowUpRight, Ticket, Smartphone, Wallet,
-  Calendar, MapPin, FileText, ScanLine, DoorOpen, Search,
+  Calendar, MapPin, FileText, ScanLine, DoorOpen,
   ReceiptText,
 } from "lucide-react"
 import EventCard from "@/components/events/EventCard"
 import Button from "@/components/ui/Button"
-import HeroEventCard from "@/components/events/HeroEventCard"
-import HeroBackgroundSlideshow from "@/components/home/HeroBackgroundSlideshow"
+import HomeHero from "@/components/home/HomeHero"
 import { FAQ as FAQSection } from "@/components/ui/Accordion"
 import { formatDateShort } from "@/lib/utils"
 import { getFeaturedEvents } from "@/lib/events"
@@ -55,6 +54,7 @@ export default async function Home() {
     console.error("[home] failed to load featured events", error)
     return []
   })
+  const otherFeaturedEvents = featuredEvents.slice(1)
 
   const pastEvents = await Promise.resolve()
     .then(() => db
@@ -85,137 +85,22 @@ export default async function Home() {
   return (
     <main>
       {/* HERO */}
-      <section className="relative isolate overflow-hidden bg-white text-ink">
-        <HeroBackgroundSlideshow />
-        <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(180deg,rgba(255,255,255,.98)_0%,rgba(255,255,255,.96)_56%,rgba(255,255,255,0)_72%)] md:bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,.98)_37%,rgba(255,255,255,.9)_48%,rgba(255,255,255,.48)_58%,rgba(255,255,255,0)_68%)]" aria-hidden />
-        <div className="pointer-events-none absolute -right-40 -top-48 z-[1] h-[34rem] w-[34rem] rounded-full bg-orange-100/45 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(180deg,transparent_0%,transparent_60%,rgba(0,0,0,.22)_100%)] md:bg-[linear-gradient(90deg,transparent_47%,rgba(0,0,0,.18)_68%,rgba(0,0,0,.3)_100%)]" aria-hidden />
-        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-8 px-5 pb-12 pt-28 sm:pt-32 md:grid-cols-[1.02fr_0.98fr] md:gap-12 md:px-8 md:pb-16 md:pt-28">
-          <div className="relative z-10 max-w-2xl">
-            <p className="tp-fade-up inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-orange-800 sm:text-[11px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-              Zimbabwe&apos;s live event guide
-            </p>
-            <h1 className="tp-fade-up-1 mt-6 max-w-xl font-display text-[48px] font-black leading-[0.96] tracking-[-0.045em] text-navy sm:text-[64px] md:text-[72px] lg:text-[82px]">
-              Your next great <span className="text-accent">night out.</span>
-            </h1>
-            <p className="tp-fade-up-2 mt-5 max-w-xl text-[16px] leading-relaxed text-ink-2 sm:text-[18px]">
-              Find the concerts, food, sport and experiences everyone will be talking about. Choose your event and get straight to the good part.
-            </p>
-
-            <form
-              action="/events"
-              method="get"
-              role="search"
-              className="tp-fade-up-3 mt-7 flex w-full max-w-xl items-center gap-2 rounded-2xl border border-line bg-white p-2 shadow-[0_18px_55px_-36px_rgba(10,37,64,0.32)] transition focus-within:border-accent/50 focus-within:ring-4 focus-within:ring-accent/10"
-            >
-              <Search size={19} className="ml-3 shrink-0 text-ink-3" aria-hidden />
-              <label htmlFor="home-event-search" className="sr-only">Search events, venues, or cities</label>
-              <input
-                id="home-event-search"
-                name="q"
-                type="search"
-                placeholder="Search events, venues, or cities"
-                className="min-w-0 flex-1 border-0 bg-transparent px-1 py-3 text-[14px] text-ink outline-none placeholder:text-ink-3 focus:ring-0"
-              />
-              <button
-                type="submit"
-                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-4 text-[12px] font-bold text-white transition hover:bg-accent-hover sm:px-5 sm:text-[13px]"
-              >
-                Find events <ArrowRight size={15} />
-              </button>
-            </form>
-
-            <div className="tp-fade-up-4 mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] font-medium text-ink-3">
-              <span className="inline-flex items-center gap-1.5"><Ticket size={14} className="text-accent" /> No account needed</span>
-              <span className="inline-flex items-center gap-1.5"><Wallet size={14} className="text-accent" /> EcoCash or Visa</span>
-              <span className="inline-flex items-center gap-1.5"><ArrowRight size={14} className="text-accent" /> Instant ticket delivery</span>
-            </div>
-
-            <div className="tp-fade-up-5 mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-5 text-[13px]">
-              <span className="font-medium text-ink-3">Planning an event?</span>
-              <Link href="/how-it-works" className="inline-flex items-center gap-1.5 font-bold text-navy transition hover:text-accent">
-                Explore TicketPulse for organisers <ArrowUpRight size={14} />
-              </Link>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2" aria-label="Browse by event type">
-              {["Concerts", "Food & Drink", "Film", "Marathons"].map((category) => (
-                <Link
-                  key={category}
-                  href={`/events?category=${encodeURIComponent(category.replace(/s$/, "").toLowerCase())}`}
-                  className="rounded-full border border-line bg-white px-3.5 py-2 text-[11px] font-semibold text-ink-2 transition hover:border-accent/40 hover:bg-orange-50 hover:text-accent"
-                >
-                  {category}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="tp-fade-up-2 relative mx-auto flex min-h-[220px] w-full max-w-[560px] flex-col justify-between py-2 sm:min-h-[280px] md:ml-auto md:min-h-[450px] md:py-5">
-            <div className="ml-auto mt-8 max-w-sm text-right text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-200">Make a plan. Make a memory.</p>
-              <p className="mt-2 font-display text-[32px] font-black leading-[0.98] tracking-[-0.025em] sm:text-[40px]">The moments you go out for.</p>
-              <div className="ml-auto mt-5 flex max-w-sm items-center justify-between gap-4 rounded-2xl border border-white/20 bg-[#07182b]/35 p-3.5 text-left text-white shadow-lg backdrop-blur-md sm:p-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent"><Calendar size={19} /></span>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-bold">Your next outing</p>
-                    <p className="mt-0.5 truncate text-[11px] text-white/75">Concerts · food · sport · more</p>
-                  </div>
-                </div>
-                <Link href="/events" aria-label="Browse all events" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-navy transition hover:bg-orange-100">
-                  <ArrowUpRight size={17} />
-                </Link>
-              </div>
-              <div className="ml-auto mt-3 hidden w-fit items-center gap-2.5 rounded-xl border border-white/20 bg-[#07182b]/35 px-3 py-2 text-left text-[11px] font-bold text-white shadow-sm backdrop-blur-md sm:flex">
-                <Ticket size={15} className="text-emerald-300" />
-                Your ticket, straight to your phone
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero spotlight={featuredEvents[0]} />
 
       {/* FEATURED */}
-      {featuredEvents.length > 0 && (
+      {otherFeaturedEvents.length > 0 && (
         <section className="bg-paper px-5 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-7xl">
           <div className="tp-reveal mb-8 md:mb-10 max-w-2xl">
             <p className="text-[11px] font-bold tracking-[0.22em] text-accent uppercase mb-2">On sale now</p>
-            <h2 className="font-display font-black uppercase tracking-[-0.03em] text-[42px] md:text-[66px] leading-[0.9] text-ink">
-              {featuredEvents.length === 1 ? "Featured event." : "What's on."}
-            </h2>
+            <h2 className="font-display font-black uppercase tracking-[-0.03em] text-[42px] md:text-[66px] leading-[0.9] text-ink">More on sale.</h2>
             <p className="mt-3 text-[15px] text-ink-2">
-              {featuredEvents.length === 1
-                ? "Tickets are open now. Grab your spot while sales are moving."
-                : "The calendar is filling up fast."}{" "}
-              <Link href="/events" className="text-navy font-semibold hover:underline">See what else is on</Link>.
+              Explore more events across Zimbabwe. <Link href="/events" className="text-navy font-semibold hover:underline">See the full calendar</Link>.
             </p>
           </div>
 
-          {featuredEvents.length === 1 ? (
-            <div className="tp-fade-up">
-              <HeroEventCard
-                slug={featuredEvents[0].slug}
-                title={featuredEvents[0].title}
-                category={featuredEvents[0].category}
-                venue={featuredEvents[0].venue}
-                city={featuredEvents[0].city}
-                startsAt={featuredEvents[0].startsAt}
-                coverImage={featuredEvents[0].coverImage}
-                lowestPrice={featuredEvents[0].lowestPrice}
-                ticketsAvailable={featuredEvents[0].ticketsAvailable}
-                currency={featuredEvents[0].currency}
-                soldQuantity={featuredEvents[0].soldQuantity}
-                totalQuantity={featuredEvents[0].totalQuantity}
-                sponsored={featuredEvents[0].sponsored}
-                tags={featuredEvents[0].tags}
-              />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-              {featuredEvents.map((e, i) => (
+          <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+              {otherFeaturedEvents.map((e, i) => (
                 <div
                   key={e.id}
                   style={{ animationDelay: `${i * 90}ms` }}
@@ -225,7 +110,6 @@ export default async function Home() {
                 </div>
               ))}
             </div>
-          )}
           </div>
         </section>
       )}
