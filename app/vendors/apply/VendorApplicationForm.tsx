@@ -75,8 +75,8 @@ export default function VendorApplicationForm({ email, defaults, resubmitting }:
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-[12px] font-medium text-ink-2 mb-1.5">About your service</label>
-        <textarea id="description" name="description" rows={4} required minLength={30} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What do you offer, who are your past clients, what makes you the right pick?" aria-invalid={!!error("description")} aria-describedby={error("description") ? "description-error" : undefined} className={`${inputBaseClass} resize-none`} />
+        <label htmlFor="description" className="block text-[12px] font-medium text-ink-2 mb-1.5">About your service (optional)</label>
+        <textarea id="description" name="description" rows={4} maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Tell organizers what you offer. You can add this later." aria-invalid={!!error("description")} aria-describedby={error("description") ? "description-error" : undefined} className={`${inputBaseClass} resize-none`} />
         {error("description") && <p id="description-error" className="mt-1 text-xs text-rose-700">{error("description")}</p>}
       </div>
 
@@ -95,7 +95,7 @@ export default function VendorApplicationForm({ email, defaults, resubmitting }:
       <button type="submit" disabled={pending} className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-3.5 rounded-xl hover:bg-brand-700 active:scale-[0.99] transition shadow-sm shadow-brand-600/20 text-sm mt-2 disabled:opacity-60">
         {pending ? "Submitting…" : resubmitting ? "Resubmit for review" : "Submit application"} <ArrowRight size={15} />
       </button>
-      <p className="text-[12px] text-ink-3 text-center">No fee. Cancel any time.</p>
+      <p className="text-[12px] text-ink-3 text-center">No fee. Add photos and packages after applying.</p>
     </form>
   )
 }

@@ -68,8 +68,8 @@ export default async function VendorsApplyPage() {
                 {[
                   "Registered Zimbabwean business or sole-trader",
                   "A reachable phone and email",
-                  "A clear description of your service",
-                  "A portfolio link or work examples are recommended",
+                  "Describe your service and add work examples from your dashboard",
+                  "We’ll follow up if more details are needed for review",
                 ].map((c) => (
                   <li key={c} className="flex items-center gap-2 text-[14px] text-ink-2">
                     <Check size={14} className="text-brand-600 shrink-0" />
@@ -83,7 +83,7 @@ export default async function VendorsApplyPage() {
           {/* Form */}
           <div className="rounded-2xl border border-line bg-paper p-6 md:p-8 shadow-sm shadow-ink/[0.04]">
             <h2 className="text-[20px] font-semibold tracking-tight text-ink mb-1">{existing ? "Update your application" : "Apply to list"}</h2>
-            <p className="text-xs text-ink-3 mb-6">{existing?.verified ? "Submitting changes will temporarily hide your listing until an admin approves it again." : "Takes about 3 minutes. We'll email you after review."}</p>
+            <p className="text-xs text-ink-3 mb-6">{existing?.verified ? "Submitting changes will temporarily hide your listing until an admin approves it again." : "Share the basics now. Add a description and photos later from your dashboard."}</p>
 
             {!session && (
               <div className="space-y-3">

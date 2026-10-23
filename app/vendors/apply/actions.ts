@@ -28,7 +28,7 @@ const VendorApplySchema = z.object({
   category: z.enum(VENDOR_CATEGORIES),
   city: z.string().trim().min(2).max(80),
   phone: z.string().trim().min(5).max(40),
-  description: z.string().trim().min(30).max(2000),
+  description: z.string().trim().max(2000),
   portfolioLink: z.union([z.literal(""), z.url().max(500).refine((value) => /^https?:\/\//i.test(value), "Use an HTTP or HTTPS link")]).transform((value) => value.trim()),
   terms: z.literal("on"),
 })
@@ -74,63 +74,76 @@ export async function applyVendorAction(_state: VendorApplyState, formData: Form
   })
 
   if (!parsed.success) {
+    const fieldErrors = z.flattenError(parsed.error).fieldErrors
+    log.warn("vendors/apply — validation failed", {
+      userId: session.user.id,
+      fields: Object.keys(fieldErrors),
+    })
     return {
       error: "Please correct the highlighted fields and submit again.",
-      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+      fieldErrors,
     }
   }
 
   const data = parsed.data
 
-  const [existingVendor] = await db
-    .select({ id: vendors.id, portfolio: vendors.portfolio })
-    .from(vendors)
-    .where(eq(vendors.userId, session.user.id))
-    .limit(1)
+  let vendorId: string | undefined
+  try {
+    const [existingVendor] = await db
+      .select({ id: vendors.id, portfolio: vendors.portfolio })
+      .from(vendors)
+      .where(eq(vendors.userId, session.user.id))
+      .limit(1)
 
-  const existingPortfolio = Array.isArray(existingVendor?.portfolio) ? existingVendor.portfolio : []
-  const portfolio = data.portfolioLink
-    ? [data.portfolioLink, ...existingPortfolio.filter((url) => url !== data.portfolioLink)].slice(0, 12)
-    : existingPortfolio
+    const existingPortfolio = Array.isArray(existingVendor?.portfolio) ? existingVendor.portfolio : []
+    const portfolio = data.portfolioLink
+      ? [data.portfolioLink, ...existingPortfolio.filter((url) => url !== data.portfolioLink)].slice(0, 12)
+      : existingPortfolio
 
-  let vendorId = existingVendor?.id
-
-  if (existingVendor) {
-    await db
-      .update(vendors)
-      .set({
+    vendorId = existingVendor?.id
+    if (existingVendor) {
+      await db
+        .update(vendors)
+        .set({
+          businessName: data.businessName,
+          category: data.category,
+          city: data.city,
+          phone: data.phone,
+          email: account.email,
+          description: data.description || null,
+          portfolio,
+          verified: false,
+          rejectedAt: null,
+        })
+        .where(eq(vendors.id, existingVendor.id))
+    } else {
+      const [created] = await db.insert(vendors).values({
+        userId: session.user.id,
         businessName: data.businessName,
         category: data.category,
         city: data.city,
         phone: data.phone,
         email: account.email,
-        description: data.description,
+        description: data.description || null,
         portfolio,
         verified: false,
-        rejectedAt: null,
-      })
-      .where(eq(vendors.id, existingVendor.id))
-  } else {
-    const [created] = await db.insert(vendors).values({
-      userId: session.user.id,
-      businessName: data.businessName,
-      category: data.category,
-      city: data.city,
-      phone: data.phone,
-      email: account.email,
-      description: data.description,
-      portfolio,
-      verified: false,
-    }).returning({ id: vendors.id })
-    vendorId = created.id
+      }).returning({ id: vendors.id })
+      vendorId = created?.id
+      if (!vendorId) throw new Error("Vendor application insert returned no row")
+    }
+
+    if (session.user.role === "attendee") {
+      await db
+        .update(users)
+        .set({ role: "vendor", updatedAt: new Date() })
+        .where(eq(users.id, session.user.id))
+    }
+  } catch (error) {
+    log.error("vendors/apply — application save failed", { userId: session.user.id, error: String(error) })
+    return { error: "We couldn't save your application. Your details are still here; please try again.", fieldErrors: {} }
   }
 
-  if (session.user.role === "attendee") {
-    await db
-      .update(users)
-      .set({ role: "vendor", updatedAt: new Date() })
-      .where(eq(users.id, session.user.id))
-  }
+  log.info("vendors/apply — application saved", { userId: session.user.id, vendorId, category: data.category })
 
   await sendVendorEmailVerification(session.user.id).catch((error) => {
     log.error("vendors/apply — verification email failed", { error: String(error) })
