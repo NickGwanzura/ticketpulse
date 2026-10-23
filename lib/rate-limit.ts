@@ -95,10 +95,14 @@ export function rateLimit(config: RateLimitConfig = {}) {
     return { allowed: true, remaining: max - entry.count, resetMs: entry.resetAt, retryAfterMs: 0 }
   }
 
-  async function checkDistributed(key: string): Promise<RateLimitResult> {
+  async function checkDistributed(key: string, options?: { requireShared?: boolean }): Promise<RateLimitResult> {
     const url = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, "")
     const token = process.env.UPSTASH_REDIS_REST_TOKEN
-    if (!url || !token) return check(key)
+    if (!url || !token) {
+      return options?.requireShared
+        ? { allowed: false, remaining: 0, resetMs: Date.now(), retryAfterMs: windowMs }
+        : check(key)
+    }
 
     const now = Date.now()
     const bucket = Math.floor(now / windowMs)
@@ -134,6 +138,10 @@ export function rateLimit(config: RateLimitConfig = {}) {
         retryAfterMs: count > max ? ttl : 0,
       }
     } catch (error) {
+      if (options?.requireShared) {
+        console.warn("[rate-limit] shared limiter unavailable; rejecting protected request", String(error))
+        return { allowed: false, remaining: 0, resetMs: Date.now() + windowMs, retryAfterMs: windowMs }
+      }
       // Preserve availability if Redis has an incident, while retaining a
       // per-instance abuse guard as a fallback.
       console.warn("[rate-limit] shared limiter unavailable; using local fallback", String(error))

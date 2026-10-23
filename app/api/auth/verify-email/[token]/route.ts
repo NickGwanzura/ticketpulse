@@ -59,7 +59,7 @@ export async function GET(
       .where(eq(emailVerificationTokens.id, row.id))
   })
 
-  const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, row.userId)).limit(1)
+  const [user] = await db.select({ role: users.role, name: users.name, email: users.email }).from(users).where(eq(users.id, row.userId)).limit(1)
   if (user?.role === "organizer") {
     await trackOrganizerLifecycle({
       step: "EMAIL_VERIFIED",
@@ -67,6 +67,19 @@ export async function GET(
       dedupeKey: `organizer:${row.userId}:email-verified`,
       source: "email_verification",
     })
+
+    // Alert admins only after the organizer proves control of the address.
+    const [{ adminEmail, sendEmail }, { newSignupAdminNotification }, { sendAdminAlert }, { newSignupAlert }] = await Promise.all([
+      import("@/lib/email"),
+      import("@/lib/email-templates"),
+      import("@/lib/whatsapp"),
+      import("@/lib/whatsapp-templates"),
+    ])
+    const notice = newSignupAdminNotification({ name: user.name, email: user.email, role: user.role })
+    await Promise.allSettled([
+      sendEmail({ to: adminEmail, subject: `Verified organizer signup: ${user.email}`, html: notice.html, text: notice.text }),
+      sendAdminAlert(newSignupAlert(user.name ?? "—", user.email, user.role)),
+    ])
   }
 
   // Redirect to organizer dashboard with success flag

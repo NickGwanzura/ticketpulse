@@ -7,6 +7,7 @@ import PasswordInput from "@/components/PasswordInput"
 import GoogleSignupForm from "./GoogleSignupForm"
 import { redirect } from "next/navigation"
 import { getDashboardPathForRole } from "@/lib/role-routes"
+import Script from "next/script"
 
 const ROLES = [
   { value: "attendee",  label: "Attendee",  body: "Buy tickets, grab merch and photo packs.",   icon: User },
@@ -23,7 +24,8 @@ const SIGNUP_ERRORS: Record<string, string> = {
   whatsapp_required: "Organizer accounts must include a valid WhatsApp contact number.",
   account_exists: "An account already exists for this email. Sign in with the same password, or use Forgot password.",
   password_required: "This account was created with Google. Use Continue with Google, or set a password with Forgot password.",
-  too_many: "Too many signup attempts. Please wait a minute before trying again.",
+  too_many: "Too many signup attempts. Please wait before trying again.",
+  challenge: "Please complete the security check and try again.",
 }
 
 function signupUrl(role: string, callbackUrl: string | null, error: keyof typeof SIGNUP_ERRORS, email?: string, name?: string, phone?: string) {
@@ -133,15 +135,21 @@ export default async function SignUpPage({
               redirect(signupUrl(role, requestedCallbackUrl, "whatsapp_required", email, name ?? undefined, whatsappContact))
             }
 
-            // Rate limit: max 3 signup attempts per IP per minute
-            const { rateLimit: rl } = await import("@/lib/rate-limit")
+            // A filled trap field is a bot submission. Do not create an account.
+            if (formData.get("companyWebsite")) {
+              redirect(signupUrl(role, requestedCallbackUrl, "invalid"))
+            }
+
+            const { allowSignupAttempt, verifySignupChallenge } = await import("@/lib/signup-protection")
             const headersList = await import("next/headers")
             const hdrs = (await headersList.headers())
-            const signupLimiter = rl({ windowMs: 60_000, max: 3 })
             const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-            const rlResult = await signupLimiter.checkDistributed(ip)
-            if (!rlResult.allowed) {
+            if (!await allowSignupAttempt(ip, email)) {
               redirect(signupUrl(role, requestedCallbackUrl, "too_many", email, name ?? undefined))
+            }
+            if ((process.env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SITE_KEY) &&
+                !await verifySignupChallenge(String(formData.get("cf-turnstile-response") ?? ""), ip)) {
+              redirect(signupUrl(role, requestedCallbackUrl, "challenge", email, name ?? undefined, whatsappContact))
             }
 
             const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
@@ -156,35 +164,11 @@ export default async function SignUpPage({
               })
 
               // Fire-and-forget welcome email — signup must not fail if mail fails.
-              const { sendWelcomeEmail, adminEmail } = await import("@/lib/email")
+              const { sendWelcomeEmail } = await import("@/lib/email")
               const { log: logger } = await import("@/lib/logger")
               sendWelcomeEmail({ to: email, name }).catch((e) => {
                 console.error("welcome email", e)
                 logger.error("signup — welcome email failed", { email, error: String(e) })
-              })
-
-              // Notify the admin of the new signup (fire-and-forget).
-              const { sendEmail } = await import("@/lib/email")
-              const { newSignupAdminNotification } = await import("@/lib/email-templates")
-              const adminNotice = newSignupAdminNotification({ name, email, role })
-              sendEmail({
-                to: adminEmail,
-                subject: `New signup: ${email} (${role})`,
-                html: adminNotice.html,
-                text: adminNotice.text,
-              }).catch((e) => {
-                console.error("admin signup notification", e)
-                logger.error("signup — admin email notification failed", { email, role, error: String(e) })
-              })
-
-              // WhatsApp alert to admin (fire-and-forget).
-              const { sendAdminAlert } = await import("@/lib/whatsapp")
-              const { newSignupAlert } = await import("@/lib/whatsapp-templates")
-              sendAdminAlert(
-                newSignupAlert(name ?? "—", email, role),
-              ).catch((e) => {
-                console.error("admin signup WhatsApp alert", e)
-                logger.error("signup — admin WhatsApp alert failed", { email, role, error: String(e) })
               })
 
               // If the user signed up as an organiser, send an email-verification
@@ -273,6 +257,11 @@ export default async function SignUpPage({
 
           {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
 
+          <div className="absolute -left-[10000px]" aria-hidden="true">
+            <label htmlFor="companyWebsite">Company website</label>
+            <input id="companyWebsite" name="companyWebsite" type="text" autoComplete="off" tabIndex={-1} />
+          </div>
+
           <div>
             <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-2 uppercase mb-2.5">I&apos;m signing up as</p>
             <div className="grid grid-cols-3 gap-2">
@@ -357,6 +346,13 @@ export default async function SignUpPage({
               placeholder="At least 8 characters"
             />
           </div>
+
+          {process.env.TURNSTILE_SITE_KEY && (
+            <>
+              <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
+              <div className="cf-turnstile" data-sitekey={process.env.TURNSTILE_SITE_KEY} data-theme="auto" />
+            </>
+          )}
 
           <button
             type="submit"

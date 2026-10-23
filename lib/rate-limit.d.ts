@@ -37,7 +37,7 @@ interface RateLimitResult {
 }
 export declare function rateLimit(config?: RateLimitConfig): {
     check: (key: string) => RateLimitResult;
-    checkDistributed: (key: string) => Promise<RateLimitResult>;
+    checkDistributed: (key: string, options?: { requireShared?: boolean }) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
     }) => Promise<RateLimitResult>;
@@ -45,28 +45,28 @@ export declare function rateLimit(config?: RateLimitConfig): {
 /** Pre-built limiters for common use-cases. */
 export declare const authLimiter: {
     check: (key: string) => RateLimitResult;
-    checkDistributed: (key: string) => Promise<RateLimitResult>;
+    checkDistributed: (key: string, options?: { requireShared?: boolean }) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
     }) => Promise<RateLimitResult>;
 };
 export declare const checkoutLimiter: {
     check: (key: string) => RateLimitResult;
-    checkDistributed: (key: string) => Promise<RateLimitResult>;
+    checkDistributed: (key: string, options?: { requireShared?: boolean }) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
     }) => Promise<RateLimitResult>;
 };
 export declare const uploadLimiter: {
     check: (key: string) => RateLimitResult;
-    checkDistributed: (key: string) => Promise<RateLimitResult>;
+    checkDistributed: (key: string, options?: { requireShared?: boolean }) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
     }) => Promise<RateLimitResult>;
 };
 export declare const apiLimiter: {
     check: (key: string) => RateLimitResult;
-    checkDistributed: (key: string) => Promise<RateLimitResult>;
+    checkDistributed: (key: string, options?: { requireShared?: boolean }) => Promise<RateLimitResult>;
     checkRequest: (req: {
         headers: Headers;
     }) => Promise<RateLimitResult>;
