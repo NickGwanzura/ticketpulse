@@ -78,9 +78,9 @@ export async function sendWhatsAppTicketAndWait(
       // uploads the PDF; the endpoint keeps going after we stop waiting.
       signal: AbortSignal.timeout(12_000),
     })
-    const data = (await res.json().catch(() => ({}))) as { skipped?: boolean; error?: string }
+    const data = (await res.json().catch(() => ({}))) as { skipped?: boolean; pending?: boolean; error?: string }
     if (!res.ok) return { ok: false, error: data.error ?? `WhatsApp API returned ${res.status}` }
-    return { ok: true, skipped: data.skipped }
+    return { ok: true, skipped: data.skipped, pending: data.pending }
   } catch (err) {
     if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
       return { ok: true, pending: true }

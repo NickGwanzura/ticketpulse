@@ -238,7 +238,7 @@ export default async function SignUpPage({
             await signIn("credentials", {
               email,
               password,
-              redirectTo: requestedCallbackUrl ?? (finalRole === "vendor" ? "/vendors/apply" : getDashboardPathForRole(finalRole)),
+              redirectTo: requestedCallbackUrl ?? (finalRole === "vendor" ? "/vendors/apply" : finalRole === "organizer" ? "/organizer/onboarding" : getDashboardPathForRole(finalRole)),
             })
           }}
           className="rounded-2xl border border-line-2 bg-paper p-6 shadow-md shadow-navy/[0.04] space-y-5"

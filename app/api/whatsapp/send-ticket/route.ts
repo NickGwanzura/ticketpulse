@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { and, eq, inArray, notInArray } from "drizzle-orm"
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm"
 import { timingSafeEqual } from "crypto"
 import { z } from "zod"
 import { auth } from "@/auth"
@@ -12,13 +12,21 @@ import { formatDate } from "@/lib/utils"
 import { log } from "@/lib/logger"
 import { rateLimit } from "@/lib/rate-limit"
 import { authorizeOrderAccess, orderAccessCredsFrom } from "@/lib/order-access"
+import { acquireLock, releaseLock } from "@/lib/velocity/idempotency"
 
 const SendTicketSchema = z.object({
   orderId: z.string().uuid(),
   mode: z.enum(["initial", "manual_resend"]).default("initial"),
 })
 
-const whatsappTicketLimiter = rateLimit({ windowMs: 60_000 * 10, max: 2 })
+const whatsappTicketLimiter = rateLimit({ windowMs: 60_000 * 10, max: 6 })
+
+async function patchWhatsappDelivery(orderId: string, patch: Record<string, unknown>) {
+  await db.update(orders).set({
+    metadata: sql`jsonb_set(COALESCE(${orders.metadata}, '{}'::jsonb), '{delivery}', COALESCE(${orders.metadata}->'delivery', '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb, true)`,
+    updatedAt: new Date(),
+  }).where(eq(orders.id, orderId))
+}
 
 function constantTimeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
@@ -96,18 +104,34 @@ export async function POST(req: Request) {
         { status: 400 },
       )
     }
+    if (order.status !== "paid" && order.status !== "completed") {
+      return NextResponse.json({ error: "Tickets can only be sent for paid orders" }, { status: 409 })
+    }
+
+    const lockKey = `whatsapp-ticket:${orderId}`
+    if (!await acquireLock(lockKey)) {
+      return NextResponse.json({ ok: true, pending: true, reason: "WhatsApp delivery is in progress" }, { status: 202 })
+    }
+    try {
 
     const meta = (order.metadata ?? {}) as Record<string, unknown>
     const delivery = (meta.delivery ?? {}) as Record<string, unknown>
-    if (mode === "initial" && delivery.whatsappSent === true) {
+    const previousTextSent = delivery.whatsappTextSent === true || delivery.whatsappSent === true
+    const previousPdfSent = delivery.whatsappPdfSent === true
+    if (mode === "initial" && previousTextSent && previousPdfSent) {
+      if (delivery.whatsappSent !== true) {
+        await patchWhatsappDelivery(orderId, { whatsappSent: true, whatsappError: null })
+      }
       return NextResponse.json({
         ok: true,
         skipped: true,
         reason: "WhatsApp ticket already sent for this order",
         sentTo: order.guestPhone,
-        pdfSent: false,
+        pdfSent: true,
       })
     }
+
+    await patchWhatsappDelivery(orderId, { whatsappLastAttemptAt: new Date().toISOString(), whatsappLastMode: mode })
 
     // ── Check WhatsApp session is ready ────────────────────────────────────
     const ready = await isSessionReady()
@@ -153,6 +177,9 @@ export async function POST(req: Request) {
       })
       .from(tickets)
       .where(and(eq(tickets.orderId, orderId), notInArray(tickets.status, ["cancelled", "refunded"])))
+    if (orderTickets.length === 0) {
+      return NextResponse.json({ error: "Tickets have not been issued yet" }, { status: 409 })
+    }
 
     // ── Build the text message ─────────────────────────────────────────────
     const eventDate = ev.startsAt
@@ -191,7 +218,7 @@ export async function POST(req: Request) {
 
     // ── Generate PDF ───────────────────────────────────────────────────────
     let pdfBase64: string | null = null
-    if (orderTickets.length > 0) {
+    if (mode === "manual_resend" || !previousPdfSent) {
       try {
         // Load tier names for PDF pages
         const tierIds = [...new Set(orderTickets.map((t) => t.tierId).filter(Boolean))]
@@ -229,10 +256,18 @@ export async function POST(req: Request) {
     }
 
     // ── Send text confirmation first, then PDF (in order) ─────────────────
-    const textResult = await sendText(chatId, message).then(
+    const textNeeded = mode === "manual_resend" || !previousTextSent
+    const textResult = textNeeded ? await sendText(chatId, message).then(
       (value) => ({ status: "fulfilled" as const, value }),
       (reason) => ({ status: "rejected" as const, reason }),
-    )
+    ) : null
+    if (textResult?.status === "fulfilled") {
+      await patchWhatsappDelivery(orderId, {
+        whatsappTextSent: true,
+        whatsappTextSentAt: new Date().toISOString(),
+        whatsappLastTextMessageId: textResult.value.messageId,
+      })
+    }
     const pdfResult = pdfBase64
       ? await sendDocument({
           chatId,
@@ -246,48 +281,30 @@ export async function POST(req: Request) {
         )
       : { status: "fulfilled" as const, value: null }
 
-    const textSent = textResult.status === "fulfilled"
-    const pdfSent = pdfResult.status === "fulfilled" && pdfResult.value !== null
-    if (!textSent && !pdfSent) {
-      const textError = textResult.status === "rejected" ? String(textResult.reason) : null
+    const textSent = previousTextSent || textResult?.status === "fulfilled"
+    const pdfSent = previousPdfSent || (pdfResult.status === "fulfilled" && pdfResult.value !== null)
+    if (pdfResult.status === "fulfilled" && pdfResult.value !== null) {
+      await patchWhatsappDelivery(orderId, { whatsappPdfSent: true, whatsappPdfSentAt: new Date().toISOString() })
+    }
+    const attemptComplete = (!textNeeded || textResult?.status === "fulfilled") &&
+      ((mode !== "manual_resend" && previousPdfSent) || (pdfResult.status === "fulfilled" && pdfResult.value !== null))
+    if (!textSent || !pdfSent || !attemptComplete) {
+      const textError = textResult?.status === "rejected" ? String(textResult.reason) : null
       const pdfError = pdfResult.status === "rejected" ? String(pdfResult.reason) : null
-      await db
-        .update(orders)
-        .set({
-          metadata: {
-            ...meta,
-            delivery: {
-              ...delivery,
-              whatsappError: textError ?? pdfError ?? "WhatsApp send failed",
-              whatsappLastAttemptAt: new Date().toISOString(),
-            },
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, orderId))
-      return NextResponse.json({ error: "WhatsApp send failed" }, { status: 502 })
+      await patchWhatsappDelivery(orderId, { whatsappSent: Boolean(textSent && pdfSent), whatsappError: textError ?? pdfError ?? "Ticket PDF was not available" })
+      return NextResponse.json({ error: "WhatsApp link and PDF were not both delivered", textSent, pdfSent }, { status: 502 })
     }
 
     const now = new Date().toISOString()
-    await db
-      .update(orders)
-      .set({
-        metadata: {
-          ...meta,
-          delivery: {
-            ...delivery,
-            whatsappSent: true,
-            whatsappSentAt: delivery.whatsappSentAt ?? now,
-            whatsappLastSentAt: now,
-            whatsappLastMode: mode,
-            whatsappLastTextMessageId: textResult.status === "fulfilled" ? textResult.value.messageId : null,
-            whatsappPdfSent: pdfSent,
-            whatsappError: null,
-          },
-        },
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, orderId))
+    await patchWhatsappDelivery(orderId, {
+      whatsappSent: true,
+      whatsappTextSent: true,
+      whatsappPdfSent: true,
+      whatsappSentAt: delivery.whatsappSentAt ?? now,
+      whatsappLastSentAt: now,
+      whatsappLastMode: mode,
+      whatsappError: null,
+    })
 
     log.info("send-ticket — WhatsApp sent", {
       orderId,
@@ -295,14 +312,16 @@ export async function POST(req: Request) {
       mode,
       textSent,
       pdfSent,
-      messageId: textResult.status === "fulfilled" ? textResult.value.messageId : null,
+      messageId: textResult?.status === "fulfilled" ? textResult.value.messageId : null,
     })
-
     return NextResponse.json({
       ok: true,
       sentTo: order.guestPhone,
       pdfSent,
     })
+    } finally {
+      await releaseLock(lockKey)
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     log.error("send-ticket — failed", { error: msg })

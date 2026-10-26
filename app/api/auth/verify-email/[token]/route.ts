@@ -60,7 +60,7 @@ export async function GET(
   })
 
   const [user] = await db.select({ role: users.role, name: users.name, email: users.email }).from(users).where(eq(users.id, row.userId)).limit(1)
-  if (user?.role === "organizer") {
+  if (user?.role === "organizer" && user.email) {
     await trackOrganizerLifecycle({
       step: "EMAIL_VERIFIED",
       organizerId: row.userId,
@@ -84,9 +84,13 @@ export async function GET(
 
   // Redirect to organizer dashboard with success flag
   const session = await auth()
-  const destination = user?.role === "vendor" ? "/vendors/dashboard" : "/organizer"
+  const destination = user?.role === "vendor"
+    ? "/vendors/dashboard"
+    : user?.role === "organizer"
+      ? "/organizer/onboarding?step=2"
+      : "/dashboard"
   const dashboardUrl = session?.user?.id === row.userId
-    ? `${destination}?verified=1`
+    ? `${destination}${destination.includes("?") ? "&" : "?"}verified=1`
     : `/auth/signin?verified=1&callbackUrl=${encodeURIComponent(destination)}`
   return NextResponse.redirect(new URL(dashboardUrl, _req.url))
 }

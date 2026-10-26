@@ -39,6 +39,7 @@ export async function POST(request: Request) {
 
   const jobs = [
     { key: "recheckVelocity", path: "/api/cron/recheck-velocity", critical: true },
+    { key: "whatsappTicketRetry", path: "/api/cron/whatsapp-ticket-retry", critical: false },
     { key: "expireOrders", path: "/api/cron/expire-orders", critical: true },
     { key: "eventReminder", path: "/api/cron/event-reminder", critical: false },
     { key: "cardRecovery", path: "/api/cron/card-recovery", critical: false },

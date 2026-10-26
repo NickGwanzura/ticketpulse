@@ -21,6 +21,8 @@ function slugify(s: string) {
 export async function saveOrganizerProfileAction(formData: FormData) {
   const session = await auth()
   if (!session?.user?.id) redirect("/auth/signin")
+  const [account] = await db.select({ role: users.role }).from(users).where(eq(users.id, session.user.id)).limit(1)
+  if (account?.role !== "organizer" && account?.role !== "admin") redirect("/dashboard")
 
   const bio = ((formData.get("bio") as string) ?? "").trim().slice(0, 280)
   const phone = ((formData.get("whatsappContact") as string) ?? "").trim()
@@ -28,20 +30,24 @@ export async function saveOrganizerProfileAction(formData: FormData) {
   const organizerType = ((formData.get("organizerType") as string) ?? "").trim()
   const organizerEntityName = ((formData.get("organizerEntityName") as string) ?? "").trim().slice(0, 160)
   const organizerLocation = ((formData.get("organizerLocation") as string) ?? "").trim().slice(0, 120)
+  const organizerAddress = ((formData.get("organizerAddress") as string) ?? "").trim().slice(0, 240)
+  const organizerCategory = ((formData.get("organizerCategory") as string) ?? "").trim().slice(0, 80)
+  const yearsRaw = ((formData.get("organizerExperienceYears") as string) ?? "").trim()
+  const organizerExperienceYears = yearsRaw === "" ? null : Number(yearsRaw)
   const organizerReferenceUrl = ((formData.get("organizerReferenceUrl") as string) ?? "").trim().slice(0, 300)
   const organizerSlug = rawSlug ? slugify(rawSlug) : slugify(session.user.name ?? session.user.email ?? session.user.id)
   if (!isValidWhatsappContact(phone)) {
-    redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+    redirect("/organizer/onboarding?step=1&error=whatsapp_required")
   }
-  if (!["individual", "business", "community"].includes(organizerType) || organizerLocation.length < 2) {
-    redirect("/organizer/onboarding?step=2&error=details_required")
+  if (!["individual", "business", "community"].includes(organizerType) || organizerLocation.length < 2 || !organizerEntityName || !organizerAddress || !["concerts", "conferences", "sports", "arts", "community", "other"].includes(organizerCategory) || (organizerExperienceYears !== null && (!Number.isInteger(organizerExperienceYears) || organizerExperienceYears < 0 || organizerExperienceYears > 80))) {
+    redirect("/organizer/onboarding?step=1&error=details_required")
   }
   if (organizerReferenceUrl) {
     try {
       const parsed = new URL(organizerReferenceUrl)
       if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Invalid URL")
     } catch {
-      redirect("/organizer/onboarding?step=2&error=invalid_url")
+      redirect("/organizer/onboarding?step=1&error=invalid_url")
     }
   }
 
@@ -55,6 +61,9 @@ export async function saveOrganizerProfileAction(formData: FormData) {
         organizerType,
         organizerEntityName: organizerEntityName || null,
         organizerLocation,
+        organizerAddress,
+        organizerCategory,
+        organizerExperienceYears,
         organizerReferenceUrl: organizerReferenceUrl || null,
         updatedAt: new Date(),
       })
@@ -71,10 +80,10 @@ export async function saveOrganizerProfileAction(formData: FormData) {
     log.error("onboarding — saveOrganizerProfileAction failed", { userId: session.user.id, error: String(err) })
     // PostgreSQL unique violation code
     if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505") {
-      redirect("/organizer/onboarding?step=2&error=slug_taken")
+      redirect("/organizer/onboarding?step=1&error=slug_taken")
     }
-    redirect("/organizer/onboarding?step=2&error=generic")
+    redirect("/organizer/onboarding?step=1&error=generic")
   }
 
-  redirect("/organizer/onboarding?step=3")
+  redirect("/organizer/onboarding?step=2")
 }

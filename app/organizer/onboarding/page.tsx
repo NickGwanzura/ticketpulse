@@ -1,349 +1,146 @@
 import { auth } from "@/auth"
-import { isValidWhatsappContact } from "@/lib/phone"
-import { redirect } from "next/navigation"
-import Link from "next/link"
-import { eq } from "drizzle-orm"
-import { CheckCircle2, ChevronRight, Rocket, User, Calendar, Smartphone } from "lucide-react"
 import { db } from "@/db"
-import { users } from "@/db/schema"
+import { events, users } from "@/db/schema"
+import { isValidWhatsappContact } from "@/lib/phone"
+import { eq, desc } from "drizzle-orm"
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { Check, ChevronRight, MailCheck, CalendarDays, Landmark } from "lucide-react"
 import { saveOrganizerProfileAction } from "./actions"
 
-export const metadata = { title: "Get started — TicketPulse" }
+export const metadata = { title: "Organiser registration — TicketPulse" }
 
-const STEPS = [
-  { n: 1, label: "Welcome" },
-  { n: 2, label: "Your profile" },
-  { n: 3, label: "First event" },
-]
+const STEPS = ["Business", "Account", "Banking", "Initial event", "Review"]
+const inputClass = "w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10"
 
 function StepIndicator({ current }: { current: number }) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {STEPS.map(({ n, label }, i) => {
-        const done = current > n
-        const active = current === n
+    <ol className="mb-10 grid grid-cols-5 gap-1" aria-label="Registration progress">
+      {STEPS.map((label, index) => {
+        const number = index + 1
+        const done = current > number
         return (
-          <div key={n} className="flex items-center gap-2">
-            <div className={`flex items-center gap-2 ${active ? "text-ink" : done ? "text-brand-600" : "text-ink-3"}`}>
-              <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold shrink-0 ${
-                done ? "bg-brand-600 text-white" : active ? "bg-ink text-paper" : "bg-paper-3 text-ink-3"
-              }`}>
-                {done ? <CheckCircle2 size={14} className="text-white" /> : n}
-              </span>
-              <span className={`text-[13px] font-medium hidden sm:block ${active ? "text-ink" : done ? "text-brand-600" : "text-ink-3"}`}>
-                {label}
-              </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className={`w-8 sm:w-12 h-px mx-1 ${current > n ? "bg-brand-600" : "bg-line"}`} />
-            )}
-          </div>
+          <li key={label} className="relative flex flex-col items-center gap-2 text-center">
+            {index > 0 && <span className={`absolute right-1/2 top-5 -z-10 h-1 w-full ${done || current === number ? "bg-brand-600" : "bg-line"}`} />}
+            <span aria-current={current === number ? "step" : undefined} className={`flex h-10 w-10 items-center justify-center rounded-full border-4 border-white text-sm font-bold shadow-sm ${done ? "bg-brand-600 text-white" : current === number ? "bg-brand-600 text-white" : "bg-paper-3 text-ink-3"}`}>
+              {done ? <Check size={17} /> : number}
+            </span>
+            <span className={`text-[11px] sm:text-[13px] font-semibold ${current === number ? "text-ink" : "text-ink-3"}`}>{label}</span>
+          </li>
         )
       })}
-    </div>
+    </ol>
   )
 }
 
-export default async function OnboardingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ step?: string; error?: string }>
-}) {
+function Field({ label, name, required = false, children }: { label: string; name: string; required?: boolean; children: React.ReactNode }) {
+  return <div><label htmlFor={name} className="mb-1.5 block text-[13px] font-semibold text-ink">{label}{required && <span className="text-rose-600"> *</span>}</label>{children}</div>
+}
+
+export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string; error?: string }> }) {
   const session = await auth()
   if (!session?.user?.id) redirect("/auth/signin?callbackUrl=/organizer/onboarding")
 
   const sp = await searchParams
-  const step = Number(sp.step ?? "1")
-  const error = sp.error
-  const [profile] = await db
-    .select({
-      phone: users.phone,
-      approvedAt: users.approvedAt,
-      organizerSlug: users.organizerSlug,
-      organizerBio: users.organizerBio,
-      organizerType: users.organizerType,
-      organizerEntityName: users.organizerEntityName,
-      organizerLocation: users.organizerLocation,
-      organizerReferenceUrl: users.organizerReferenceUrl,
-    })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1)
-  if (step >= 3 && !isValidWhatsappContact(profile?.phone)) {
-    redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+  const requested = Number(sp.step ?? "1")
+  const step = Number.isInteger(requested) ? Math.min(5, Math.max(1, requested)) : 1
+  const [profile] = await db.select({
+    role: users.role,
+    name: users.name,
+    email: users.email,
+    emailVerified: users.emailVerified,
+    phone: users.phone,
+    approvedAt: users.approvedAt,
+    organizerSlug: users.organizerSlug,
+    organizerBio: users.organizerBio,
+    organizerType: users.organizerType,
+    organizerEntityName: users.organizerEntityName,
+    organizerLocation: users.organizerLocation,
+    organizerAddress: users.organizerAddress,
+    organizerCategory: users.organizerCategory,
+    organizerExperienceYears: users.organizerExperienceYears,
+    organizerReferenceUrl: users.organizerReferenceUrl,
+  }).from(users).where(eq(users.id, session.user.id)).limit(1)
+  if (profile?.role !== "organizer" && profile?.role !== "admin") redirect("/dashboard")
+  const businessComplete = Boolean(profile?.organizerEntityName && profile.organizerLocation && profile.organizerAddress && profile.organizerCategory && isValidWhatsappContact(profile.phone))
+  if (step > 1 && !businessComplete) redirect("/organizer/onboarding?step=1")
+  const ownEvents = step >= 4 ? await db.select({ id: events.id, title: events.title, status: events.status }).from(events).where(eq(events.organizerId, session.user.id)).orderBy(desc(events.createdAt)).limit(3) : []
+
+  const errors: Record<string, string> = {
+    slug_taken: "That public page handle is taken. Choose another.",
+    whatsapp_required: "Enter a valid WhatsApp number with country code, such as +263 77 123 4567.",
+    details_required: "Complete the required business fields and check the years of experience.",
+    invalid_url: "Use a full website or social link beginning with https:// or http://.",
+    generic: "We could not save these details. Please try again.",
   }
 
   return (
-    <div
-      className="min-h-screen px-4 py-10 md:py-16 tp-auth-wash"
-    >
-      <div className="max-w-lg mx-auto">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 font-bold text-xl tracking-tight text-ink">
-            <span className="relative inline-flex w-6 h-6 items-center justify-center rounded-md bg-navy">
-              <span className="block w-1.5 h-1.5 rounded-full bg-white" />
-            </span>
-            TicketPulse
-          </Link>
+    <main className="min-h-screen bg-paper-2 px-4 py-10 md:px-8 md:py-14">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-10 text-center">
+          <Link href="/" className="text-xl font-bold tracking-tight text-ink">TicketPulse</Link>
+          <h1 className="mt-8 text-3xl font-bold tracking-tight text-ink md:text-4xl">Organiser registration</h1>
+          <p className="mt-2 text-[15px] text-ink-2">Set up your organiser profile and prepare your first event.</p>
         </div>
-
         <StepIndicator current={step} />
-
-        {step === 1 && (
-          <div className="rounded-2xl border border-line bg-paper p-8 shadow-sm text-center">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-navy/8 text-navy mb-5">
-              <Rocket size={24} />
-            </span>
-            <h1 className="text-[24px] font-bold tracking-tight text-ink mb-2">
-              Welcome, {session.user.name?.split(" ")[0] ?? "organizer"}!
-            </h1>
-            <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              You&apos;re set up as an organizer on TicketPulse. Let&apos;s get your profile and WhatsApp contact ready so attendees and TicketPulse can reach you when it matters.
-            </p>
-            <div className="space-y-3 text-left mb-8">
-              {[
-                "Set your public organizer profile",
-                "Add a required WhatsApp contact",
-                "Create your first event with ticket tiers",
-                "Share your link and start selling",
-              ].map((s) => (
-                <div key={s} className="flex items-center gap-3 text-[13px] text-ink-2">
-                  <CheckCircle2 size={16} className="text-brand-600 shrink-0" />
-                  {s}
-                </div>
-              ))}
-            </div>
-            <Link
-              href="/organizer/onboarding?step=2"
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
-            >
-              Get started <ChevronRight size={15} />
-            </Link>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="rounded-2xl border border-line bg-paper p-8 shadow-sm">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-navy/8 text-navy mb-4">
-              <User size={20} />
-            </span>
-            <h1 className="text-[22px] font-bold tracking-tight text-ink mb-1">Your organizer profile</h1>
-            <p className="text-[13px] text-ink-2 mb-6">
-              These details help TicketPulse understand and contact organizers. Your profile description and page handle can appear publicly; the business name, location, and review link are for account review.
-            </p>
-
-            {error === "slug_taken" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-                That URL handle is already taken — try a different one.
-              </div>
-            )}
-            {error === "whatsapp_required" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-                Organizer WhatsApp contact is required. Use a valid number with its country code, such as +263 77 123 4567.
-              </div>
-            )}
-            {error === "details_required" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-                Choose an organizer type and enter your city and country so we know who is organising the event.
-              </div>
-            )}
-            {error === "invalid_url" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-                Enter a complete website or social link beginning with https:// or http://.
-              </div>
-            )}
-            {error === "generic" && (
-              <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
-                We could not save your organizer profile. Please check the details and try again.
-              </div>
-            )}
-
+        <div className="rounded-2xl border border-line bg-paper p-6 shadow-sm md:p-10">
+          {step === 1 && <>
+            <h2 className="text-2xl font-bold text-ink">Business information</h2>
+            <p className="mt-1 mb-7 text-sm text-ink-2">Tell us about your organisation. This helps us review your account and support your events.</p>
+            {sp.error && errors[sp.error] && <p role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errors[sp.error]}</p>}
             <form action={saveOrganizerProfileAction} className="space-y-5">
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Organizer name <span className="text-ink-3 font-normal">(from your account)</span>
-                </label>
-                <input
-                  type="text"
-                  value={session.user.name ?? ""}
-                  readOnly
-                  className="w-full rounded-xl border border-line bg-paper-2 px-4 py-3 text-[14px] text-ink-2 cursor-not-allowed"
-                />
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Business or organiser name" name="organizerEntityName" required><input id="organizerEntityName" name="organizerEntityName" required maxLength={160} defaultValue={profile?.organizerEntityName ?? ""} placeholder="Enter business name" className={inputClass} /></Field>
+                <Field label="Business email" name="businessEmail" required><input id="businessEmail" type="email" value={profile?.email ?? ""} readOnly className={`${inputClass} bg-paper-2`} /></Field>
+                <Field label="Phone number" name="whatsappContact" required><input id="whatsappContact" type="tel" name="whatsappContact" required autoComplete="tel" defaultValue={profile?.phone ?? ""} placeholder="+263 77 123 4567" className={inputClass} /></Field>
+                <Field label="Business type" name="organizerType" required><select id="organizerType" name="organizerType" required defaultValue={profile?.organizerType ?? ""} className={inputClass}><option value="" disabled>Select business type</option><option value="individual">Individual / sole trader</option><option value="business">Registered business</option><option value="community">Community group / organisation</option></select></Field>
+                <Field label="Organiser category" name="organizerCategory" required><select id="organizerCategory" name="organizerCategory" required defaultValue={profile?.organizerCategory ?? ""} className={inputClass}><option value="" disabled>Select category</option><option value="concerts">Concerts and festivals</option><option value="conferences">Conferences and corporate</option><option value="sports">Sports and fitness</option><option value="arts">Arts and culture</option><option value="community">Community events</option><option value="other">Other</option></select></Field>
+                <Field label="Years of experience" name="organizerExperienceYears"><input id="organizerExperienceYears" type="number" name="organizerExperienceYears" min="0" max="80" defaultValue={profile?.organizerExperienceYears ?? ""} placeholder="Optional" className={inputClass} /></Field>
               </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Organizer WhatsApp contact <span className="text-rose-600">*</span>
-                </label>
-                <div className="relative">
-                  <Smartphone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-3" />
-                  <input
-                    type="tel"
-                    name="whatsappContact"
-                    required
-                    autoComplete="tel"
-                    inputMode="tel"
-                    placeholder="+263 77 123 4567"
-                    defaultValue={profile?.phone ?? ""}
-                    className="w-full rounded-xl border border-line bg-paper pl-10 pr-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                  />
-                </div>
-                <p className="text-[11px] text-ink-3 mt-1">
-                  Required for event approval, payout follow-up, ticket support, and urgent buyer issues.
-                </p>
+              <Field label="Business address" name="organizerAddress" required><input id="organizerAddress" name="organizerAddress" required maxLength={240} autoComplete="street-address" defaultValue={profile?.organizerAddress ?? ""} placeholder="Street address" className={inputClass} /></Field>
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="City and country" name="organizerLocation" required><input id="organizerLocation" name="organizerLocation" required maxLength={120} defaultValue={profile?.organizerLocation ?? ""} placeholder="Harare, Zimbabwe" className={inputClass} /></Field>
+                <Field label="Website or social page" name="organizerReferenceUrl"><input id="organizerReferenceUrl" type="url" name="organizerReferenceUrl" maxLength={300} defaultValue={profile?.organizerReferenceUrl ?? ""} placeholder="https://" className={inputClass} /></Field>
               </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Organizer type <span className="text-rose-600">*</span>
-                </label>
-                <select
-                  name="organizerType"
-                  required
-                  defaultValue={profile?.organizerType ?? "individual"}
-                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                >
-                  <option value="individual">Individual / sole trader</option>
-                  <option value="business">Registered business</option>
-                  <option value="community">Community group or other organisation</option>
-                </select>
-                <p className="text-[11px] text-ink-3 mt-1">This helps us understand who is organising the event. No registration documents are required at this stage.</p>
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Business or group name <span className="text-ink-3 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  name="organizerEntityName"
-                  maxLength={160}
-                  defaultValue={profile?.organizerEntityName ?? ""}
-                  placeholder="Use this if you organise events for a business or group"
-                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  City and country <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="organizerLocation"
-                  required
-                  maxLength={120}
-                  defaultValue={profile?.organizerLocation ?? ""}
-                  placeholder="e.g. Harare, Zimbabwe"
-                  autoComplete="address-level2"
-                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Website or social page for review <span className="text-ink-3 font-normal">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  name="organizerReferenceUrl"
-                  maxLength={300}
-                  defaultValue={profile?.organizerReferenceUrl ?? ""}
-                  placeholder="https://"
-                  autoComplete="url"
-                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Your page URL handle
-                </label>
-                <div className="flex items-center rounded-xl border border-line bg-paper overflow-hidden focus-within:border-green-500 focus-within:ring-4 focus-within:ring-brand-500/10 transition">
-                  <span className="px-3 py-3 text-[13px] text-ink-3 bg-paper-2 border-r border-line shrink-0">
-                    ticketpulse.tech/o/
-                  </span>
-                  <input
-                    type="text"
-                    name="organizerSlug"
-                    placeholder={session.user.name ? session.user.name.toLowerCase().replace(/\s+/g, "-") : "your-name"}
-                    defaultValue={profile?.organizerSlug ?? ""}
-                    maxLength={40}
-                    pattern="[a-zA-Z0-9\-]+"
-                    className="flex-1 px-3 py-3 text-[14px] text-ink bg-transparent focus:outline-none"
-                  />
-                </div>
-                <p className="text-[11px] text-ink-3 mt-1">Letters, numbers, and hyphens only.</p>
-              </div>
-
-              <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] leading-relaxed text-blue-900">
-                <strong>Light-touch organizer review.</strong> We collect enough information to identify and contact organizers. TicketPulse is guided by the RBZ 2025 AML/CFT/CPF guidelines and POTRAZ data-protection requirements. We do not ask for ID scans or proof of address here; we may request more information later if a payment partner or a specific review requires it.
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold text-ink mb-1.5">
-                  Bio <span className="text-ink-3 font-normal">(optional)</span>
-                </label>
-                <textarea
-                  name="bio"
-                  rows={3}
-                  maxLength={280}
-                  defaultValue={profile?.organizerBio ?? ""}
-                  placeholder="Tell attendees who you are and what kind of events you organize..."
-                  className="w-full rounded-xl border border-line bg-paper px-4 py-3 text-[14px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-brand-500/10 transition resize-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
-                >
-                  Save & continue <ChevronRight size={15} />
-                </button>
-              </div>
+              <Field label="Public page handle" name="organizerSlug"><div className="flex overflow-hidden rounded-xl border border-line"><span className="bg-paper-2 px-3 py-3 text-sm text-ink-3">ticketpulse.tech/o/</span><input id="organizerSlug" name="organizerSlug" maxLength={40} pattern="[a-zA-Z0-9\-]+" defaultValue={profile?.organizerSlug ?? ""} placeholder="your-name" className="min-w-0 flex-1 px-3 text-sm outline-none" /></div></Field>
+              <Field label="Description" name="bio"><textarea id="bio" name="bio" rows={3} maxLength={280} defaultValue={profile?.organizerBio ?? ""} placeholder="Tell attendees about your organisation" className={inputClass} /></Field>
+              <div className="flex justify-end pt-2"><button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700">Save and continue <ChevronRight size={16} /></button></div>
             </form>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="rounded-2xl border border-line bg-paper p-8 shadow-sm text-center">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 mb-5">
-              <CheckCircle2 size={28} />
-            </span>
-            <h1 className="text-[22px] font-bold tracking-tight text-ink mb-2">
-              {profile?.approvedAt ? "You're all set!" : "Your profile is ready!"}
-            </h1>
-            <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              {profile?.approvedAt
-                ? "Profile saved. Now create your first event — it only takes a few minutes to go live."
-                : "Your account review is in progress. You can prepare your first event now and submit it as soon as approval arrives."}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/organizer/events/new"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-[14px] font-semibold text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700 transition"
-              >
-                <Calendar size={16} /> Create first event
-              </Link>
-              <Link
-                href="/organizer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-6 py-3 text-[14px] font-semibold text-ink hover:bg-paper-2 transition"
-              >
-                Go to dashboard
-              </Link>
-            </div>
-          </div>
-        )}
-
-        <p className="text-center text-[12px] text-ink-3 mt-6">
-          Need help?{" "}
-          <a href="mailto:support@ticketpulse.tech" className="text-navy hover:underline">
-            Contact support
-          </a>
-        </p>
+          </>}
+          {step === 2 && <>
+            <MailCheck className="mb-4 text-brand-600" size={32} />
+            <h2 className="text-2xl font-bold text-ink">Account</h2>
+            <p className="mt-2 text-sm text-ink-2">Your account was created during signup. Confirm these details before continuing.</p>
+            <dl className="mt-6 grid gap-4 rounded-xl bg-paper-2 p-5 text-sm md:grid-cols-2"><div><dt className="text-ink-3">Account name</dt><dd className="font-semibold text-ink">{profile?.name}</dd></div><div><dt className="text-ink-3">Email address</dt><dd className="font-semibold text-ink">{profile?.email}</dd></div><div><dt className="text-ink-3">WhatsApp contact</dt><dd className="font-semibold text-ink">{profile?.phone}</dd></div><div><dt className="text-ink-3">Email verification</dt><dd className="font-semibold text-ink">{profile?.emailVerified ? "Verified" : "Waiting for verification"}</dd></div></dl>
+            {!profile?.emailVerified && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Check your inbox for the verification link. You can review the next steps now, but email verification is required before creating an event. <a href="/api/auth/resend-verification" className="font-semibold underline">Resend verification email</a>.</div>}
+            <div className="mt-8 flex justify-between gap-3"><Link href="?step=1" className="rounded-xl border border-line px-5 py-3 text-sm font-semibold">Back</Link><Link href="?step=3" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white">Continue <ChevronRight size={16} /></Link></div>
+          </>}
+          {step === 3 && <>
+            <Landmark className="mb-4 text-brand-600" size={32} />
+            <h2 className="text-2xl font-bold text-ink">Banking and payouts</h2>
+            <p className="mt-2 max-w-2xl text-sm text-ink-2">TicketPulse pays organisers in USD by bank transfer. You can add your bank name, account holder, and account number securely when you request your first payout. There is no need to share bank details before you have ticket sales.</p>
+            <div className="mt-6 rounded-xl border border-line bg-paper-2 p-5 text-sm text-ink-2"><p className="font-semibold text-ink">Have these ready for your first payout:</p><ul className="mt-3 list-disc space-y-1 pl-5"><li>Bank name</li><li>Account holder name</li><li>Account number</li></ul></div>
+            <div className="mt-8 flex justify-between gap-3"><Link href="?step=2" className="rounded-xl border border-line px-5 py-3 text-sm font-semibold">Back</Link><Link href="?step=4" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white">Continue <ChevronRight size={16} /></Link></div>
+          </>}
+          {step === 4 && <>
+            <CalendarDays className="mb-4 text-brand-600" size={32} />
+            <h2 className="text-2xl font-bold text-ink">Initial event</h2>
+            <p className="mt-2 text-sm text-ink-2">Create your first event as a draft. Add the venue, date, ticket tiers, and artwork before submitting it for review.</p>
+            {ownEvents.length > 0 && <div className="mt-6 rounded-xl border border-line bg-paper-2 p-5"><p className="mb-3 text-sm font-semibold text-ink">Your events</p>{ownEvents.map(event => <Link key={event.id} href={`/organizer/events/${event.id}`} className="block py-2 text-sm text-brand-700 hover:underline">{event.title} · {(event.status ?? "draft").replaceAll("_", " ")}</Link>)}</div>}
+            <div className="mt-6"><Link href="/organizer/events/new" className="inline-flex items-center gap-2 rounded-xl border border-brand-600 px-5 py-3 text-sm font-semibold text-brand-700 hover:bg-brand-50">Create first event <ChevronRight size={16} /></Link></div>
+            {!profile?.emailVerified && <p className="mt-3 text-xs text-amber-700">Verify your email before creating a draft.</p>}
+            <div className="mt-8 flex justify-between gap-3"><Link href="?step=3" className="rounded-xl border border-line px-5 py-3 text-sm font-semibold">Back</Link><Link href="?step=5" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white">Review registration <ChevronRight size={16} /></Link></div>
+          </>}
+          {step === 5 && <>
+            <h2 className="text-2xl font-bold text-ink">Review</h2>
+            <p className="mt-2 text-sm text-ink-2">Your organiser profile has been saved. Review your details and continue to the dashboard.</p>
+            <dl className="mt-6 grid gap-4 rounded-xl bg-paper-2 p-5 text-sm md:grid-cols-2"><div><dt className="text-ink-3">Organiser</dt><dd className="font-semibold text-ink">{profile?.organizerEntityName}</dd></div><div><dt className="text-ink-3">Category</dt><dd className="font-semibold text-ink">{profile?.organizerCategory}</dd></div><div><dt className="text-ink-3">Location</dt><dd className="font-semibold text-ink">{profile?.organizerLocation}</dd></div><div><dt className="text-ink-3">Account review</dt><dd className="font-semibold text-ink">{profile?.approvedAt ? "Approved" : "Pending review"}</dd></div><div><dt className="text-ink-3">Email</dt><dd className="font-semibold text-ink">{profile?.emailVerified ? "Verified" : "Verification needed"}</dd></div><div><dt className="text-ink-3">Events</dt><dd className="font-semibold text-ink">{ownEvents.length > 0 ? `${ownEvents.length} recent event${ownEvents.length === 1 ? "" : "s"}` : "No event yet"}</dd></div></dl>
+            <p className="mt-5 text-xs text-ink-3">TicketPulse reviews organiser accounts before events can be published. You can prepare drafts while review is pending.</p>
+            <div className="mt-8 flex justify-between gap-3"><Link href="?step=4" className="rounded-xl border border-line px-5 py-3 text-sm font-semibold">Back</Link><Link href="/organizer" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white">Go to dashboard <ChevronRight size={16} /></Link></div>
+          </>}
+        </div>
+        <p className="mt-6 text-center text-xs text-ink-3">Need help? <a href="mailto:support@ticketpulse.tech" className="text-brand-700 underline">Contact support</a></p>
       </div>
-    </div>
+    </main>
   )
 }

@@ -185,7 +185,7 @@ export default async function OrganizerPage({ searchParams }: { searchParams: Pr
 
   if (!isAdmin && session.user.role !== "organizer" && invitedEventIds.length === 0) redirect("/dashboard")
   if (isOrganizerRole && !isValidWhatsappContact(profile?.phone)) {
-    redirect("/organizer/onboarding?step=2&error=whatsapp_required")
+    redirect("/organizer/onboarding?step=1&error=whatsapp_required")
   }
 
   const sp = await searchParams

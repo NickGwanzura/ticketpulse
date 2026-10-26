@@ -99,6 +99,13 @@
       "when": 1792148524156,
       "tag": "0013_organizer_onboarding_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792990800000,
+      "tag": "0014_organizer_registration_details",
+      "breakpoints": true
     }
   ]
 }

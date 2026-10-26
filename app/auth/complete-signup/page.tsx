@@ -48,5 +48,5 @@ export default async function CompleteSignupPage({
     }
   }
 
-  redirect(callbackUrl ?? (requestedRole === "vendor" ? "/vendors/apply" : getDashboardPathForRole(requestedRole)))
+  redirect(callbackUrl ?? (requestedRole === "vendor" ? "/vendors/apply" : requestedRole === "organizer" ? "/organizer/onboarding" : getDashboardPathForRole(requestedRole)))
 }
