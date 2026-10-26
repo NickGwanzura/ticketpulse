@@ -13,6 +13,7 @@ import { reconcileVelocityOrder } from "@/lib/velocity/reconciliation"
 import { recoverPaidSalesOrder } from "@/lib/velocity/sales-order-recovery"
 import { sendAdminAlert } from "@/lib/whatsapp"
 import { newPaymentAlert } from "@/lib/whatsapp-templates"
+import { POST as retryWhatsAppTickets } from "@/app/api/cron/whatsapp-ticket-retry/route"
 import type { VelocityOrderMetadata } from "@/types/velocity"
 
 const MAX_ORDERS_PER_RUN = 30
@@ -186,12 +187,26 @@ export async function POST(request: Request) {
     ).catch(() => {})
   }
 
+  // This endpoint already runs every five minutes in production. Reuse that
+  // schedule so incomplete WhatsApp ticket deliveries are retried server-side.
+  let whatsappRetry: { attempted?: number; completed?: number; pending?: number; error?: string } | null = null
+  try {
+    const response = await retryWhatsAppTickets(request)
+    whatsappRetry = response.ok
+      ? await response.json()
+      : { error: `WhatsApp retry returned HTTP ${response.status}` }
+  } catch (error) {
+    log.warn("cron/recheck-velocity - WhatsApp retry deferred", { error: String(error) })
+    whatsappRetry = { error: "WhatsApp retry deferred" }
+  }
+
   return NextResponse.json({
     checked: targetOrders.length,
     historicalRecovered,
     expired: expiredCount,
     fixed: fixedCount,
     retried: retriedCount,
+    whatsappRetry,
     errors: errorCount,
     elapsedMs: Date.now() - startedAt,
     results,
