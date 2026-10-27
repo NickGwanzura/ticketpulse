@@ -577,7 +577,37 @@ export default async function AdminReconciliationPage({
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
+                <ul className="divide-y divide-line lg:hidden">
+                  {velocityReport.events.slice(0, 12).map((event) => (
+                    <li key={event.eventId} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[14px] font-semibold text-ink">{event.eventTitle}</p>
+                          <p className="mt-1 text-[12px] text-ink-2">{event.organizerName ?? event.organizerEmail ?? "Organizer"}</p>
+                        </div>
+                        {event.issueCount > 0 && <span className="shrink-0 rounded-full bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700">{event.issueCount} flags</span>}
+                      </div>
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+                        <div><dt className="text-ink-3">Velocity received</dt><dd className="font-semibold text-ink">{formatCurrency(event.velocityReceived, event.currency)}</dd></div>
+                        <div><dt className="text-ink-3">Deposited</dt><dd className="font-semibold text-ink">{formatCurrency(event.velocityPaidToTicketPulse, event.currency)}</dd></div>
+                        <div><dt className="text-ink-3">Organizer net</dt><dd className="font-semibold text-ink">{formatCurrency(event.organizerNet, event.currency)}</dd></div>
+                        <div><dt className="text-ink-3">Available</dt><dd className="font-semibold text-ink">{formatCurrency(event.availableBalance, event.currency)}</dd></div>
+                      </dl>
+                      <details className="rounded-lg bg-paper-2 px-3 py-2 text-[12px] text-ink-2">
+                        <summary className="flex min-h-10 cursor-pointer items-center font-semibold">Fee and payout breakdown</summary>
+                        <dl className="grid grid-cols-2 gap-2 border-t border-line pt-3">
+                          <div><dt>TP fee</dt><dd className="font-semibold text-ink">{formatCurrency(event.platformFee, event.currency)}</dd></div>
+                          <div><dt>Velocity fee</dt><dd className="font-semibold text-ink">{formatCurrency(event.velocityFee, event.currency)}</dd></div>
+                          <div><dt>Profit</dt><dd className="font-semibold text-ink">{formatCurrency(event.ticketpulseProfit, event.currency)}</dd></div>
+                          <div><dt>Paid out</dt><dd className="font-semibold text-ink">{formatCurrency(event.paidOut, event.currency)}</dd></div>
+                          <div><dt>Pending</dt><dd className="font-semibold text-ink">{formatCurrency(event.pendingPayouts, event.currency)}</dd></div>
+                        </dl>
+                      </details>
+                    </li>
+                  ))}
+                </ul>
+                <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[980px]">
                   <thead>
                     <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
@@ -623,6 +653,7 @@ export default async function AdminReconciliationPage({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>

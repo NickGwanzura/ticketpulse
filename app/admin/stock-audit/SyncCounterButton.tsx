@@ -21,7 +21,7 @@ export default function SyncCounterButton({ tierId, expected }: { tierId: string
             setMessage(r.message)
           })
         }}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-semibold text-ink hover:bg-paper-2 disabled:opacity-60"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12px] font-semibold text-ink hover:bg-paper-2 disabled:opacity-60"
       >
         {pending && <Loader2 size={12} className="animate-spin" />}
         {pending ? "Fixing…" : `Set counter to ${expected}`}

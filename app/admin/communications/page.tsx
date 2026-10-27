@@ -206,9 +206,7 @@ export default function AdminCommunicationsPage() {
               <div>
                 <p className="text-[12px] text-ink-3 mb-2.5 font-medium">Channels</p>
                 <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <div
-                      onClick={() => setEmail(!email)}
+                  <button type="button" aria-pressed={email} onClick={() => setEmail(!email)}
                       className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
                         email
                           ? "border-green-400 bg-green-50 text-green-700"
@@ -217,11 +215,8 @@ export default function AdminCommunicationsPage() {
                     >
                       <Mail size={13} />
                       Email
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <div
-                      onClick={() => setSms(!sms)}
+                  </button>
+                  <button type="button" aria-pressed={sms} onClick={() => setSms(!sms)}
                       className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-[13px] font-medium transition-colors ${
                         sms
                           ? "border-green-400 bg-green-50 text-green-700"
@@ -230,8 +225,7 @@ export default function AdminCommunicationsPage() {
                     >
                       <MessageSquare size={13} />
                       SMS
-                    </div>
-                  </label>
+                  </button>
                 </div>
               </div>
             </section>
@@ -316,7 +310,7 @@ export default function AdminCommunicationsPage() {
             </section>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => setShowPreview(!showPreview)}
                 disabled={!body.trim()}
@@ -331,7 +325,7 @@ export default function AdminCommunicationsPage() {
                   e.preventDefault()
                   await handleSend()
                 }}
-                className="flex-1"
+                className="w-full sm:min-w-0 sm:flex-1"
               >
                 <input type="hidden" name="audience" value={audience} />
                 <input type="hidden" name="channels" value={channels.join(",")} />

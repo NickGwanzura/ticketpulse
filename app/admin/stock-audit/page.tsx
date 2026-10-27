@@ -78,7 +78,32 @@ export default async function StockAuditPage() {
         {problems.length === 0 ? (
           <EmptyState icon={CheckCircle2} title="All tiers match" body="Every sold counter equals the tickets that really exist." variant="inline" />
         ) : (
-          <div className="rounded-2xl border border-line bg-paper overflow-x-auto">
+          <div className="rounded-2xl border border-line bg-paper overflow-hidden">
+            <ul className="divide-y divide-line lg:hidden">
+              {problems.map((r) => (
+                <li key={r.tier_id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-semibold text-ink">{r.tier}</p>
+                      <p className="mt-0.5 text-[12px] text-ink-2">{r.event}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${r.verdict === "OVERSOLD" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}`}>{r.verdict}</span>
+                  </div>
+                  <dl className="grid grid-cols-2 gap-2 text-[13px]">
+                    <div><dt className="text-ink-3">Expected</dt><dd className="font-semibold text-ink">{r.expected}</dd></div>
+                    <div><dt className="text-ink-3">Counter</dt><dd className="font-semibold text-ink">{r.counter}</dd></div>
+                    <div><dt className="text-ink-3">Real tickets</dt><dd className="font-semibold text-ink">{r.live_tickets}</dd></div>
+                    <div><dt className="text-ink-3">Held / capacity</dt><dd className="font-semibold text-ink">{r.held_open} / {r.capacity}</dd></div>
+                  </dl>
+                  <div className="border-t border-line pt-3">
+                    {r.verdict === "DRIFT" ? <SyncCounterButton tierId={r.tier_id} expected={r.expected} /> : (
+                      <Link href={`/organizer/events/${r.event_id}/tiers`} className="inline-flex min-h-11 items-center rounded-lg border border-line px-4 text-[13px] font-semibold text-brand-600">Review tier</Link>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[760px]">
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">
@@ -125,6 +150,7 @@ export default async function StockAuditPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
         <p className="text-[12px] text-ink-3">

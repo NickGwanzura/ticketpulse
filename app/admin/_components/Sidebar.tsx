@@ -63,9 +63,9 @@ const SPECIALIST_TOOLS: NavItem[] = [
   { label: "Audit log", href: "/admin/audit-log", icon: History },
 ]
 const NAV_FLAT: NavItem[] = [...NAV_GROUPS.flatMap((g) => g.items), ...SPECIALIST_TOOLS]
-const MOBILE_PRIMARY_HREFS = new Set(["/admin", "/admin/payments", "/admin/events", "/admin/orders"])
-const MOBILE_PRIMARY = NAV_FLAT.filter((item) => MOBILE_PRIMARY_HREFS.has(item.href))
-const MOBILE_MORE = NAV_FLAT.filter((item) => !MOBILE_PRIMARY_HREFS.has(item.href))
+const MOBILE_PRIMARY_HREFS = ["/admin", "/admin/needs-attention", "/admin/events", "/admin/orders"]
+const MOBILE_PRIMARY = MOBILE_PRIMARY_HREFS.map((href) => NAV_FLAT.find((item) => item.href === href)!)
+const MOBILE_MORE = NAV_FLAT.filter((item) => !MOBILE_PRIMARY_HREFS.includes(item.href))
 
 export default function Sidebar({
   name,
@@ -190,28 +190,27 @@ export default function Sidebar({
       </aside>
 
       {/* ── Mobile tab strip ── */}
-      <div className="lg:hidden sticky top-24 z-30 bg-chrome">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-white/10 text-white text-[11px] font-bold shrink-0">
-              {initials || <Shield size={12} />}
-            </span>
-            <div className="min-w-0">
+      <div className="lg:hidden flex items-center justify-between border-b border-white/10 bg-chrome px-4 py-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="inline-flex w-7 h-7 items-center justify-center rounded-lg bg-white/10 text-white text-[11px] font-bold shrink-0">
+            {initials || <Shield size={12} />}
+          </span>
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-white/60 leading-none">Admin</p>
-              <p className="text-[13px] font-semibold text-white truncate mt-0.5">{name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <NotificationBell />
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-[12px] font-medium text-white/80 hover:text-white hover:border-white/50 transition-colors"
-            >
-              <LogOut size={12} /> Sign out
-            </button>
+            <p className="text-[13px] font-semibold text-white truncate mt-0.5">{name}</p>
           </div>
         </div>
-        <nav aria-label="Admin navigation" className="flex min-w-0 items-center gap-1 px-2 py-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <NotificationBell />
+          <button
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-[12px] font-medium text-white/80 hover:text-white hover:border-white/50 transition-colors"
+          >
+            <LogOut size={12} /> Sign out
+          </button>
+        </div>
+      </div>
+      <nav aria-label="Admin navigation" className="lg:hidden sticky top-24 z-30 flex min-w-0 items-center gap-1 border-b border-white/10 bg-chrome px-2 py-1">
           {MOBILE_PRIMARY.map(({ label, href, icon: Icon, badgeKey }) => {
             const active = isActive(href)
             const badge = badgeValue(badgeKey)
@@ -227,7 +226,7 @@ export default function Sidebar({
                 }`}
               >
                 <Icon size={13} className={`hidden sm:block ${active ? "text-white" : "text-white/60"}`} />
-                <span className="truncate">{label}</span>
+                <span className="truncate">{href === "/admin/needs-attention" ? "Attention" : label}</span>
                 {!!badge && (
                   <span className="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-400 text-[9px] font-bold text-chrome">
                     {badge}
@@ -259,8 +258,7 @@ export default function Sidebar({
               })}
             </div>
           </details>
-        </nav>
-      </div>
+      </nav>
     </>
   )
 }

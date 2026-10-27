@@ -320,6 +320,12 @@ export default async function AdminOverviewPage() {
       </div>
 
       <div className="px-5 md:px-8 py-8 space-y-6">
+        {hasPendingAction && (
+          <Link href="#operations" className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] font-semibold text-amber-900 md:hidden">
+            <span>{actionCount.toLocaleString()} admin action{actionCount === 1 ? "" : "s"} need attention</span>
+            <ArrowUpRight size={16} className="shrink-0" aria-hidden="true" />
+          </Link>
+        )}
         <section aria-label="System health" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
             {
@@ -352,7 +358,7 @@ export default async function AdminOverviewPage() {
             <Link href="/admin/reconciliation" className="font-semibold underline underline-offset-2">reconciliation</Link> directly.
           </div>
         )}        {hasPendingAction && (
-          <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 flex items-start gap-3 tp-fade-up-1">
+          <div role="status" className="hidden rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 md:flex items-start gap-3 tp-fade-up-1">
             <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
             <p className="flex-1 text-[13px] font-semibold text-amber-900">
               {actionCount.toLocaleString()} admin action{actionCount === 1 ? "" : "s"} need attention.
@@ -363,7 +369,7 @@ export default async function AdminOverviewPage() {
           </div>
         )}
 
-        <section id="operations" aria-labelledby="operations-heading" className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
+        <section id="operations" aria-labelledby="operations-heading" className="scroll-mt-40 rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-1">
           <div className="px-5 py-4 border-b border-line flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
               <h2 id="operations-heading" className="text-[15px] font-semibold text-ink">Needs attention</h2>

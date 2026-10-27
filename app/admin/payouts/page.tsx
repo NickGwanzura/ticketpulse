@@ -179,12 +179,12 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         <div className="rounded-2xl border border-line bg-paper overflow-hidden tp-fade-up-3">
           {payoutRows.length > 0 ? (
             <>
-              <div className="hidden md:block p-3">
+              <div className="hidden lg:block p-3">
                 <PayoutsTable rows={payoutRows} exportFilename={`payouts-${active}`} />
               </div>
 
               {/* Mobile cards */}
-              <ul className="md:hidden divide-y divide-line">
+              <ul className="lg:hidden divide-y divide-line">
                 {payoutRows.map((p) => (
                   <li key={p.id} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-2">
@@ -203,7 +203,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         {formatCurrency(Number(p.amount), p.currency)}
                       </span>
                     </div>
-                    <p className="mt-2 text-[11px] text-ink-3 leading-4">
+                    <p className="mt-2 break-words text-[13px] text-ink-2 leading-5">
                       {p.method === "cash"
                         ? p.proofReference
                         : p.method === "ecocash"
@@ -211,38 +211,42 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                         : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}
                     </p>
 
-                    {/* Mobile action buttons */}
-                    {p.status === "pending" && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
-                          <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700">Approve</button>
-                        </form>
-                        <form action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
-                          <input name="reason" type="text" placeholder="Reason..." required minLength={5} className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
-                          <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-red-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Reject</button>
-                        </form>
-                      </div>
-                    )}
-                    {p.status === "approved" && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <form action={async () => { "use server"; await markPayoutProcessingAction(p.id) }}>
-                          <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-sky-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Process</button>
-                        </form>
-                        <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
-                          <input name="proofRef" type="text" required minLength={3} aria-label="Transfer or receipt reference" placeholder="Proof ref" className="w-20 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
-                          <button type="submit" className="ml-1 inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Pay</button>
-                        </form>
-                      </div>
-                    )}
-                    {p.status === "processing" && (
-                      <div className="mt-3">
-                        <form action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
-                          <div className="flex items-center gap-1">
-                            <input name="proofRef" type="text" required minLength={3} aria-label="Transfer or receipt reference" placeholder="Proof ref" className="w-24 rounded-lg border border-line bg-paper px-2 py-1.5 text-[11px]" />
-                            <button type="submit" className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white">Mark paid</button>
+                    {(p.status === "pending" || p.status === "approved" || p.status === "processing") && (
+                      <details className="mt-4 rounded-xl border border-line bg-paper-2/50 p-3">
+                        <summary className="flex min-h-11 cursor-pointer items-center text-[13px] font-semibold text-ink">
+                          {p.status === "pending" ? "Review payout decision" : "Record payout progress"}
+                        </summary>
+                        <div className="mt-3 space-y-4 border-t border-line pt-4">
+                          <div className="rounded-lg bg-paper p-3 text-[13px] text-ink-2">
+                            <p className="font-semibold text-ink">{formatCurrency(Number(p.amount), p.currency)} to {p.organizerName ?? "organizer"}</p>
+                            <p className="mt-1 break-words">{payoutMethodLabel(p)} · {p.method === "cash" ? p.proofReference : p.method === "ecocash" ? p.accountNumber : [p.bankName, p.accountName, p.accountNumber].filter(Boolean).join(" · ")}</p>
                           </div>
-                        </form>
-                      </div>
+                          {p.status === "pending" && (
+                            <div className="space-y-3">
+                              <form action={async () => { "use server"; await approvePayoutAction(p.id) }}>
+                                <button type="submit" className="min-h-11 w-full rounded-lg bg-violet-600 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-violet-700">Approve payout</button>
+                              </form>
+                              <form className="space-y-2" action={async (formData: FormData) => { "use server"; const reason = formData.get("reason") as string; await rejectPayoutAction(p.id, reason) }}>
+                                <label htmlFor={`reject-reason-${p.id}`} className="block text-[13px] font-medium text-ink">Reason for rejection</label>
+                                <input id={`reject-reason-${p.id}`} name="reason" type="text" required minLength={5} className="min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-[13px]" />
+                                <button type="submit" className="min-h-11 w-full rounded-lg border border-red-300 bg-paper px-4 py-2.5 text-[13px] font-semibold text-red-700">Reject payout</button>
+                              </form>
+                            </div>
+                          )}
+                          {p.status === "approved" && (
+                            <form action={async () => { "use server"; await markPayoutProcessingAction(p.id) }}>
+                              <button type="submit" className="min-h-11 w-full rounded-lg bg-sky-600 px-4 py-2.5 text-[13px] font-semibold text-white">Mark processing</button>
+                            </form>
+                          )}
+                          {(p.status === "approved" || p.status === "processing") && (
+                            <form className="space-y-2" action={async (formData: FormData) => { "use server"; const ref = formData.get("proofRef") as string; await markPayoutPaidAction(p.id, ref || undefined) }}>
+                              <label htmlFor={`proof-ref-${p.id}`} className="block text-[13px] font-medium text-ink">Transfer or receipt reference</label>
+                              <input id={`proof-ref-${p.id}`} name="proofRef" type="text" required minLength={3} className="min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-[13px]" />
+                              <button type="submit" className="min-h-11 w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-[13px] font-semibold text-white">Mark paid</button>
+                            </form>
+                          )}
+                        </div>
+                      </details>
                     )}
                     {p.status === "rejected" && p.rejectionReason && (
                       <p className="mt-2 text-[11px] text-red-600">{p.rejectionReason}</p>

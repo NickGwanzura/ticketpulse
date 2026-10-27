@@ -141,11 +141,11 @@ export default function DataTable<T>({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 px-1 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2">
         <div className="text-[12.5px] text-ink-3">
           {selected.size > 0 ? `${selected.size} selected` : `${rows.length} row${rows.length === 1 ? "" : "s"}`}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selected.size > 0 && renderBulkActions?.(
             [...selected],
             () => setSelected(new Set()),
@@ -183,7 +183,46 @@ export default function DataTable<T>({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-line bg-paper">
+      <div className="mb-2 lg:hidden">
+        <label htmlFor={`${tableId}-sort`} className="sr-only">Sort rows</label>
+        <select
+          id={`${tableId}-sort`}
+          value={sort ? `${sort.key}:${sort.direction}` : ""}
+          onChange={(event) => {
+            const [key, direction] = event.target.value.split(":")
+            setSort(key && (direction === "asc" || direction === "desc") ? { key, direction } : null)
+          }}
+          className="min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-[13px] text-ink"
+        >
+          <option value="">Default order</option>
+          {visibleColumns.filter((column) => column.sortable).flatMap((column) => [
+            <option key={`${column.key}:asc`} value={`${column.key}:asc`}>{column.label}: ascending</option>,
+            <option key={`${column.key}:desc`} value={`${column.key}:desc`}>{column.label}: descending</option>,
+          ])}
+        </select>
+      </div>
+      <ul className="divide-y divide-line rounded-2xl border border-line bg-paper lg:hidden">
+        {sortedRows.map((row) => {
+          const id = getRowId(row)
+          return (
+            <li key={id} className="p-4">
+              <label className="mb-3 inline-flex min-h-11 items-center gap-2 text-[12px] text-ink-2">
+                <input type="checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} />
+                Select row
+              </label>
+              <dl className="space-y-3">
+                {visibleColumns.map((column) => (
+                  <div key={column.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-3 text-[13px]">
+                    <dt className="text-ink-3">{column.label}</dt>
+                    <dd className="min-w-0 break-words text-ink">{column.render(row)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-2xl border border-line bg-paper lg:block">
         <table className="w-full">
           <thead>
             <tr className="border-b border-line text-[11px] font-semibold tracking-widest text-ink-3 uppercase">

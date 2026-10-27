@@ -141,8 +141,8 @@ export default async function NeedsAttentionPage() {
                 </div>
                 <ul className="divide-y divide-line">
                   {g.rows.map((o) => (
-                    <li key={o.id} className="px-5 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
-                      <div className="min-w-0">
+                    <li key={o.id} className="px-5 md:px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
                         <p className="text-[13px] text-ink truncate">
                           <span className="font-mono text-ink-3">#{o.id.slice(0, 8)}</span>{" "}
                           {o.guestName ?? o.guestEmail ?? "—"}
@@ -152,13 +152,13 @@ export default async function NeedsAttentionPage() {
                           {o.reviewReason ? ` · ${REVIEW_REASON_LABEL[o.reviewReason] ?? o.reviewReason}` : ""}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         <span className="text-[13px] font-bold tabular-nums text-ink">
                           {formatCurrency(Number(o.totalAmount ?? 0), o.currency ?? "USD")}
                         </span>
                         <Link
                           href={`/admin/orders/${o.id}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12px] font-medium text-ink-2 hover:text-ink hover:bg-paper-2"
                         >
                           <ExternalLink size={12} /> Open
                         </Link>

@@ -449,7 +449,7 @@ export default async function AdminOrdersPage({
           {orderRows.length > 0 ? (
             <>
               {/* Desktop table */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full min-w-[900px]">
                   <thead>
                     <tr className="border-b border-line text-[12px] font-semibold tracking-widest text-ink-3 uppercase">
@@ -600,7 +600,7 @@ export default async function AdminOrdersPage({
               </div>
 
               {/* Mobile list */}
-              <ul className="md:hidden divide-y divide-line">
+              <ul className="lg:hidden divide-y divide-line">
                 {orderRows.map((o) => (
                   <li key={o.id} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-1.5">
