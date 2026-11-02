@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
 import { db } from "@/db"
 import { events, users } from "@/db/schema"
+import { ARTICLES } from "@/lib/articles"
 import { and, eq, gte, inArray, isNotNull } from "drizzle-orm"
 
 // Sitemap metadata routes are cached by default. Read the event database at
@@ -15,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     "",
     "/events",
+    "/articles",
     "/vendors",
     "/how-it-works",
     "/marketing",
@@ -27,6 +29,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/legal/cookies",
   ]
 
+  const articleRoutes: MetadataRoute.Sitemap = ARTICLES.map((article) => ({
+    url: baseUrl + "/articles/" + article.slug,
+    lastModified: new Date(article.publishedAt),
+  }))
+
   // Dynamic public event pages. Keep completed/cancelled event URLs available
   // as useful archives; draft and pending-review events are not public targets.
   let eventRoutes: MetadataRoute.Sitemap = []
@@ -37,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .where(inArray(events.status, ["published", "sold_out", "cancelled", "completed"]))
 
     eventRoutes = eventRows.map((e) => ({
-      url: `${baseUrl}/events/${e.slug}`,
+      url: baseUrl + "/events/" + e.slug,
       ...(e.updatedAt ? { lastModified: e.updatedAt } : {}),
     }))
   } catch {
@@ -60,7 +67,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ))
 
     organizerRoutes = organizerRows.flatMap((organizer) => organizer.slug ? [{
-      url: `${baseUrl}/o/${encodeURIComponent(organizer.slug)}`,
+      url: baseUrl + "/o/" + encodeURIComponent(organizer.slug),
       ...(organizer.updatedAt ? { lastModified: organizer.updatedAt } : {}),
     }] : [])
   } catch {
@@ -68,7 +75,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   return [
-    ...staticRoutes.map((path) => ({ url: `${baseUrl}${path}` })),
+    ...staticRoutes.map((path) => ({ url: baseUrl + path })),
+    ...articleRoutes,
     ...eventRoutes,
     ...organizerRoutes,
   ]
